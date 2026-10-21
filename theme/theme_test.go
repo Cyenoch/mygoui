@@ -80,26 +80,27 @@ func TestNumericInterfaceFontChangesGlyphLayout(t *testing.T) {
 	previous := preferenceSnapshot()
 	t.Cleanup(func() { SetPreferences(previous) })
 	SetPreferences(Preferences{FontSize: 16})
+	const text = "Readable interface text"
 	tt := ui.NewTester(func(c *ui.Context) {
 		Apply(c)
-		ui.Text(c, "iiiiiiiiii").Font(FontFamily(c)).FontSize(Scale(c, 14)).
+		ui.Text(c, text).Font(FontFamily(c)).FontSize(Scale(c, 14)).
 			FixedLineHeight(Scale(c, 20)).NoWrap().AlignSelf(ui.Start)
 	}, 500, 160)
-	before, ok := tt.Find("iiiiiiiiii")
+	before, ok := tt.Find(text)
 	if !ok {
 		t.Fatal("interface glyphs missing")
 	}
 	for _, size := range []float32{18, 20} {
 		SetPreferences(Preferences{FontSize: size})
 		tt.Frame()
-		after, ok := tt.Find("iiiiiiiiii")
+		after, ok := tt.Find(text)
 		if !ok || after.H <= before.H || after.W <= before.W {
 			t.Fatalf("size %g layout = %+v, baseline %+v", size, after, before)
 		}
 	}
 	SetPreferences(Preferences{FontSize: 16, FontFamily: "monospace"})
 	tt.Frame()
-	mono, ok := tt.Find("iiiiiiiiii")
+	mono, ok := tt.Find(text)
 	if !ok || mono.W == before.W {
 		t.Fatalf("chosen family did not change glyph advances: system %+v, monospace %+v", before, mono)
 	}

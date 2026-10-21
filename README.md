@@ -103,7 +103,7 @@ make wasm
 make workflows # requires actionlint
 ```
 
-Ordinary tests use MyGo's headless renderer and native event routing. They do not open windows. Linux needs Pango (`libpangocairo-1.0-0`) for software text rendering. Race tests require a C toolchain. CI configures these prerequisites and checks Linux, macOS and Windows, plus WebAssembly builds, MyGo lifetime analysis, lint and vulnerability scanning.
+Ordinary tests use MyGo's headless renderer and native event routing. They do not open windows. Linux needs Pango (`libpangocairo-1.0-0`) plus `fonts-noto-cjk` and `fonts-noto-color-emoji` for the Unicode rendering fixtures. Race tests require a C toolchain. CI configures these prerequisites and checks Linux, macOS and Windows, plus WebAssembly builds, MyGo lifetime analysis, lint and vulnerability scanning.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for validation, public API changes, dependency updates and release steps. Headless evidence and outstanding platform checks are recorded in [VALIDATION.md](VALIDATION.md).
 

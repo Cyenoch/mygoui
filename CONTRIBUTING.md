@@ -14,9 +14,9 @@ make workflows # requires actionlint (with shellcheck for embedded shell scripts
 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 ```
 
-CI runs ordinary tests and builds on Linux, macOS and Windows. The Linux race suite runs in a parallel job. A separate Linux analysis job checks module metadata, formatting, MyGo lifetimes, WebAssembly, workflows, lint and reachable vulnerabilities. The lint action downloads a pinned binary and caches analysis; setup-go caches modules and build outputs. Superseded runs on the same ref are cancelled.
+CI uses the latest Go 1.27 patch release and runs ordinary tests and builds on Linux, macOS and Windows. The Linux race suite runs in a parallel job. A separate Linux analysis job checks module metadata, formatting, MyGo lifetimes, WebAssembly, workflows, lint and reachable vulnerabilities. The lint action downloads a pinned binary and caches analysis; setup-go caches modules and build outputs. Superseded runs on the same ref are cancelled.
 
-The ordinary suite runs without windows, external services or user configuration. Linux software rendering requires Pango; race detection requires a C compiler. Check the modified control with real native input on the relevant OS before claiming platform accessibility, GPU redraw or gesture acceptance. Use a disposable application, with no user data.
+The ordinary suite runs without windows, external services or user configuration. Linux software rendering requires `libpangocairo-1.0-0`, `fonts-noto-cjk` and `fonts-noto-color-emoji` for the Unicode pixel fixtures; race detection requires a C compiler. Check the modified control with real native input on the relevant OS before claiming platform accessibility, GPU redraw or gesture acceptance. Use a disposable application, with no user data.
 
 Tests should verify actions, editing, focus, selection, source fidelity, state transitions and real regressions. Preserve stable identities while filtering/reordering or hiding/reopening widgets. Prefer the toolkit's virtual clock to sleeps. Optional renderer artifacts use `MYGOUI_*` environment variables and paths outside tracked source.
 
