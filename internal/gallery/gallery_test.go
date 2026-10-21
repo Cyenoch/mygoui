@@ -210,11 +210,8 @@ func TestDocumentationCodeOutlineAndAdjacentNavigation(t *testing.T) {
 	}
 }
 
-func TestEveryImplementedDefaultKeepsDocumentAtTop(t *testing.T) {
+func TestEveryDefaultKeepsDocumentAtTop(t *testing.T) {
 	for _, entry := range Catalog {
-		if !implemented(entry.ID) {
-			t.Fatalf("catalog entry %s has no actual native implementation", entry.ID)
-		}
 		t.Run(string(entry.ID), func(t *testing.T) {
 			for _, size := range []struct{ width, height int }{{390, 1000}, {768, 1000}, {1120, 820}} {
 				s := New()
@@ -225,7 +222,7 @@ func TestEveryImplementedDefaultKeepsDocumentAtTop(t *testing.T) {
 					t.Fatalf("initial document scrolled away from heading at width %d: %g", size.width, s.previewScroll.Y)
 				}
 				if !tt.HasText("View Code") {
-					t.Fatal("implemented component lost actual preview/source disclosure")
+					t.Fatal("component lost actual preview/source disclosure")
 				}
 				stage, ok := tt.Find("Interactive preview")
 				if !ok || stage.X < 0 || stage.X+stage.W > float32(size.width)+1 {

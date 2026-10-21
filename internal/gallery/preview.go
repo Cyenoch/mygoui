@@ -31,53 +31,37 @@ func preview(c *ui.Context, s *State) {
 					TextColor(colors.MutedForeground)
 				ui.Row(c).Wrap().Gap(8).Children(func() {
 					ui.Text(c, "Go / MyGo").FontSize(theme.Scale(c, 13))
-					status := locales.ComponentGalleryPlanned()
-					if implemented(entry.ID) {
-						status = locales.ComponentGalleryImplementedUnverified()
-					}
-					ui.Text(c, status).FontSize(theme.Scale(c, 12)).TextColor(colors.MutedForeground)
+					ui.Text(c, locales.ComponentGalleryImplementedUnverified()).FontSize(theme.Scale(c, 12)).TextColor(colors.MutedForeground)
 				})
 			})
 			section(c, s, "Preview")
-			if implemented(entry.ID) {
-				ui.Column(c).FillWidth().MinWidth(0).Border(1, colors.Border).Radius(theme.Radii().LG).Clip().Children(func() {
-					ui.Column(c).Label(locales.ComponentGalleryInteractivePreview()).FillWidth().MinWidth(0).MinHeight(300).
-						Padding(24).Justify(ui.Center).AlignItems(ui.Stretch).Children(func() { defaultSpecimen(c.Key("default-demo"), s, entry.ID) })
-					ui.Column(c).FillWidth().MinWidth(0).Gap(8).Background(colors.Muted).
-						BorderWidth(1, 0, 0, 0).BorderColor(colors.Border).Children(func() {
-						label := locales.ComponentGalleryViewCode()
-						if s.SourceOpen {
-							label = locales.ComponentGalleryHideCode()
-						}
-						mygoui.Button(c.Key("view-code"), mygoui.ButtonOptions{Label: label,
-							Variant: mygoui.ButtonOutline, Size: mygoui.ButtonSM,
-							OnClick: func() { s.SourceOpen = !s.SourceOpen }}).AlignSelf(ui.Center).Margin(12, 0, 0, 0)
-						if s.SourceOpen {
-							codeblock.View(c.Key("actual-preview-source"), sourceFor(entry.ID), &s.DocumentationCode,
-								codeblock.Options{Language: "go", Title: locales.ComponentGalleryActualSource(), LineNumbers: true, MaxHeight: 440, Embedded: true})
-						} else {
-							ui.Text(c, "Go · Native MyGo API").FontSize(theme.Scale(c, 12)).TextColor(colors.MutedForeground).AlignSelf(ui.Center).Margin(0, 0, 12, 0)
-						}
-					})
+			ui.Column(c).FillWidth().MinWidth(0).Border(1, colors.Border).Radius(theme.Radii().LG).Clip().Children(func() {
+				ui.Column(c).Label(locales.ComponentGalleryInteractivePreview()).FillWidth().MinWidth(0).MinHeight(300).
+					Padding(24).Justify(ui.Center).AlignItems(ui.Stretch).Children(func() { defaultSpecimen(c.Key("default-demo"), s, entry.ID) })
+				ui.Column(c).FillWidth().MinWidth(0).Gap(8).Background(colors.Muted).
+					BorderWidth(1, 0, 0, 0).BorderColor(colors.Border).Children(func() {
+					label := locales.ComponentGalleryViewCode()
+					if s.SourceOpen {
+						label = locales.ComponentGalleryHideCode()
+					}
+					mygoui.Button(c.Key("view-code"), mygoui.ButtonOptions{Label: label,
+						Variant: mygoui.ButtonOutline, Size: mygoui.ButtonSM,
+						OnClick: func() { s.SourceOpen = !s.SourceOpen }}).AlignSelf(ui.Center).Margin(12, 0, 0, 0)
+					if s.SourceOpen {
+						codeblock.View(c.Key("actual-preview-source"), sourceFor(entry.ID), &s.DocumentationCode,
+							codeblock.Options{Language: "go", Title: locales.ComponentGalleryActualSource(), LineNumbers: true, MaxHeight: 440, Embedded: true})
+					} else {
+						ui.Text(c, "Go · Native MyGo API").FontSize(theme.Scale(c, 12)).TextColor(colors.MutedForeground).AlignSelf(ui.Center).Margin(0, 0, 12, 0)
+					}
 				})
-			} else {
-				ui.Column(c).FillWidth().Padding(24).Gap(12).Border(1, colors.Border).Radius(theme.Radii().LG).Children(func() {
-					ui.Text(c, locales.ComponentGalleryImplementationPlanned()).Bold()
-					ui.Text(c, entry.Plan)
-					ui.Text(c, locales.ComponentGalleryPreviewUnavailable()).TextColor(colors.MutedForeground)
-				})
-			}
+			})
 			section(c, s, "Usage")
 			ui.Text(c, usageFor(entry)).LineHeight(1.5)
 			section(c, s, "Examples")
-			if implemented(entry.ID) {
-				ui.Text(c, locales.ComponentGalleryVariants(locales.ComponentGalleryName(strings.ReplaceAll(string(entry.ID), "-", "_")))).Bold().FontSize(theme.Scale(c, 18))
-				ui.Text(c, examplesFor(entry)).LineHeight(1.5)
-				ui.Column(c).FillWidth().MinWidth(0).Padding(24).Border(1, colors.Border).Radius(theme.Radii().LG).
-					Children(func() { specimen(c.Key("advanced-examples"), s, entry.ID) })
-			} else {
-				ui.Text(c, examplesFor(entry)).LineHeight(1.5)
-			}
+			ui.Text(c, locales.ComponentGalleryVariants(locales.ComponentGalleryName(strings.ReplaceAll(string(entry.ID), "-", "_")))).Bold().FontSize(theme.Scale(c, 18))
+			ui.Text(c, examplesFor(entry)).LineHeight(1.5)
+			ui.Column(c).FillWidth().MinWidth(0).Padding(24).Border(1, colors.Border).Radius(theme.Radii().LG).
+				Children(func() { specimen(c.Key("advanced-examples"), s, entry.ID) })
 			section(c, s, "Behavior and API")
 			ui.Text(c, "State belongs to the caller and survives view rebuilds. Actions above change only local sample fixtures. Native controls retain keyboard focus, selection and accessibility semantics.").LineHeight(1.5)
 			reference := "https://ui.shadcn.com/docs/components/" + string(entry.ID)
@@ -151,9 +135,6 @@ func specimen(c *ui.Context, s *State, id ComponentID) {
 }
 
 func usageFor(entry Entry) string {
-	if !implemented(entry.ID) {
-		return "This component has no native API yet. Its planned behavior is documented above; no placeholder API or installation command is provided."
-	}
 	switch entry.ID {
 	case "calendar":
 		return "Import github.com/Cyenoch/mygoui/calendar. Retain calendar.State and pass civil Date values with explicit location/constraints. Calendar.Options selects single, multiple or range mode; locale changes presentation while arithmetic remains Gregorian. The sample's fixed October 2026 date avoids clock-dependent data."
@@ -185,9 +166,6 @@ func usageFor(entry Entry) string {
 }
 
 func examplesFor(entry Entry) string {
-	if !implemented(entry.ID) {
-		return "Examples remain unavailable until the native component is implemented and its interaction can be exercised."
-	}
 	switch entry.ID {
 	case "button":
 		return "Compare default, outline, secondary, ghost, destructive and link actions, then test loading, disabled and invalid states. The second row compares button and icon sizes."

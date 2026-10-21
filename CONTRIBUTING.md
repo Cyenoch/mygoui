@@ -9,9 +9,12 @@ go mod tidy
 make check
 make race
 golangci-lint run ./...
-GOOS=js GOARCH=wasm CGO_ENABLED=0 go build ./...
+make wasm
+make workflows # requires actionlint (with shellcheck for embedded shell scripts)
 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 ```
+
+CI runs ordinary tests and builds on Linux, macOS and Windows. The Linux race suite runs in a parallel job. A separate Linux analysis job checks module metadata, formatting, MyGo lifetimes, WebAssembly, workflows, lint and reachable vulnerabilities. The lint action downloads a pinned binary and caches analysis; setup-go caches modules and build outputs. Superseded runs on the same ref are cancelled.
 
 The ordinary suite runs without windows, external services or user configuration. Linux software rendering requires Pango; race detection requires a C compiler. Check the modified control with real native input on the relevant OS before claiming platform accessibility, GPU redraw or gesture acceptance. Use a disposable application, with no user data.
 

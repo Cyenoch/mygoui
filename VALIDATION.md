@@ -1,6 +1,6 @@
 # Validation
 
-Local validation used macOS arm64, Go 1.27.2, MyGo v0.6.0 and mygoicons v0.1.0. Module metadata targets Go 1.27.1. The project has not been published or tagged.
+Local validation used macOS arm64, Go 1.27.2, MyGo v0.6.0 and mygoicons v0.1.0. Module metadata targets Go 1.27.1. The public repository is `github.com/Cyenoch/mygoui`; no release has been tagged.
 
 ## Completed checks
 
@@ -18,6 +18,13 @@ Local validation used macOS arm64, Go 1.27.2, MyGo v0.6.0 and mygoicons v0.1.0. 
 The first race run timed out in a pixel assertion that acquired a new screenshot for every pixel. The assertion now acquires one frame before scanning. The affected conversation package then passed under race detection in about two seconds; its ordinary runtime fell from about 16 seconds to under one second. This correction changes test acquisition cost, not component behavior.
 
 The final complete `CGO_ENABLED=1 go test -race -shuffle=on ./... -count=1 -timeout=300s` passed in every tested package. Conversation completed in 1.951 seconds and the largest overlay suite in 143.648 seconds, with no data-race reports.
+
+## Cleanup and CI validation
+
+- Removed the gallery's duplicate implementation inventory and unreachable planned-component branches, including their English/Chinese messages. All 66 specimens still pass the existing three-width gallery tests.
+- The two scroll-viewport pixel tests now capture one image per state, preserving every assertion. Their ordinary package time fell from 2.022 seconds to 0.032 seconds on this machine; command wall time fell from 2.66 seconds to 0.44 seconds. These are local samples with warm caches, not GitHub runner measurements.
+- `make check` passed in 37.49 seconds. The subsequent `make race` passed in 134.63 seconds, with no race reports. Lint, actionlint v1.7.12 with ShellCheck, WebAssembly, module tidy/integrity and the reachable-vulnerability scan also passed; module metadata remained unchanged.
+- CI retains all three OS test/build legs, runs Linux race checks independently and downloads the pinned golangci-lint binary with analysis caching. Module metadata, MyGo lifetimes, WebAssembly, workflows and vulnerabilities are checked in the Linux analysis job. The additional runner setup may increase total runner minutes while shortening the test/race critical path; live wall time and cancellation remain unmeasured until the first GitHub runs.
 
 ## Platform limits
 

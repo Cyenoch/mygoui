@@ -26,9 +26,6 @@ var dateChartPreviewSource = specimenSource + "\n\n// File: datecharts.go — co
 // sourceFor shows the actual compiled default specimens and their fixture state.
 // Embedding the implementation avoids a second, hand-maintained set of examples.
 func sourceFor(id ComponentID) string {
-	if !implemented(id) {
-		return ""
-	}
 	switch id {
 	case "message":
 		return messagePreviewSource

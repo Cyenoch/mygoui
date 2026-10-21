@@ -137,18 +137,6 @@ func (msgs Messages) ComponentGalleryUseDarkTheme() string {
 	return Catalog.Format(msgs.locale, "componentGalleryUseDarkTheme", nil)
 }
 
-// ComponentGalleryPlannedName says "{name} · planned"
-// in the language the app shows.
-func ComponentGalleryPlannedName(name string) string {
-	return In(i18n.Locale()).ComponentGalleryPlannedName(name)
-}
-
-// ComponentGalleryPlannedName says "{name} · planned"
-// in the language of msgs.
-func (msgs Messages) ComponentGalleryPlannedName(name string) string {
-	return Catalog.Format(msgs.locale, "componentGalleryPlannedName", map[string]any{"name": name})
-}
-
 // ComponentGalleryNoMatches says "No matching components"
 // in the language the app shows.
 func ComponentGalleryNoMatches() string { return In(i18n.Locale()).ComponentGalleryNoMatches() }
@@ -187,16 +175,6 @@ func ComponentGalleryDocumentation() string { return In(i18n.Locale()).Component
 // in the language of msgs.
 func (msgs Messages) ComponentGalleryDocumentation() string {
 	return Catalog.Format(msgs.locale, "componentGalleryDocumentation", nil)
-}
-
-// ComponentGalleryPlanned says "Planned"
-// in the language the app shows.
-func ComponentGalleryPlanned() string { return In(i18n.Locale()).ComponentGalleryPlanned() }
-
-// ComponentGalleryPlanned says "Planned"
-// in the language of msgs.
-func (msgs Messages) ComponentGalleryPlanned() string {
-	return Catalog.Format(msgs.locale, "componentGalleryPlanned", nil)
 }
 
 // ComponentGalleryImplementedUnverified says "Implemented / unverified"
@@ -251,30 +229,6 @@ func ComponentGalleryActualSource() string { return In(i18n.Locale()).ComponentG
 // in the language of msgs.
 func (msgs Messages) ComponentGalleryActualSource() string {
 	return Catalog.Format(msgs.locale, "componentGalleryActualSource", nil)
-}
-
-// ComponentGalleryImplementationPlanned says "Native implementation planned"
-// in the language the app shows.
-func ComponentGalleryImplementationPlanned() string {
-	return In(i18n.Locale()).ComponentGalleryImplementationPlanned()
-}
-
-// ComponentGalleryImplementationPlanned says "Native implementation planned"
-// in the language of msgs.
-func (msgs Messages) ComponentGalleryImplementationPlanned() string {
-	return Catalog.Format(msgs.locale, "componentGalleryImplementationPlanned", nil)
-}
-
-// ComponentGalleryPreviewUnavailable says "A preview will appear when this capability is implemented. The catalog records the native plan and remaining acceptan…"
-// in the language the app shows.
-func ComponentGalleryPreviewUnavailable() string {
-	return In(i18n.Locale()).ComponentGalleryPreviewUnavailable()
-}
-
-// ComponentGalleryPreviewUnavailable says "A preview will appear when this capability is implemented. The catalog records the native plan and remaining acceptan…"
-// in the language of msgs.
-func (msgs Messages) ComponentGalleryPreviewUnavailable() string {
-	return Catalog.Format(msgs.locale, "componentGalleryPreviewUnavailable", nil)
 }
 
 // ComponentGalleryVariants says "{name} variants and states"

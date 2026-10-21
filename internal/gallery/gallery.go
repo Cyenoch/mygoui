@@ -147,13 +147,9 @@ func catalogNavigation(c *ui.Context, s *State, compact bool) {
 		if entry.ID == s.Selected {
 			variant = mygoui.ButtonSecondary
 		}
-		label := name
-		if !implemented(entry.ID) {
-			label = locales.ComponentGalleryPlannedName(label)
-		}
 		id := entry.ID
 		button := mygoui.Button(c.Key("nav-"+id), mygoui.ButtonOptions{
-			Label: label, Variant: variant, Size: mygoui.ButtonSM,
+			Label: name, Variant: variant, Size: mygoui.ButtonSM,
 			OnClick: func() { selectComponent(s, id) },
 		})
 		button.Justify(ui.Start).AlignItems(ui.Center).Shrink(0)
@@ -169,17 +165,4 @@ func catalogNavigation(c *ui.Context, s *State, compact bool) {
 		mygoui.Button(c, mygoui.ButtonOptions{Label: locales.ComponentGalleryClearSearch(), Variant: mygoui.ButtonOutline,
 			OnClick: func() { s.Search = "" }})
 	}
-}
-
-func implemented(id ComponentID) bool {
-	switch id {
-	case "calendar", "date-picker", "chart", "alert", "progress", "direction", "resizable", "scroll-area", "carousel", "table", "data-table",
-		"accordion", "breadcrumb", "collapsible", "combobox", "command", "navigation-menu", "pagination", "select", "sidebar", "tabs":
-		return true
-	case "button", "badge", "card", "separator", "skeleton", "spinner", "kbd", "typography", "aspect-ratio", "empty", "item", "avatar", "button-group", "toggle", "toggle-group", "code-block", "trace", "input", "textarea", "field", "label", "input-group", "input-otp", "checkbox", "radio-group", "switch", "slider", "native-select",
-		"dialog", "alert-dialog", "sheet", "drawer", "popover", "tooltip", "hover-card", "dropdown-menu", "context-menu", "menubar", "toast",
-		"message", "bubble", "marker", "attachment", "message-scroller", "questionnaire":
-		return true
-	}
-	return false
 }

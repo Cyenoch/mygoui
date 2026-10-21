@@ -46,7 +46,8 @@ func TestScrollEdgesReserveBothNativeBarLanesAndFadeToClip(t *testing.T) {
 				right -= 14
 			}
 			top, bottom := int(viewport.Y), int(viewport.Y+viewport.H)-14
-			pixel := func(x, y int) uint8 { return tt.Image().RGBAAt(x, y).R }
+			frame := tt.Image()
+			pixel := func(x, y int) uint8 { return frame.RGBAAt(x, y).R }
 			assertLanes := func() {
 				t.Helper()
 				for y := bottom; y < int(viewport.Y+viewport.H); y++ {
@@ -79,6 +80,7 @@ func TestScrollEdgesReserveBothNativeBarLanesAndFadeToClip(t *testing.T) {
 			}
 			scroll.X, scroll.Y = 2, 2
 			tt.Frame()
+			frame = tt.Image()
 			if near := pixel((left+right)/2, top); near == 0 || near > 40 {
 				t.Fatalf("near-start vertical fade is not proportional: %d", near)
 			}
@@ -87,24 +89,28 @@ func TestScrollEdgesReserveBothNativeBarLanesAndFadeToClip(t *testing.T) {
 			}
 			scroll.X, scroll.Y = scroll.MaxX/2, scroll.MaxY/2
 			tt.Frame()
+			frame = tt.Image()
 			assertLanes()
 			if pixel((left+right)/2, top) < 240 || pixel(startX, top+50) < 240 {
 				t.Fatal("middle offsets did not fade both hidden starts")
 			}
 			scroll.X, scroll.Y = scroll.MaxX, scroll.MaxY
 			tt.Frame()
+			frame = tt.Image()
 			assertLanes()
 			if pixel((left+right)/2, bottom-1) != 0 || pixel(endX, top+50) != 0 {
 				t.Fatal("end fade hid fully revealed content")
 			}
 			short = true
 			tt.Frame()
+			frame = tt.Image()
 			if scroll.MaxX != 0 || scroll.MaxY != 0 || scroll.X != 0 || scroll.Y != 0 {
 				t.Fatalf("content shrink retained stale extents or offsets: %+v", scroll)
 			}
 			assertLanes()
 			short, disabled = false, true
 			tt.Frame()
+			frame = tt.Image()
 			if pixel((left+right)/2, bottom-1) != 0 {
 				t.Fatal("disabled fade remained visible")
 			}
@@ -143,8 +149,9 @@ func TestScrollEdgesKeepNativeScrollbarDraggingAndTinyClip(t *testing.T) {
 	tt.Frame()
 	// The six-DIP content clip shares its height between the two fades;
 	// neither gradient is allowed to reach the physical scrollbar gutter.
+	frame := tt.Image()
 	for y := 6; y < 18; y++ {
-		if got := tt.Image().RGBAAt(40, y); got.R != 255 || got.G != 255 || got.B != 255 {
+		if got := frame.RGBAAt(40, y); got.R != 255 || got.G != 255 || got.B != 255 {
 			t.Fatalf("tiny viewport painted content/effect in the bar lane at y=%d: %v", y, got)
 		}
 	}

@@ -17,7 +17,7 @@ go run ./examples/basic
 
 The gallery provides search, independent interactive specimens, actual compiled Go source, Neutral/Blue presets, light/dark appearance, high contrast and 200% text previews. Its sample state stays in memory.
 
-The module path is `github.com/Cyenoch/mygoui`. **This checkout has not been published or tagged.** Once a maintainer publishes a release, consumers can install it with `go get github.com/Cyenoch/mygoui@<version>`. For local development, use a Go workspace:
+The source repository is [github.com/Cyenoch/mygoui](https://github.com/Cyenoch/mygoui). **No version has been released yet.** Once a maintainer publishes a release, consumers can install it with `go get github.com/Cyenoch/mygoui@<version>`. For local development, use a Go workspace:
 
 ```sh
 # In a directory containing your application's module:
@@ -99,7 +99,8 @@ The [upgrade notes](docs/mygo-0.6.md) record the reviewed release changes, integ
 make check
 make race
 golangci-lint run ./...
-GOOS=js GOARCH=wasm CGO_ENABLED=0 go build ./...
+make wasm
+make workflows # requires actionlint
 ```
 
 Ordinary tests use MyGo's headless renderer and native event routing. They do not open windows. Linux needs Pango (`libpangocairo-1.0-0`) for software text rendering. Race tests require a C toolchain. CI configures these prerequisites and checks Linux, macOS and Windows, plus WebAssembly builds, MyGo lifetime analysis, lint and vulnerability scanning.

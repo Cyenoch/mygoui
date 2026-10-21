@@ -1,4 +1,4 @@
-.PHONY: check test race vet build lint gallery basic
+.PHONY: check test race vet build lint wasm workflows gallery basic
 
 check: vet test build
 	@test -z "$$(gofmt -l .)"
@@ -19,6 +19,12 @@ build:
 
 lint:
 	golangci-lint run ./...
+
+wasm:
+	GOOS=js GOARCH=wasm CGO_ENABLED=0 go build ./...
+
+workflows:
+	actionlint
 
 gallery:
 	go run ./examples/gallery

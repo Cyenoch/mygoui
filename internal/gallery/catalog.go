@@ -3,14 +3,13 @@ package gallery
 // ComponentID distinguishes catalog identity from editable labels and source text.
 type ComponentID string
 
-// Entry describes source capabilities. A catalog entry alone is not an implementation claim.
+// Entry describes a native specimen and its documented capabilities.
 type Entry struct {
 	ID                 ComponentID
 	Name, Family, Plan string
 }
 
-// Catalog lists the 66 native component specimens.
-// The gallery never renders a decorative replacement for an unavailable preview.
+// Catalog lists the 66 implemented native component specimens.
 var Catalog = []Entry{
 	{ID: "accordion", Name: "Accordion", Family: "Navigation", Plan: "Native disclosure group with single/multiple selection and arrow-key focus."},
 	{ID: "alert", Name: "Alert", Family: "Presentation", Plan: "Native callout with semantic status, description and optional real action."},
