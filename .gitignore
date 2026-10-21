@@ -1,0 +1,8 @@
+.DS_Store
+/coverage.out
+/coverage.html
+/dist/
+/bin/
+/artifacts/
+/go.work
+/go.work.sum
