@@ -6,15 +6,16 @@ v0.2.1. Module metadata targets Go 1.27.1. The public repository is
 
 ## Completed checks
 
-- `make check` passed: `go vet ./...`, `go run
-  github.com/egoist/mygo/cmd/mygo@latest vet .` (zero lifetime findings), the
-  ordinary suite, `go build ./...`, formatting, and `go mod verify`.
-- The suite contains 210 named test runs: 192 top-level test functions plus 18
-  subtests; `internal/gallery` contributes 47 top-level tests and no subtests.
-  `go test ./... -count=1 -v | grep -c '^=== RUN'` printed `210`. All packages
-  with tests pass: root, `theme`, `form`, `list`, `navigation`, `overlay`,
-  `date`, `color`, `data`, and `internal/gallery`. Examples and internal
-  helpers have no tests.
+- The overlay-motion update passed `make check MYGO_VERSION=v0.6.3`:
+  `go vet ./...`, the pinned MyGo lifetime vet, the ordinary suite,
+  `go build ./...`, formatting and `go mod verify`.
+- All packages with tests passed: root, `theme`, `form`, `list`, `navigation`,
+  `overlay`, `date`, `color`, `data`, and `internal/gallery`. Examples and
+  internal helpers have no tests. Fixed test counts are not retained here;
+  they become stale as behavior regressions are added or removed.
+- `golangci-lint run ./...` reported zero issues and `make wasm` passed after
+  the final modal identity and AlertDialog focus fixes. The additional checks
+  below record the earlier rewrite validation, not reruns for this update.
 - `make race` passed with `CGO_ENABLED=1`, with no data races; the slowest
   package, `internal/gallery`, took 65.2 s under the race detector.
 - `golangci-lint run ./...` reported zero issues.
@@ -94,17 +95,31 @@ v0.2.1. Module metadata targets Go 1.27.1. The public repository is
   at 640x900 and 1100x900 in light mode and 1100x900 in dark mode.
   `TestPagesRenderWithEnlargedText` renders every page at 1.75x text scale.
   `TestCompactNavigationOpensAndSelects` exercises the sub-760 DIP navigation.
-- Toast regressions cover the close-button crash during exit
+- Toast exit-paint regressions cover the close-button crash
   (`TestToastPageDismissesWithoutExpiredPaint`,
   `TestToastTopPlacementDismissDuringExit`,
-  `TestToastDismissDuringExitKeepsPaintSafe`), the close control staying inside
-  the rounded card (`TestToastCloseButtonStaysInsideCard`,
-  `TestToastCloseRevealsOnHoverAndDismisses`), and the single centered X
-  (`TestToastCloseGlyphIsOneCenteredX`). The 250 ms enter/exit transition
-  scales 0.96 and fades from `Opacity: 0`; `TestToastMotionSettlesIn250ms`
-  samples the first frame as page background and the settled frame as the
-  card surface, while `TestToastReducedMotionTimeoutAndClose` pins that reduced
-  motion skips the transition.
+  `TestToastDismissDuringExitKeepsPaintSafe`).
+  `TestToastCloseGlyphIsOneCenteredX` checks the floating upper-right close
+  button, normal action right padding, centered X and keyboard focus ring;
+  `TestToastCloseRevealsOnHoverAndDismisses` checks hover reveal and dismissal.
+- Toast motion uses MyGo's spring with a 320 ms response, not a fixed-duration
+  250 ms transition. `TestToastEntryTravelsAndFadesFromWindowEdge` samples
+  entry translation and fade at both window edges. Deck tests cover continuous
+  insertion/removal, unequal-height hover/focus expansion, stable gap hover and
+  timeout pause, rapid reversal, same-ID focus/drag continuity and swipe
+  cancel/commit. `TestToastReducedMotionAndRetainedExit` checks immediate
+  reduced-motion settlement and painted but inert exit snapshots.
+- Modal-family and popup tests sample first, intermediate and settled paint
+  and require pending animation frames on entry and exit in isolated Testers
+  without a Toast viewport. They also cover immediate reopen, backdrop
+  dismissal, AlertDialog Cancel focus/restoration, inert departing controls,
+  reduced motion and all four Drawer edges with 16 DIP gutters.
+- A throwaway `ui.NewTester` smoke exercised actual entry/exit rendering for
+  Modal, Dialog, AlertDialog, BottomSheet, Popover, Tooltip and all four Drawer
+  directions. Every path painted intermediate frames, removed closed semantic
+  content and stopped requesting frames after exit. Separate Toast smokes
+  observed collapsed/intermediate/expanded geometry and verified Undo's 16 DIP
+  right padding with a floating close button that dismissed independently.
 - The diagonal indicator glyphs stroke a `ui.Path` instead of
   `Painter.Line`, which only draws horizontal and vertical strokes: the
   disclosure and accordion down chevrons and the menu check/right chevron
@@ -184,11 +199,13 @@ v0.2.1. Module metadata targets Go 1.27.1. The public repository is
 
 ## Platform limits
 
-No visible application window was inspected for the final rewrite, and no
-personal application configuration was read or changed. Headless rendering
-establishes pixels and native event routing; actual OS menu appearance,
-screen-reader operation, platform IME/gesture behavior and GPU
-partial-presentation performance remain separate manual platform checks.
+The native Gallery window was inspected through screenshots and accessibility
+data, and its Toast triggers were exercised. Isolated headless render captures
+also inspected Toast stacking, floating close layout, dialogs and Drawer gutters.
+No personal application configuration was read or changed. These checks do not
+establish screen-reader operation, platform IME/gesture behavior, OS menu
+appearance or GPU partial-presentation performance; those remain separate
+platform checks.
 
 Documented approximations are listed in `docs/components.md`: no pressed scale
 on buttons, no swipe dismissal for drawers/bottom sheets, surface-colored
@@ -196,9 +213,11 @@ ScrollShadow instead of an alpha mask, and the native list/menu geometry owned
 by MyGo. Table selection is tinted in the cells while the toolkit owns the
 selection semantics.
 
-Known MyGo 0.6.3 overlay animation limitation: toast entry and exit animate a
-250 ms scale (0.96) and opacity fade (from 0), and reduced motion skips both.
-However, MyGo's `layoutAbsolute` re-lays absolute overlays after transitions,
-which resets the 16 DIP lift and the card's stack position, so the toast stack
-reflow snaps when a toast joins or leaves instead of sliding with it. Scale and
-fade animate as specified; only the vertical offset and the stack reflow snap.
+MyGo 0.6.3 re-lays absolute overlays after element transitions. Toast avoids
+the previous vertical-motion and stack-reflow snap by spring-animating its
+declared `Top` and `Height` through `AnimateTo`; scale and fade use native
+motion/transitions, and reduced motion settles immediately. Modal, Drawer,
+BottomSheet, Popover and Tooltip use native fades without changing their layout
+or hit area. Installed overlay constructors keep the native overlay layer alive
+while closed so first-open entry and last-close exit can run without a Toast
+viewport. Native exit snapshots are inert and never rebuild consumer content.
