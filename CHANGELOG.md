@@ -108,6 +108,9 @@ shims are provided.
 
 ### Fixed
 
+- Table: the rows clip to the white body card's radius, so a hovered or
+  selected last row cannot paint into the rounded gray frame; the compact
+  table demo also keeps its action column inside the frame.
 - Toast: a new card starts fully outside the deck's 16 DIP gutter and no longer
   animates its own width and height on entry; only its translation and fade
   animate, so an action's result does not unfold from a sliver before settling.

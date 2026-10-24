@@ -270,10 +270,10 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 	}
 
 	t := theme.Colors(c)
+	frameRadius := min(theme.Space32, theme.RadiusBase()*2.5)
 	if o.Variant == TablePrimary {
-		radius := min(theme.Space32, theme.RadiusBase()*2.5)
 		root.Padding(0, theme.Space4, theme.Space4, theme.Space4).
-			Radius(radius).Clip().
+			Radius(frameRadius).Clip().
 			Background(t.SurfaceSecondary).TextColor(t.SurfaceSecondaryForeground)
 	}
 
@@ -305,6 +305,12 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 			// The toolkit draws header text at the inherited size; HeroUI's
 			// header is 12 DIP. Cells set their own 14 DIP size.
 			FontSize(theme.Scale(c, 12))
+		if o.Variant == TablePrimary {
+			// Cell fills reach the toolkit's padding. Clip the table to the
+			// white body card's radius so a hovered or selected last row
+			// cannot paint into the rounded gray frame around it.
+			table.Radius(min(theme.Space32, theme.RadiusScale().XXL)).Clip()
+		}
 		if chrome != nil {
 			table.Draw(chrome)
 		}
