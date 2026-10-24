@@ -57,6 +57,8 @@ func statusForeground(t theme.Palette, color StatusColor) ui.Color {
 		return t.Warning
 	case ColorDanger:
 		return t.Danger
+	case ColorInfo:
+		return t.Info
 	}
 	return t.Foreground
 }

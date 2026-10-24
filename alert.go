@@ -52,7 +52,7 @@ func Alert(c *ui.Context, o AlertOptions) ui.Element {
 
 func alertIcon(color StatusColor) *ui.SVG {
 	switch color {
-	case ColorAccent:
+	case ColorAccent, ColorInfo:
 		return lucide.Info()
 	case ColorSuccess:
 		return lucide.CircleCheck()

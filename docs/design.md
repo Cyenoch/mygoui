@@ -52,6 +52,15 @@ appearance. `theme.ApplyMode(c, dark)` exists for previews and tests.
 `theme.Configure` is process-wide host policy; widget state remains
 window-local.
 
+Hosts inject their own semantic palette with `theme.Preferences.Palette`
+(`theme.PalettePatch` per appearance). A nil field keeps the HeroUI default and
+an injected token is used verbatim, so a transparent `Border` is valid; derived
+hover, soft and foreground levels rebuild from the injected base. `Configure`
+replaces the whole preference value, so a later typography change publishes the
+palette again or edits it in place with `theme.UpdatePreferences`. `Apply`
+composes the native theme from the resolved palette, so injected colors also
+reach native control faces and selections.
+
 ## API rules
 
 - Options are typed Go structs. Unsupported combinations fail visibly rather

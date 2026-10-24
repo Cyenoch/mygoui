@@ -14,6 +14,14 @@ import (
 // Preferences is the process-wide HeroUI customization surface. Zero fields
 // select upstream defaults: the system font, 16 DIP base text, an 8 DIP radius
 // base and the default accent.
+//
+// Semantic colors resolve by precedence, highest first: Preferences.Palette,
+// Preferences.Accent, HeroUI's published palette. Apply installs the theme
+// composed from that resolution, so an injected palette survives a view-root
+// Apply and reaches native widgets (selections, scrollbars, text cursors)
+// too. Library paint reads Colors, never the context theme, so a host that
+// styles native widgets through its own scoped theme either installs that
+// theme after Apply or skips Apply.
 type Preferences struct {
 	FontFamily string
 	FontSize   float32
@@ -23,6 +31,11 @@ type Preferences struct {
 	Accent ui.Color
 	// Vibrant selects the upstream saturated soft-foreground palette.
 	Vibrant bool
+	// Palette overrides individual semantic tokens per appearance. The zero
+	// value keeps the HeroUI defaults. Configure replaces the published
+	// preferences as a whole, so a later call that changes only typography
+	// must publish the same Palette again; UpdatePreferences edits in place.
+	Palette PaletteOverrides
 }
 
 type state struct {
@@ -73,6 +86,14 @@ func snapshot() *state {
 	return s
 }
 
+// UpdatePreferences edits the published preferences and republishes them, so
+// a host that changes only typography keeps its injected palette.
+func UpdatePreferences(edit func(*Preferences)) {
+	p := PreferencesSnapshot()
+	edit(&p)
+	Configure(p)
+}
+
 // PreferencesSnapshot returns the published preferences.
 func PreferencesSnapshot() Preferences { return snapshot().prefs }
 
@@ -95,7 +116,9 @@ func Scale(c *ui.Context, dip float32) float32 { return dip * TextScale(c) }
 func ReduceMotion(c *ui.Context) bool { return c.Preferences().ReduceMotion }
 
 // Apply installs HeroUI for the current native appearance. Call once at the
-// view root before constructing children.
+// view root before constructing children. The installed theme is composed
+// from the published preferences, so an injected Palette is preserved and
+// also reaches native widgets.
 func Apply(c *ui.Context) *ui.Theme { return ApplyMode(c, c.Theme().Dark) }
 
 // ApplyMode installs HeroUI for an explicit mode. Previews and tests use it.
@@ -118,14 +141,20 @@ func ColorsForMode(dark bool) Palette {
 }
 
 func nativeTheme(p Palette, dark bool) ui.Theme {
+	surface := p.Default
+	// A host sheet is also the native control face: MyGo paints buttons and
+	// inputs in Surface, and a host palette uses one sheet for both.
+	if patch := snapshot().prefs.Palette.patch(dark); patch != nil && patch.Surface != nil {
+		surface = p.Surface
+	}
 	return ui.Theme{
-		Dark: dark, Background: p.Background, Surface: p.Default,
+		Dark: dark, Background: p.Background, Surface: surface,
 		SurfaceHover: p.DefaultHover, SurfacePressed: p.DefaultHover,
 		Border: p.Border, Text: p.Foreground, TextMuted: p.Muted,
 		Accent: p.Accent, AccentHover: p.AccentHover, AccentPressed: p.AccentHover,
 		AccentText: p.AccentForeground, Danger: p.Danger,
 		Warning: p.Warning, Success: p.Success,
-		Selection: p.Accent.Alpha(0.30), Focus: p.Focus,
+		Selection: p.Selection, Focus: p.Focus,
 		Inverse: p.Foreground, InverseText: p.Background,
 		Scrollbar: p.Scrollbar, ScrollbarWidth: Space6, Radius: RadiusBase(),
 		Spacing: SpaceUnit, FontSize: FontSize(),

@@ -43,6 +43,12 @@ func StatusColors(c *ui.Context, color StatusColor) StatusPalette {
 			Soft: t.DangerSoft, SoftForeground: t.DangerSoftForeground,
 			SoftHover: t.DangerSoftHover, Foreground: t.DangerSoftForeground,
 		}
+	case ColorInfo:
+		return StatusPalette{
+			Solid: t.Info, SolidForeground: t.InfoForeground, Hover: t.InfoHover,
+			Soft: t.InfoSoft, SoftForeground: t.InfoSoftForeground,
+			SoftHover: t.InfoSoftHover, Foreground: t.InfoSoftForeground,
+		}
 	}
 	return StatusPalette{
 		Solid: t.Default, SolidForeground: t.DefaultForeground, Hover: t.DefaultHover,

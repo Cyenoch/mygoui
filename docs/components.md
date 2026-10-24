@@ -12,7 +12,7 @@ authoritative usage reference for prototypes and state wiring.
 
 | Component | Behavior |
 | --- | --- |
-| `Alert` | Surface callout with default/accent/success/warning/danger status, icon, title, description and an optional real action. |
+| `Alert` | Surface callout with default/accent/info/success/warning/danger status, icon, title, description and an optional real action. |
 | `Avatar` | Caller-loaded image or initials, sm/md/lg, soft fallback colors, optional badge. |
 | `AvatarGroup` | Overlapping stack or grid with 8 DIP overlap, optional background ring and overflow count. |
 | `Badge` | Standalone badge with color/variant/size and a background-colored ring. |

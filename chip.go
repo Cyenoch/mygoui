@@ -6,7 +6,8 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// StatusColor is HeroUI's status color vocabulary.
+// StatusColor is HeroUI's status color vocabulary, plus ColorInfo for the
+// informational role HeroUI paints with accent.
 type StatusColor uint8
 
 const (
@@ -15,6 +16,9 @@ const (
 	ColorSuccess
 	ColorWarning
 	ColorDanger
+	// ColorInfo is the informational status. HeroUI has no separate info role,
+	// so it starts equal to Accent until a palette patch separates them.
+	ColorInfo
 )
 
 // ChipVariant selects a HeroUI chip surface treatment.

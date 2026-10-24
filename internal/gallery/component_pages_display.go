@@ -44,7 +44,7 @@ func init() {
 })`,
 		Params: []ComponentParam{
 			{"Label", "string", "required", "Chip text."},
-			{"Color", "mygoui.StatusColor", "ColorDefault", "Default, accent, success, warning or danger."},
+			{"Color", "mygoui.StatusColor", "ColorDefault", "Default, accent, info, success, warning or danger."},
 			{"Variant", "mygoui.ChipVariant", "ChipSecondary", "Primary, secondary, soft or tertiary."},
 			{"Size", "mygoui.ChipSize", "ChipMedium", "Small, medium or large."},
 			{"Icon", "*ui.SVG", "nil", "Leading icon."},
@@ -270,7 +270,7 @@ func init() {
 		Params: []ComponentParam{
 			{"Title", "string", "required", "Headline of the callout."},
 			{"Description", "string", "", "Supporting line under the title."},
-			{"Status", "mygoui.StatusColor", "ColorDefault", "Default, accent, success, warning or danger."},
+			{"Status", "mygoui.StatusColor", "ColorDefault", "Default, accent, info, success, warning or danger."},
 			{"Icon", "*ui.SVG", "status icon", "Overrides the status indicator."},
 			{"Action", "func()", "nil", "Builds a trailing action."},
 		},

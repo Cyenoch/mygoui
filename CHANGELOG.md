@@ -10,6 +10,14 @@ shims are provided.
 
 - HeroUI v3 semantic theme: light/dark palettes, accent/default/status roles,
   derived hover/soft/separator levels, configured radius and system typography.
+- Host palette injection: `theme.Preferences.Palette` overlays semantic roles
+  per appearance through `theme.PalettePatch` — canvas, surface, ink, muted
+  ink, border (transparent is valid), accent and status pairs, hover and
+  selection fills, overlay and backdrop. Unset roles keep HeroUI's defaults;
+  derived hover, soft and foreground levels rebuild from the injected base.
+  `theme.Apply` composes its native theme from the resolved palette, and
+  `theme.UpdatePreferences` edits typography without dropping it. `ColorInfo`
+  joins the status colors, defaulting to the accent family.
 - Root components: Alert, Avatar, AvatarGroup, Badge, BadgeAnchor, Button,
   ButtonGroup, Card and parts, Chip, CloseButton, EmptyState, Header, Kbd, Link,
   LinkButton, ListGroup, Meter, PressableFeedback, ProgressBar, ProgressCircle,
