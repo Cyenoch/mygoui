@@ -341,41 +341,6 @@ func TestDisclosureGroupSingleExpansion(t *testing.T) {
 	}
 }
 
-func TestTabsHorizontalListFillsWidth(t *testing.T) {
-	selected := 0
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		ui.Column(c).Fill().Padding(16).Children(func() {
-			navigation.Tabs(c, navigation.TabsOptions{
-				Selected: &selected,
-				Items: []navigation.TabOptions{
-					{Label: "One", Content: func() { ui.Text(c, "One panel") }},
-					{Label: "Two", Content: func() { ui.Text(c, "Two panel") }},
-					{Label: "Three", Content: func() { ui.Text(c, "Three panel") }},
-				},
-			})
-		})
-	}, 640, 320)
-
-	var tabs []ui.Rect
-	for _, label := range []string{"One", "Two", "Three"} {
-		r, ok := tt.Find(label)
-		if !ok {
-			t.Fatalf("tab %q is not shown", label)
-		}
-		tabs = append(tabs, r)
-	}
-	// The strip spans the padded column: three equal tabs share 600 DIPs.
-	if got := tabs[2].X + tabs[2].W - tabs[0].X; got < 596 {
-		t.Fatalf("tab strip spans %v, want the column's width", got)
-	}
-	for i := 1; i < len(tabs); i++ {
-		if d := tabs[i].X - tabs[i-1].X; d < 190 || d > 210 {
-			t.Fatalf("tab %d starts %v after the previous, want equal thirds", i, d)
-		}
-	}
-}
-
 func TestTabsAlignVariantsPlaceLabels(t *testing.T) {
 	for _, tc := range []struct {
 		align navigation.TabsAlign

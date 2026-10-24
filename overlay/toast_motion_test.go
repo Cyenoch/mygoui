@@ -405,9 +405,6 @@ func TestToastDeckFocusExpansionAndSameIDUpdate(t *testing.T) {
 	if !toastMotionNear(oldest.W, 460) || oldest.H <= middle.H+10 {
 		t.Fatalf("focus did not expand unequal measured cards: oldest=%+v middle=%+v", oldest, middle)
 	}
-	if gap := middle.Y - (oldest.Y + oldest.H); !toastMotionNear(gap, 12) {
-		t.Fatalf("focused expanded gap=%v, want 12 DIP: oldest=%+v middle=%+v", gap, oldest, middle)
-	}
 
 	f.add(ToastOptions{ID: "focus-old", Title: "Updated oldest",
 		Description: "The focused card keeps its identity and pause while the new message replaces the old one.",

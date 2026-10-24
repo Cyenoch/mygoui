@@ -10,55 +10,33 @@ import (
 )
 
 // TestSkeletonMotionIsOptIn pins the frame scheduling of each placeholder
-// mode: only a chosen animation keeps asking for paint frames.
+// mode, standalone and grouped: only a chosen animation keeps asking for
+// paint frames, and a group drives all of its placeholders from one
+// animation.
 func TestSkeletonMotionIsOptIn(t *testing.T) {
 	cases := []struct {
-		name string
-		anim mygoui.SkeletonAnimation
-		want bool
+		name      string
+		group     bool
+		anim      mygoui.SkeletonAnimation
+		wantFrame bool
 	}{
-		{"none", mygoui.SkeletonNone, false},
-		{"shimmer", mygoui.SkeletonShimmer, true},
-		{"pulse", mygoui.SkeletonPulse, true},
+		{"single none", false, mygoui.SkeletonNone, false},
+		{"single shimmer", false, mygoui.SkeletonShimmer, true},
+		{"single pulse", false, mygoui.SkeletonPulse, true},
+		{"group none", true, mygoui.SkeletonNone, false},
+		{"group shimmer", true, mygoui.SkeletonShimmer, true},
+		{"group pulse", true, mygoui.SkeletonPulse, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			tt := ui.NewTester(func(c *ui.Context) {
 				theme.ApplyMode(c, false)
-				mygoui.Skeleton(c, mygoui.SkeletonOptions{
-					Width: 160, Height: 12, Animation: tc.anim,
-				})
-			}, 240, 60)
-			tt.Frame()
-			if got := tt.FramePending(); got != tc.want {
-				t.Fatalf("%s asks for frames = %v, want %v", tc.name, got, tc.want)
-			}
-			if !tc.want {
-				return
-			}
-			tt.Advance(100 * time.Millisecond)
-			if !tt.FramePending() {
-				t.Fatalf("%s stopped on its own", tc.name)
-			}
-		})
-	}
-}
-
-// TestSkeletonGroupMotionIsOptIn is the group counterpart: one synchronized
-// animation, and none at all when the group asks for none.
-func TestSkeletonGroupMotionIsOptIn(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		anim mygoui.SkeletonAnimation
-		want bool
-	}{
-		{"none", mygoui.SkeletonNone, false},
-		{"shimmer", mygoui.SkeletonShimmer, true},
-		{"pulse", mygoui.SkeletonPulse, true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			tt := ui.NewTester(func(c *ui.Context) {
-				theme.ApplyMode(c, false)
+				if !tc.group {
+					mygoui.Skeleton(c, mygoui.SkeletonOptions{
+						Width: 160, Height: 12, Animation: tc.anim,
+					})
+					return
+				}
 				mygoui.SkeletonGroup(c, mygoui.SkeletonGroupOptions{Animation: tc.anim}, func() {
 					ui.Column(c).Gap(theme.Space8).Children(func() {
 						for range 3 {
@@ -70,8 +48,15 @@ func TestSkeletonGroupMotionIsOptIn(t *testing.T) {
 				})
 			}, 240, 100)
 			tt.Frame()
-			if got := tt.FramePending(); got != tc.want {
-				t.Fatalf("%s group asks for frames = %v, want %v", tc.name, got, tc.want)
+			if got := tt.FramePending(); got != tc.wantFrame {
+				t.Fatalf("%s asks for frames = %v, want %v", tc.name, got, tc.wantFrame)
+			}
+			if !tc.wantFrame {
+				return
+			}
+			tt.Advance(100 * time.Millisecond)
+			if !tt.FramePending() {
+				t.Fatalf("%s stopped on its own", tc.name)
 			}
 		})
 	}

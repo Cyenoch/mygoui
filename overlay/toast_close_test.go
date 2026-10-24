@@ -58,6 +58,11 @@ func TestToastCloseGlyphIsOneCenteredX(t *testing.T) {
 			if close.Y >= card.Y || close.X+close.W <= card.X+card.W {
 				t.Fatalf("close does not float across the upper-right corner: close=%+v card=%+v", close, card)
 			}
+			// HeroUI's -end-1/-top-1: the 20 DIP close button overlaps the
+			// card's corner by 4 DIPs on both axes.
+			if card.Y-close.Y != 4 || close.X+close.W-(card.X+card.W) != 4 {
+				t.Fatalf("close sits off the card corner: card=%+v close=%+v", card, close)
+			}
 			if close.X < action.X+action.W && close.X+close.W > action.X &&
 				close.Y < action.Y+action.H && close.Y+close.H > action.Y {
 				t.Fatalf("floating close overlaps the action: close=%+v action=%+v", close, action)
@@ -100,14 +105,6 @@ func TestToastCloseGlyphIsOneCenteredX(t *testing.T) {
 				t.Fatalf("keyboard focus does not ring the close button: %v, want %v", ring, pal.Focus)
 			}
 			assertSingleX(t, img, close, img.RGBAAt(int(close.X+close.W/2), int(close.Y+2)), 5)
-
-			if err := tt.Click("Close"); err != nil {
-				t.Fatal(err)
-			}
-			tt.Frame()
-			if len(state.Items()) != 0 || tt.HasText("File saved") {
-				t.Fatalf("close left %d toasts", len(state.Items()))
-			}
 		})
 	}
 }

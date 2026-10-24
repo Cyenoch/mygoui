@@ -9,14 +9,14 @@ import (
 
 func TestPaletteModesDiffer(t *testing.T) {
 	light, dark := theme.ColorsForMode(false), theme.ColorsForMode(true)
-	if light.Background.R == dark.Background.R {
-		t.Fatal("light and dark backgrounds are identical")
+	if light.Background.R <= dark.Background.R {
+		t.Fatal("light mode is not lighter than dark mode")
+	}
+	if light.Surface == dark.Surface {
+		t.Fatal("light and dark surfaces are identical")
 	}
 	if light.Accent.R != dark.Accent.R || light.Accent.G != dark.Accent.G {
 		t.Fatal("accent is shared between modes, as upstream specifies")
-	}
-	if light.Surface.R != 255 || dark.Surface.R == 255 {
-		t.Fatal("surface values do not follow the light/dark source palette")
 	}
 }
 
@@ -69,11 +69,11 @@ func channelDistance(a, b ui.Color) int {
 
 func TestRadiusAndTextPreferences(t *testing.T) {
 	defer theme.Configure(theme.Preferences{})
-	theme.Configure(theme.Preferences{Radius: 16, FontFamily: "Test Sans"})
+	theme.Configure(theme.Preferences{Radius: 16, FontSize: 20})
 	if got := theme.RadiusScale().XXXL; got != 48 {
 		t.Fatalf("radius 3xl = %v, want 48", got)
 	}
-	if got := theme.FontSize(); got != 16 {
-		t.Fatalf("font size = %v, want 16", got)
+	if got := theme.FontSize(); got != 20 {
+		t.Fatalf("font size = %v, want 20", got)
 	}
 }

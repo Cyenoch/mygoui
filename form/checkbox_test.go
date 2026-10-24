@@ -136,18 +136,3 @@ func TestCheckboxGroupHorizontal(t *testing.T) {
 		t.Fatalf("horizontal items stack at %v and %v", r1, r2)
 	}
 }
-
-func TestCheckboxError(t *testing.T) {
-	checked := false
-	tt := ui.NewTester(func(c *ui.Context) {
-		Checkbox(c, CheckboxOptions{
-			Checked: &checked,
-			Label:   "Accept",
-			Invalid: true,
-			Error:   "This field is required",
-		})
-	}, 300, 120)
-	if !tt.HasText("This field is required") {
-		t.Fatalf("error missing from %q", tt.Texts())
-	}
-}

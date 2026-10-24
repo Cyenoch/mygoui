@@ -46,33 +46,6 @@ func TestPopoverEntranceZoomsToFullSize(t *testing.T) {
 	}
 }
 
-// TestPopupReducedMotionArrivesAtFullSize checks that the reduced-motion
-// contract skips the zoom instead of leaving the panel part-way: the first
-// frame is the panel's layout size and nothing animates.
-func TestPopupReducedMotionArrivesAtFullSize(t *testing.T) {
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		anchor := ui.Button(c, "Hover me")
-		Tooltip(c, anchor, TooltipOptions{Text: "Help"})
-	}, 640, 480)
-	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
-
-	tt.Key(0, ui.KeyTab)
-	tt.Frame()
-	if !tt.HasText("Help") {
-		t.Fatal("the tooltip did not show")
-	}
-	arrived := motionLabel(t, tt, "Help")
-	if tt.FramePending() {
-		t.Error("reduced motion animates the popup")
-	}
-	tt.Advance(popupMotionDuration)
-	tt.Frame()
-	if settled := motionLabel(t, tt, "Help"); settled != arrived {
-		t.Fatalf("reduced motion moved the popup: arrived=%v settled=%v", arrived, settled)
-	}
-}
-
 // TestPopoverArrowFollowsFlippedPanel puts the anchor too low for the panel
 // below it, so the attach engine flips the panel above the anchor. The arrow
 // belongs on the edge facing the anchor, not on the side the caller asked
@@ -173,9 +146,6 @@ func TestPopoverArrowPointsAtItsAnchor(t *testing.T) {
 	want := anchorRect.X + anchorRect.W/2
 	if diff := arrow - want; diff < -2 || diff > 2 {
 		t.Fatalf("arrow at %v, want the anchor's center %v", arrow, want)
-	}
-	if mid := box.X + box.W/2; arrow > mid-40 && arrow < mid+40 {
-		t.Fatalf("the arrow is still centered in the panel: arrow=%v panel center=%v", arrow, mid)
 	}
 }
 
@@ -364,32 +334,5 @@ func TestDrawerHandleGutter(t *testing.T) {
 		if diff := float32(top) - want; diff < -1.5 || diff > 1.5 {
 			t.Fatalf("%v: handle bar starts at %v, want %v", side, float32(top), want)
 		}
-	}
-}
-
-// TestToastCloseSitsOnTheCardCorner checks HeroUI's -end-1/-top-1 offset: the
-// 20 DIP close button overlaps the card's corner by 4 DIPs on both axes.
-func TestToastCloseSitsOnTheCardCorner(t *testing.T) {
-	var state ToastState
-	var ctx *ui.Context
-	tt := ui.NewTester(toastTestView(&state, &ctx), 640, 480)
-	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
-	if err := tt.Click("Show"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
-	card, ok := tt.Find("File saved")
-	if !ok {
-		t.Fatal("no toast card")
-	}
-	closeRect, ok := tt.Find("Close")
-	if !ok {
-		t.Fatal("no close button")
-	}
-	if card.Y-closeRect.Y != 4 {
-		t.Fatalf("close sits %v DIPs above the card, want 4", card.Y-closeRect.Y)
-	}
-	if closeRect.X+closeRect.W-(card.X+card.W) != 4 {
-		t.Fatalf("close reaches %v DIPs past the card, want 4", closeRect.X+closeRect.W-(card.X+card.W))
 	}
 }

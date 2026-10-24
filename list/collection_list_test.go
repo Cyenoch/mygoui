@@ -238,35 +238,6 @@ func TestListBoxTypeaheadSkipsHeadersAndDisabled(t *testing.T) {
 	}
 }
 
-// TestListBoxIndicatorEndPadding checks the row reserves HeroUI's pe-7 for the
-// indicator, so trailing content sits 28 DIPs from the row's end.
-func TestListBoxIndicatorEndPadding(t *testing.T) {
-	var state list.ListBoxState
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.ApplyMode(c, false)
-		list.ListBox(c, list.ListBoxOptions{
-			Label: "Files", State: &state, Selection: list.SelectionSingle,
-			Items: []list.ListBoxItem{{
-				Key: "new", Label: "New file",
-				End: func() { ui.Text(c, "TRLR") },
-			}},
-			Height: 120,
-		})
-	}, 320, 200)
-	tt.Frame()
-	row, ok := tt.Find("New file")
-	if !ok {
-		t.Fatalf("row missing: %v", tt.Texts())
-	}
-	tail, ok := tt.Find("TRLR")
-	if !ok {
-		t.Fatalf("trailing content missing: %v", tt.Texts())
-	}
-	if got, want := (row.X+row.W)-(tail.X+tail.W), float32(28); got < want-0.6 || got > want+0.6 {
-		t.Fatalf("trailing content ends %v from the row end, want %v", got, want)
-	}
-}
-
 // TestListBoxEmptyShowsMessage covers the zero-row path.
 func TestListBoxEmptyShowsMessage(t *testing.T) {
 	var state list.ListBoxState

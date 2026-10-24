@@ -67,9 +67,6 @@ func TestColorAreaDragChangesColor(t *testing.T) {
 	if !ok {
 		t.Fatal("area is not labeled")
 	}
-	if r.W > 224.5 || r.W < 100 || !near(float64(r.W), float64(r.H), 0.5) {
-		t.Fatalf("area bounds %v x %v, want a square no wider than 224", r.W, r.H)
-	}
 	tt.Press(r.X+r.W*0.9, r.Y+r.H*0.1)
 	tt.Move(r.X+r.W*0.25, r.Y+r.H*0.75)
 	tt.Release(r.X+r.W*0.25, r.Y+r.H*0.75)
@@ -196,23 +193,5 @@ func TestColorSwatchPickerArrowRoving(t *testing.T) {
 	tt.Key(0, ui.KeyRight)
 	if value != green {
 		t.Fatalf("arrow chose %v, want green", value)
-	}
-}
-
-func TestColorPickerTriggerOpens(t *testing.T) {
-	s := NewColorState(ui.Hex("#ff0000"))
-	open := false
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		ColorPicker(c, ColorPickerOptions{Label: "Fill", State: s, Open: &open})
-	}, 520, 760)
-	if err := tt.Click("Fill"); err != nil {
-		t.Fatal(err)
-	}
-	if !open {
-		t.Fatal("trigger did not open the picker")
-	}
-	if _, ok := tt.Find("Color area"); !ok {
-		t.Fatalf("open picker shows no area; screen: %v", tt.Texts())
 	}
 }

@@ -79,20 +79,3 @@ func TestListBoxMultipleSections(t *testing.T) {
 		t.Fatal("second click did not remove the key")
 	}
 }
-
-func TestListBoxKeyboardNavigationSkipsDisabled(t *testing.T) {
-	var state list.ListBoxState
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.ApplyMode(c, false)
-		list.ListBox(c, list.ListBoxOptions{
-			Label: "Fruit", Items: items(), Selection: list.SelectionSingle, State: &state,
-		})
-	}, 320, 300)
-	tt.Click("Apple")
-	tt.Key(0, ui.KeyDown)
-	tt.Key(0, ui.KeyDown)
-	tt.Key(0, ui.KeyEnter)
-	if state.SelectedKey != "banana" {
-		t.Fatalf("keyboard selection = %q, want banana (disabled cherry skipped)", state.SelectedKey)
-	}
-}

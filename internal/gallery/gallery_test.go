@@ -13,9 +13,63 @@ import (
 
 func TestCatalogIsUniqueAndComplete(t *testing.T) {
 	pages := Pages()
-	if len(pages) < 31 {
-		t.Fatalf("registered pages = %d, want the overview and every core component", len(pages))
+
+	// The catalog the docs promise, filed by the group the sidebar shows.
+	// Overview is the only page registered without examples.
+	want := map[string][]string{
+		"Overview": {"overview"},
+		"Foundations": {
+			"typography", "surface", "separator", "kbd", "card", "link",
+			"linkbutton", "listgroup", "emptystate", "scrollshadow", "header",
+		},
+		"Actions": {
+			"button", "buttongroup", "closebutton", "togglebutton",
+			"togglebuttongroup", "pressablefeedback",
+		},
+		"Display": {
+			"chip", "badge", "avatar", "avatargroup", "tag", "taggroup", "alert",
+			"spinner", "skeleton", "skeletongroup", "progressbar",
+			"progresscircle", "meter",
+		},
+		"Forms": {
+			"form", "fieldset", "label", "description", "fielderror", "errormessage",
+			"input", "textarea", "textfield", "inputgroup", "inputotp", "searchfield",
+			"numberfield", "checkbox", "checkboxgroup", "radio", "radiogroup",
+			"switch", "switchgroup", "controlfield", "slider", "select", "combobox",
+			"autocomplete",
+		},
+		"Collections": {"listbox"},
+		"Navigation": {
+			"accordion", "disclosure", "disclosuregroup", "tabs", "breadcrumbs",
+			"pagination", "toolbar", "menu", "dropdown", "submenu",
+		},
+		"Overlays": {
+			"modal", "alertdialog", "drawer", "bottomsheet", "dialog", "popover",
+			"tooltip", "toast",
+		},
+		"Dates": {
+			"calendar", "rangecalendar", "datefield", "timefield", "datepicker",
+			"daterangepicker",
+		},
+		"Color": {
+			"colorarea", "colorslider", "colorfield", "colorswatch",
+			"colorswatchpicker", "colorpicker",
+		},
+		"Data": {"table"},
 	}
+	expected := map[string]string{}
+	for group, ids := range want {
+		for _, id := range ids {
+			if _, dup := expected[id]; dup {
+				t.Fatalf("page %q is listed twice in the catalog table", id)
+			}
+			expected[id] = group
+		}
+	}
+	if len(pages) != len(expected) {
+		t.Fatalf("registered pages = %d, want %d", len(pages), len(expected))
+	}
+
 	seen := map[string]bool{}
 	lastOrder := -1
 	for _, page := range pages {
@@ -26,6 +80,17 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 			t.Fatalf("duplicate page ID %q", page.ID)
 		}
 		seen[page.ID] = true
+		if group, ok := expected[page.ID]; !ok || group != page.Group {
+			t.Fatalf("page %q is registered under %q, want %q", page.ID, page.Group, expected[page.ID])
+		}
+		// Every component page carries the docs anatomy: a live example, a
+		// usage snippet, API params and theme tokens.
+		if p, ok := componentPage(page.ID); ok {
+			if len(p.Examples) == 0 || p.Code == "" || len(p.Params) == 0 || len(p.Tokens) == 0 {
+				t.Fatalf("page %q has an empty docs section: %d examples, %d params, %d tokens",
+					page.ID, len(p.Examples), len(p.Params), len(p.Tokens))
+			}
+		}
 		if page.Order < lastOrder {
 			t.Fatalf("page %q out of order", page.ID)
 		}
@@ -34,24 +99,6 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 	first := pages[0]
 	if first.ID != "overview" || first.Title != "Overview" || first.Group != "Overview" {
 		t.Fatalf("first page = %+v, want the Overview page", first)
-	}
-	for _, id := range []string{
-		"overview", "typography", "card", "button", "buttongroup", "togglebutton",
-		"chip", "avatar", "alert", "progressbar", "meter",
-	} {
-		if !seen[id] {
-			t.Fatalf("missing page %q", id)
-		}
-	}
-	root := false
-	for _, page := range pages {
-		if page.Group == "Foundations" {
-			root = true
-			break
-		}
-	}
-	if !root {
-		t.Fatal("no page registered in the Foundations group")
 	}
 }
 
@@ -75,18 +122,41 @@ func TestEveryPageRendersAtDesktopAndCompactWidths(t *testing.T) {
 			if !tt.HasText(page.Title) {
 				t.Fatalf("%s/%s: page title missing", mode.name, page.ID)
 			}
+			// Every named example keeps its own rendered frame, so a page
+			// cannot silently lose a demo in any layout.
+			if p, ok := componentPage(page.ID); ok {
+				for _, example := range p.Examples {
+					if _, ok := tt.Find("Example panel: " + example.Title); !ok {
+						t.Fatalf("%s/%s: example %q did not render", mode.name, page.ID, example.Title)
+					}
+				}
+			}
 		}
 	}
 }
 
-func TestComponentPageShowsDemoUsageAPIAndTokens(t *testing.T) {
+// TestComponentPageAnatomy pins the docs shape: the Usage, Examples, API
+// Reference and Theme tokens sections appear in that order and carry the
+// snippet, the API columns and the token names.
+func TestComponentPageAnatomy(t *testing.T) {
 	state := New()
 	state.Selected = "button"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)
 	tt.Frame()
+	last := float32(-1)
+	for _, heading := range []string{"Usage", "Examples", "API Reference", "Theme tokens"} {
+		r, ok := tt.Find(heading)
+		if !ok {
+			t.Fatalf("section %q is missing", heading)
+		}
+		if r.Y <= last {
+			t.Fatalf("section %q is out of order (y %v after %v)", heading, r.Y, last)
+		}
+		last = r.Y
+	}
 	for _, want := range []string{
-		"Example", "Usage", "API", "Theme tokens", "package main", "mygoui",
-		"Variant", "Loading", "AccentForeground", "mygoui.Button(c, mygoui.ButtonOptions{",
+		"package main", "mygoui", "Variant", "Loading", "AccentForeground",
+		"mygoui.Button(c, mygoui.ButtonOptions{",
 	} {
 		if !tt.HasText(want) {
 			t.Fatalf("button page does not show %q", want)
@@ -180,10 +250,6 @@ func navHas(tt *ui.Tester, name string) bool {
 	return ok && r.X < 270
 }
 
-func navVisible(r ui.Rect, width, height float32) bool {
-	return r.W > 0 && r.H > 0 && r.X >= 0 && r.Y >= 0 && r.X+r.W <= width && r.Y+r.H <= height
-}
-
 // revealSidebarEntry scrolls the sidebar until name is fully visible and
 // returns the on-screen rect. Labels outside the viewport are still found,
 // with the document Y they would occupy at scroll 0.
@@ -195,7 +261,7 @@ func revealSidebarEntry(t *testing.T, tt *ui.Tester, state *State, name string, 
 	if !ok || r.X >= 270 {
 		t.Fatalf("%q is missing from the sidebar", name)
 	}
-	if navVisible(r, width, height) {
+	if contentVisible(r, width, height) {
 		return r
 	}
 	target := r.Y - 200
@@ -208,7 +274,7 @@ func revealSidebarEntry(t *testing.T, tt *ui.Tester, state *State, name string, 
 	state.Sidebar.Y = target
 	tt.Frame()
 	r, ok = tt.Find(name)
-	if !ok || !navVisible(r, width, height) {
+	if !ok || !contentVisible(r, width, height) {
 		t.Fatalf("%q is unreachable in the sidebar (rect %+v, scroll %v/%v)", name, r, state.Sidebar.Y, state.Sidebar.MaxY)
 	}
 	return r
@@ -229,7 +295,7 @@ func TestSidebarShowsEveryComponentPage(t *testing.T) {
 	tt.Frame()
 	ordered := navPages()
 	last := ordered[len(ordered)-1]
-	if r, ok := tt.Find(last.Title); !ok || !navVisible(r, width, height) {
+	if r, ok := tt.Find(last.Title); !ok || !contentVisible(r, width, height) {
 		t.Fatalf("the last page %q is not at the end of the scroll (rect %+v)", last.Title, r)
 	}
 }

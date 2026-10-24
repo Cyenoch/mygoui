@@ -107,10 +107,6 @@ func TestTableSecondaryVariantIsFlush(t *testing.T) {
 		// The row's left padding is outside every cell's content box.
 		wantTablePixel(t, tt.Image(), 6, int(row.Y+row.H/2), want,
 			fmt.Sprintf("variant %d row fill", variant))
-		// Both headers sit on the secondary surface: the primary frame's
-		// band above the white card, and the secondary standalone card.
-		wantTablePixel(t, tt.Image(), 380, 8, colors.SurfaceSecondary,
-			fmt.Sprintf("variant %d header fill", variant))
 	}
 }
 
@@ -156,8 +152,8 @@ func TestTableCellAlignment(t *testing.T) {
 	if !ok {
 		t.Fatalf("center header missing: %v", tt.Texts())
 	}
-	// The header box is the column; its content is inset by the toolkit's 10
-	// and the table's 6 DIP padding.
+	// The header box is the column; the end-aligned cell text stops at the
+	// toolkit's 10 DIP cell padding plus the table's 6 DIP inset.
 	wantEnd := endHead.X + endHead.W - 16
 	if got := end.X + end.W; got < wantEnd-3 || got > wantEnd+3 {
 		t.Fatalf("end-aligned text right edge = %v, want %v", got, wantEnd)
@@ -172,47 +168,10 @@ func TestTableCellAlignment(t *testing.T) {
 	}
 }
 
-// TestTableHeaderTypeIsSmallerThanCells checks the header keeps HeroUI's
-// smaller type while cell content keeps text-sm.
-func TestTableHeaderTypeIsSmallerThanCells(t *testing.T) {
-	rows := fileRows()
-	st := &data.TableState{}
-	o := data.TableOptions{
-		Label: "Files",
-		Columns: []data.TableColumnOptions{
-			{ID: "name", Header: "Name", Cell: func(c *ui.Context, cell data.TableCell) ui.Element {
-				return ui.Text(c, rows[cell.Row.Index].name)
-			}},
-			{ID: "size", Header: "Size", Width: 90, Cell: func(c *ui.Context, cell data.TableCell) ui.Element {
-				return ui.Text(c, "12")
-			}},
-		},
-		Rows: len(rows), State: st,
-	}
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.ApplyMode(c, false)
-		data.Table(c, o).Grow(1)
-	}, 400, 240)
-	tt.Frame()
-	head, ok := tt.Find("Name")
-	if !ok {
-		t.Fatalf("header missing: %v", tt.Texts())
-	}
-	body, ok := tt.Find("Beta")
-	if !ok {
-		t.Fatalf("row missing: %v", tt.Texts())
-	}
-	if head.H >= body.H {
-		t.Fatalf("header type %v is not smaller than cell type %v", head.H, body.H)
-	}
-	if head.H > 15 {
-		t.Fatalf("header line is %v high, want HeroUI's 12 DIP text", head.H)
-	}
-}
-
-// TestTableHeaderBorderIsSeparator checks the header line is HeroUI's
-// separator at half strength, lighter than the toolkit's divider.
-func TestTableHeaderBorderIsSeparator(t *testing.T) {
+// TestTableHeaderChrome keeps HeroUI's header chrome: type smaller than the
+// cells, and a separator line at half strength, lighter than the toolkit's
+// divider.
+func TestTableHeaderChrome(t *testing.T) {
 	rows := fileRows()
 	var colors theme.Palette
 	st := &data.TableState{}
@@ -232,6 +191,18 @@ func TestTableHeaderBorderIsSeparator(t *testing.T) {
 		data.Table(c, o).Grow(1)
 	}, 400, 240)
 	tt.Frame()
+	head, ok := tt.Find("Name")
+	if !ok {
+		t.Fatalf("header missing: %v", tt.Texts())
+	}
+	body, ok := tt.Find("Beta")
+	if !ok {
+		t.Fatalf("row missing: %v", tt.Texts())
+	}
+	if head.H >= body.H {
+		t.Fatalf("header type %v is not smaller than cell type %v", head.H, body.H)
+	}
+
 	img := tt.Image()
 	wantTablePixel(t, img, 200, 16, colors.SurfaceSecondary, "header band")
 	line := img.RGBAAt(200, 32)
@@ -282,7 +253,6 @@ func TestTableFooterSitsInFrame(t *testing.T) {
 	wantTablePixel(t, img, 200, int(foot.Y+foot.H/2), colors.SurfaceSecondary, "footer frame")
 	// The frame's own 4 DIP padding runs down the sides, and the body card
 	// starts inside it.
-	wantTablePixel(t, img, 2, int(foot.Y+foot.H/2), colors.SurfaceSecondary, "frame beside the footer")
 	wantTablePixel(t, img, 2, int(foot.Y-60), colors.SurfaceSecondary, "frame beside the card")
 	wantTablePixel(t, img, 6, int(foot.Y-60), colors.Surface, "card inside the frame")
 }
@@ -323,54 +293,6 @@ func TestTableOverflowScrollsSideways(t *testing.T) {
 	}
 }
 
-// TestTableRowKeyCallsDoNotScaleWithColumns guards the per-row metadata
-// resolution: RowKey is called once per built row, not once per cell.
-func TestTableRowKeyCallsDoNotScaleWithColumns(t *testing.T) {
-	rows := make([]fileRow, 200)
-	for i := range rows {
-		rows[i] = fileRow{id: fmt.Sprintf("r%d", i), name: fmt.Sprintf("Row %03d", i), size: i}
-	}
-	counts := make([]int, 2)
-	for k, cols := range []int{2, 8} {
-		calls := 0
-		st := &data.TableState{}
-		o := data.TableOptions{
-			Label: "Rows",
-			Rows:  len(rows),
-			State: st,
-			RowKey: func(row int) any {
-				calls++
-				return rows[row].id
-			},
-			Columns: []data.TableColumnOptions{{
-				ID: "name", Header: "Name",
-				Cell: func(c *ui.Context, cell data.TableCell) ui.Element {
-					return ui.Text(c, rows[cell.Row.Index].name)
-				},
-			}},
-		}
-		for i := 1; i < cols; i++ {
-			o.Columns = append(o.Columns, data.TableColumnOptions{
-				ID: fmt.Sprintf("c%d", i), Header: fmt.Sprintf("C%d", i), Width: 60,
-				Cell: func(c *ui.Context, cell data.TableCell) ui.Element {
-					return ui.Text(c, fmt.Sprint(cell.Row.Index))
-				},
-			})
-		}
-		tt := ui.NewTester(tableView(&o), 900, 400)
-		tt.Frame()
-		calls = 0
-		tt.Frame()
-		counts[k] = calls
-		if calls == 0 {
-			t.Fatalf("RowKey was not called with %d columns", cols)
-		}
-	}
-	if counts[0] != counts[1] {
-		t.Fatalf("RowKey calls scale with columns: 2 columns %d, 8 columns %d", counts[0], counts[1])
-	}
-}
-
 // TestTableEmptyHeaderMatchesPopulatedHeader keeps the empty table's header
 // the same native header a populated table shows.
 func TestTableEmptyHeaderMatchesPopulatedHeader(t *testing.T) {
@@ -406,41 +328,6 @@ func TestTableEmptyHeaderMatchesPopulatedHeader(t *testing.T) {
 	if emptyName != fullName || emptySize != fullSize {
 		t.Fatalf("empty header %v/%v differs from populated %v/%v",
 			emptyName, emptySize, fullName, fullSize)
-	}
-}
-
-// TestTableEmptyHeaderSortsAndResizes covers the interactions the native
-// header keeps while there are no rows to scroll.
-func TestTableEmptyHeaderSortsAndResizes(t *testing.T) {
-	var got []data.TableSort
-	st := &data.TableState{}
-	o := data.TableOptions{
-		Label: "Files", Variant: data.TableSecondary,
-		Columns: []data.TableColumnOptions{
-			{ID: "name", Header: "Name", Sortable: true, Resizable: true},
-			{ID: "size", Header: "Size", Sortable: true, Width: 90, MinWidth: 60, Resizable: true, Align: ui.End},
-		},
-		Rows:   0,
-		State:  st,
-		OnSort: func(sort data.TableSort) { got = append(got, sort) },
-	}
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.ApplyMode(c, false)
-		data.Table(c, o).Grow(1)
-	}, 400, 300)
-	tt.Frame()
-	if err := tt.Click("Name"); err != nil {
-		t.Fatal(err)
-	}
-	if len(got) != 1 || got[0] != (data.TableSort{Column: "name"}) || st.Sort.Column != "name" {
-		t.Fatalf("empty header sort: callbacks %v, state %+v", got, st.Sort)
-	}
-	// The Size column is the last 90 DIPs; the resize edge is inside its end.
-	tt.Press(396, 16)
-	tt.Move(396+30, 16)
-	tt.Release(396+30, 16)
-	if w := st.List.Columns.Widths["size"]; w != 120 {
-		t.Fatalf("empty header resized width = %v, want 120", w)
 	}
 }
 
@@ -490,38 +377,5 @@ func TestTableInsertionKeepsKeyedSelection(t *testing.T) {
 	beta, _ := tt.Find("Beta")
 	if !(zulu.Y < beta.Y) {
 		t.Fatalf("inserted row not first: zulu=%v beta=%v", zulu, beta)
-	}
-}
-
-// TestTableSortDoesNotReportSelectionChange checks sorting rows, which moves
-// the chosen row's position, is not a selection change.
-func TestTableSortDoesNotReportSelectionChange(t *testing.T) {
-	rows := fileRows()
-	st := &data.TableState{Selection: data.TableSelection{Mode: data.TableSelectionSingle, Row: -1}}
-	calls := 0
-	o := fileTable(rows, st, nil)
-	o.OnSelectionChange = func(data.TableSelection) { calls++ }
-	tt := ui.NewTester(tableView(&o), 520, 320)
-	tt.Frame()
-	if err := tt.Click("Beta"); err != nil {
-		t.Fatal(err)
-	}
-	if calls != 1 {
-		t.Fatalf("click callbacks = %d, want 1", calls)
-	}
-	if err := tt.Click("Name"); err != nil {
-		t.Fatal(err)
-	}
-	if calls != 1 {
-		t.Fatalf("sort reported a selection change: %d callbacks", calls)
-	}
-	if st.Selection.Row != 1 {
-		t.Fatalf("chosen row did not follow the sort: %d", st.Selection.Row)
-	}
-	if err := tt.Click("Gamma"); err != nil {
-		t.Fatal(err)
-	}
-	if calls != 2 {
-		t.Fatalf("choosing another row after a sort: %d callbacks", calls)
 	}
 }

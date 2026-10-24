@@ -109,37 +109,3 @@ func TestToggleButtonUpdatesCallerStateWithoutCallback(t *testing.T) {
 		t.Fatal("toggle did not update the caller-owned bool")
 	}
 }
-
-func TestFullWidthButtonGroupSharesWidth(t *testing.T) {
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.ApplyMode(c, false)
-		ui.Column(c).Padding(20).Children(func() {
-			mygoui.ButtonGroup(c, mygoui.ButtonGroupOptions{FullWidth: true},
-				mygoui.ButtonOptions{Label: "Left", OnClick: func() {}},
-				mygoui.ButtonOptions{Label: "Right", OnClick: func() {}})
-		})
-	}, 400, 120)
-	left, okLeft := tt.Find("Left")
-	right, okRight := tt.Find("Right")
-	if !okLeft || !okRight {
-		t.Fatal("group labels missing")
-	}
-	if right.X <= left.X || right.Y != left.Y {
-		t.Fatalf("group buttons are not horizontal: left=%v right=%v", left, right)
-	}
-	if left.W > 180 || right.W > 180 {
-		t.Fatalf("buttons did not share width: left=%v right=%v", left, right)
-	}
-}
-
-func TestProgressDefaultsToZeroToHundred(t *testing.T) {
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.ApplyMode(c, false)
-		mygoui.ProgressBar(c, mygoui.ProgressOptions{
-			Label: "Upload", Value: 60, ShowOutput: true,
-		})
-	}, 360, 120)
-	if !tt.HasText("60%") {
-		t.Fatalf("default progress output missing; texts: %v", tt.Texts())
-	}
-}

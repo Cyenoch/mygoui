@@ -10,7 +10,11 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-func TestModalEscapeRestoresFocusAndBackdropDismisses(t *testing.T) {
+// TestModalTrapsTheFocusAndRestoresIt keeps Tab inside the modal while it is
+// open and gives the focus back to the opener when Escape closes it. Backdrop
+// dismissal is covered with its hit area, and the reopen during the exit has
+// its own test.
+func TestModalTrapsTheFocusAndRestoresIt(t *testing.T) {
 	var open bool
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.Apply(c)
@@ -20,9 +24,6 @@ func TestModalEscapeRestoresFocusAndBackdropDismisses(t *testing.T) {
 				Title: "Settings",
 				Body: func() {
 					ui.Button(c, "Confirm")
-				},
-				Footer: func() {
-					ui.Button(c, "Done").OnClick(func() { open = false })
 				},
 			})
 		})
@@ -49,17 +50,6 @@ func TestModalEscapeRestoresFocusAndBackdropDismisses(t *testing.T) {
 	}
 	if !tt.Focused("Open") {
 		t.Fatal("closing the modal did not restore focus to its opener")
-	}
-
-	if err := tt.Click("Open"); err != nil {
-		t.Fatal(err)
-	}
-	tt.ClickAt(4, 4)
-	if open {
-		t.Fatal("backdrop press did not dismiss the modal")
-	}
-	if !tt.Focused("Open") {
-		t.Fatal("backdrop dismissal did not restore focus")
 	}
 }
 
@@ -91,7 +81,11 @@ func TestModalPreventDismiss(t *testing.T) {
 	}
 }
 
-func TestAlertDialogIgnoresBackdropAndEscape(t *testing.T) {
+// TestAlertDialogKeepsItsChoiceAndIgnoresDismissal follows the alert through
+// its life: Cancel takes the initial focus, neither the backdrop nor Escape
+// answers the question or starts the exit, Cancel runs exactly once and gives
+// the focus back, and the copy still painting the alert answers no press.
+func TestAlertDialogKeepsItsChoiceAndIgnoresDismissal(t *testing.T) {
 	var open bool
 	accepted, cancelled := 0, 0
 	tt := ui.NewTester(func(c *ui.Context) {
@@ -114,31 +108,52 @@ func TestAlertDialogIgnoresBackdropAndEscape(t *testing.T) {
 	if !tt.Focused("Cancel") {
 		t.Fatal("Cancel must receive the initial focus")
 	}
+	motionSettle(tt, dialogMotionDuration)
+	title := motionLabel(t, tt, "Delete report?")
+	settled := motionShot(tt)
+	cancel, ok := tt.Find("Cancel")
+	if !ok {
+		t.Fatal("the alert has no cancel action")
+	}
+
 	tt.ClickAt(4, 4)
 	tt.Frame()
-	if !open || accepted != 0 || cancelled != 0 {
-		t.Fatalf("backdrop press changed the alert: open=%v accepted=%d cancelled=%d", open, accepted, cancelled)
-	}
 	tt.Key(0, ui.KeyEscape)
 	tt.Frame()
 	if !open || accepted != 0 || cancelled != 0 {
-		t.Fatalf("Escape changed the alert: open=%v accepted=%d cancelled=%d", open, accepted, cancelled)
+		t.Fatalf("a dismissal changed the alert: open=%v accepted=%d cancelled=%d", open, accepted, cancelled)
 	}
 	if !tt.Focused("Cancel") {
 		t.Fatal("the ignored dismissal lost the alert's focus")
 	}
+	tt.Advance(dialogMotionDuration / 2)
+	if motionDiff(settled, motionShot(tt), title) != 0 {
+		t.Error("an ignored dismissal animated the alert away")
+	}
+
 	if err := tt.Click("Cancel"); err != nil {
 		t.Fatal(err)
 	}
 	if open || cancelled != 1 || accepted != 0 {
 		t.Fatalf("Cancel: open=%v accepted=%d cancelled=%d", open, accepted, cancelled)
 	}
+	if !tt.Focused("Delete file") {
+		t.Fatal("the alert did not give the focus back")
+	}
+	// The copy still painting the alert is inert: a press on it repeats no
+	// choice.
+	tt.ClickAt(cancel.X+cancel.W/2, cancel.Y+cancel.H/2)
+	tt.Advance(dialogMotionDuration)
+	if cancelled != 1 || accepted != 0 {
+		t.Fatalf("a press on the departing alert repeated the choice: cancelled=%d accepted=%d", cancelled, accepted)
+	}
 }
 
-// TestDrawerEdgesAndBottomSheet pins the floating edge geometry: 16 DIP
-// gutters on every side, full rounding, a left or right panel keeping w-96
-// at the sm breakpoint, and a top or bottom one spanning the inset width.
-func TestDrawerEdgesAndBottomSheet(t *testing.T) {
+// TestDrawerEdgeGeometry pins the floating edge geometry of a drawer: 16 DIP
+// gutters on every side, a left or right panel keeping w-96 at the sm
+// breakpoint, and a top or bottom one spanning the inset width. The bottom
+// sheet shares the floating box and is covered by its own geometry test.
+func TestDrawerEdgeGeometry(t *testing.T) {
 	const winW, winH = 640, 480
 	for _, tc := range []struct {
 		name string
@@ -179,24 +194,6 @@ func TestDrawerEdgesAndBottomSheet(t *testing.T) {
 				}
 			}
 		})
-	}
-
-	open := true
-	var sheet ui.Rect
-	st := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		if p := BottomSheet(c, &open, BottomSheetOptions{Title: "Actions"}); p.Valid() {
-			sheet = p.Bounds()
-		}
-	}, winW, winH)
-	st.Frame()
-	// The sheet slides in from below the window; the tester's clock stands
-	// still, so settle the arrival before reading its resting box.
-	st.Advance(drawerMotionDuration)
-	st.Frame()
-	if sheet.X != 16 || sheet.W != winW-32 || sheet.Y+sheet.H != winH-16 ||
-		sheet.H > (winH-32)*0.85+1 {
-		t.Fatalf("bottom sheet geometry = %+v, want the floating panel inside 16 DIP gutters", sheet)
 	}
 }
 
@@ -243,27 +240,6 @@ func TestPopoverAnchorsAndDismisses(t *testing.T) {
 	tt.ClickAt(600, 300)
 	if open || tt.HasText("Details") {
 		t.Fatal("outside press did not dismiss the popover")
-	}
-}
-
-func TestTooltipKeyboardRouteAndEscape(t *testing.T) {
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		anchor := ui.Button(c, "Hover me")
-		Tooltip(c, anchor, TooltipOptions{Text: "Help"})
-	}, 640, 480)
-
-	tt.Key(0, ui.KeyTab)
-	tt.Frame()
-	if !tt.Focused("Hover me") {
-		t.Fatal("the anchor did not take keyboard focus")
-	}
-	if !tt.HasText("Help") {
-		t.Fatal("the keyboard focus route did not show the tooltip")
-	}
-	tt.Key(0, ui.KeyEscape)
-	if tt.HasText("Help") {
-		t.Fatal("Escape did not dismiss the tooltip")
 	}
 }
 
@@ -321,52 +297,6 @@ func TestToastUpdatesCapsAndDismisses(t *testing.T) {
 	}
 	if tt.HasText("Updated") || len(state.Items()) != 3 {
 		t.Fatalf("dismiss left %+v", state.Items())
-	}
-}
-
-func TestToastReducedMotionTimeoutAndClose(t *testing.T) {
-	var state ToastState
-	var ctx *ui.Context
-	closed := 0
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		ctx = c
-		ui.Column(c).Padding(16).Children(func() {
-			ui.Button(c, "Show saved").OnClick(func() {
-				Toast(ctx, &state, ToastOptions{
-					Title:   "File saved",
-					Timeout: time.Second,
-					OnClose: func() { closed++ },
-				})
-			})
-			state.View(c)
-		})
-	}, 640, 480)
-	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
-
-	if err := tt.Click("Show saved"); err != nil {
-		t.Fatal(err)
-	}
-	if !tt.HasText("File saved") {
-		t.Fatal("reduced-motion toast did not settle into view")
-	}
-	if tt.FramePending() {
-		t.Fatal("reduced motion still animates the toast entry")
-	}
-	tt.Advance(1100 * time.Millisecond)
-	tt.Frame()
-	if tt.HasText("File saved") || closed != 1 || len(state.Items()) != 0 {
-		t.Fatalf("timeout: shown=%v closed=%d retained=%d", tt.HasText("File saved"), closed, len(state.Items()))
-	}
-
-	if err := tt.Click("Show saved"); err != nil {
-		t.Fatal(err)
-	}
-	if err := tt.Click("Close"); err != nil {
-		t.Fatal(err)
-	}
-	if tt.HasText("File saved") || closed != 2 {
-		t.Fatalf("close button: shown=%v closed=%d", tt.HasText("File saved"), closed)
 	}
 }
 

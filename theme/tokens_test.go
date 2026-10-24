@@ -107,8 +107,8 @@ func TestShadowTablesAreReadOnly(t *testing.T) {
 		t.Fatalf("surface shadows expose spare capacity: len %d, cap %d", len(light), cap(light))
 	}
 	_ = append(light, theme.Shadow{})
-	if got := len(theme.SurfaceShadows(false)); got != 3 {
-		t.Fatalf("appending to the returned shadows changed the table: %d layers", got)
+	if got := len(theme.SurfaceShadows(false)); got != len(light) {
+		t.Fatalf("appending to the returned shadows changed the table: %d layers, want %d", got, len(light))
 	}
 	if theme.SurfaceShadows(true) != nil {
 		t.Error("dark surfaces have a drop shadow")

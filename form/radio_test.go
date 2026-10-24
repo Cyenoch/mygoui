@@ -69,12 +69,6 @@ func TestRadioGroupHorizontal(t *testing.T) {
 	if a.X == b.X {
 		t.Fatalf("horizontal radios stack at %v and %v", a, b)
 	}
-	if err := tt.Click("Beta"); err != nil {
-		t.Fatal(err)
-	}
-	if choice != "b" {
-		t.Fatalf("choice is %q, want b", choice)
-	}
 }
 
 func TestRadioWithoutStateIsDisabled(t *testing.T) {

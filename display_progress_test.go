@@ -122,6 +122,7 @@ func TestProgressClampsAtItsBounds(t *testing.T) {
 		want string
 	}{
 		{"zero", mygoui.ProgressOptions{Value: 0, ShowOutput: true}, "0%"},
+		{"default midpoint", mygoui.ProgressOptions{Value: 60, ShowOutput: true}, "60%"},
 		{"max", mygoui.ProgressOptions{Value: 100, ShowOutput: true}, "100%"},
 		{"over max", mygoui.ProgressOptions{Value: 140, ShowOutput: true}, "100%"},
 		{"under zero", mygoui.ProgressOptions{Value: -20, ShowOutput: true}, "0%"},

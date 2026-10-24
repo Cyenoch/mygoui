@@ -22,14 +22,8 @@ func TestInputGroupTypesAndRunsSuffixAction(t *testing.T) {
 					cleared++
 				})
 			},
-			BlockPrefix: func() {
-				ui.Text(c, "Block above")
-			},
 		})
 	})
-	if !tester.HasText("Block above") {
-		t.Fatal("input group shows no block prefix")
-	}
 	formTextClick(t, tester, "Amount")
 	tester.Type("42")
 	if value != "42" {
@@ -38,20 +32,6 @@ func TestInputGroupTypesAndRunsSuffixAction(t *testing.T) {
 	formTextClick(t, tester, "Clear")
 	if value != "" || cleared != 1 {
 		t.Fatalf("suffix action: value %q, cleared %d", value, cleared)
-	}
-}
-
-func TestInputGroupDisabledTakesNoInput(t *testing.T) {
-	var value string
-	tester := formTextTester(t, func(c *ui.Context) {
-		InputGroup(c, &value, InputGroupOptions{Label: "Locked", Disabled: true})
-	})
-	if err := tester.Click("Locked"); err != nil {
-		t.Fatalf("click disabled label: %v", err)
-	}
-	tester.Type("ignored")
-	if value != "" {
-		t.Fatalf("disabled input group committed %q", value)
 	}
 }
 

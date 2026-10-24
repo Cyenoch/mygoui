@@ -36,17 +36,44 @@ func TestInputCommitsTypedValue(t *testing.T) {
 	}
 }
 
-func TestInputDisabledTakesNoInput(t *testing.T) {
-	var value string
-	tester := formTextTester(t, func(c *ui.Context) {
-		Input(c, &value, InputOptions{Label: "Locked", Disabled: true})
-	})
-	if err := tester.Click("Locked"); err != nil {
-		t.Fatalf("click disabled label: %v", err)
-	}
-	tester.Type("ignored")
-	if value != "" {
-		t.Fatalf("disabled input committed %q", value)
+// TestDisabledTextControlsTakeNoInput checks every text-entry control wires
+// its Disabled option through to the native editor: a click focuses nothing
+// and typing commits nothing.
+func TestDisabledTextControlsTakeNoInput(t *testing.T) {
+	for _, tc := range []struct {
+		name, label string
+		build       func(c *ui.Context) func() string
+	}{
+		{"input", "Locked", func(c *ui.Context) func() string {
+			var value string
+			Input(c, &value, InputOptions{Label: "Locked", Disabled: true})
+			return func() string { return value }
+		}},
+		{"input group", "Locked", func(c *ui.Context) func() string {
+			var value string
+			InputGroup(c, &value, InputGroupOptions{Label: "Locked", Disabled: true})
+			return func() string { return value }
+		}},
+		{"search field", "Find", func(c *ui.Context) func() string {
+			var value string
+			SearchField(c, &value, SearchFieldOptions{Label: "Find", Disabled: true})
+			return func() string { return value }
+		}},
+		{"otp", "Verification code", func(c *ui.Context) func() string {
+			var state OTPState
+			InputOTP(c, &state, OTPOptions{Length: 4, Label: "Verification code", Disabled: true})
+			return func() string { return state.Value }
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var value func() string
+			tester := formTextTester(t, func(c *ui.Context) { value = tc.build(c) })
+			formTextClick(t, tester, tc.label)
+			tester.Type("ignored")
+			if got := value(); got != "" {
+				t.Fatalf("a disabled %s committed %q", tc.name, got)
+			}
+		})
 	}
 }
 

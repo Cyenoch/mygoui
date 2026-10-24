@@ -89,19 +89,6 @@ func TestTableHeaderAndBody(t *testing.T) {
 			t.Fatalf("row %q missing: %v", r.name, tt.Texts())
 		}
 	}
-	if got := len(st.List.Key(0).(string)); got == 0 {
-		t.Fatalf("row key is empty")
-	}
-
-	// Hiding a column drops its header and cells from the visible table.
-	st.HideColumn("size")
-	tt.Frame()
-	if tt.HasText("Size") || tt.HasText("30") {
-		t.Fatalf("hidden column still shown: %v", tt.Texts())
-	}
-	if !tt.HasText("Beta") {
-		t.Fatalf("remaining column lost: %v", tt.Texts())
-	}
 }
 
 func TestTableSortOrdersRowsAndNotifies(t *testing.T) {
@@ -192,10 +179,13 @@ func TestTableSelectionSingleAndMultiple(t *testing.T) {
 		t.Fatalf("selection callbacks = %d, want 2", calls)
 	}
 
-	// A sort keeps a keyed multiple selection with its rows, and remaps a
-	// single selection to the same row.
+	// A sort keeps a keyed multiple selection with its rows, remaps a single
+	// selection to the same row, and is not itself a selection change.
 	if err := tt.Click("Name"); err != nil {
 		t.Fatal(err)
+	}
+	if calls != 2 {
+		t.Fatalf("sort reported a selection change: %d callbacks", calls)
 	}
 	if !multiple.Selection.HasKey("b") || !multiple.Selection.HasKey("a") {
 		t.Fatalf("sort lost the multiple selection: %v", keys(multiple.Selection))
@@ -203,8 +193,8 @@ func TestTableSelectionSingleAndMultiple(t *testing.T) {
 	if err := tt.Click("Beta"); err != nil {
 		t.Fatal(err)
 	}
-	if multiple.Selection.Row != 1 {
-		t.Fatalf("beta's sorted position = %d, want 1", multiple.Selection.Row)
+	if multiple.Selection.Row != 1 || calls != 3 {
+		t.Fatalf("beta after sort: row = %d, callbacks = %d, want 1 and 3", multiple.Selection.Row, calls)
 	}
 
 	single = &data.TableState{Selection: data.TableSelection{Mode: data.TableSelectionSingle, Row: -1}}

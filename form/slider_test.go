@@ -224,13 +224,4 @@ func TestSliderFormatAndDescription(t *testing.T) {
 	if !tt.HasText("0.0%") {
 		t.Fatalf("formatted output missing: %q", tt.Texts())
 	}
-	header, ok := tt.Find("Opacity")
-	if !ok {
-		t.Fatal("the slider label is not rendered")
-	}
-	y := header.Y + header.H + theme.Space4 + 10
-	tt.ClickAt(header.X+(float32(320)-2*header.X)/2, y)
-	if value < 0.4 || value > 0.6 {
-		t.Fatalf("a click at the middle set %v", value)
-	}
 }

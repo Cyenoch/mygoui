@@ -506,35 +506,3 @@ func TestLinkIconFadesOnHover(t *testing.T) {
 		t.Fatalf("icon did not reach full opacity: rest %d, hovered %d", rest, hovered)
 	}
 }
-
-// TestGroupedButtonsPaintThroughExitTransition checks a joined group with
-// seams inside an exit copy paints without expired elements.
-func TestGroupedButtonsPaintThroughExitTransition(t *testing.T) {
-	show := true
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		ui.Column(c).Padding(16).Children(func() {
-			ui.Button(c, "Remove").OnClick(func() { show = false })
-			if show {
-				ui.Row(c).Key("leaving").Transition(ui.ElementTransition{
-					Duration: 250 * time.Millisecond,
-					Exit:     &ui.Motion{Opacity: 0},
-				}).Children(func() {
-					mygoui.ButtonGroup(c, mygoui.ButtonGroupOptions{Separators: true},
-						mygoui.ButtonOptions{Label: "Group A", OnClick: func() {}},
-						mygoui.ButtonOptions{Label: "Group B", OnClick: func() {}},
-					)
-				})
-			}
-		})
-	}, 640, 480)
-	tt.Frame()
-	if err := tt.Click("Remove"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Advance(60 * time.Millisecond)
-	tt.Frame()
-	if tt.HasText("Group A") {
-		t.Fatal("leaving group is still built")
-	}
-}

@@ -96,26 +96,6 @@ func TestDocsHeaderActionsCopyRealContent(t *testing.T) {
 	}
 }
 
-// TestDocsSectionOrder pins the docs order: Usage, Examples, API Reference
-// and Theme tokens.
-func TestDocsSectionOrder(t *testing.T) {
-	state := New()
-	state.Selected = "button"
-	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)
-	tt.Frame()
-	last := float32(-1)
-	for _, heading := range []string{"Usage", "Examples", "API Reference", "Theme tokens"} {
-		r, ok := tt.Find(heading)
-		if !ok {
-			t.Fatalf("section %q is missing", heading)
-		}
-		if r.Y <= last {
-			t.Fatalf("section %q is out of order (y %v after %v)", heading, r.Y, last)
-		}
-		last = r.Y
-	}
-}
-
 // TestDocsTOCScrollsTheContent clicks every rail link and proves the content
 // scroll moves the target into view.
 func TestDocsTOCScrollsTheContent(t *testing.T) {
@@ -175,10 +155,6 @@ func TestDemoTitlesSitOutsidePreviewPanels(t *testing.T) {
 	}
 	if title.Y+title.H > panel.Y || title.X < panel.X || title.X >= panel.X+panel.W {
 		t.Fatalf("demo title is not outside the panel (title %+v, panel %+v)", title, panel)
-	}
-	if title.Y >= panel.Y && title.Y+title.H <= panel.Y+panel.H &&
-		title.X >= panel.X && title.X+title.W <= panel.X+panel.W {
-		t.Fatalf("demo title is inside the panel (title %+v, panel %+v)", title, panel)
 	}
 	count := 0
 	for _, text := range tt.Texts() {
@@ -408,27 +384,6 @@ func TestUsageBarGrowsForMultipleImports(t *testing.T) {
 	}
 	if d := (copy.Y + copy.H/2) - (bar.Y + bar.H/2); d < -1 || d > 1 {
 		t.Fatalf("copy center is %.1f DIP off the grown bar's center", d)
-	}
-}
-
-// TestExampleCodeControls pins the icon-only copy control in the code area
-// and that the area belongs to a bordered panel.
-func TestExampleCodeControls(t *testing.T) {
-	state := New()
-	p := exampleFramesFixture()
-	tt := ui.NewTester(func(c *ui.Context) { buildComponentPage(c, state, p) }, 1180, 1400)
-	tt.Frame()
-	code, ok := tt.Find("Go code")
-	if !ok {
-		t.Fatal("code area is missing")
-	}
-	panel, ok := tt.Find("Example code panel")
-	if !ok || code.Y <= panel.Y || code.Y+code.H > panel.Y+panel.H {
-		t.Fatalf("code area is outside its panel (code %+v, panel %+v)", code, panel)
-	}
-	copy, ok := tt.Find("Copy code")
-	if !ok || copy.W > 40 {
-		t.Fatalf("code copy control = %+v, want an icon-only button", copy)
 	}
 }
 

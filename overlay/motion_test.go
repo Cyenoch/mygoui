@@ -100,143 +100,90 @@ func motionAssertSurface(t *testing.T, tt *ui.Tester, area image.Rectangle, dura
 	}
 }
 
-func TestModalMotionPaintsArrivalAndDeparture(t *testing.T) {
-	var open bool
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		ui.Button(c, "Open").OnClick(func() { open = true })
-		Modal(c, &open, ModalOptions{
-			Title: "Settings",
-			Body:  func() { ui.Button(c, "Confirm") },
-		})
-	}, 640, 480)
-
-	if err := tt.Click("Open"); err != nil {
-		t.Fatal(err)
-	}
-	if !tt.HasText("Settings") {
-		t.Fatal("the modal did not open")
-	}
-	area := motionLabel(t, tt, "Settings")
-	motionAssertSurface(t, tt, area, dialogMotionDuration, func() {
-		tt.Key(0, ui.KeyEscape)
-		if open || tt.HasText("Settings") {
-			t.Fatal("Escape did not close the modal")
+// TestSurfacesPaintArrivalAndDeparture drives every fading surface through
+// the same paint contract: the arrival asks for frames and paints its way in,
+// it reaches its resting paint, the departure starts from the pose last shown,
+// paints its way out and leaves nothing behind. Every drawer edge and an edge
+// dialog share the native absolute backdrop. The bottom sheet slides instead
+// of fading and keeps its own slide test.
+func TestSurfacesPaintArrivalAndDeparture(t *testing.T) {
+	clickOpener := func(label string) func(*testing.T, *ui.Tester) {
+		return func(t *testing.T, tt *ui.Tester) {
+			if err := tt.Click(label); err != nil {
+				t.Fatal(err)
+			}
 		}
-	})
-	if !tt.Focused("Open") {
-		t.Fatal("the modal did not give the focus back")
 	}
-}
-
-// TestEdgeSurfacesPaintArrivalAndDeparture covers every edge a drawer comes
-// from and an edge dialog: the native backdrop is absolute in the window,
-// and its motion must survive that layout. The bottom sheet slides instead,
-// so it has its own arrival and departure test.
-func TestEdgeSurfacesPaintArrivalAndDeparture(t *testing.T) {
+	drawer := func(side DrawerSide) func(c *ui.Context, open *bool) {
+		return func(c *ui.Context, open *bool) {
+			ui.Button(c, "Open").OnClick(func() { *open = true })
+			Drawer(c, open, DrawerOptions{Side: side, Title: "Panel"})
+		}
+	}
 	for _, tc := range []struct {
 		name     string
 		duration time.Duration
+		label    string
 		build    func(c *ui.Context, open *bool)
+		open     func(t *testing.T, tt *ui.Tester)
+		focus    string
 	}{
-		{"drawer left", drawerMotionDuration, func(c *ui.Context, open *bool) {
-			Drawer(c, open, DrawerOptions{Side: DrawerLeft, Title: "Panel"})
-		}},
-		{"drawer right", drawerMotionDuration, func(c *ui.Context, open *bool) {
-			Drawer(c, open, DrawerOptions{Side: DrawerRight, Title: "Panel"})
-		}},
-		{"drawer top", drawerMotionDuration, func(c *ui.Context, open *bool) {
-			Drawer(c, open, DrawerOptions{Side: DrawerTop, Title: "Panel"})
-		}},
-		{"drawer bottom", drawerMotionDuration, func(c *ui.Context, open *bool) {
-			Drawer(c, open, DrawerOptions{Side: DrawerBottom, Title: "Panel"})
-		}},
-		{"edge dialog", dialogMotionDuration, func(c *ui.Context, open *bool) {
+		{"modal", dialogMotionDuration, "Settings", func(c *ui.Context, open *bool) {
+			ui.Button(c, "Open").OnClick(func() { *open = true })
+			Modal(c, open, ModalOptions{
+				Title: "Settings",
+				Body:  func() { ui.Button(c, "Confirm") },
+			})
+		}, clickOpener("Open"), "Open"},
+		{"drawer left", drawerMotionDuration, "Panel", drawer(DrawerLeft), clickOpener("Open"), "Open"},
+		{"drawer right", drawerMotionDuration, "Panel", drawer(DrawerRight), clickOpener("Open"), "Open"},
+		{"drawer top", drawerMotionDuration, "Panel", drawer(DrawerTop), clickOpener("Open"), "Open"},
+		{"drawer bottom", drawerMotionDuration, "Panel", drawer(DrawerBottom), clickOpener("Open"), "Open"},
+		{"edge dialog", dialogMotionDuration, "Panel", func(c *ui.Context, open *bool) {
+			ui.Button(c, "Open").OnClick(func() { *open = true })
 			Dialog(c, open, DialogOptions{
 				Placement: mygoui.Placement{Side: mygoui.SideRight},
 				Title:     "Panel",
 			})
-		}},
+		}, clickOpener("Open"), "Open"},
+		{"popover", popupMotionDuration, "Actions", func(c *ui.Context, open *bool) {
+			ui.Column(c).Padding(16).Children(func() {
+				anchor := ui.Button(c, "Options").OnClick(func() { *open = !*open })
+				Popover(c, anchor, open, PopoverOptions{
+					Title: "Actions",
+					Body:  func() { ui.Button(c, "Rename") },
+				})
+			})
+		}, clickOpener("Options"), "Options"},
+		{"tooltip", popupMotionDuration, "Help", func(c *ui.Context, open *bool) {
+			anchor := ui.Button(c, "Hover me")
+			Tooltip(c, anchor, TooltipOptions{Text: "Help"})
+		}, func(t *testing.T, tt *ui.Tester) {
+			tt.Key(0, ui.KeyTab)
+			tt.Frame()
+		}, "Hover me"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var open bool
 			tt := ui.NewTester(func(c *ui.Context) {
 				theme.Apply(c)
-				ui.Button(c, "Open").OnClick(func() { open = true })
 				tc.build(c, &open)
 			}, 640, 480)
-			if err := tt.Click("Open"); err != nil {
-				t.Fatal(err)
+			tc.open(t, tt)
+			if !tt.HasText(tc.label) {
+				t.Fatalf("the surface did not open; labels=%q", tt.Texts())
 			}
-			if !tt.HasText("Panel") {
-				t.Fatal("the surface did not open")
-			}
-			area := motionLabel(t, tt, "Panel")
+			area := motionLabel(t, tt, tc.label)
 			motionAssertSurface(t, tt, area, tc.duration, func() {
 				tt.Key(0, ui.KeyEscape)
-				if open || tt.HasText("Panel") {
+				if open || tt.HasText(tc.label) {
 					t.Fatal("Escape did not close the surface")
 				}
 			})
-			if !tt.Focused("Open") {
+			if !tt.Focused(tc.focus) {
 				t.Fatal("the surface did not give the focus back")
 			}
 		})
-	}
-}
-
-func TestPopoverMotionPaintsArrivalAndDeparture(t *testing.T) {
-	var open bool
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		ui.Column(c).Padding(16).Children(func() {
-			anchor := ui.Button(c, "Options").OnClick(func() { open = !open })
-			Popover(c, anchor, &open, PopoverOptions{
-				Title: "Actions",
-				Body:  func() { ui.Button(c, "Rename") },
-			})
-		})
-	}, 640, 480)
-
-	if err := tt.Click("Options"); err != nil {
-		t.Fatal(err)
-	}
-	if !tt.HasText("Actions") {
-		t.Fatal("the popover did not open")
-	}
-	area := motionLabel(t, tt, "Actions")
-	motionAssertSurface(t, tt, area, popupMotionDuration, func() {
-		tt.Key(0, ui.KeyEscape)
-		if open || tt.HasText("Actions") {
-			t.Fatal("Escape did not close the popover")
-		}
-	})
-	if !tt.Focused("Options") {
-		t.Fatal("the popover did not give the focus back")
-	}
-}
-
-func TestTooltipMotionPaintsArrivalAndDeparture(t *testing.T) {
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		anchor := ui.Button(c, "Hover me")
-		Tooltip(c, anchor, TooltipOptions{Text: "Help"})
-	}, 640, 480)
-
-	tt.Key(0, ui.KeyTab)
-	tt.Frame()
-	if !tt.HasText("Help") || !tt.Focused("Hover me") {
-		t.Fatalf("the keyboard focus did not show the tooltip; labels=%q", tt.Texts())
-	}
-	area := motionLabel(t, tt, "Help")
-	motionAssertSurface(t, tt, area, popupMotionDuration, func() {
-		tt.Key(0, ui.KeyEscape)
-		if tt.HasText("Help") {
-			t.Fatal("Escape did not dismiss the tooltip")
-		}
-	})
-	if !tt.Focused("Hover me") {
-		t.Fatal("dismissing the tooltip lost the keyboard focus")
 	}
 }
 
@@ -284,105 +231,82 @@ func TestModalReopenDuringExitSettlesOnce(t *testing.T) {
 	}
 }
 
-func TestAlertDialogDepartureKeepsChoiceAndFocus(t *testing.T) {
-	var open bool
-	cancelled, accepted := 0, 0
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		ui.Button(c, "Delete file").OnClick(func() { open = true })
-		AlertDialog(c, &open, AlertDialogOptions{
-			Title:       "Delete report?",
-			Description: "This cannot be undone.",
-			CancelLabel: "Cancel",
-			ActionLabel: "Delete",
-			Destructive: true,
-			OnCancel:    func() { cancelled++ },
-			OnAction:    func() { accepted++ },
+// TestReducedMotionSurfacesArriveAtRest checks that the desktop's reduce-motion
+// preference puts a surface straight at its resting paint: no frames are
+// requested, nothing moves afterwards, and the close releases it at once
+// instead of animating it away.
+func TestReducedMotionSurfacesArriveAtRest(t *testing.T) {
+	clickOpener := func(label string) func(*testing.T, *ui.Tester) {
+		return func(t *testing.T, tt *ui.Tester) {
+			if err := tt.Click(label); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	for _, tc := range []struct {
+		name     string
+		duration time.Duration
+		label    string
+		build    func(c *ui.Context, open *bool)
+		open     func(t *testing.T, tt *ui.Tester)
+	}{
+		{"modal", dialogMotionDuration, "Settings", func(c *ui.Context, open *bool) {
+			ui.Button(c, "Open").OnClick(func() { *open = true })
+			Modal(c, open, ModalOptions{
+				Title: "Settings",
+				Body:  func() { ui.Button(c, "Confirm") },
+			})
+		}, clickOpener("Open")},
+		{"bottom sheet", drawerMotionDuration, "Actions", func(c *ui.Context, open *bool) {
+			ui.Button(c, "Open").OnClick(func() { *open = true })
+			BottomSheet(c, open, BottomSheetOptions{Title: "Actions"})
+		}, clickOpener("Open")},
+		{"tooltip", popupMotionDuration, "Help", func(c *ui.Context, open *bool) {
+			anchor := ui.Button(c, "Hover me")
+			Tooltip(c, anchor, TooltipOptions{Text: "Help"})
+		}, func(t *testing.T, tt *ui.Tester) {
+			tt.Key(0, ui.KeyTab)
+			tt.Frame()
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var open bool
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.Apply(c)
+				tc.build(c, &open)
+			}, 640, 480)
+			tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
+
+			tc.open(t, tt)
+			if !tt.HasText(tc.label) {
+				t.Fatalf("the surface did not open; labels=%q", tt.Texts())
+			}
+			rest := motionLabel(t, tt, tc.label)
+			area := rest
+			arrived := motionShot(tt)
+			if tt.FramePending() {
+				t.Error("reduced motion asks for frames as the surface opens")
+			}
+			motionSettle(tt, tc.duration)
+			if settled := motionShot(tt); motionDiff(arrived, settled, area) != 0 {
+				t.Error("reduced motion animated the surface in")
+			}
+			if later := motionLabel(t, tt, tc.label); later != rest {
+				t.Errorf("reduced motion moved the surface: arrived=%v settled=%v", rest, later)
+			}
+
+			tt.Key(0, ui.KeyEscape)
+			closed := motionShot(tt)
+			if tt.HasText(tc.label) {
+				t.Fatal("Escape did not close the surface")
+			}
+			if tt.FramePending() {
+				t.Error("reduced motion asks for frames as the surface closes")
+			}
+			motionSettle(tt, tc.duration)
+			if later := motionShot(tt); motionDiff(closed, later, area) != 0 {
+				t.Error("reduced motion kept painting after the surface closed")
+			}
 		})
-	}, 640, 480)
-
-	if err := tt.Click("Delete file"); err != nil {
-		t.Fatal(err)
-	}
-	if !tt.Focused("Cancel") {
-		t.Fatal("Cancel did not take the initial focus")
-	}
-	motionSettle(tt, dialogMotionDuration)
-	title := motionLabel(t, tt, "Delete report?")
-	settled := motionShot(tt)
-	cancel, ok := tt.Find("Cancel")
-	if !ok {
-		t.Fatal("the alert has no cancel action")
-	}
-
-	// An ignored dismissal neither closes the alert nor starts its departure.
-	tt.Key(0, ui.KeyEscape)
-	tt.ClickAt(4, 4)
-	tt.Frame()
-	if !open || cancelled != 0 || accepted != 0 {
-		t.Fatalf("an ignored dismissal changed the alert: open=%v cancelled=%d accepted=%d", open, cancelled, accepted)
-	}
-	tt.Advance(dialogMotionDuration / 2)
-	if motionDiff(settled, motionShot(tt), title) != 0 {
-		t.Error("an ignored dismissal animated the alert away")
-	}
-
-	if err := tt.Click("Cancel"); err != nil {
-		t.Fatal(err)
-	}
-	if open || cancelled != 1 || accepted != 0 {
-		t.Fatalf("Cancel: open=%v cancelled=%d accepted=%d", open, cancelled, accepted)
-	}
-	if !tt.Focused("Delete file") {
-		t.Fatal("the alert did not give the focus back")
-	}
-	// The copy still painting the alert is inert: a press on it repeats no
-	// choice.
-	tt.ClickAt(cancel.X+cancel.W/2, cancel.Y+cancel.H/2)
-	tt.Advance(dialogMotionDuration)
-	if cancelled != 1 || accepted != 0 {
-		t.Fatalf("a press on the departing alert repeated the choice: cancelled=%d accepted=%d", cancelled, accepted)
-	}
-}
-
-func TestReducedMotionSurfacesSettleAtOnce(t *testing.T) {
-	var open bool
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		ui.Button(c, "Open").OnClick(func() { open = true })
-		Modal(c, &open, ModalOptions{
-			Title: "Settings",
-			Body:  func() { ui.Button(c, "Confirm") },
-		})
-	}, 640, 480)
-	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
-
-	if err := tt.Click("Open"); err != nil {
-		t.Fatal(err)
-	}
-	if !tt.HasText("Settings") {
-		t.Fatal("the modal did not open")
-	}
-	area := motionLabel(t, tt, "Settings")
-	opened := motionShot(tt)
-	if tt.FramePending() {
-		t.Error("reduced motion asked for frames as the modal opened")
-	}
-	motionSettle(tt, dialogMotionDuration)
-	if settled := motionShot(tt); motionDiff(opened, settled, area) != 0 {
-		t.Error("reduced motion animated the modal in")
-	}
-
-	tt.Key(0, ui.KeyEscape)
-	closed := motionShot(tt)
-	if tt.FramePending() {
-		t.Error("reduced motion asked for frames as the modal closed")
-	}
-	tt.Advance(dialogMotionDuration)
-	if later := motionShot(tt); motionDiff(closed, later, area) != 0 {
-		t.Error("reduced motion kept painting after the modal closed")
-	}
-	if tt.HasText("Settings") {
-		t.Fatal("the modal stayed open")
 	}
 }

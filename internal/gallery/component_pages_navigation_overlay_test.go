@@ -10,126 +10,31 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// renderComponentPage opens id in a fresh desktop-sized workbench.
-func renderComponentPage(t *testing.T, id string) *ui.Tester {
-	t.Helper()
-	state := New()
-	state.Selected = id
-	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)
-	tt.Frame()
-	return tt
-}
-
-func pageByID(id string) (Page, bool) {
-	for _, page := range Pages() {
-		if page.ID == id {
-			return page, true
-		}
-	}
-	return Page{}, false
-}
-
-func TestNavigationComponentPagesExistAndRender(t *testing.T) {
-	for _, want := range []struct {
-		id, group, text string
-	}{
-		{"accordion", "Navigation", "Members"},
-		{"disclosure", "Navigation", "One caller-owned panel plus a disabled trigger."},
-		{"disclosuregroup", "Navigation", "Single-open and multi-open coordination from caller-owned flags."},
-		{"tabs", "Navigation", "Account overview and recent activity."},
-		{"breadcrumbs", "Navigation", "click a link to report its index"},
-		{"pagination", "Navigation", "page 4 of 12"},
-		{"toolbar", "Navigation", "Text formatting"},
-		{"menu", "Navigation", "Reports"},
-		{"dropdown", "Navigation", "Click the trigger, choose a row, or press Escape to close the panel."},
-		{"submenu", "Navigation", "Escape or Left closes the panel without choosing."},
+// TestComplexPageDemosRenderLiveControls keeps the complex families honest:
+// each page must render the real control its example drives, not an empty
+// frame. Titles, groups and order are catalog data covered by
+// TestCatalogIsUniqueAndComplete.
+func TestComplexPageDemosRenderLiveControls(t *testing.T) {
+	for _, tc := range []struct{ id, control string }{
+		{"form", "Submit form"},
+		{"input", "Username"},
+		{"checkbox", "Parent folder"},
+		{"select", "Current fruit:"},
+		{"listbox", "Fruit: banana"},
+		{"table", "Deployments"},
+		{"modal", "Open Medium modal"},
+		{"drawer", "Open Bottom drawer"},
+		{"dialog", "Open dialog"},
+		{"toast", "Default toast"},
 	} {
-		page, ok := pageByID(want.id)
-		if !ok {
-			t.Fatalf("missing page %q", want.id)
-		}
-		if page.Group != want.group {
-			t.Fatalf("%s group = %q, want %q", want.id, page.Group, want.group)
-		}
-		if page.Order < 10 {
-			t.Fatalf("%s order = %d, want 10 or later", want.id, page.Order)
-		}
-		tt := renderComponentPage(t, want.id)
-		if !tt.HasText(page.Title) {
-			t.Fatalf("%s: page title missing", want.id)
-		}
-		if !tt.HasText(want.text) {
-			t.Fatalf("%s: demo does not show %q", want.id, want.text)
-		}
-	}
-}
-
-func TestOverlayComponentPagesExistAndRender(t *testing.T) {
-	for _, want := range []struct {
-		id, group, text string
-	}{
-		{"modal", "Overlays", "Open Medium modal"},
-		{"alertdialog", "Overlays", "The cancel action receives focus first"},
-		{"drawer", "Overlays", "Open Bottom drawer"},
-		{"bottomsheet", "Overlays", "Open bottom sheet"},
-		{"dialog", "Overlays", "Open dialog"},
-		{"popover", "Overlays", "The panel is non-modal"},
-		{"tooltip", "Overlays", "Tab to the button to show the tip"},
-		{"toast", "Overlays", "Default toast"},
-	} {
-		page, ok := pageByID(want.id)
-		if !ok {
-			t.Fatalf("missing page %q", want.id)
-		}
-		if page.Group != want.group {
-			t.Fatalf("%s group = %q, want %q", want.id, page.Group, want.group)
-		}
-		if page.Order < 10 {
-			t.Fatalf("%s order = %d, want 10 or later", want.id, page.Order)
-		}
-		tt := renderComponentPage(t, want.id)
-		if !tt.HasText(page.Title) {
-			t.Fatalf("%s: page title missing", want.id)
-		}
-		if !tt.HasText(want.text) {
-			t.Fatalf("%s: demo does not show %q", want.id, want.text)
-		}
-	}
-}
-
-func TestAccordionPageShowsUsageAPIAndTokens(t *testing.T) {
-	tt := renderComponentPage(t, "accordion")
-	for _, want := range []string{
-		"Example", "Usage", "API", "Theme tokens",
-		"AccordionOptions{", "HideSeparator", "SurfaceForeground",
-	} {
-		if !tt.HasText(want) {
-			t.Fatalf("accordion page does not show %q", want)
-		}
-	}
-}
-
-// toastPageScrollClick scrolls the page column until label is inside the
-// window, then clicks it. The Toast page stacks its controls in three
-// Examples frames, so they sit below the fold at the default offset.
-func toastPageScrollClick(t *testing.T, tt *ui.Tester, state *State, label string) {
-	t.Helper()
-	for _, off := range []float32{0, 300, 600, 900, 1200, 1500, 1800, 2100, 2400, 2700} {
-		state.Content.Y = off
+		state := New()
+		state.Selected = tc.id
+		tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)
 		tt.Frame()
-		r, ok := tt.Find(label)
-		if !ok {
-			continue
+		if !tt.HasText(tc.control) {
+			t.Fatalf("%s page does not render its %q control", tc.id, tc.control)
 		}
-		x, y := r.X+r.W/2, r.Y+r.H/2
-		if x < 0 || y < 0 || x >= 1180 || y >= 900 {
-			continue
-		}
-		tt.ClickAt(x, y)
-		tt.Frame()
-		return
 	}
-	t.Fatalf("%s: no clickable element", label)
 }
 
 // TestToastPageDismissesWithoutExpiredPaint fires the page's toasts and
@@ -144,11 +49,11 @@ func TestToastPageDismissesWithoutExpiredPaint(t *testing.T) {
 	tt.Frame()
 	// Anchor the region at the top: the toast stack then stays clear of the
 	// page controls, which sit below the fold in the Examples frames.
-	toastPageScrollClick(t, tt, state, "Anchor toasts at top")
+	toastPageClick(t, tt, state, "Anchor toasts at top")
 	if !overlaysStateOf(state).toastTop {
 		t.Fatal("toast region did not anchor at the top")
 	}
-	toastPageScrollClick(t, tt, state, "Action toast")
+	toastPageClick(t, tt, state, "Action toast")
 	// Settle the entry transitions so the leaving copies exist.
 	tt.Advance(300 * time.Millisecond)
 	tt.Frame()
@@ -160,7 +65,7 @@ func TestToastPageDismissesWithoutExpiredPaint(t *testing.T) {
 		closeRect.X+closeRect.W > 1180 || closeRect.Y+closeRect.H > 900 {
 		t.Fatalf("close button %+v is outside the page", closeRect)
 	}
-	toastPageScrollClick(t, tt, state, "Dismiss all toasts")
+	toastPageClick(t, tt, state, "Dismiss all toasts")
 	tt.Advance(60 * time.Millisecond)
 	tt.Frame()
 	if got := len(overlaysStateOf(state).toasts.Items()); got != 0 {

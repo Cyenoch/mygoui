@@ -136,7 +136,7 @@ v0.2.1. Module metadata targets Go 1.27.1. The public repository is
   days and DateField (`TestButtonHoverAndPressedPaint`,
   `TestToggleButtonHoverAndPressedPaint`, `TestButtonGroupGhostHoverPaint`,
   `TestCheckboxHoverAndPressedPaint`, `TestRadioHoverAndPressedPaint`,
-  `TestSwitchHoverPaint`, `TestInputGroupHoverPaint`, `TestTabsHoverPaint`,
+  `TestSwitchHoverPaint`, `TestInputGroupHoverPaint`, `TestTabsHoverDimsLabel`,
   `TestAccordionHeaderHoverPaint`, `TestListBoxRowHoverPaint`,
   `TestCalendarDayHoverPaint`, `TestDateFieldHoverPaint`). Surfaces with no
   upstream hover rule stay inert or pressed-only (`TestDisclosureHoverIsInert`,

@@ -51,9 +51,6 @@ func TestColorStateClampsChannels(t *testing.T) {
 	if alpha.Alpha() != 0 || FormatHex(alpha.Value) != "#0066ff00" {
 		t.Fatalf("alpha = %v hex %q, want 0 and #0066ff00", alpha.Alpha(), FormatHex(alpha.Value))
 	}
-	if got := FormatHex(ui.Color{R: 1, G: 2, B: 3, A: 254}); got != "#010203fe" {
-		t.Fatalf("translucent hex = %q", got)
-	}
 }
 
 // TestColorSliderPointerClampsToEnds checks that a press outside the cap

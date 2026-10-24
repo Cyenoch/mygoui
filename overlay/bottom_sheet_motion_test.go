@@ -23,7 +23,6 @@ type sheetTest struct {
 	shown     bool
 	closed    bool
 	panel     ui.Rect
-	boxes     []ui.Rect
 	closedY   float32
 }
 
@@ -40,7 +39,6 @@ func newSheetTest(t *testing.T, build func(c *ui.Context) BottomSheetOptions) (*
 		if p := BottomSheet(c, &f.open, o); p.Valid() {
 			f.shown = true
 			f.panel = p.Bounds()
-			f.boxes = append(f.boxes, f.panel)
 			return
 		}
 		if f.shown && !f.closed {
@@ -133,9 +131,10 @@ func TestBottomSheetFloatsInsideTheWindowGutters(t *testing.T) {
 	}
 }
 
-// TestBottomSheetSlidesUpFromBelowTheWindow checks the arrival: the first
-// frame is below the window, the frames after it move, and the last one
-// rests without asking for more.
+// TestBottomSheetSlidesUpFromBelowTheWindow checks the starting pose of the
+// slide: the first frame is wholly below the window and the panel keeps its
+// height as it climbs. The painted frames are covered by the sheet's own
+// slide paint test.
 func TestBottomSheetSlidesUpFromBelowTheWindow(t *testing.T) {
 	tt, f := newSheetTest(t, func(c *ui.Context) BottomSheetOptions {
 		return BottomSheetOptions{
@@ -157,46 +156,9 @@ func TestBottomSheetSlidesUpFromBelowTheWindow(t *testing.T) {
 	if first.H == 0 || first.Y < sheetWinH {
 		t.Fatalf("the first frame shows the sheet at %+v, want it below the window", first)
 	}
-
-	tt.Advance(drawerMotionDuration / 2)
-	tt.Frame()
-	mid := f.panel
-	if mid.Y >= first.Y {
-		t.Fatalf("the sheet is at %v halfway through, no higher than its first frame %v", mid, first)
-	}
-
 	rest := f.settleEntrance(t, tt)
-	if rest.Y >= mid.Y {
-		t.Fatalf("the sheet rests at %v, no higher than its halfway frame %v", rest, mid)
-	}
 	if rest.H != first.H {
 		t.Fatalf("the sheet's height changed from %v to %v while it slid in", first.H, rest.H)
-	}
-	if rest.Y+rest.H != sheetWinH-16 {
-		t.Fatalf("the sheet came to rest at %+v, want it above the bottom gutter", rest)
-	}
-}
-
-// TestBottomSheetReducedMotionStartsAtRest checks that the sheet is in its
-// place in its first frame when the desktop asks for less motion.
-func TestBottomSheetReducedMotionStartsAtRest(t *testing.T) {
-	tt, f := newSheetTest(t, func(*ui.Context) BottomSheetOptions {
-		return BottomSheetOptions{Title: "Actions"}
-	})
-	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
-	openSheet(t, tt)
-	tt.Frame()
-	if tt.FramePending() {
-		t.Fatal("reduced motion asks for frames as the sheet opens")
-	}
-	rest := f.panel
-	if rest.Y+rest.H != sheetWinH-16 {
-		t.Fatalf("reduced motion rests at %+v, want the sheet in its place at once", rest)
-	}
-	for _, b := range f.boxes {
-		if b.Y >= sheetWinH {
-			t.Fatalf("reduced motion showed the sheet below the window at %+v", b)
-		}
 	}
 }
 
@@ -458,10 +420,11 @@ func TestBottomSheetLongDragHonoursPreventDismiss(t *testing.T) {
 	}
 }
 
-// TestBottomSheetBodyDragDoesNotMoveTheSheet checks that only the grab
-// strip owns the swipe: a drag over the body leaves the panel alone.
-func TestBottomSheetBodyDragDoesNotMoveTheSheet(t *testing.T) {
-	tt, f := newSheetTest(t, func(c *ui.Context) BottomSheetOptions {
+// TestBottomSheetDragOutsideTheGrabStripDoesNotDismiss checks that only the
+// grab strip owns the swipe: a drag over the body, or over the top of a sheet
+// whose handle is hidden, leaves the panel where it is and open.
+func TestBottomSheetDragOutsideTheGrabStripDoesNotDismiss(t *testing.T) {
+	body := func(c *ui.Context) BottomSheetOptions {
 		return BottomSheetOptions{
 			Title:  "Actions",
 			Height: 300,
@@ -473,50 +436,41 @@ func TestBottomSheetBodyDragDoesNotMoveTheSheet(t *testing.T) {
 				})
 			},
 		}
-	})
-	openSheet(t, tt)
-	rest := f.settleEntrance(t, tt)
+	}
+	for _, tc := range []struct {
+		name string
+		// dragFrom is the offset below the panel's top edge where the drag
+		// starts: the body away from the grab strip, or the strip's place on
+		// a sheet that has none.
+		dragFrom float32
+		build    func(c *ui.Context) BottomSheetOptions
+	}{
+		{"body", 140, body},
+		{"hidden handle", 12, func(*ui.Context) BottomSheetOptions {
+			return BottomSheetOptions{Title: "Actions", Height: 300, HideHandle: true}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tt, f := newSheetTest(t, tc.build)
+			openSheet(t, tt)
+			rest := f.settleEntrance(t, tt)
 
-	x, y := rest.X+rest.W/2, rest.Y+140
-	tt.Move(x, y)
-	tt.Press(x, y)
-	tt.Advance(16 * time.Millisecond)
-	tt.Move(x, y+150)
-	tt.Frame()
-	tt.Advance(60 * time.Millisecond)
-	tt.Release(x, y+150)
-	tt.Advance(2 * time.Second)
-	tt.Frame()
-	if !f.open || f.dismissed != 0 {
-		t.Fatalf("a body drag dismissed the sheet: open=%v dismissed=%d", f.open, f.dismissed)
-	}
-	if f.panel.Y != rest.Y {
-		t.Fatalf("a body drag moved the sheet to %v, want %v", f.panel.Y, rest.Y)
-	}
-}
-
-// TestBottomSheetHideHandleRemovesTheSwipe checks that a sheet without its
-// handle has neither the bar nor the gesture: the same swipe over its top
-// leaves it open.
-func TestBottomSheetHideHandleRemovesTheSwipe(t *testing.T) {
-	tt, f := newSheetTest(t, func(c *ui.Context) BottomSheetOptions {
-		return BottomSheetOptions{
-			Title:      "Actions",
-			Height:     300,
-			HideHandle: true,
-		}
-	})
-	openSheet(t, tt)
-	rest := f.settleEntrance(t, tt)
-	x, y := dragGrab(tt, rest, 150)
-	tt.Advance(60 * time.Millisecond)
-	tt.Release(x, y)
-	tt.Advance(2 * time.Second)
-	tt.Frame()
-	if !f.open || f.dismissed != 0 {
-		t.Fatalf("a sheet without a handle dismissed: open=%v dismissed=%d", f.open, f.dismissed)
-	}
-	if f.panel.Y != rest.Y {
-		t.Fatalf("a sheet without a handle moved to %v, want %v", f.panel.Y, rest.Y)
+			x, y := rest.X+rest.W/2, rest.Y+tc.dragFrom
+			tt.Move(x, y)
+			tt.Press(x, y)
+			tt.Advance(16 * time.Millisecond)
+			tt.Move(x, y+150)
+			tt.Frame()
+			tt.Advance(60 * time.Millisecond)
+			tt.Release(x, y+150)
+			tt.Advance(2 * time.Second)
+			tt.Frame()
+			if !f.open || f.dismissed != 0 {
+				t.Fatalf("a drag outside the grab strip dismissed the sheet: open=%v dismissed=%d", f.open, f.dismissed)
+			}
+			if f.panel.Y != rest.Y {
+				t.Fatalf("a drag outside the grab strip moved the sheet to %v, want %v", f.panel.Y, rest.Y)
+			}
+		})
 	}
 }

@@ -41,17 +41,3 @@ func TestSearchFieldClearsWithButtonAndEscape(t *testing.T) {
 		t.Fatalf("submitted %d times", submitted)
 	}
 }
-
-func TestSearchFieldDisabledTakesNoInput(t *testing.T) {
-	var value string
-	tester := formTextTester(t, func(c *ui.Context) {
-		SearchField(c, &value, SearchFieldOptions{Label: "Find", Disabled: true})
-	})
-	if err := tester.Click("Find"); err != nil {
-		t.Fatalf("click disabled label: %v", err)
-	}
-	tester.Type("ignored")
-	if value != "" {
-		t.Fatalf("disabled search committed %q", value)
-	}
-}

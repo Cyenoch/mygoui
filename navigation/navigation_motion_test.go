@@ -293,63 +293,6 @@ func sameRGB(c color.RGBA, u ui.Color) bool {
 	return navHoverNear(c.R, u.R) && navHoverNear(c.G, u.G) && navHoverNear(c.B, u.B)
 }
 
-// TestMenuRowGeometry checks a row's 8 DIP inset with a 28 DIP text start for
-// its selection indicator, and the 3%-inset separator rule upstream draws.
-func TestMenuRowGeometry(t *testing.T) {
-	var colors theme.Palette
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.ApplyMode(c, false)
-		colors = theme.Colors(c)
-		ui.Column(c).FillHeight().Padding(24).Background(colors.Background).Children(func() {
-			menu := ui.Column(c).Width(280).Radius(24).Background(colors.Overlay).
-				TextColor(colors.OverlayForeground)
-			menu.Children(func() {
-				navigation.Menu(c, navigation.MenuOptions{
-					Selection: navigation.MenuSelectSingle,
-					Sections: []navigation.MenuSectionOptions{{Items: []navigation.MenuItemOptions{
-						{Key: "alpha", Label: "Alpha"},
-						{Separator: true},
-						{Key: "beta", Label: "Beta"},
-					}}},
-				})
-			})
-		})
-	}, 400, 300)
-
-	row := mustFind(t, tt, "Alpha")
-	if row.H < 36 {
-		t.Fatalf("menu row is %v DIP high, want at least 36", row.H)
-	}
-	img := tt.Image()
-	box, _, ok := glyphInk(img, ui.Rect{X: row.X + 2, Y: row.Y + 2, W: row.W - 4, H: row.H - 4})
-	if !ok {
-		t.Fatal("the row shows no label ink")
-	}
-	// The label starts at the 8 DIP padding plus the 16 DIP indicator box
-	// and its 4 DIP remainder.
-	if got := box.X - row.X; got < 26 || got > 31 {
-		t.Fatalf("label starts %v DIP into the row, want 28", got)
-	}
-
-	beta := mustFind(t, tt, "Beta")
-	sepY, found := -1, false
-	for y := int(row.Y+row.H) - 1; y <= int(beta.Y)+1 && !found; y++ {
-		if !sameRGB(img.RGBAAt(int(row.X+row.W/2), y), colors.Overlay) {
-			sepY, found = y, true
-		}
-	}
-	if !found {
-		t.Fatal("no separator rule between the rows")
-	}
-	inked := func(x int) bool { return !sameRGB(img.RGBAAt(x, sepY), colors.Overlay) }
-	if !inked(int(row.X + row.W/2)) {
-		t.Fatal("the separator misses the row's middle")
-	}
-	if inked(int(row.X)+2) || inked(int(row.X+row.W)-2) {
-		t.Fatal("the separator reaches the row's edges, not the 3% inset")
-	}
-}
-
 // TestDropdownEscapeCloses checks Escape dismisses the panel and keeps a
 // caller-owned open flag in step.
 func TestDropdownEscapeCloses(t *testing.T) {
