@@ -7,6 +7,11 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
+// defaultOffset is HeroUI's default distance from the trigger, which React
+// Aria's popover and its documented Popover and Select defaults publish as 8
+// DIPs. Tooltips override it with their own 3/7 DIP scale.
+const defaultOffset = 8
+
 // Apply attaches panel to anchor for a HeroUI placement, falling back to the
 // component-appropriate side when the caller leaves it unset.
 func Apply(panel, anchor ui.Element, p mygoui.Placement, fallback mygoui.Side) ui.Element {
@@ -16,7 +21,7 @@ func Apply(panel, anchor ui.Element, p mygoui.Placement, fallback mygoui.Side) u
 	}
 	offset := p.Offset
 	if offset == 0 {
-		offset = 4
+		offset = defaultOffset
 	}
 	at, self := ui.AnchorBottom, ui.AnchorTop
 	switch side {

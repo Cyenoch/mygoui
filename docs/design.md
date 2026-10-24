@@ -32,6 +32,9 @@ Modal identities are assigned before calling `DialogBase`, which reads input
 before its styling callback; animation styling never rekeys that backdrop.
 AlertDialog requests initial Cancel focus after `DialogBase` records its opener,
 so an explicit choice restores focus to the trigger rather than a closed button.
+BottomSheet translates its panel for the slide-in and handle swipe; its scrim
+fades with the panel so dismissals do not leave a mask behind. Popover and
+Tooltip zoom around the anchor-facing edge.
 
 The package layout follows component families:
 
@@ -69,11 +72,13 @@ window-local.
 Hosts inject their own semantic palette with `theme.Preferences.Palette`
 (`theme.PalettePatch` per appearance). A nil field keeps the HeroUI default and
 an injected token is used verbatim, so a transparent `Border` is valid; derived
-hover, soft and foreground levels rebuild from the injected base. `Configure`
-replaces the whole preference value, so a later typography change publishes the
-palette again or edits it in place with `theme.UpdatePreferences`. `Apply`
-composes the native theme from the resolved palette, so injected colors also
-reach native control faces and selections.
+hover, soft and foreground levels rebuild from the injected base. Fields default
+to HeroUI's transparent `FieldBorder`; a host opts into an outline with
+`PalettePatch.FieldBorder`. `Configure` replaces the whole preference value, so a
+later typography change publishes the palette again or edits it in place with
+`theme.UpdatePreferences`. `Apply` composes the native theme from the resolved
+palette, so injected colors also reach native control faces and selections.
+Heading roles carry HeroUI's tight tracking through `TextStyle.Tracking`.
 
 ## API rules
 

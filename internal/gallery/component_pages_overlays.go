@@ -38,7 +38,7 @@ overlay.Modal(c, &open, overlay.ModalOptions{
     },
 })`,
 		Params: []ComponentParam{
-			{"Size", "overlay.ModalSize", "ModalMedium", "Small through full screen; the body scrolls when short."},
+			{"Size", "overlay.ModalSize", "ModalMedium", "Extra small (320) through full screen and cover; the body scrolls when short."},
 			{"Backdrop", "overlay.ModalBackdrop", "ModalBackdropOpaque", "Opaque dim, blur or transparent backdrop."},
 			{"Title", "string", "required", "Heading and accessible name of the dialog."},
 			{"Body", "func()", "required", "Scrollable content of the panel."},
@@ -83,7 +83,7 @@ overlay.AlertDialog(c, &open, overlay.AlertDialogOptions{
 
 	RegisterComponent(ComponentPage{
 		ID: "drawer", Title: "Drawer", Group: "Overlays", Order: 30,
-		Description: "A floating modal edge panel with screen gutters and an optional visual drag handle.",
+		Description: "A floating modal edge panel with 16 DIP screen gutters, rounded corners and an optional visual handle.",
 		Examples: []ComponentExample{
 			{Title: "Edge placement", Description: "Open the panel from the left, right, top or bottom edge.",
 				Demo: func(c *ui.Context, s *State) { drawerEdgesExample(c, overlaysStateOf(s)) }},
@@ -98,13 +98,13 @@ overlay.Drawer(c, &open, overlay.DrawerOptions{
     Handle:   false,
     OnDismiss: func() { note = "drawer dismissed" },
     Body: func() {
-        mygoui.Paragraph(c, "The panel leaves a 16 DIP gutter around the window.", true)
+        mygoui.Paragraph(c, "The panel keeps 16 DIPs from every window edge.", true)
     },
 })`,
 		Params: []ComponentParam{
 			{"Side", "overlay.DrawerSide", "DrawerBottom", "Bottom, left, right or top edge of the window."},
-			{"Width", "float32", "384", "Panel width for left and right drawers, capped at 85% of the window."},
-			{"Height", "float32", "content", "Panel extent for top and bottom drawers, capped at 85%."},
+			{"Width", "float32", "384", "Panel width for left and right drawers: 320 below the 640 DIP breakpoint, 384 above, within 85% of the window and its 16 DIP margin."},
+			{"Height", "float32", "content", "Panel extent for top and bottom drawers, within 85% of the window and its 16 DIP margin."},
 			{"Handle", "bool", "false", "Shows the visual drag handle on top and bottom drawers."},
 			{"PreventDismiss", "bool", "false", "Ignores backdrop presses and Escape while set."},
 			{"OnDismiss", "func()", "nil", "Runs after the drawer is dismissed."},
@@ -114,18 +114,18 @@ overlay.Drawer(c, &open, overlay.DrawerOptions{
 
 	RegisterComponent(ComponentPage{
 		ID: "bottomsheet", Title: "BottomSheet", Group: "Overlays", Order: 40,
-		Description: "HeroUI's bottom panel with a centered handle, overlay surface and footer.",
+		Description: "HeroUI's floating bottom panel, sliding up from below the window, with a handle that drags it away.",
 		Examples: []ComponentExample{
-			{Title: "With footer", Description: "The handle, overlay surface and a footer action.",
+			{Title: "With footer", Description: "The floating panel, its swipe handle and a footer action.",
 				Demo: func(c *ui.Context, s *State) { sheetFooterExample(c, overlaysStateOf(s)) }},
-			{Title: "Fixed height", Description: "A taller sheet with the visual handle removed.",
+			{Title: "Fixed height", Description: "A taller sheet with the handle and its swipe removed.",
 				Demo: func(c *ui.Context, s *State) { sheetTallExample(c, overlaysStateOf(s)) }},
 		},
 		Code: `open := false
 overlay.BottomSheet(c, &open, overlay.BottomSheetOptions{
     Title: "Quick actions",
     Body: func() {
-        mygoui.Paragraph(c, "The sheet caps at 85% of the window height.", true)
+        mygoui.Paragraph(c, "Drag the handle down, press the backdrop or press Escape.", true)
     },
     Footer: func() {
         mygoui.Button(c, mygoui.ButtonOptions{
@@ -136,9 +136,9 @@ overlay.BottomSheet(c, &open, overlay.BottomSheetOptions{
 })`,
 		Params: []ComponentParam{
 			{"Title", "string", "required", "Heading of the sheet."},
-			{"Height", "float32", "content", "Fixed panel height, capped at 85% of the window."},
-			{"HideHandle", "bool", "false", "Removes the visual drag handle."},
-			{"PreventDismiss", "bool", "false", "Ignores backdrop presses and Escape while set."},
+			{"Height", "float32", "content", "Fixed panel height, capped by 85% of the window or its 16 DIP gutters, whichever is tighter."},
+			{"HideHandle", "bool", "false", "Removes the drag handle and the downward swipe it owns."},
+			{"PreventDismiss", "bool", "false", "Ignores backdrop presses, Escape and the swipe while set."},
 			{"HideClose", "bool", "false", "Removes the top-right close button."},
 			{"OnDismiss", "func()", "nil", "Runs after the sheet is dismissed."},
 		},
@@ -205,7 +205,7 @@ overlay.Popover(c, anchor, &open, overlay.PopoverOptions{
 })`,
 		Params: []ComponentParam{
 			{"Placement", "mygoui.Placement", "SideBottom", "Preferred side and alignment; SideAuto falls back to below the anchor."},
-			{"Arrow", "bool", "false", "Draws the 12 DIP arrow at the anchor-facing edge."},
+			{"Arrow", "bool", "false", "Draws HeroUI's 12×6 DIP arrow on the anchor-facing edge, following the panel when it flips."},
 			{"Width", "float32", "content", "Fixed panel width; zero sizes it to its content."},
 			{"MinWidth", "float32", "180", "Keeps small popovers usable."},
 			{"Title", "string", "\"\"", "Heading and fallback accessible name of the popup."},

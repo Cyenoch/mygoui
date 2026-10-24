@@ -70,10 +70,10 @@ func TestChevronsAreTwoDiagonalStrokes(t *testing.T) {
 		tall  bool   // taller than wide, as a right or left chevron is
 		joint string // the side of the middle row the joint points to
 	}{
-		{"right", func(p *ui.Painter, r ui.Rect) { drawChevron(p, r, 0, 1.5, colorInk) }, true, "right"},
-		{"down", func(p *ui.Painter, r ui.Rect) { drawChevronDown(p, r, 0, 1.5, colorInk) }, false, "down"},
-		{"turned down", func(p *ui.Painter, r ui.Rect) { drawChevron(p, r, 90, 1.5, colorInk) }, false, "down"},
-		{"turned left", func(p *ui.Painter, r ui.Rect) { drawChevron(p, r, 180, 1.5, colorInk) }, true, "left"},
+		{"right", func(p *ui.Painter, r ui.Rect) { drawChevron(p, &ui.Path{}, r, 0, 1.5, colorInk) }, true, "right"},
+		{"down", func(p *ui.Painter, r ui.Rect) { drawChevronDown(p, &ui.Path{}, r, 0, 1.5, colorInk) }, false, "down"},
+		{"turned down", func(p *ui.Painter, r ui.Rect) { drawChevron(p, &ui.Path{}, r, 90, 1.5, colorInk) }, false, "down"},
+		{"turned left", func(p *ui.Painter, r ui.Rect) { drawChevron(p, &ui.Path{}, r, 180, 1.5, colorInk) }, true, "left"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tt, box := glyphFrame(t, tc.draw)
@@ -142,7 +142,7 @@ func TestChevronsAreTwoDiagonalStrokes(t *testing.T) {
 // TestCheckIsTwoDiagonalStrokes checks HeroUI's tick: a short arm down to a
 // valley left of center and a long arm up to the right, not a bar.
 func TestCheckIsTwoDiagonalStrokes(t *testing.T) {
-	tt, box := glyphFrame(t, func(p *ui.Painter, r ui.Rect) { drawCheck(p, r, colorInk) })
+	tt, box := glyphFrame(t, func(p *ui.Painter, r ui.Rect) { drawCheck(p, &ui.Path{}, r, 1, colorInk) })
 	img := tt.Image()
 	b, ok := inkBounds(img, box)
 	if !ok {

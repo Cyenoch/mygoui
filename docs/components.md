@@ -84,25 +84,25 @@ authoritative usage reference for prototypes and state wiring.
 
 | Component | Behavior |
 | --- | --- |
-| `Modal` | Focus-contained dialog in five sizes, opaque/blur/transparent backdrop, scrollable body, footer and close button. |
+| `Modal` | Focus-contained dialog in seven sizes, including cover and extra small; opaque/blur/transparent backdrop, scrollable body, footer and close button. |
 | `AlertDialog` | Explicit action/cancel dialog; backdrop and Escape do not accept. |
 | `Drawer` | Floating edge panel in four directions with 16 DIP screen gutters, rounded corners and the native dialog focus contract. |
-| `BottomSheet` | Bottom panel with handle, backdrop, Escape and close behavior. |
+| `BottomSheet` | Floating bottom panel with 16 DIP gutters, a 250 ms slide-in, handle swipe dismissal (short drags spring back, long drags slide out) and a scrim that clears with the sheet. Close, backdrop and Escape also slide out from the close button or fade from native dismissal. |
 | `Dialog` | Native center or edge modal with header/body/footer. |
-| `Popover` | Anchored rich panel with HeroUI placement, arrow and dismissal. |
-| `Tooltip` | Native hover/focus description with placement and Escape dismissal. |
-| `Toast` | Spring-animated deck with hover/focus expansion, swipe dismissal, variants, action, timeout and MyGo's three-visible cap. The close button floats across the top-right corner without reserving content width. `ToastState` holds caller-owned identities and installs the region with `View`; reusing an ID updates in place without replaying entry. |
+| `Popover` | Anchored rich panel with HeroUI placement, arrow, zoom entry and dismissal. |
+| `Tooltip` | Native hover/focus description with placement, zoom entry and Escape dismissal. |
+| `Toast` | Spring-animated deck with hover/focus expansion, swipe dismissal, variants, action, timeout and MyGo's three-visible cap. Covered cards hide their content. The close button floats across the top-right corner without reserving content width. `ToastState` holds caller-owned identities and installs the region with `View`; reusing an ID updates in place without replaying entry. |
 
 Toast status controls use the notification title as their accessible name,
 falling back to the description for a title-less notification. IDs remain
 update/dismiss identities, not user-facing labels.
 
-Modal, AlertDialog, Dialog, Drawer, BottomSheet, Popover and Tooltip fade in/out
-without shifting their layout, anchor or backdrop hit area. Every installed
-constructor keeps the overlay layer alive while
-closed, so the first arrival and final exit animate even without a Toast region.
-Closed content is an inert native snapshot, not a second live build. Reduced
-motion settles all surfaces immediately.
+Modal, AlertDialog and Dialog fade in/out. Drawer fades; BottomSheet slides up
+and down. Popover and Tooltip fade and zoom from the anchor-facing edge. Every
+installed constructor keeps the overlay layer alive while closed, so the first
+arrival and final exit animate even without a Toast region. Closed content is an
+inert native snapshot, not a second live build. Reduced motion settles all
+surfaces immediately.
 
 ## `date`
 
@@ -130,16 +130,17 @@ motion settles all surfaces immediately.
 
 | Component | Behavior |
 | --- | --- |
-| `Table` | Virtualized native table with sticky header, sortable columns, single/multiple selection, disabled rows, row actions, column resizing/hiding and an empty slot. |
+| `Table` | Virtualized native table with HeroUI's primary/secondary chrome, 44 DIP rows, header band, column separators, sortable columns, single/multiple selection, disabled rows, row actions, column resizing/hiding, an empty slot and an in-frame `Footer` slot for pagination. |
 
 ## Deliberate limits
 
 These boundaries are native platform decisions, not missing glue:
 
-- **Pointer feedback:** Button and PressableFeedback paint HeroUI's hover and
-  pressed surfaces. MyGo does not expose a live layout transform, so HeroUI's
-  pressed scale and ripple are not animated.
-- **Gestures:** Drawer and BottomSheet do not implement swipe-to-dismiss or
+- **Pointer feedback:** Button, ToggleButton, CloseButton, PressableFeedback and
+  NumberField steppers animate HeroUI's pressed scale. MyGo does not expose a
+  live layout transform, so there is no ripple.
+- **Gestures:** BottomSheet dismisses from its handle swipe; the scrollable body
+  keeps its own pointer handling. Drawer does not implement swipe-to-dismiss or
   velocity arbitration; backdrop press, Escape and explicit close actions work.
 - **ScrollShadow:** MyGo has no alpha mask, so the fade is painted in the
   caller-supplied opaque surface color rather than masking the content.
@@ -151,9 +152,10 @@ These boundaries are native platform decisions, not missing glue:
   spaces beyond MyGo's `ui.Color` are not exposed.
 - **Table:** no expandable/colspan rows. Column resize and hide are native;
   saved width/order must be restored through `TableState.List.Columns`.
-  Selected cells paint a faint surface tint while native selection semantics
-  and keyboard behavior remain intact. The header is 14 DIP semibold and
-  shares the body surface because the toolkit owns that chrome.
+  Selected rows paint a full-bleed tint while native selection semantics and
+  keyboard behavior remain intact. The toolkit owns the header row's exact 32
+  DIP height, 10/6 padding and 600 weight; the library sets the 12 DIP muted
+  type and 16 DIP column insets around that chrome.
 - **Menus:** native popup placement and OS menu appearance remain
   platform-owned.
 - **Tooltips:** timing follows MyGo's native hover/focus policy rather than

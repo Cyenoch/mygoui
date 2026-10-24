@@ -55,25 +55,27 @@ func Skeleton(c *ui.Context, o SkeletonOptions) ui.Element {
 		if r.W <= 0 || r.H <= 0 {
 			return
 		}
-		now := p.Now()
 		switch o.Animation {
 		case SkeletonPulse:
-			phase := float32(now.Sub(*start)%(1500*time.Millisecond)) / float32(1500*time.Millisecond)
-			alpha := 0.35 * (0.5 - 0.5*float32(math.Cos(float64(phase)*2*math.Pi)))
-			p.Fill(r, t.SurfaceTertiary.Alpha(alpha), radius)
-			p.AnimationFrame()
+			// Tailwind's pulse: 2 s from full to half opacity and back.
+			phase := float32(p.Now().Sub(*start)%(2000*time.Millisecond)) / float32(2000*time.Millisecond)
+			k := 1 - float32(math.Abs(float64(2*phase-1)))
+			p.Fill(r, t.Surface.Alpha(0.5*ui.EaseInOut(k)), radius)
 		default:
-			phase := float32(now.Sub(*start)%(2000*time.Millisecond)) / float32(2000*time.Millisecond)
-			band := min(float32(160), r.W*0.6)
-			x := r.X - band + phase*(r.W+2*band)
+			// HeroUI sweeps a full-width band from -100% to 200% of the
+			// placeholder in 2 s, peaking in its solid surface-tertiary.
+			phase := float32(p.Now().Sub(*start)%(2000*time.Millisecond)) / float32(2000*time.Millisecond)
+			band := r.W
+			x := r.X - band + phase*3*band
+			peak := t.SurfaceTertiary
 			p.FillGradient(ui.Rect{X: x, Y: r.Y, W: band / 2, H: r.H}, ui.LinearGradient{
-				From: ui.Transparent, To: t.SurfaceTertiary.Alpha(0.85), Angle: 90,
+				From: ui.Transparent, To: peak, Angle: 90,
 			}, 0)
 			p.FillGradient(ui.Rect{X: x + band/2, Y: r.Y, W: band / 2, H: r.H}, ui.LinearGradient{
-				From: t.SurfaceTertiary.Alpha(0.85), To: ui.Transparent, Angle: 90,
+				From: peak, To: ui.Transparent, Angle: 90,
 			}, 0)
-			p.AnimationFrame()
 		}
+		p.AnimationFrame()
 	})
 	return e
 }
@@ -101,15 +103,17 @@ func SkeletonGroup(c *ui.Context, o SkeletonGroupOptions, body func()) ui.Elemen
 			return
 		}
 		if o.Animation == SkeletonPulse {
-			phase := float32(p.Now().Sub(*start)%(1500*time.Millisecond)) / float32(1500*time.Millisecond)
-			alpha := 0.22 * (0.5 - 0.5*float32(math.Cos(float64(phase)*2*math.Pi)))
-			p.Fill(r, t.SurfaceTertiary.Alpha(alpha), 0)
+			// The group has no per-shape alpha, so one tint fades in place
+			// over its shapes at Tailwind's 2 s pulse cadence.
+			phase := float32(p.Now().Sub(*start)%(2000*time.Millisecond)) / float32(2000*time.Millisecond)
+			k := 1 - float32(math.Abs(float64(2*phase-1)))
+			p.Fill(r, t.Surface.Alpha(0.22*ui.EaseInOut(k)), 0)
 			p.AnimationFrame()
 			return
 		}
 		phase := float32(p.Now().Sub(*start)%(2000*time.Millisecond)) / float32(2000*time.Millisecond)
-		band := min(float32(220), r.W*0.7)
-		x := r.X - band + phase*(r.W+2*band)
+		band := r.W
+		x := r.X - band + phase*3*band
 		p.FillGradient(ui.Rect{X: x, Y: r.Y, W: band / 2, H: r.H}, ui.LinearGradient{
 			From: ui.Transparent, To: t.SurfaceTertiary.Alpha(0.5), Angle: 90,
 		}, 0)

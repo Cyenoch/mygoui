@@ -21,7 +21,7 @@ func init() {
 				Demo: func(c *ui.Context, s *State) { colorAreaLargeExample(c, colorsComponentState(s)) }},
 			{Title: "Compact", Description: "A smaller field without the dot pattern.",
 				Demo: func(c *ui.Context, s *State) { colorAreaSmallExample(c, colorsComponentState(s)) }},
-			{Title: "Disabled", Description: "A read-only area keeps the current color.",
+			{Title: "Disabled", Description: "A locked area keeps the current color and takes no pointer input.",
 				Demo: func(c *ui.Context, s *State) { colorAreaDisabledExample(c, colorsComponentState(s)) }},
 		},
 		Code: `color.ColorArea(c, color.ColorAreaOptions{
@@ -31,9 +31,9 @@ func init() {
 		Params: []ComponentParam{
 			{"Label", "string", "\"Color area\"", "Names the area for assistive technology."},
 			{"State", "*color.ColorState", "required", "The color edited and shown."},
-			{"ShowDots", "bool", "false", "Overlays the subtle dot pattern."},
-			{"Size", "float32", "224", "Square side in DIPs."},
-			{"Disabled", "bool", "false", "Makes the area read-only."},
+			{"ShowDots", "bool", "false", "Overlays the 2 DIP dot pattern on an 8 DIP grid."},
+			{"Size", "float32", "224", "Square side in DIPs; the thumb and gradient scale with it."},
+			{"Disabled", "bool", "false", "Locks the area: it dims and takes no pointer input."},
 			{"OnChange", "func()", "nil", "Reports a newly picked color."},
 		},
 		Tokens: []string{"Foreground", "Focus", "FieldBackground", "Border"},
@@ -59,10 +59,11 @@ func init() {
 		Params: []ComponentParam{
 			{"Label", "string", "channel name", "Names the slider for assistive technology."},
 			{"State", "*color.ColorState", "required", "The color edited by the channel."},
-			{"Channel", "color.ColorChannel", "ChannelHue", "Hue, saturation, brightness or alpha."},
+			{"Channel", "color.ColorChannel", "ChannelHue", "Hue, saturation, brightness, lightness, red, green, blue or alpha."},
 			{"ShowOutput", "bool", "false", "Shows the channel value beside the label."},
 			{"Vertical", "bool", "false", "Runs the track vertically."},
 			{"Height", "float32", "160", "Vertical slider length in DIPs."},
+			{"Format", "func(float64) string", "channel default", "Formats the label, output and accessible value."},
 		},
 		Tokens: []string{"Foreground", "Focus", "FieldBackground", "Border"},
 	})
@@ -75,7 +76,7 @@ func init() {
 				Demo: func(c *ui.Context, s *State) { colorFieldFullExample(c, colorsComponentState(s)) }},
 			{Title: "Compact", Description: "The intrinsic-width hex editor.",
 				Demo: func(c *ui.Context, s *State) { colorFieldCompactExample(c, colorsComponentState(s)) }},
-			{Title: "Disabled", Description: "A read-only field keeps the current color.",
+			{Title: "Disabled", Description: "A locked field keeps the current color and ignores edits.",
 				Demo: func(c *ui.Context, s *State) { colorFieldDisabledExample(c, colorsComponentState(s)) }},
 		},
 		Code: `color.ColorField(c, color.ColorFieldOptions{
@@ -88,7 +89,7 @@ func init() {
 			{"State", "*color.ColorState", "required", "The color edited by the text."},
 			{"FullWidth", "bool", "false", "Grows the field to its parent's width."},
 			{"Placeholder", "string", "\"#000000\"", "Text shown while the field is empty."},
-			{"Disabled", "bool", "false", "Makes the field read-only."},
+			{"Disabled", "bool", "false", "Locks the field: it dims and ignores edits."},
 		},
 		Tokens: []string{"FieldBackground", "FieldHover", "FieldFocus", "FieldBorder", "Danger"},
 	})
@@ -126,7 +127,7 @@ func init() {
 				Demo: func(c *ui.Context, s *State) { colorSwatchPickerCircleExample(c, colorsComponentState(s)) }},
 			{Title: "Square", Description: "Square swatches at a smaller size.",
 				Demo: func(c *ui.Context, s *State) { colorSwatchPickerSquareExample(c, colorsComponentState(s)) }},
-			{Title: "Read-only", Description: "A nil value leaves the palette unselected.",
+			{Title: "No selection", Description: "Without a caller-owned Value the palette shows no current color.",
 				Demo: func(c *ui.Context, s *State) { colorSwatchPickerReadOnlyExample(c, colorsComponentState(s)) }},
 		},
 		Code: `color.ColorSwatchPicker(c, color.ColorSwatchPickerOptions{
@@ -136,9 +137,11 @@ func init() {
 		Params: []ComponentParam{
 			{"Label", "string", "\"Swatches\"", "Names the palette for assistive technology."},
 			{"Colors", "[]ui.Color", "required", "The colors offered by the palette."},
-			{"Value", "*ui.Color", "nil", "Caller-owned selection; nil is read-only."},
+			{"Names", "[]string", "nil", "Accessible names; missing names use the hex value."},
+			{"Value", "*ui.Color", "nil", "Caller-owned selection; nil leaves the palette unselected."},
 			{"Size", "color.ColorSwatchSize", "SwatchMD", "Swatch side of every item."},
 			{"Shape", "color.ColorSwatchShape", "SwatchCircle", "Circle or square corners."},
+			{"Layout", "color.ColorSwatchPickerLayout", "SwatchGrid", "Wrapping grid or a vertical stack."},
 			{"OnChange", "func()", "nil", "Reports a newly chosen color."},
 		},
 		Tokens: []string{"FieldBackground", "Focus", "Border"},
@@ -165,6 +168,7 @@ func init() {
 			{"Open", "*bool", "nil", "Caller-owned popover state."},
 			{"Swatches", "[]ui.Color", "DefaultSwatches", "Palette shown in the panel; empty hides it."},
 			{"Placement", "mygoui.Placement", "below start", "Placement of the panel."},
+			{"HideArea, HideHue, HideAlpha, HideField, HideSwatches", "bool", "false", "Omits one part of the panel."},
 			{"OnChange", "func()", "nil", "Reports a newly picked color."},
 		},
 		Tokens: []string{"Overlay", "Border", "Foreground", "FieldBackground", "Focus"},

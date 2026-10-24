@@ -19,9 +19,9 @@ type DisclosureOptions struct {
 	Body     func()
 }
 
-// Disclosure builds a header trigger over a panel that grows into view.
-// Enter and Space toggle it while focused; reduced motion snaps it open and
-// closed.
+// Disclosure builds a header trigger over a panel that grows and fades into
+// view over the shared collapsible animation. Enter and Space toggle it while
+// focused; reduced motion snaps it open and closed.
 func Disclosure(c *ui.Context, o DisclosureOptions) ui.Element {
 	return disclosure(c, o, nil)
 }
@@ -39,6 +39,7 @@ func disclosure(c *ui.Context, o DisclosureOptions, group *disclosureGroupScope)
 	root.Children(func() {
 		var parts ui.CollapsibleParts
 		var tr ui.Element
+		glyph := &ui.Path{}
 		header := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Shrink(0)
 		header.Children(func() {
 			parts = ui.CollapsibleBase(c, open)
@@ -51,7 +52,7 @@ func disclosure(c *ui.Context, o DisclosureOptions, group *disclosureGroupScope)
 					FontWeight(theme.WeightMedium).Grow(1).SingleLine()
 				ind := ui.Box(c).Size(scale(c, theme.IconMD), scale(c, theme.IconMD)).Shrink(0)
 				ind.Draw(func(p *ui.Painter, r ui.Rect) {
-					drawChevronDown(p, r, 180*progress, 1.5, t.Foreground)
+					drawChevronDown(p, glyph, r, 180*progress, 1.5, t.Foreground)
 				})
 			})
 			tr = style.Disabled(tr, o.Disabled)
@@ -66,6 +67,7 @@ func disclosure(c *ui.Context, o DisclosureOptions, group *disclosureGroupScope)
 		}
 		if panel := parts.Panel(o.Body); panel.Valid() {
 			panel.FillWidth().MinWidth(0).Padding(scale(c, theme.Space8)).TextColor(t.Muted)
+			fadePanel(panel, parts.Progress())
 		}
 	})
 	return root

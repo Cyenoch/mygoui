@@ -29,6 +29,7 @@ type formsState struct {
 	terms          bool
 	partial        bool
 	partialChecked bool
+	secondaryCheck bool
 	features       [3]bool
 	checks         form.CheckboxGroupState
 	channels       [2]bool
@@ -202,7 +203,7 @@ func formsFieldsetExampleDefault(c *ui.Context, st *formsState) {
 func formsFieldsetExampleDisabled(c *ui.Context, st *formsState) {
 	form.Fieldset(c, form.FieldsetOptions{
 		Legend:      "Managed by your administrator",
-		Description: "These options are read-only.",
+		Description: "Administrators control these settings.",
 		Disabled:    true,
 		FullWidth:   true,
 	}, func() {
@@ -364,7 +365,7 @@ func formsTextAreaExampleDefault(c *ui.Context, st *formsState) {
 // formsTextAreaExampleReadOnly shows selectable but uneditable text.
 func formsTextAreaExampleReadOnly(c *ui.Context, st *formsState) {
 	form.TextArea(c, &st.bio, form.TextAreaOptions{
-		Label:     "Notes (read-only)",
+		Label:     "Meeting notes",
 		ReadOnly:  true,
 		MinLines:  2,
 		MaxLines:  4,
@@ -553,35 +554,38 @@ func formsSearchFieldExampleInvalid(c *ui.Context, st *formsState) {
 // formsSearchFieldExampleDisabled stops editing and disables the clear action.
 func formsSearchFieldExampleDisabled(c *ui.Context, st *formsState) {
 	form.SearchField(c, &st.disabledSearch, form.SearchFieldOptions{
-		Label:       "Read-only search",
-		Placeholder: "Archived queries",
+		Label:       "Archived queries",
+		Placeholder: "Search past sessions",
 		FullWidth:   true,
 		Disabled:    true,
 	})
 }
 
-// formsNumberFieldExampleBounded shows stepper buttons between bounds.
+// formsNumberFieldExampleBounded shows stepper buttons between bounds. The
+// field keeps HeroUI's intrinsic 200 DIP group instead of stretching.
 func formsNumberFieldExampleBounded(c *ui.Context, st *formsState) {
-	form.NumberField(c, &st.quantity, form.NumberFieldOptions{
-		Label:       "Seats",
-		Description: "Between one and twelve, in whole seats.",
-		Min:         new(float64(1)),
-		Max:         new(float64(12)),
-		Step:        1,
-		FullWidth:   true,
+	ui.Column(c).Width(theme.Scale(c, 200)).Children(func() {
+		form.NumberField(c, &st.quantity, form.NumberFieldOptions{
+			Label:       "Seats",
+			Description: "Between one and twelve, in whole seats.",
+			Min:         new(float64(1)),
+			Max:         new(float64(12)),
+			Step:        1,
+		})
 	})
 }
 
 // formsNumberFieldExampleDisabled stops stepping and typed changes.
 func formsNumberFieldExampleDisabled(c *ui.Context, st *formsState) {
-	form.NumberField(c, &st.quantityDisabled, form.NumberFieldOptions{
-		Label:       "Seats (disabled)",
-		Description: "Billing controls this value.",
-		Min:         new(float64(1)),
-		Max:         new(float64(12)),
-		Step:        1,
-		FullWidth:   true,
-		Disabled:    true,
+	ui.Column(c).Width(theme.Scale(c, 200)).Children(func() {
+		form.NumberField(c, &st.quantityDisabled, form.NumberFieldOptions{
+			Label:       "Seats",
+			Description: "Billing controls this value.",
+			Min:         new(float64(1)),
+			Max:         new(float64(12)),
+			Step:        1,
+			Disabled:    true,
+		})
 	})
 }
 
@@ -590,6 +594,16 @@ func formsCheckboxExampleDefault(c *ui.Context, st *formsState) {
 	form.Checkbox(c, form.CheckboxOptions{
 		Checked: &st.terms,
 		Label:   "Release notes",
+	})
+}
+
+// formsCheckboxExampleSecondary shows the flat secondary control face.
+func formsCheckboxExampleSecondary(c *ui.Context, st *formsState) {
+	form.Checkbox(c, form.CheckboxOptions{
+		Checked:     &st.secondaryCheck,
+		Label:       "Only on Wi-Fi",
+		Description: "Uses the flat secondary control face.",
+		Variant:     form.ControlSecondary,
 	})
 }
 

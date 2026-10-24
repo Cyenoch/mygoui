@@ -23,6 +23,7 @@ type datesState struct {
 
 	CalMonday   date.CalendarState
 	CalReadOnly date.CalendarState
+	CalStatic   date.CalendarState
 	RangeMonday date.RangeCalendarState
 	RangeFree   date.RangeCalendarState
 
@@ -70,6 +71,7 @@ func (st *datesState) ensure(c *ui.Context) {
 	}
 	st.CalMonday = date.CalendarState{Value: datesNextWeekday(st.Today.AddDate(0, 0, 1))}
 	st.CalReadOnly = date.CalendarState{Value: datesNextWeekday(st.Today)}
+	st.CalStatic = date.CalendarState{Value: datesNextWeekday(st.Today.AddDate(0, 0, 2))}
 	st.RangeMonday = date.RangeCalendarState{Value: date.DateRange{
 		Start: datesNextWeekday(st.Today.AddDate(0, 0, 2)),
 		End:   datesNextWeekday(st.Today.AddDate(0, 0, 8)),
@@ -97,7 +99,7 @@ func calendarBoundedExample(c *ui.Context, st *datesState) {
 			Max:           st.Max,
 			DisabledDates: datesWeekend,
 		}, &st.Cal)
-		ui.Column(c).Grow(1).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
 			mygoui.Typography(c, "Selected day", mygoui.TypographyOptions{Type: theme.TypeH6})
 			mygoui.Typography(c, datesDayLabel(st.Cal.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
 			ui.Row(c).Wrap().Gap(theme.Space4).Children(func() {
@@ -119,9 +121,26 @@ func calendarMondayExample(c *ui.Context, st *datesState) {
 			Max:          st.Max,
 			FirstWeekday: time.Monday,
 		}, &st.CalMonday)
-		ui.Column(c).Grow(1).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
 			mygoui.Typography(c, datesDayLabel(st.CalMonday.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
 			datesChip(c, "Monday first")
+		})
+	})
+}
+
+// calendarStaticHeadingExample removes the year picker and keeps the month static.
+func calendarStaticHeadingExample(c *ui.Context, st *datesState) {
+	ui.Row(c).Wrap().Gap(theme.Space24).AlignItems(ui.Start).Children(func() {
+		date.Calendar(c, date.CalendarOptions{
+			Label:          "Static heading day",
+			Today:          st.Today,
+			Min:            st.Min,
+			Max:            st.Max,
+			HideYearPicker: true,
+		}, &st.CalStatic)
+		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+			mygoui.Typography(c, datesDayLabel(st.CalStatic.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
+			datesChip(c, "No year grid")
 		})
 	})
 }
@@ -147,13 +166,19 @@ func rangeBoundedExample(c *ui.Context, st *datesState) {
 			Max:           st.Max,
 			DisabledDates: datesWeekend,
 		}, &st.Range)
-		ui.Column(c).Grow(1).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
 			mygoui.Typography(c, "Selected range", mygoui.TypographyOptions{Type: theme.TypeH6})
-			mygoui.Typography(c, datesRangeLabel(st.Range.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
-			if !st.Range.Anchor.IsZero() {
-				mygoui.Typography(c, "Start "+st.Range.Anchor.Format("Mon, Jan 2")+" — now pick the end day.",
-					mygoui.TypographyOptions{Type: theme.TypeBodyXS, Muted: true})
-			}
+			// Keep both the value and the hint line at a fixed height: a
+			// shorter completed range must not reflow the grid beside it.
+			ui.Column(c).MinHeight(theme.Scale(c, 40)).Justify(ui.Start).Children(func() {
+				mygoui.Typography(c, datesRangeLabel(st.Range.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
+			})
+			ui.Column(c).MinHeight(theme.Scale(c, 32)).Justify(ui.Start).Children(func() {
+				if !st.Range.Anchor.IsZero() {
+					mygoui.Typography(c, "Start "+st.Range.Anchor.Format("Mon, Jan 2")+" — now pick the end day.",
+						mygoui.TypographyOptions{Type: theme.TypeBodyXS, Muted: true})
+				}
+			})
 			datesChip(c, "Weekends disabled")
 		})
 	})
@@ -169,7 +194,7 @@ func rangeMondayExample(c *ui.Context, st *datesState) {
 			Max:          st.Max,
 			FirstWeekday: time.Monday,
 		}, &st.RangeMonday)
-		ui.Column(c).Grow(1).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
 			mygoui.Typography(c, datesRangeLabel(st.RangeMonday.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
 			datesChip(c, "Monday first")
 		})
@@ -183,7 +208,7 @@ func rangeFreeExample(c *ui.Context, st *datesState) {
 			Label: "Travel window",
 			Today: st.Today,
 		}, &st.RangeFree)
-		ui.Column(c).Grow(1).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
 			mygoui.Typography(c, datesRangeLabel(st.RangeFree.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
 			datesChip(c, "No bounds")
 		})

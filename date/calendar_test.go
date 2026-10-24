@@ -511,13 +511,13 @@ func TestRangeCalendarDisabledDayStopsBand(t *testing.T) {
 	soft := pal.AccentSoft.Over(pal.Background)
 	assertNoFill(t, tt, "2026-03-24", pal.Background)
 
-	r, g, b := sampleDay(t, tt, "2026-03-23", 0.98, 0.05)
+	r, g, b := sampleDay(t, tt, "2026-03-23", 0.98, 0.09)
 	assertColor(t, "23 stops before 24", r, g, b, pal.Background)
-	r, g, b = sampleDay(t, tt, "2026-03-25", 0.02, 0.05)
+	r, g, b = sampleDay(t, tt, "2026-03-25", 0.02, 0.09)
 	assertColor(t, "25 resumes after 24", r, g, b, pal.Background)
-	r, g, b = sampleDay(t, tt, "2026-03-23", 0.02, 0.05)
+	r, g, b = sampleDay(t, tt, "2026-03-23", 0.02, 0.09)
 	assertColor(t, "23 joins 22", r, g, b, soft)
-	r, g, b = sampleDay(t, tt, "2026-03-25", 0.98, 0.05)
+	r, g, b = sampleDay(t, tt, "2026-03-25", 0.98, 0.09)
 	assertColor(t, "25 joins 26", r, g, b, soft)
 
 	r, g, b = sampleDay(t, tt, "2026-03-22", 0.2, 0.5)
@@ -541,19 +541,19 @@ func TestRangeCalendarBandRoundsAtWeekEdges(t *testing.T) {
 	// 27 is Friday and 28 Saturday ends the week, so the band wraps: square
 	// where 28 continues into Saturday, rounded at the row's end and the next
 	// row's start.
-	r, g, b := sampleDay(t, tt, "2026-03-27", 0.98, 0.05)
+	r, g, b := sampleDay(t, tt, "2026-03-27", 0.98, 0.09)
 	assertColor(t, "27 seam with 28", r, g, b, soft)
-	r, g, b = sampleDay(t, tt, "2026-03-28", 0.02, 0.05)
+	r, g, b = sampleDay(t, tt, "2026-03-28", 0.02, 0.09)
 	assertColor(t, "28 seam with 27", r, g, b, soft)
-	r, g, b = sampleDay(t, tt, "2026-03-28", 0.98, 0.05)
+	r, g, b = sampleDay(t, tt, "2026-03-28", 0.98, 0.09)
 	assertColor(t, "28 rounded week end", r, g, b, pal.Background)
-	r, g, b = sampleDay(t, tt, "2026-03-29", 0.02, 0.05)
+	r, g, b = sampleDay(t, tt, "2026-03-29", 0.02, 0.09)
 	assertColor(t, "29 rounded week start", r, g, b, pal.Background)
-	r, g, b = sampleDay(t, tt, "2026-03-29", 0.98, 0.05)
+	r, g, b = sampleDay(t, tt, "2026-03-29", 0.98, 0.09)
 	assertColor(t, "29 seam with 30", r, g, b, soft)
-	r, g, b = sampleDay(t, tt, "2026-03-30", 0.02, 0.05)
+	r, g, b = sampleDay(t, tt, "2026-03-30", 0.02, 0.09)
 	assertColor(t, "30 seam with 29", r, g, b, soft)
-	r, g, b = sampleDay(t, tt, "2026-03-30", 0.98, 0.05)
+	r, g, b = sampleDay(t, tt, "2026-03-30", 0.98, 0.09)
 	assertColor(t, "30 rounded cap", r, g, b, pal.Background)
 }
 

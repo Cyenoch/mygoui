@@ -135,8 +135,11 @@ func TestAlertDialogIgnoresBackdropAndEscape(t *testing.T) {
 	}
 }
 
+// TestDrawerEdgesAndBottomSheet pins the floating edge geometry: 16 DIP
+// gutters on every side, full rounding, a left or right panel keeping w-96
+// at the sm breakpoint, and a top or bottom one spanning the inset width.
 func TestDrawerEdgesAndBottomSheet(t *testing.T) {
-	const margin, winW, winH = 16, 640, 480
+	const winW, winH = 640, 480
 	for _, tc := range []struct {
 		name string
 		side DrawerSide
@@ -156,21 +159,22 @@ func TestDrawerEdgesAndBottomSheet(t *testing.T) {
 				}
 			}, winW, winH)
 			tt.Frame()
+			tt.Frame()
 			switch tc.side {
 			case DrawerLeft:
-				if panel.X != margin || panel.Y != margin || panel.W != 384 || panel.H != winH-2*margin {
+				if panel.X != 16 || panel.Y != 16 || panel.W != 384 || panel.H != winH-32 {
 					t.Fatalf("left drawer geometry = %+v", panel)
 				}
 			case DrawerRight:
-				if panel.X+panel.W != winW-margin || panel.Y != margin || panel.W != 384 || panel.H != winH-2*margin {
+				if panel.X+panel.W != winW-16 || panel.Y != 16 || panel.W != 384 || panel.H != winH-32 {
 					t.Fatalf("right drawer geometry = %+v", panel)
 				}
 			case DrawerTop:
-				if panel.X != margin || panel.Y != margin || panel.W != winW-2*margin {
+				if panel.X != 16 || panel.Y != 16 || panel.W != winW-32 || panel.H > (winH-32)*0.85+1 {
 					t.Fatalf("top drawer geometry = %+v", panel)
 				}
 			case DrawerBottom:
-				if panel.X != margin || panel.Y+panel.H != winH-margin || panel.W != winW-2*margin {
+				if panel.X != 16 || panel.Y+panel.H != winH-16 || panel.W != winW-32 || panel.H > (winH-32)*0.85+1 {
 					t.Fatalf("bottom drawer geometry = %+v", panel)
 				}
 			}
@@ -186,8 +190,13 @@ func TestDrawerEdgesAndBottomSheet(t *testing.T) {
 		}
 	}, winW, winH)
 	st.Frame()
-	if sheet.W != winW || sheet.Y+sheet.H != winH {
-		t.Fatalf("bottom sheet geometry = %+v, want full width at the bottom edge", sheet)
+	// The sheet slides in from below the window; the tester's clock stands
+	// still, so settle the arrival before reading its resting box.
+	st.Advance(drawerMotionDuration)
+	st.Frame()
+	if sheet.X != 16 || sheet.W != winW-32 || sheet.Y+sheet.H != winH-16 ||
+		sheet.H > (winH-32)*0.85+1 {
+		t.Fatalf("bottom sheet geometry = %+v, want the floating panel inside 16 DIP gutters", sheet)
 	}
 }
 

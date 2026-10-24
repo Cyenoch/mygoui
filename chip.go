@@ -50,6 +50,7 @@ type ChipOptions struct {
 }
 
 // Chip renders a 12 DIP medium capsule with HeroUI's color/variant matrix.
+// Its icon is one em, as HeroUI's untyped SVG inherits the label size.
 func Chip(c *ui.Context, o ChipOptions) ui.Element {
 	bg, fg := chipColors(c, o.Color, o.Variant)
 	paddingX, paddingY := float32(theme.Space8), float32(theme.Space2)
@@ -62,14 +63,14 @@ func Chip(c *ui.Context, o ChipOptions) ui.Element {
 		paddingX, paddingY = theme.Space12, theme.Space4
 		ts = theme.SM()
 		ts.Weight = theme.WeightMedium
-		ts.Weight = theme.WeightMedium
 	}
+	iconSize := theme.Scale(c, ts.Size)
 	e := ui.Row(c).Shrink(0).Center().Gap(theme.Space2).AlignSelf(ui.Start).
 		Padding(paddingY, paddingX, paddingY, paddingX).Radius(theme.RadiusScale().XXL).
 		Background(bg).TextColor(fg).Label(o.Label)
 	e.Children(func() {
 		if o.Icon != nil {
-			ui.Icon(c, o.Icon).Size(theme.Scale(c, theme.IconXS), theme.Scale(c, theme.IconXS)).Shrink(0)
+			ui.Icon(c, o.Icon).Size(iconSize, iconSize).Shrink(0)
 		}
 		label := style.Text(ui.Text(c, o.Label), c, ts)
 		label.PaddingX(theme.Space2).SingleLine()
@@ -77,7 +78,11 @@ func Chip(c *ui.Context, o ChipOptions) ui.Element {
 	return e
 }
 
+// chipColors resolves HeroUI's chip and badge color matrix. A default chip
+// keeps the default foreground for its secondary and tertiary variants; the
+// other colors use their soft foreground.
 func chipColors(c *ui.Context, color StatusColor, variant ChipVariant) (bg, fg ui.Color) {
+	t := theme.Colors(c)
 	p := StatusColors(c, color)
 	switch variant {
 	case ChipPrimary:
@@ -85,9 +90,15 @@ func chipColors(c *ui.Context, color StatusColor, variant ChipVariant) (bg, fg u
 	case ChipSoft:
 		return p.Soft, p.SoftForeground
 	case ChipTertiary:
+		if color == ColorDefault {
+			return ui.Transparent, t.DefaultForeground
+		}
 		return ui.Transparent, p.Foreground
 	}
-	return theme.Colors(c).Default, p.Foreground
+	if color == ColorDefault {
+		return t.Default, t.DefaultForeground
+	}
+	return t.Default, p.Foreground
 }
 
 // BadgeVariant selects a HeroUI badge surface treatment.
@@ -135,10 +146,11 @@ func Badge(c *ui.Context, o BadgeOptions) ui.Element {
 		ts.Weight = theme.WeightMedium
 	}
 	bg, fg := chipColors(c, o.Color, o.Variant)
+	t := theme.Colors(c)
 	e := ui.Row(c).Shrink(0).Center().AlignSelf(ui.Start).
 		MinHeight(theme.Scale(c, minSize)).MinWidth(theme.Scale(c, minSize)).
 		Radius(radius).Background(bg).TextColor(fg).
-		Border(theme.Hairline, theme.Colors(c).Background).Label(o.Label)
+		Border(theme.Hairline, t.Background).Label(o.Label)
 	e.Children(func() {
 		style.Text(ui.Text(c, o.Label), c, ts).PaddingX(theme.Space2).SingleLine()
 	})

@@ -39,10 +39,8 @@ func Dialog(c *ui.Context, open *bool, o DialogOptions) ui.Element {
 		}
 	}
 	w, h := c.Size()
-	pad := float32(theme.Space40)
-	if w < 640 {
-		pad = theme.Space16
-	}
+	// Native HeroUI's dialog portal pads every side by 20 DIPs.
+	pad := float32(theme.Space20)
 	width := o.Width
 	if width <= 0 {
 		width = 448
@@ -53,7 +51,7 @@ func Dialog(c *ui.Context, open *bool, o DialogOptions) ui.Element {
 	}
 	p := ui.DialogBase(c, open, func(back, panel ui.Element) {
 		back = paintBackdrop(c, back, o.Backdrop)
-		back = dialogMotion(c, back)
+		back = dialogMotion(c, back, dialogMotionDuration)
 		t := theme.Colors(c)
 		radius := overlayRadius()
 		panel.Background(t.Overlay).TextColor(t.OverlayForeground).MinHeight(0)
@@ -98,7 +96,7 @@ func Dialog(c *ui.Context, open *bool, o DialogOptions) ui.Element {
 			titleStyle:       theme.LG(),
 			descriptionStyle: theme.Base(),
 			padding:          theme.Space20,
-			headerGap:        theme.Space12,
+			headerGap:        theme.Space6,
 		})
 	})
 	if wasOpen && !*open && p.Valid() && p.Dismissed() {

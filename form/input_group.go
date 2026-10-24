@@ -38,7 +38,6 @@ func InputGroup(c *ui.Context, value *string, o InputGroupOptions) ui.Element {
 		}
 		row = fieldSurface(row, c, o.Variant, o.Invalid, o.Disabled)
 
-		var editor ui.Element
 		row.Children(func() {
 			// The editor comes first so a field label names and focuses it
 			// even when an addon holds a button.
@@ -49,7 +48,7 @@ func InputGroup(c *ui.Context, value *string, o InputGroupOptions) ui.Element {
 			if o.Suffix != nil {
 				paddingEnd = 0
 			}
-			editor = ui.TextInputBase(c, value).MinWidth(0).ColumnStart(2).FillWidth().
+			editor := ui.TextInputBase(c, value).MinWidth(0).ColumnStart(2).FillWidth().
 				PaddingStart(paddingStart).PaddingEnd(paddingEnd).PaddingY(theme.Space8)
 			editor = fieldText(editor, c)
 			if o.Placeholder != "" {
@@ -80,15 +79,6 @@ func InputGroup(c *ui.Context, value *string, o InputGroupOptions) ui.Element {
 				suffix.Children(o.Suffix)
 			}
 		})
-		if editor.Valid() {
-			focusVisible := editor.FocusVisible()
-			radius := theme.RadiusScale().Field
-			row.DrawOver(func(p *ui.Painter, r ui.Rect) {
-				if focusVisible {
-					p.FocusRing(r, [4]float32{radius, radius, radius, radius})
-				}
-			})
-		}
 		return row
 	}
 

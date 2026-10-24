@@ -6,25 +6,26 @@ v0.2.1. Module metadata targets Go 1.27.1. The public repository is
 
 ## Completed checks
 
-- The overlay-motion update passed `make check MYGO_VERSION=v0.6.3`:
-  `go vet ./...`, the pinned MyGo lifetime vet, the ordinary suite,
-  `go build ./...`, formatting and `go mod verify`.
+- The component parity/motion pass passed `make check MYGO_VERSION=v0.6.3`
+  after the final BottomSheet, Table and NumberField changes: `go vet ./...`,
+  the pinned MyGo lifetime vet, the ordinary suite, `go build ./...`,
+  formatting and `go mod verify`.
 - All packages with tests passed: root, `theme`, `form`, `list`, `navigation`,
   `overlay`, `date`, `color`, `data`, and `internal/gallery`. Examples and
   internal helpers have no tests. Fixed test counts are not retained here;
   they become stale as behavior regressions are added or removed.
-- `golangci-lint run ./...` reported zero issues and `make wasm` passed after
-  the final modal identity and AlertDialog focus fixes.
-- Toast's follow-up semantic-name smoke verified title and description-only
+- `make race` passed with `CGO_ENABLED=1` after those changes, with no data
+  races; `internal/gallery` took 49.6 s under the race detector.
+- `golangci-lint run ./...` reported zero issues and `make wasm` built every
+  package for `GOOS=js GOARCH=wasm`.
+- Toast's semantic-name smoke verified title and description-only
   notifications, native announcements, same-ID renaming and removal on close;
   internal IDs did not appear in the native tester's semantic labels.
-- The additional checks below record the earlier rewrite validation, not reruns
-  for the overlay-motion or semantic-name update.
-- The last recorded `make race` run predates the overlay-motion update. It
-  passed with `CGO_ENABLED=1` and no data races; `internal/gallery` took 65.2 s.
-- `make workflows` (actionlint) accepted `.github/workflows/ci.yml`.
-- `govulncheck v1.9.0 ./...` found no reachable vulnerabilities.
-- `gofmt -l .` was empty; `go mod tidy` left `go.mod`/`go.sum` unchanged.
+- Targeted probes verified the NumberField single-row stepper geometry and
+  separators, BottomSheet floating/slide/gesture/scrim behavior, Table chrome
+  and footer, and the RangeCalendar summary's stable grid position.
+- The checks below record the earlier rewrite validation. Actionlint and
+  govulncheck were run for that rewrite, not rerun for this pass.
 - The MyGo CLI build and dev paths were exercised from the repository root:
   `go run github.com/egoist/mygo/cmd/mygo@v0.6.3 build` produced a signed
   development-era `.app` and `.dmg`, and `dev -skip-dev-command` built the
@@ -206,17 +207,19 @@ establish screen-reader operation, platform IME/gesture behavior, OS menu
 appearance or GPU partial-presentation performance; those remain separate
 platform checks.
 
-Documented approximations are listed in `docs/components.md`: no pressed scale
-on buttons, no swipe dismissal for drawers/bottom sheets, surface-colored
-ScrollShadow instead of an alpha mask, and the native list/menu geometry owned
-by MyGo. Table selection is tinted in the cells while the toolkit owns the
-selection semantics.
+Documented approximations are listed in `docs/components.md`: BottomSheet
+dismisses only from its handle while Drawer keeps native dismissal, pressed
+scales replace HeroUI's ripple, ScrollShadow paints surface-colored fades
+instead of an alpha mask, and the toolkit owns native list/menu geometry and
+the table header's exact metrics. Table selection is tinted across the row
+while MyGo owns the selection semantics.
 
 MyGo 0.6.3 re-lays absolute overlays after element transitions. Toast avoids
-the previous vertical-motion and stack-reflow snap by spring-animating its
-declared `Top` and `Height` through `AnimateTo`; scale and fade use native
-motion/transitions, and reduced motion settles immediately. Modal, Drawer,
-BottomSheet, Popover and Tooltip use native fades without changing their layout
-or hit area. Installed overlay constructors keep the native overlay layer alive
-while closed so first-open entry and last-close exit can run without a Toast
-viewport. Native exit snapshots are inert and never rebuild consumer content.
+the previous vertical-motion and stack-reflow snap by animating its declared
+`Top`/`Width`/`Height` geometry; BottomSheet translates its panel for the slide
+and gesture. Modal, AlertDialog, Dialog and Drawer fade; Popover and Tooltip
+zoom from the anchor-facing edge. Installed overlay constructors keep the
+native overlay layer alive while closed so first-open entry and last-close exit
+can run without a Toast viewport. Native exit snapshots are inert and never
+rebuild consumer content. The optional blur backdrop uses MyGo's glass material;
+its GPU shader path was not exercised by the headless suite.

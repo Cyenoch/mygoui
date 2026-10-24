@@ -39,7 +39,7 @@ func init() {
 			},
 			{
 				Title:       "Loading",
-				Description: "A spinner replaces the label and blocks activation while pending.",
+				Description: "A leading spinner keeps the label and blocks activation while pending.",
 				Demo: func(c *ui.Context, s *State) {
 					buttonLoadingBody(c)
 				},
@@ -67,9 +67,13 @@ func save(c *ui.Context) {
 			{"Variant", "mygoui.ButtonVariant", "ButtonPrimary", "Color and surface treatment."},
 			{"Size", "theme.ButtonSize", "theme.ButtonMedium", "Small, medium or large height and padding."},
 			{"Icon", "*ui.SVG", "nil", "Leading icon."},
-			{"Loading", "bool", "false", "Replaces the label with a spinner and blocks activation."},
-			{"Disabled", "bool", "false", "Dims the button and removes activation."},
+			{"EndIcon", "*ui.SVG", "nil", "Trailing icon."},
+			{"IconOnly", "bool", "false", "A square control named by Label."},
+			{"FullWidth", "bool", "false", "Stretches the button across its row."},
+			{"Loading", "bool", "false", "Leads a spinner and blocks activation."},
+			{"Disabled", "bool", "false", "Paints at 50% opacity and removes activation."},
 			{"Align", "mygoui.ButtonAlign", "ButtonAlignCenter", "Centers the label or starts it for nav rows."},
+			{"Tooltip", "string", "", "Native hover description; empty uses Label when icon-only."},
 		},
 		Tokens: []string{"Accent", "AccentForeground", "Default", "DefaultHover", "Danger"},
 	})
@@ -80,7 +84,7 @@ func save(c *ui.Context) {
 		Examples: []ComponentExample{
 			{
 				Title:       "Horizontal",
-				Description: "A joined row with hairline separators.",
+				Description: "A joined row with HeroUI's half-height shared-edge separators.",
 				Demo: func(c *ui.Context, s *State) {
 					buttonGroupBody(c, buttonsStateOf(s))
 				},
@@ -92,6 +96,13 @@ func save(c *ui.Context) {
 					buttonGroupVerticalBody(c, buttonsStateOf(s))
 				},
 			},
+			{
+				Title:       "Outline",
+				Description: "Outline segments collapse their shared borders to one hairline.",
+				Demo: func(c *ui.Context, s *State) {
+					buttonGroupOutlineBody(c, buttonsStateOf(s))
+				},
+			},
 		},
 		Code: `mygoui.ButtonGroup(c, mygoui.ButtonGroupOptions{Separators: true},
     mygoui.ButtonOptions{Label: "Day", Variant: mygoui.ButtonSecondary},
@@ -100,7 +111,7 @@ func save(c *ui.Context) {
 		Params: []ComponentParam{
 			{"Orientation", "mygoui.ButtonGroupOrientation", "GroupHorizontal", "Horizontal or vertical stack."},
 			{"FullWidth", "bool", "false", "Stretches the group across its row."},
-			{"Separators", "bool", "false", "Draws a hairline between adjacent buttons."},
+			{"Separators", "bool", "false", "Paints a half-height divider at each shared edge."},
 		},
 		Tokens: []string{"Default", "Border", "Focus"},
 	})
@@ -178,6 +189,10 @@ mygoui.ToggleButton(c, mygoui.ToggleButtonOptions{
 			{"Variant", "mygoui.ToggleButtonVariant", "ToggleDefault", "Default surface or ghost until selected."},
 			{"Selected", "*bool", "nil", "Caller-owned pressed state."},
 			{"Size", "theme.ButtonSize", "theme.ButtonMedium", "Small, medium or large."},
+			{"Icon", "*ui.SVG", "nil", "Leading icon."},
+			{"IconOnly", "bool", "false", "A square control named by Label."},
+			{"FullWidth", "bool", "false", "Stretches the toggle across its row."},
+			{"Disabled", "bool", "false", "Paints at 50% opacity and keeps the caller state."},
 			{"OnChange", "func(bool)", "nil", "Reports the new pressed state."},
 		},
 		Tokens: []string{"AccentSoft", "AccentSoftForeground", "Default", "DefaultHover"},
@@ -209,7 +224,7 @@ mygoui.ToggleButton(c, mygoui.ToggleButtonOptions{
 				},
 			},
 		},
-		Code: `mygoui.ToggleButtonGroup(c, mygoui.ToggleButtonGroupOptions{},
+		Code: `mygoui.ToggleButtonGroup(c, mygoui.ToggleButtonGroupOptions{Separators: true},
     mygoui.ToggleButtonOptions{Label: "Day", Selected: &day},
     mygoui.ToggleButtonOptions{Label: "Week", Selected: &week},
 )`,
@@ -217,6 +232,7 @@ mygoui.ToggleButton(c, mygoui.ToggleButtonOptions{
 			{"Orientation", "mygoui.Orientation", "Horizontal", "Horizontal or vertical group."},
 			{"FullWidth", "bool", "false", "Stretches the group across its row."},
 			{"Detached", "bool", "false", "Separates the toggles instead of joining them."},
+			{"Separators", "bool", "false", "Paints a half-height divider at each shared edge."},
 		},
 		Tokens: []string{"AccentSoft", "AccentSoftForeground", "Border"},
 	})
@@ -227,7 +243,7 @@ mygoui.ToggleButton(c, mygoui.ToggleButtonOptions{
 		Examples: []ComponentExample{
 			{
 				Title:       "Press feedback",
-				Description: "A pressable surface that reports native hover and press paint.",
+				Description: "A pressable surface with HeroUI Native's 0.985 press scale.",
 				Demo: func(c *ui.Context, s *State) {
 					pressableBody(c, buttonsStateOf(s))
 				},
@@ -260,6 +276,6 @@ mygoui.ToggleButton(c, mygoui.ToggleButtonOptions{
 			{"Disabled", "bool", "false", "Removes hover and press feedback."},
 			{"OnClick", "func()", "nil", "Runs when the content is pressed."},
 		},
-		Tokens: []string{"DefaultHover", "AccentSoft"},
+		Tokens: []string{"Default", "DefaultHover"},
 	})
 }

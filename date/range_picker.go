@@ -62,6 +62,9 @@ func DateRangePicker(c *ui.Context, o DateRangePickerOptions) ui.Element {
 	if o.FullWidth {
 		root.FillWidth()
 	}
+	// Keep the overlay layer present while closed so the panel's fade in and
+	// out has a parent in both frames.
+	ui.Overlay(c, func() {})
 	value := o.Value
 	if value == nil {
 		value = ui.Local(root, rangePickerValueKey{}, func() DateRange { return DateRange{} })
@@ -83,6 +86,7 @@ func DateRangePicker(c *ui.Context, o DateRangePickerOptions) ui.Element {
 	if width == 0 {
 		width = theme.Scale(c, 264)
 	}
+	var triggerHandle ui.Handle
 	spec := rangeFieldSpec{
 		field: fieldSpec{
 			label:       o.Label,
@@ -103,6 +107,7 @@ func DateRangePicker(c *ui.Context, o DateRangePickerOptions) ui.Element {
 		endLabel:         o.EndLabel,
 		loc:              locationOf(value.Start, c),
 		width:            width,
+		triggerFocus:     &triggerHandle,
 		onChange:         o.OnChange,
 	}
 	buf := newRangeBuffer(root, spec)
@@ -132,6 +137,7 @@ func DateRangePicker(c *ui.Context, o DateRangePickerOptions) ui.Element {
 					o.OnOpenChange(true)
 				}
 			})
+			trigger.Bind(&triggerHandle)
 		}
 		field, group = rangeField(c, spec, buf)
 		if *refocus && trigger.Valid() {
@@ -213,7 +219,10 @@ type rangeFieldSpec struct {
 	loc              *time.Location
 	width            float32
 	suffix           func()
-	onChange         func(DateRange)
+	// triggerFocus is the popup trigger built by suffix, when there is one:
+	// the group hides its focus face while that trigger holds the focus.
+	triggerFocus *ui.Handle
+	onChange     func(DateRange)
 }
 
 func rangeField(c *ui.Context, spec rangeFieldSpec, buf *rangeBuffer) (ui.Element, ui.Element) {
@@ -246,7 +255,7 @@ func rangeGroup(c *ui.Context, spec rangeFieldSpec, buf *rangeBuffer, invalid bo
 	if endLabel == "" {
 		endLabel = "End date"
 	}
-	group := fieldGroup(c, invalid, spec.field.disabled)
+	group := fieldGroup(c, invalid, spec.field.disabled, spec.triggerFocus)
 	if spec.width > 0 && !spec.field.fullWidth {
 		group = group.Width(spec.width)
 	}

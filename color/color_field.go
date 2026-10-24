@@ -64,12 +64,14 @@ func ColorField(c *ui.Context, o ColorFieldOptions) ui.Element {
 		group = formstyle.Surface(group, c, false, invalid, o.Disabled)
 		group.Children(func() {
 			current := s.Value
-			swatchSize := theme.Scale(c, theme.Space20)
+			// HeroUI's ColorField prefix is an XS swatch: 16 DIP, 8 DIP round.
+			swatchRadius := theme.RadiusScale().LG
+			swatchSize := theme.Scale(c, 16)
 			ui.Box(c).Size(swatchSize, swatchSize).Shrink(0).
-				Radius(theme.RadiusScale().MD).Clip().
+				Radius(swatchRadius).Clip().
 				Role(ui.RoleNone).Draw(func(p *ui.Painter, r ui.Rect) {
-				paintSwatch(p, r, current, theme.RadiusScale().MD)
-				paintSwatchBorder(p, r, theme.RadiusScale().MD)
+				paintSwatch(p, r, current, swatchRadius)
+				paintSwatchBorder(p, r, swatchRadius)
 			})
 			input := ui.TextInputBase(c, &s.field.text).Grow(1).MinWidth(theme.Scale(c, 120)).
 				Placeholder(placeholder)

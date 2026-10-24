@@ -87,7 +87,7 @@ func Menu(c *ui.Context, o MenuOptions) ui.Element {
 
 func buildMenu(c *ui.Context, o MenuOptions, extra menuExtra, parent *menuScope) ui.Element {
 	root := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Gap(scale(c, theme.Space4)).
-		Padding(scale(c, theme.Space4)).Role(ui.RoleMenu).FocusGroup(ui.Vertical)
+		Padding(scale(c, theme.Space4)).Role(ui.RoleMenu).FocusGroup(ui.Vertical).Clip()
 	if o.Label != "" {
 		root.Label(o.Label)
 	}
@@ -144,7 +144,7 @@ func buildMenuSection(c *ui.Context, o MenuSectionOptions, sc *menuScope) ui.Ele
 	section.Children(func() {
 		if o.Title != "" {
 			heading := ui.Row(c).FillWidth().AlignItems(ui.Center).Shrink(0).
-				Padding(scale(c, theme.Space6), scale(c, theme.Space10), scale(c, theme.Space2), scale(c, theme.Space10)).
+				Padding(scale(c, theme.Space6), scale(c, theme.Space8), scale(c, theme.Space4), scale(c, theme.Space8)).
 				Role(ui.RoleText)
 			heading.Children(func() {
 				style.Text(ui.Text(c, o.Title), c, theme.XS()).TextColor(t.Muted).
@@ -163,8 +163,12 @@ func buildMenuSection(c *ui.Context, o MenuSectionOptions, sc *menuScope) ui.Ele
 func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 	t := theme.Colors(c)
 	if o.Separator {
-		sep := mygoui.Separator(c, mygoui.SeparatorOptions{})
-		sep.Margin(scale(c, theme.Space4), scale(c, theme.Space6))
+		// Upstream insets the menu's separator to 3% on each side; a plain
+		// full-width box paints that rule in its own paint.
+		sep := ui.Box(c).FillWidth().Shrink(0).Height(hairline).Role(ui.RoleNone)
+		sep.Draw(func(p *ui.Painter, r ui.Rect) {
+			p.Fill(ui.Rect{X: r.X + r.W*0.03, Y: r.Y, W: r.W * 0.94, H: r.H}, t.Separator, 2)
+		})
 		return sep
 	}
 	inMenu := true
@@ -187,9 +191,10 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 	}
 	hasIndicator := (inMenu && sc.selection != MenuSelectNone) || o.Checked
 	hasSubmenu := len(o.Submenu) > 0
+	radio := inMenu && sc.selection == MenuSelectSingle
 	radius := theme.RadiusScale().XXL
 	el := ui.ButtonBase(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Justify(ui.Start).
-		Gap(scale(c, theme.Space12)).Padding(scale(c, theme.Space6), scale(c, theme.Space10)).
+		Gap(scale(c, theme.Space12)).Padding(scale(c, theme.Space6), scale(c, theme.Space8)).
 		MinHeight(scale(c, 36)).Radius(radius).FocusRing(true).
 		Role(role).Label(o.Label).Cursor(ui.CursorPointer)
 	if o.Key != "" {
@@ -197,9 +202,19 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 	}
 	el.Checked(on)
 	el = style.Background(el, radius, ui.Transparent, t.Default, t.Default)
+	// Upstream's indicator is absolute: the row pads its start by 28 DIP to
+	// clear it, and both sides where a submenu keeps it at the end.
+	if hasIndicator {
+		el.PaddingStart(scale(c, 28))
+		if hasSubmenu {
+			el.PaddingStart(scale(c, theme.Space8))
+			el.PaddingEnd(scale(c, 28))
+		}
+	}
 	fg := t.DefaultForeground
+	indicatorColor := t.Muted
 	if o.Variant == MenuItemDanger {
-		fg = t.Danger
+		fg, indicatorColor = t.Danger, t.Danger
 	}
 	if o.Description != "" {
 		el.Description(o.Description)
@@ -214,25 +229,44 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 	} else {
 		el.OnClick(func() { activateMenuItem(sc, inMenu, key, o) })
 	}
-	el.Children(func() {
-		if hasIndicator {
-			ind := ui.Box(c).Size(scale(c, theme.IconMD), scale(c, theme.IconMD)).Shrink(0)
-			ind.TextColor(t.Muted)
-			if o.Variant == MenuItemDanger {
-				ind.TextColor(t.Danger)
-			}
-			radio := inMenu && sc.selection == MenuSelectSingle
-			ind.Draw(func(p *ui.Painter, r ui.Rect) {
-				if !on {
-					return
-				}
-				if radio {
-					drawDot(p, insetRect(r, 0.25), t.Muted)
-				} else {
-					drawCheck(p, r, t.Muted)
-				}
-			})
+	// The check draws itself in over 100 ms and the dot grows from 70% over
+	// 250 ms, as upstream's stroke dash offset and scale transition do. The
+	// value starts at its first target, so an item already checked in the
+	// first frame shows it at once.
+	if hasIndicator {
+		target := float32(0)
+		if on {
+			target = 1
 		}
+		d := menuCheckMotion
+		if radio {
+			d = menuIndicatorMotion
+		}
+		shown := el.AnimateTo("menu-indicator", target, ui.Animation{Duration: d, Ease: ui.EaseOut})
+		glyph := &ui.Path{}
+		iconSize := scale(c, theme.IconMD)
+		el.DrawOver(func(p *ui.Painter, r ui.Rect) {
+			if shown <= 0.001 {
+				return
+			}
+			start := r.X + scale(c, theme.Space8)
+			end := r.X + r.W - scale(c, theme.Space8) - iconSize
+			if c.Direction() == ui.RightToLeft {
+				start, end = end, start
+			}
+			x := start
+			if hasSubmenu {
+				x = end
+			}
+			box := ui.Rect{X: x, Y: r.Y + (r.H-iconSize)/2, W: iconSize, H: iconSize}
+			if radio {
+				drawDot(p, box, 0.7+0.3*shown, indicatorColor.Alpha(shown))
+				return
+			}
+			drawCheck(p, glyph, box, shown, indicatorColor)
+		})
+	}
+	el.Children(func() {
 		if o.Icon != nil {
 			ui.Icon(c, o.Icon).Size(scale(c, theme.IconMD), scale(c, theme.IconMD)).Shrink(0)
 		}
@@ -244,16 +278,18 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 			}
 		})
 		if o.Shortcut != "" {
-			style.Text(ui.Text(c, o.Shortcut), c, theme.XS()).TextColor(t.Muted).Shrink(0)
+			style.Text(ui.Text(c, o.Shortcut), c, theme.SM()).TextColor(t.Muted).
+				FontWeight(theme.WeightMedium).Shrink(0)
 		}
 		if hasSubmenu {
 			chev := ui.Box(c).Size(scale(c, theme.IconSM), scale(c, theme.IconSM)).Shrink(0)
+			glyph := &ui.Path{}
 			chev.Draw(func(p *ui.Painter, r ui.Rect) {
 				angle := float32(0)
 				if c.Direction() == ui.RightToLeft {
 					angle = 180
 				}
-				drawChevron(p, r, angle, 1.5, t.Muted)
+				drawChevron(p, glyph, r, angle, 1.5, t.Muted)
 			})
 		}
 	})
@@ -311,6 +347,7 @@ func SubMenu(c *ui.Context, anchor ui.Element, o SubMenuOptions) ui.Element {
 	if o.Open == nil {
 		return ui.Element{}
 	}
+	keepOverlay(c)
 	radius := min(scale(c, theme.Space32), theme.RadiusScale().XXXL)
 	var panel ui.Element
 	panel = ui.PopoverBase(c, anchor, o.Open, func(p ui.Element) {
@@ -327,7 +364,12 @@ func SubMenu(c *ui.Context, anchor ui.Element, o SubMenuOptions) ui.Element {
 		}
 	})
 	if panel.Valid() {
-		panel = anchored.Apply(panel, anchor, mygoui.Placement{Side: mygoui.SideRight, Align: mygoui.AlignStart}, mygoui.SideRight)
+		// 4 DIP is the menu's own padding: the submenu's edge then meets the
+		// parent panel's edge, as upstream's flush submenu does.
+		panel = anchored.Apply(panel, anchor, mygoui.Placement{
+			Side: mygoui.SideRight, Align: mygoui.AlignStart, Offset: scale(c, theme.Space4),
+		}, mygoui.SideRight)
+		panel = entryFade(c, panel, panelEntryMotion)
 	}
 	return panel
 }
@@ -358,6 +400,7 @@ func Dropdown(c *ui.Context, o DropdownOptions) ui.Element {
 	if open == nil {
 		open = ui.Local(trigger, "dropdown-open", func() bool { return false })
 	}
+	keepOverlay(c)
 	prev := ui.Local(trigger, "dropdown-was-open", func() bool { return *open })
 	enter := *open && !*prev
 	*prev = *open
@@ -376,7 +419,8 @@ func Dropdown(c *ui.Context, o DropdownOptions) ui.Element {
 		})
 	})
 	if panel.Valid() {
-		anchored.Apply(panel, trigger, o.Placement, mygoui.SideBottom)
+		panel = anchored.Apply(panel, trigger, o.Placement, mygoui.SideBottom)
+		entryFade(c, panel, panelEntryMotion)
 	}
 	return trigger
 }
@@ -398,9 +442,4 @@ func removeKey(keys *[]string, key string) {
 			return
 		}
 	}
-}
-
-// insetRect deflates r by f of its size on each side.
-func insetRect(r ui.Rect, f float32) ui.Rect {
-	return ui.Rect{X: r.X + r.W*f, Y: r.Y + r.H*f, W: r.W * (1 - 2*f), H: r.H * (1 - 2*f)}
 }

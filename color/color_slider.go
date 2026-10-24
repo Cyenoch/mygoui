@@ -1,7 +1,8 @@
 package color
 
 import (
-	"fmt"
+	"math"
+	"strconv"
 
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
@@ -41,13 +42,14 @@ func ColorSlider(c *ui.Context, o ColorSliderOptions) ui.Element {
 	format := o.Format
 	if format == nil {
 		format = func(v float64) string {
-			if ch.Percent() {
-				return fmt.Sprintf("%.0f%%", v)
+			n := strconv.FormatInt(int64(math.Round(v)), 10)
+			switch {
+			case ch.Percent():
+				return n + "%"
+			case ch == ChannelHue:
+				return n + "°"
 			}
-			if ch == ChannelHue {
-				return fmt.Sprintf("%.0f°", v)
-			}
-			return fmt.Sprintf("%.0f", v)
+			return n
 		}
 	}
 	label := o.Label
@@ -73,7 +75,7 @@ func ColorSlider(c *ui.Context, o ColorSliderOptions) ui.Element {
 		if o.Vertical {
 			if o.ShowOutput {
 				style.Text(ui.Text(c, format(value)), c, theme.Label()).
-					TextColor(ink).SingleLine().FontFeatures("tnum").FontFeatures("tnum")
+					TextColor(ink).SingleLine().FontFeatures("tnum")
 			}
 			colorSliderTrack(c, o, label, lo, hi, value, thumb, stops, alpha,
 				valueColor, angle, rtl, s, format)
@@ -189,39 +191,87 @@ func colorSliderTrack(c *ui.Context, o ColorSliderOptions, label string,
 	// Snapshot the track's states in the build: a retained copy of a
 	// leaving element paints in later passes, where track has expired.
 	pressed, focused := track.Pressed(), track.FocusVisible()
+	if pressed {
+		track.Cursor(ui.CursorGrabbing)
+	}
+	f := float32(0)
+	if hi > lo {
+		f = float32((value - lo) / (hi - lo))
+	}
 	track.Draw(func(p *ui.Painter, r ui.Rect) {
 		if alpha {
 			p.Clip(r, radius, func() { checkers(p, r, 8) })
 		}
-		p.FillGradient(r, ui.LinearGradient{Stops: stops, Angle: angle}, radius)
+		// HeroUI insets the gradient by 10 DIP at each end and draws the
+		// channel's extreme colors as caps, so the thumb travels between the
+		// cap centers rather than to the bare edges.
+		inset := thumb/2 + theme.Space2
+		inner := r
+		var lowCap, highCap ui.Rect
+		var lowRadii, highRadii [4]float32
+		capRadius := inset
+		if o.Vertical {
+			inner = ui.Rect{X: r.X, Y: r.Y + inset, W: r.W, H: r.H - 2*inset}
+			lowCap = ui.Rect{X: r.X, Y: r.Y + r.H - inset, W: r.W, H: inset}
+			highCap = ui.Rect{X: r.X, Y: r.Y, W: r.W, H: inset}
+			lowRadii = [4]float32{0, 0, capRadius, capRadius}
+			highRadii = [4]float32{capRadius, capRadius, 0, 0}
+		} else {
+			inner = ui.Rect{X: r.X + inset, Y: r.Y, W: r.W - 2*inset, H: r.H}
+			lowCap = ui.Rect{X: r.X, Y: r.Y, W: inset, H: r.H}
+			highCap = ui.Rect{X: r.X + r.W - inset, Y: r.Y, W: inset, H: r.H}
+			lowRadii = [4]float32{capRadius, 0, 0, capRadius}
+			highRadii = [4]float32{0, capRadius, capRadius, 0}
+		}
+		low, high := lowColor(stops, valueColor), highColor(stops, valueColor)
+		if !o.Vertical && rtl {
+			low, high = high, low
+			lowCap, highCap = highCap, lowCap
+			lowRadii, highRadii = highRadii, lowRadii
+		}
+		if inner.W > 0 && inner.H > 0 {
+			p.FillGradient(inner, ui.LinearGradient{Stops: stops, Angle: angle}, 0)
+		}
+		fillCorners(p, lowCap, low, lowRadii[0], lowRadii[1], lowRadii[2], lowRadii[3])
+		fillCorners(p, highCap, high, highRadii[0], highRadii[1], highRadii[2], highRadii[3])
 		p.Stroke(r, ui.RGBA(0, 0, 0, 0.1), radius, 1)
-		current, lo, hi := s.ChannelValue(ch)
-		f := float32(0)
-		if hi > lo {
-			f = float32((current - lo) / (hi - lo))
-		}
-		d := thumb
-		if pressed {
-			d = 14
-		}
+
 		var cx, cy float32
 		if o.Vertical {
-			cy = r.Y + thumb/2 + (1-f)*(r.H-thumb)
+			cy = r.Y + inset + (1-f)*(r.H-2*inset)
 			cx = r.X + r.W/2
 		} else {
+			at := f
 			if rtl {
-				f = 1 - f
+				at = 1 - f
 			}
-			cx = r.X + thumb/2 + f*(r.W-thumb)
+			cx = r.X + inset + at*(r.W-2*inset)
 			cy = r.Y + r.H/2
 		}
-		paintThumb(p, cx, cy, d, valueColor)
+		paintThumb(p, cx, cy, thumb, valueColor)
 		if focused {
-			p.FocusRing(ui.Rect{X: cx - d/2, Y: cy - d/2, W: d, H: d},
-				[4]float32{d / 2, d / 2, d / 2, d / 2})
+			half := thumb / 2
+			p.FocusRing(ui.Rect{X: cx - half, Y: cy - half, W: thumb, H: thumb},
+				[4]float32{half, half, half, half})
 		}
 	})
 	return track.Value(format(value))
+}
+
+// lowColor and highColor are the track's extreme colors, for its caps: the
+// first and last stop, or the current color when a track has no stops.
+func lowColor(stops []ui.GradientStop, fallback ui.Color) ui.Color {
+	if len(stops) == 0 {
+		return fallback
+	}
+	return stops[0].Color
+}
+
+func highColor(stops []ui.GradientStop, fallback ui.Color) ui.Color {
+	if len(stops) == 0 {
+		return fallback
+	}
+	return stops[len(stops)-1].Color
 }
 
 // gradientAngle points from the low end of the track to the high end: right
@@ -237,19 +287,21 @@ func gradientAngle(vertical, rtl bool) float32 {
 	return 90
 }
 
-// fromPointer maps a pointer position inside a track to a channel value,
-// keeping the thumb's radius inside the track at both ends.
+// fromPointer maps a pointer position inside a track to a channel value. The
+// thumb's center travels between the cap centers, HeroUI's half thumb plus a
+// 2 DIP gap, so the ends are reachable at the track's outer edge.
 func fromPointer(x, y, width, height, thumb float32, lo, hi float64, vertical, rtl bool) float64 {
+	inset := thumb/2 + 2
 	f := float32(0)
 	if vertical {
-		usable := height - thumb
+		usable := height - 2*inset
 		if usable > 0 {
-			f = 1 - (y-thumb/2)/usable
+			f = 1 - (y-inset)/usable
 		}
 	} else {
-		usable := width - thumb
+		usable := width - 2*inset
 		if usable > 0 {
-			f = (x - thumb/2) / usable
+			f = (x - inset) / usable
 		}
 		if rtl {
 			f = 1 - f

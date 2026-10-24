@@ -26,10 +26,11 @@ type navigationState struct {
 	tabsVertical  int
 	tabsOverflow  int
 
-	crumbNote  string
-	page       int
-	pageMedium int
-	pageSmall  int
+	crumbNote   string
+	page        int
+	pageMedium  int
+	pageSmall   int
+	pageSummary int
 
 	toolbarAction string
 
@@ -178,7 +179,7 @@ func disclosureDisabledExample(c *ui.Context, _ *navigationState) {
 		Title:    "Archived projects",
 		Disabled: true,
 		Body: func() {
-			mygoui.Paragraph(c, "Archived projects are read-only.", true)
+			mygoui.Paragraph(c, "Archived projects cannot change until they are restored.", true)
 		},
 	})
 }
@@ -216,7 +217,7 @@ func disclosureGroupDisabledExample(c *ui.Context, st *navigationState) {
 				mygoui.Paragraph(c, "Open and closed issues.", true)
 			}},
 			{Key: "archived", Title: "Archived", Disabled: true, Body: func() {
-				mygoui.Paragraph(c, "Archived filters are read-only.", true)
+				mygoui.Paragraph(c, "Archived filters cannot change.", true)
 			}},
 		},
 	})
@@ -336,6 +337,24 @@ func breadcrumbsSelectionExample(c *ui.Context, st *navigationState) {
 			note = "click a link to report its index"
 		}
 		mygoui.Chip(c, mygoui.ChipOptions{Label: note, Color: mygoui.ColorAccent, Variant: mygoui.ChipSoft})
+	})
+}
+
+// paginationSummaryExample pairs a result range with the controls, as
+// upstream's Pagination.Summary does: the two split a wide row and stack in a
+// narrow one.
+func paginationSummaryExample(c *ui.Context, st *navigationState) {
+	navigation.Pagination(c, navigation.PaginationOptions{
+		Label:      "Search results",
+		Page:       &st.pageSummary,
+		Pages:      12,
+		Siblings:   1,
+		Boundaries: 1,
+		Summary: func() {
+			mygoui.Typography(c,
+				fmt.Sprintf("Showing %d-%d of 120 results", (st.pageSummary-1)*10+1, st.pageSummary*10),
+				mygoui.TypographyOptions{Type: theme.TypeBodySM, Muted: true})
+		},
 	})
 }
 

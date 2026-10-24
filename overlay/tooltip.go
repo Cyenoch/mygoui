@@ -29,15 +29,22 @@ func Tooltip(c *ui.Context, anchor ui.Element, o TooltipOptions) ui.Element {
 	}
 	t := theme.Colors(c)
 	radius := min(theme.Space32, theme.RadiusScale().XL)
-	side := resolveSide(o.Placement, mygoui.SideTop)
+	want := resolveSide(o.Placement, mygoui.SideTop)
 	tip := ui.TooltipBase(c, anchor, func(tip ui.Element) {
-		tip = popupMotion(c, tip, tooltipKey{anchor.ID()})
+		// Key the tip before reading the side it settled on: a keyed element
+		// keeps its committed box from frame to frame. The native tooltip
+		// base flips a tip that does not fit above its anchor, and both the
+		// arrow and the zoom follow that side.
+		tip = tip.Key(tooltipKey{anchor.ID()})
+		side := arrowSide(tip, anchor, want)
+		tip = popupMotion(c, tip, side)
 		tip.MaxWidth(320).Padding(theme.Space8).Radius(radius).
 			Background(t.Overlay).TextColor(t.OverlayForeground)
 		tip = panelElevation(c, tip)
 		if o.Arrow {
+			along := arrowAlong(tip, anchor, side)
 			tip.Draw(func(p *ui.Painter, r ui.Rect) {
-				paintArrow(p, r, side, t.Overlay)
+				paintArrow(p, r, side, t.Overlay, along)
 			})
 		}
 		if o.Text != "" {

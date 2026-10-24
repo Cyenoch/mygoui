@@ -168,9 +168,18 @@ func (s *ToastState) View(c *ui.Context) ui.Element {
 		expanded := viewport.Hovered() || viewport.FocusWithin()
 		var sizes [3]toastCardMetrics
 		var expandedHeight, collapsedHeight float32
+		// One line height for the deck, measured once: it depends on the
+		// theme, not on a card's text.
+		span := ui.Span{Font: theme.FontFamily(c), Size: theme.Scale(c, theme.SM().Size), Text: "M"}
+		_, line := c.MeasureText(0, span)
 		for i, t := range toasts {
-			sizes[i] = measureToast(c, t, width)
-			expandedHeight += sizes[i].height
+			// A collapsed card behind the front one takes the front's
+			// height, so only the front card and an expanded deck need theirs.
+			own := expanded || i == len(toasts)-1
+			sizes[i] = measureToast(c, t, width, line, own)
+			if own {
+				expandedHeight += sizes[i].height
+			}
 		}
 		if len(toasts) > 0 {
 			expandedHeight += float32(len(toasts)-1) * theme.Space12
@@ -211,12 +220,14 @@ func (s *ToastState) View(c *ui.Context) ui.Element {
 				if expanded {
 					distance, height, scale = offset, sizes[i].height, 1
 				}
-				top := distance
+				cardW, cardH, top := width*scale, height*scale, distance
 				if place != ToastTop {
-					top = room - height - distance
+					// The bottom edge stays put, as a transform around the
+					// bottom center keeps it.
+					top = room - distance - cardH
 				}
 				toastCard(c, t, toastCardLayout{
-					width: width, height: height, top: top, scale: scale,
+					full: width, width: cardW, height: cardH, top: top,
 					metrics: sizes[i], placement: place, quiet: quiet,
 				})
 				offset -= theme.Space12
@@ -235,21 +246,30 @@ type toastDragGeometry struct {
 
 var toastSpring = ui.Animation{Spring: ui.SpringOptions{Duration: 320 * time.Millisecond}}
 
+// toastContentFade is HeroUI's 200 ms fade of a card's content as the deck
+// expands and collapses.
+var toastContentFade = ui.Animation{Duration: 200 * time.Millisecond}
+
 type toastCardMetrics struct {
 	height, bodyWidth, actionWidth, line float32
 }
 
+// toastCardLayout is one card's slot. full is the deck's width, which a card
+// behind the front one is drawn narrower than; the deck shrinks that card by
+// animating its own box rather than a transform, because a scaled shadow makes
+// the software rasterizer integrate every pixel of its blur on each frame.
 type toastCardLayout struct {
-	width, height, top, scale float32
-	metrics                   toastCardMetrics
-	placement                 ToastPlacement
-	quiet                     bool
+	full, width, height, top float32
+	metrics                  toastCardMetrics
+	placement                ToastPlacement
+	quiet                    bool
 }
 
-func measureToast(c *ui.Context, t ui.Toast, width float32) toastCardMetrics {
+// measureToast measures one toast card at width. line is the deck's line
+// height, and withHeight tells whether the card's own body height is needed:
+// a collapsed card behind the front one is drawn with the front's height.
+func measureToast(c *ui.Context, t ui.Toast, width, line float32, withHeight bool) toastCardMetrics {
 	span := ui.Span{Font: theme.FontFamily(c), Size: theme.Scale(c, theme.SM().Size)}
-	span.Text = "M"
-	_, line := c.MeasureText(0, span)
 	m := toastCardMetrics{line: line}
 	m.bodyWidth = width - theme.Space32 - theme.Space24 - theme.Space6
 	row := float32(theme.Space24)
@@ -262,16 +282,18 @@ func measureToast(c *ui.Context, t ui.Toast, width float32) toastCardMetrics {
 	}
 	m.bodyWidth = max(float32(1), m.bodyWidth)
 	var body float32
-	for i, text := range [2]string{t.Title, t.Description} {
-		if text == "" {
-			continue
+	if withHeight {
+		for i, text := range [2]string{t.Title, t.Description} {
+			if text == "" {
+				continue
+			}
+			span.Text, span.Weight = text, theme.WeightNormal
+			if i == 0 {
+				span.Weight = theme.WeightMedium
+			}
+			_, height := c.MeasureText(m.bodyWidth, span)
+			body += height
 		}
-		span.Text, span.Weight = text, theme.WeightNormal
-		if i == 0 {
-			span.Weight = theme.WeightMedium
-		}
-		_, height := c.MeasureText(m.bodyWidth, span)
-		body += height
 	}
 	m.height = max(body, row) + theme.Space24
 	return m
@@ -314,39 +336,46 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 		label = t.Description
 	}
 	parts := ui.ToastBase(c, t)
-	root := parts.Root.Absolute().Left(0).Width(layout.width).Label(label).
+	root := parts.Root.Absolute().Label(label).
 		Radius(overlayRadius()).
 		Background(pal.Surface).TextColor(pal.OverlayForeground)
 	root = panelElevation(c, root)
 	top, height := layout.top, layout.height
-	dir := float32(24)
-	origin := float32(1)
+	left := (layout.full - layout.width) / 2
+	width := layout.width
+	// HeroUI enters and leaves the deck by the card's own height, from the
+	// window edge: translateY(100%) below and -100% above. The entrance is
+	// declared geometry, which MyGo re-lays after transitions, and the exit is
+	// the transition's own translation, which the rasterizer folds: a scale
+	// here would put the card's shadow on the per-pixel transformed path every
+	// animated frame.
+	dir := height
 	if layout.placement == ToastTop {
-		dir, origin = -24, 0
+		dir = -height
 	}
-	root.TransformOrigin(0.5, origin)
 	entry := ui.Local(root, "entry", func() bool { return false })
 	if !layout.quiet {
-		// Animate declared geometry: MyGo re-lays absolute overlays after transitions.
-		// Initial translation is geometry too, so it survives overlay reattachment.
 		if !*entry {
 			root.Jump("top", top+dir)
 			*entry = true
 		}
 		top = root.AnimateTo("top", top, toastSpring)
+		left = root.AnimateTo("left", left, toastSpring)
+		width = root.AnimateTo("width", width, toastSpring)
 		height = root.AnimateTo("height", height, toastSpring)
 		root.Transition(ui.ElementTransition{
 			Colors: true, Animation: &toastSpring,
-			Enter: &ui.Motion{Scale: 0.96, Opacity: 0},
-			Exit:  &ui.Motion{Y: dir, Scale: 0.96, Opacity: 0},
-		}).AnimatePose(ui.Pose{Scale: layout.scale}, toastSpring)
+			Enter: &ui.Motion{Opacity: 0},
+			Exit:  &ui.Motion{Y: dir, Opacity: 0},
+		})
 	} else {
 		root.Jump("top", top)
+		root.Jump("left", left)
+		root.Jump("width", width)
 		root.Jump("height", height)
-		root.Scale(layout.scale, layout.scale)
 		*entry = true
 	}
-	root.Top(top).Height(height)
+	root.Left(left).Top(top).Width(width).Height(height)
 	drag := ui.Local(root, "drag", func() toastDragGeometry { return toastDragGeometry{} })
 	root.Draggable(&drag.offset, ui.DraggableOptions{
 		Axis: ui.Horizontal, Animation: toastSpring,
@@ -365,8 +394,15 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 		return
 	}
 	root.Children(func() {
-		ui.Row(c.Key("toast-content")).Fill().AlignItems(ui.Start).
-			Gap(theme.Space6).Padding(theme.Space12, theme.Space16).Clip().Children(func() {
+		row := ui.Row(c.Key("toast-content")).Fill().AlignItems(ui.Start).
+			Gap(theme.Space6).Padding(theme.Space12, theme.Space16).Clip()
+		// HeroUI fades a covered card's content out, leaving only the top
+		// sliver of its face; the deck's expansion reveals it again.
+		reveal := float32(1)
+		if layout.width < layout.full {
+			reveal = 0
+		}
+		row.Opacity(row.AnimateTo("reveal", reveal, toastContentFade)).Children(func() {
 			// Indicator: 16 DIP glyph in a 4 DIP gutter (p-1).
 			box := ui.Box(c).Size(theme.Space24, theme.Space24).Shrink(0).
 				Center().Padding(theme.Space4).TextColor(iconInk)
@@ -403,7 +439,7 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 		size := theme.Scale(c, theme.Space20)
 		glyph := theme.Scale(c, theme.IconXS)
 		close := parts.CloseButton().Label(locale.M().Close).Absolute().
-			Top(-theme.Space6).Right(-theme.Space6).
+			Top(-theme.Space4).Right(-theme.Space4).
 			Size(size, size).Padding(0).Center().
 			Radius(theme.RadiusScale().XL).FocusRing(true).TextColor(pal.Muted)
 		close.Draggable(nil, ui.DraggableOptions{Axis: ui.Horizontal, Bounds: &ui.Rect{}, Rigid: true})

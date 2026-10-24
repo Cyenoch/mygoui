@@ -71,15 +71,22 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 			pad = theme.Space16
 		}
 		back = paintBackdrop(c, back, o.Backdrop)
-		back = dialogMotion(c, back)
+		back = dialogMotion(c, back, dialogMotionDuration)
 		back.Padding(pad).Row().Center()
 
 		t := theme.Colors(c)
 		availW := max(float32(0), w-2*pad)
 		availH := max(float32(0), h-2*pad)
+		// Alert dialogs have no full-screen size of their own: a size that
+		// fills its container, ModalCover or ModalFull, takes the space the
+		// padded container leaves.
+		width := min(modalWidth(o.Size), availW)
+		if o.Size == ModalCover || o.Size == ModalFull {
+			width = availW
+		}
 		radius := overlayRadius()
 		panel.Role(ui.RoleAlertDialog).
-			Width(min(modalWidth(o.Size), availW)).MaxWidth(availW).
+			Width(width).MaxWidth(availW).
 			MaxHeight(availH).MinHeight(0).
 			Radius(radius).Clip().
 			Background(t.Overlay).TextColor(t.OverlayForeground)

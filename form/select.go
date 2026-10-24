@@ -1,7 +1,9 @@
 package form
 
 import (
+	"reflect"
 	"strings"
+	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
@@ -108,6 +110,108 @@ func selectNotify(o SelectOptions, s *SelectState) {
 	o.OnChange(keys)
 }
 
+// listSource identifies the option slices a filtered list was built from, so
+// an unchanged source and query is not scanned again. Callers own the slices;
+// replacing one, as async results do, changes the data pointer.
+type listSource struct {
+	items, sections, sectionData          uintptr
+	itemCount, sectionCount, sectionItems int
+}
+
+// sourceOf fingerprints the options. It walks sections only, not their items.
+func sourceOf(items []list.ListBoxItem, sections []list.ListBoxSection) listSource {
+	s := listSource{
+		items: sliceData(items), sections: sliceData(sections),
+		itemCount: len(items), sectionCount: len(sections),
+	}
+	for i := range sections {
+		s.sectionItems += len(sections[i].Items)
+		s.sectionData = s.sectionData*33 + sliceData(sections[i].Items)*7 +
+			uintptr(len(sections[i].Items))
+	}
+	return s
+}
+
+// sliceData returns the backing array of s, or zero when it has none.
+func sliceData[T any](s []T) uintptr {
+	if len(s) == 0 {
+		return 0
+	}
+	return reflect.ValueOf(s).Pointer()
+}
+
+// filterMatch resolves the option predicate for a query, lowering it once
+// rather than once per item.
+func filterMatch(query string, filter func(string, *list.ListBoxItem) bool) func(*list.ListBoxItem) bool {
+	lower := strings.ToLower(query)
+	return func(it *list.ListBoxItem) bool {
+		if query == "" {
+			return true
+		}
+		if filter != nil {
+			return filter(query, it)
+		}
+		return containsFold(it.Label, lower)
+	}
+}
+
+// containsFold reports whether s contains lower, which is already lowercase,
+// folding ASCII without allocating per candidate.
+func containsFold(s, lower string) bool {
+	if lower == "" {
+		return true
+	}
+	if !isASCII(s) {
+		return strings.Contains(strings.ToLower(s), lower)
+	}
+	n := len(lower)
+	for i := 0; i+n <= len(s); i++ {
+		if equalFoldASCII(s[i:i+n], lower) {
+			return true
+		}
+	}
+	return false
+}
+
+// hasPrefixFold reports whether s starts with lower, which is already
+// lowercase.
+func hasPrefixFold(s, lower string) bool {
+	if lower == "" {
+		return true
+	}
+	if len(s) < len(lower) {
+		return false
+	}
+	if !isASCII(s) {
+		return strings.HasPrefix(strings.ToLower(s), lower)
+	}
+	return equalFoldASCII(s[:len(lower)], lower)
+}
+
+// equalFoldASCII compares a against an already lowercase b byte by byte.
+func equalFoldASCII(a, b string) bool {
+	for i := range len(a) {
+		c := a[i]
+		if 'A' <= c && c <= 'Z' {
+			c += 'a' - 'A'
+		}
+		if c != b[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// isASCII reports whether s holds only ASCII bytes.
+func isASCII(s string) bool {
+	for i := range len(s) {
+		if s[i] >= 0x80 {
+			return false
+		}
+	}
+	return true
+}
+
 // fieldMessage returns the visible and accessible error for a field.
 func fieldMessage(invalid bool, text string) string {
 	if !invalid {
@@ -165,7 +269,7 @@ func Select(c *ui.Context, o SelectOptions) ui.Element {
 			name = o.Placeholder
 		}
 		trigger.Label(name).Description(o.Description).Error(errText)
-		trigger = fieldSurface(trigger, c, o.Variant, invalid, o.Disabled)
+		trigger = triggerSurface(trigger, c, o.Variant, invalid, o.Disabled)
 		trigger.Bind(&s.Trigger)
 
 		trigger.OnClick(func() {
@@ -210,11 +314,7 @@ func Select(c *ui.Context, o SelectOptions) ui.Element {
 					ui.Box(c).Width(theme.Scale(c, 20)).Height(theme.Scale(c, 20)).Shrink(0)
 				}
 			}
-			indicator := ui.Icon(c, selectChevron).Size(theme.Scale(c, 16), theme.Scale(c, 16)).
-				Shrink(0).TextColor(t.FieldPlaceholder)
-			if s.Open {
-				indicator.Rotate(180)
-			}
+			selectIndicator(c, s.Open)
 		})
 		selectPopup(c, o, s, trigger, mode)
 		if o.Description != "" && !invalid {
@@ -287,12 +387,12 @@ func selectTypeahead(o SelectOptions, s *SelectState, r rune) {
 		return
 	}
 	found := ""
-	letter := string(r)
+	letter := strings.ToLower(string(r))
 	eachSelectItem(o.Items, o.Sections, func(it *list.ListBoxItem) bool {
 		if it.Disabled || it.Label == "" {
 			return true
 		}
-		if strings.HasPrefix(strings.ToLower(it.Label), letter) {
+		if hasPrefixFold(it.Label, letter) {
 			found = itemKey(it)
 			return false
 		}
@@ -321,6 +421,7 @@ func selectPopup(c *ui.Context, o SelectOptions, s *SelectState, trigger ui.Elem
 		panel.MinWidth(anchor.Bounds().W)
 		panel.Padding(0).Radius(radius).Background(t.Overlay).Clip()
 		panel = style.Shadow(panel, c, theme.OverlayShadows(c.Theme().Dark))
+		panel = popoverMotion(c, panel, o.Placement, mygoui.SideBottom, 150*time.Millisecond)
 		anchored.Apply(panel, anchor, o.Placement, mygoui.SideBottom)
 		list.ListBox(c, list.ListBoxOptions{
 			Label:     o.Label,
@@ -363,6 +464,53 @@ func selectClearButton(c *ui.Context, clear func()) {
 	btn.Children(func() {
 		ui.Icon(c, selectClearIcon).Size(theme.Scale(c, 14), theme.Scale(c, 14)).
 			TextColor(t.Muted)
+	})
+}
+
+// selectIndicator is the popup chevron, turning over 150 ms as it opens and
+// closes. Reduced motion settles the turn at once.
+func selectIndicator(c *ui.Context, open bool) ui.Element {
+	t := theme.Colors(c)
+	angle := float32(0)
+	if open {
+		angle = 180
+	}
+	return ui.Icon(c, selectChevron).
+		Size(theme.Scale(c, 16), theme.Scale(c, 16)).Shrink(0).
+		TextColor(t.FieldPlaceholder).
+		AnimatePose(ui.Pose{Rotate: angle}, ui.Animation{
+			Duration: 150 * time.Millisecond, Ease: ui.EaseOut,
+		})
+}
+
+// popoverMotion fades and scales a popup from its anchor as HeroUI's popover
+// enter and exit do. Reduced motion settles it at once.
+func popoverMotion(c *ui.Context, panel ui.Element, p mygoui.Placement, fallback mygoui.Side, d time.Duration) ui.Element {
+	if theme.ReduceMotion(c) {
+		return panel
+	}
+	side := p.Side
+	if side == mygoui.SideAuto {
+		side = fallback
+	}
+	enter := ui.Motion{Scale: 0.95}
+	slide := theme.Scale(c, 4)
+	switch side {
+	case mygoui.SideTop:
+		enter.Y = slide
+	case mygoui.SideLeft:
+		enter.X = slide
+	case mygoui.SideRight:
+		enter.X = -slide
+	default:
+		enter.Y = -slide
+	}
+	return panel.Transition(ui.ElementTransition{
+		Duration: d,
+		Ease:     ui.EaseOut,
+		Colors:   true,
+		Enter:    &enter,
+		Exit:     &ui.Motion{Scale: 0.95},
 	})
 }
 

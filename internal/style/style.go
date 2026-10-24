@@ -7,16 +7,22 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// Text applies a HeroUI type role to an element.
+// Text applies a HeroUI type role to an element. Sizes, line boxes and letter
+// spacing all follow the host text scale, which is read once per call.
 func Text(e ui.Element, c *ui.Context, s theme.TextStyle) ui.Element {
 	family := theme.FontFamily(c)
 	if s.Mono {
 		family = theme.Mono
 	}
-	return e.Font(family).
-		FontSize(theme.Scale(c, s.Size)).
-		FixedLineHeight(theme.Scale(c, s.LineHeight)).
+	scale := theme.TextScale(c)
+	e = e.Font(family).
+		FontSize(s.Size * scale).
+		FixedLineHeight(s.LineHeight * scale).
 		FontWeight(s.Weight)
+	if s.Tracking != 0 {
+		e = e.LetterSpacing(s.Tracking * s.Size * scale)
+	}
+	return e
 }
 
 // Shadow applies zero or more native drop-shadow layers.
@@ -45,7 +51,8 @@ func Disabled(e ui.Element, disabled bool) ui.Element {
 // ElementTransition in later build passes, where an Element bound in the
 // build that made the copy has expired. A frame is rebuilt for each hover
 // or press change, so the face still follows the pointer. Zero alpha skips
-// painting.
+// painting. Apply Disabled before Background: the face is chosen when this
+// runs, and a disabled element reports neither hover nor press.
 func Background(e ui.Element, radius float32, normal, hover, pressed ui.Color) ui.Element {
 	fill := normal
 	switch {

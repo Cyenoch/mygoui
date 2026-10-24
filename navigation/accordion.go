@@ -44,18 +44,23 @@ type AccordionItemOptions struct {
 
 // Accordion builds a column of sections. Up and Down move the keyboard focus
 // between headers, Home and End to the first and the last; Enter and Space
-// toggle the focused section. The panel grows and its indicator turns with
-// the shared collapsible animation, which reduced motion disables.
+// toggle the focused section. The panel grows and fades, its height and
+// opacity both over the shared collapsible animation, and its indicator turns
+// with the same progress; reduced motion settles all of them at once.
 func Accordion(c *ui.Context, o AccordionOptions) ui.Element {
 	t := theme.Colors(c)
-	radius := min(scale(c, theme.Space32), theme.RadiusScale().XXXL)
-	root := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Radius(radius).Clip().
+	root := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).
 		Role(ui.RoleGroup).FocusGroup(ui.Vertical)
 	if o.Label != "" {
 		root.Label(o.Label)
 	}
 	if o.Variant == AccordionSurface {
-		root.Background(t.Surface).TextColor(t.SurfaceForeground)
+		// The surface variant is one rounded panel: its radius rounds the
+		// first and last headers and clips its children, as upstream's
+		// per-corner trigger rules do. The default variant draws on the page
+		// with square header faces, so it is not clipped.
+		radius := min(scale(c, theme.Space32), theme.RadiusScale().XXXL)
+		root.Background(t.Surface).TextColor(t.SurfaceForeground).Radius(radius).Clip()
 	}
 	expanded := o.Expanded
 	if expanded == nil {
@@ -70,15 +75,19 @@ func Accordion(c *ui.Context, o AccordionOptions) ui.Element {
 	}
 	root.Children(func() {
 		for i := range o.Items {
-			accordionItem(c, sc, i, o.Items[i])
+			accordionItem(c, sc, i, len(o.Items), o.Items[i])
 		}
 	})
 	return root
 }
 
-// accordionItem builds one section. A separator is drawn above every section
-// but the first, matching upstream's bottom-aligned rule.
-func accordionItem(c *ui.Context, sc *accordionScope, index int, o AccordionItemOptions) ui.Element {
+// accordionItem builds one section. Upstream draws its separator as an
+// ::after rule on the item's bottom edge: an absolute child sits there, exact
+// while the panel animates, the last section has none, and the surface
+// variant insets it by 3% on each side. The header face is square: the
+// root's clip rounds the outer corners, as upstream rounds only the first
+// and last headers.
+func accordionItem(c *ui.Context, sc *accordionScope, index, count int, o AccordionItemOptions) ui.Element {
 	t := theme.Colors(c)
 	key := o.Key
 	if key == "" {
@@ -99,18 +108,19 @@ func accordionItem(c *ui.Context, sc *accordionScope, index int, o AccordionItem
 	variant := sc.variant
 	hide := o.HideSeparator || sc.hideSeparator
 	item.Children(func() {
-		if index > 0 && !hide {
-			sep := ui.Box(c).Height(hairline).FillWidth().Shrink(0).Background(t.Separator)
+		if index < count-1 && !hide {
+			sep := ui.Box(c).Absolute().Bottom(0).Height(hairline).Radius(2).Role(ui.RoleNone)
 			if variant == AccordionSurface {
-				sep.Background(t.SurfaceForeground.Alpha(0.06)).MarginX(scale(c, theme.Space12))
+				sep.StartPercent(3).WidthPercent(94).Background(t.SurfaceForeground.Alpha(0.06))
+			} else {
+				sep.Start(0).End(0).Background(t.Separator)
 			}
-			sep.Role(ui.RoleNone)
 		}
 		var parts ui.CollapsibleParts
 		var tr ui.Element
-		headerRadius := theme.RadiusScale().XL
+		glyph := &ui.Path{}
 		header := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).
-			PaddingX(scale(c, theme.Space16)).Radius(headerRadius).Clip()
+			PaddingX(scale(c, theme.Space16))
 		hover := t.Foreground.Alpha(0.03)
 		if variant == AccordionSurface {
 			hover = t.Default
@@ -128,7 +138,7 @@ func accordionItem(c *ui.Context, sc *accordionScope, index int, o AccordionItem
 					return
 				}
 				if trPressed || trHovered {
-					p.Fill(r, hover, headerRadius)
+					p.Fill(r, hover, 0)
 				}
 			})
 			tr.DrawOver(func(p *ui.Painter, r ui.Rect) {
@@ -143,7 +153,7 @@ func accordionItem(c *ui.Context, sc *accordionScope, index int, o AccordionItem
 					FontWeight(theme.WeightMedium).Grow(1).SingleLine()
 				ind := ui.Box(c).Size(scale(c, theme.IconMD), scale(c, theme.IconMD)).Shrink(0)
 				ind.Draw(func(p *ui.Painter, r ui.Rect) {
-					drawChevronDown(p, r, 180*progress, 1.5, t.Muted)
+					drawChevronDown(p, glyph, r, 180*progress, 1.5, t.Muted)
 				})
 			})
 			tr = style.Disabled(tr, o.Disabled)
@@ -165,6 +175,7 @@ func accordionItem(c *ui.Context, sc *accordionScope, index int, o AccordionItem
 			panel.FillWidth().MinWidth(0).Gap(scale(c, theme.Space8)).
 				Padding(0, scale(c, theme.Space16), scale(c, theme.Space16), scale(c, theme.Space16)).
 				TextColor(t.Muted)
+			fadePanel(panel, parts.Progress())
 		}
 	})
 	return item

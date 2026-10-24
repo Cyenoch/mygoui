@@ -116,7 +116,9 @@ func TestToastEntryTravelsAndFadesFromWindowEdge(t *testing.T) {
 			f.add(ToastOptions{ID: "arrival", Title: "New notification", Placement: tc.place, Timeout: -1})
 			first := toastMotionRect(t, f.tt, "New notification")
 			firstImage := toastMotionImage(f.tt)
-			f.tt.Advance(80 * time.Millisecond)
+			// A card now enters from a whole card height away, off the window,
+			// so it is compared once it is painted inside it.
+			f.tt.Advance(180 * time.Millisecond)
 			f.tt.Frame()
 			mid := toastMotionRect(t, f.tt, "New notification")
 			midImage := toastMotionImage(f.tt)
@@ -139,9 +141,9 @@ func TestToastEntryTravelsAndFadesFromWindowEdge(t *testing.T) {
 
 // TestToastDeckPlacementAndIdleStack pins the deck's resting geometry: the
 // newest card hugs the chosen window edge and the older two sit behind it at
-// 12 DIP steps, 0.04 scale apart. The bottom cards are compared by their
-// bottom edges and the top cards by their top edges, so the idle scale cannot
-// make the assertion depend on a transform origin.
+// 12 DIP steps and 0.04 narrower each. The bottom cards are compared by their
+// bottom edges and the top cards by their top edges, so the idle shrink cannot
+// make the assertion depend on where a card is anchored.
 func TestToastDeckPlacementAndIdleStack(t *testing.T) {
 	const winW, winH = 640, 800
 	for _, tc := range []struct {

@@ -54,7 +54,6 @@ func TextArea(c *ui.Context, value *string, o TextAreaOptions) ui.Element {
 			e.MinHeight(theme.Scale(c, theme.HeightTextarea))
 		}
 		e = fieldSurface(e, c, o.Variant, o.Invalid, o.Disabled)
-		e.FocusRing(true)
 		if o.OnChange != nil {
 			e.OnChange(o.OnChange)
 		}

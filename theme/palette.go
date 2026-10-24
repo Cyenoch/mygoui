@@ -58,6 +58,10 @@ type PalettePatch struct {
 	Muted *ui.Color
 	// Border outlines controls. new(ui.Transparent) is valid and erases them.
 	Border *ui.Color
+	// FieldBorder outlines form fields. HeroUI's default is transparent, so a
+	// field shows no outline until a host gives it one; an opaque border
+	// brings the hover and focus shades with it.
+	FieldBorder *ui.Color
 
 	Accent, AccentForeground   *ui.Color
 	Danger, DangerForeground   *ui.Color
@@ -103,6 +107,7 @@ func (o *PalettePatch) apply(p *Palette) {
 	set(&p.Foreground, o.Foreground)
 	set(&p.Muted, o.Muted)
 	set(&p.Border, o.Border)
+	set(&p.FieldBorder, o.FieldBorder)
 	set(&p.Accent, o.Accent)
 	set(&p.AccentForeground, o.AccentForeground)
 	set(&p.Danger, o.Danger)
@@ -191,6 +196,9 @@ func buildPalette(dark bool, prefs Preferences) Palette {
 	// HeroUI has no separate info role: accent is its info color until a host
 	// separates them through PalettePatch.Info.
 	p.Info, p.InfoForeground = p.Accent, p.AccentForeground
+	// HeroUI declares the field border as a common, transparent variable that
+	// no theme overrides; a host opts into an outline through the patch.
+	p.FieldBorder = ui.Transparent
 
 	patch := prefs.Palette.patch(dark)
 	if patch != nil {
@@ -211,37 +219,38 @@ func buildPalette(dark bool, prefs Preferences) Palette {
 	p.FieldBackground = p.Surface
 	p.FieldForeground = p.Foreground
 	p.FieldPlaceholder = p.Muted
-	p.FieldBorder = ui.Transparent
 	p.Focus = p.Accent
 	p.Link = p.Foreground
 	p.Scrollbar = p.Foreground.Alpha(0.15)
 
 	hover := patch != nil && patch.Hover != nil
 	if !hover {
-		p.SurfaceHover = mix(p.Surface, p.SurfaceForeground, 0.08)
+		p.SurfaceHover = mixRatio(p.Surface, p.SurfaceForeground, 92, 8)
 	}
-	p.BackgroundSecondary = mix(p.Background, p.Foreground, 0.04)
-	p.BackgroundTertiary = mix(p.Background, p.Foreground, 0.08)
+	p.BackgroundSecondary = mixRatio(p.Background, p.Foreground, 96, 4)
+	p.BackgroundTertiary = mixRatio(p.Background, p.Foreground, 92, 8)
 	p.BackgroundInverse = p.Foreground
-	p.DefaultHover = mix(p.Default, p.DefaultForeground, 0.04)
-	p.AccentHover = mix(p.Accent, p.AccentForeground, 0.10)
-	p.SuccessHover = mix(p.Success, p.SuccessForeground, 0.10)
-	p.WarningHover = mix(p.Warning, p.WarningForeground, 0.10)
-	p.DangerHover = mix(p.Danger, p.DangerForeground, 0.10)
-	p.InfoHover = mix(p.Info, p.InfoForeground, 0.10)
+	p.DefaultHover = mixRatio(p.Default, p.DefaultForeground, 96, 4)
+	p.AccentHover = mixRatio(p.Accent, p.AccentForeground, 90, 10)
+	p.SuccessHover = mixRatio(p.Success, p.SuccessForeground, 90, 10)
+	p.WarningHover = mixRatio(p.Warning, p.WarningForeground, 90, 10)
+	p.DangerHover = mixRatio(p.Danger, p.DangerForeground, 90, 10)
+	p.InfoHover = mixRatio(p.Info, p.InfoForeground, 90, 10)
 	if patch == nil || patch.Selected == nil {
 		p.Selection = p.Accent.Alpha(0.30)
 	}
 
-	p.FieldHover = mix(p.FieldBackground, p.FieldForeground, 0.02)
+	p.FieldHover = mixRatio(p.FieldBackground, p.FieldForeground, 90, 2)
 	p.FieldFocus = p.FieldBackground
-	p.FieldBorderHover = mix(p.FieldBorder, p.FieldForeground, 0.10)
-	p.FieldBorderFocus = mix(p.FieldBorder, p.FieldForeground, 0.22)
+	p.FieldBorderHover = mixRatio(p.FieldBorder, p.FieldForeground, 88, 10)
+	p.FieldBorderFocus = mixRatio(p.FieldBorder, p.FieldForeground, 74, 22)
 
 	p.DefaultSoft = p.Default.Alpha(0.5)
 	p.DefaultSoftForeground = p.DefaultForeground
 	p.DefaultSoftHover = p.Default.Alpha(0.6)
 
+	// Soft fills: accent, success and warning drop to 12% in the dark theme;
+	// danger keeps 15% in both.
 	softAlpha, hoverAlpha := float32(0.15), float32(0.20)
 	if dark {
 		softAlpha, hoverAlpha = 0.12, 0.16
@@ -254,41 +263,45 @@ func buildPalette(dark bool, prefs Preferences) Palette {
 	p.WarningSoftHover = p.Warning.Alpha(hoverAlpha)
 	p.InfoSoft = p.Info.Alpha(softAlpha)
 	p.InfoSoftHover = p.Info.Alpha(hoverAlpha)
-	if dark {
-		p.DangerSoft = p.Danger.Alpha(0.15)
-		p.DangerSoftHover = p.Danger.Alpha(0.20)
-	} else {
-		p.DangerSoft = p.Danger.Alpha(softAlpha)
-		p.DangerSoftHover = p.Danger.Alpha(hoverAlpha)
-	}
+	p.DangerSoft = p.Danger.Alpha(0.15)
+	p.DangerSoftHover = p.Danger.Alpha(0.20)
 
-	softWeight := float32(0.30)
+	// Soft foregrounds mix the status with the ink at the theme's percentages;
+	// the vibrant palette flattens every status to 92/8.
+	softMix := func(color ui.Color, statusPct, inkPct float32) ui.Color {
+		if prefs.Vibrant {
+			return mixRatio(color, p.Foreground, 92, 8)
+		}
+		return mixRatio(color, p.Foreground, statusPct, inkPct)
+	}
+	dangerStatus, dangerInk := float32(70), float32(40)
+	warningStatus, warningInk := float32(80), float32(70)
+	successStatus, successInk := float32(80), float32(60)
 	if dark {
-		softWeight = 0.273
+		dangerStatus, dangerInk = 80, 30
+		warningStatus, warningInk = 80, 30
+		successStatus, successInk = 80, 30
 	}
-	p.AccentSoftForeground = softForeground(p.Accent, p.Foreground, prefs.Vibrant, softWeight)
-	p.SuccessSoftForeground = softForeground(p.Success, p.Foreground, prefs.Vibrant, softWeight)
-	p.WarningSoftForeground = softForeground(p.Warning, p.Foreground, prefs.Vibrant, softWeight)
-	p.DangerSoftForeground = softForeground(p.Danger, p.Foreground, prefs.Vibrant, softWeight)
-	p.InfoSoftForeground = softForeground(p.Info, p.Foreground, prefs.Vibrant, softWeight)
-	if !prefs.Vibrant && !dark {
-		p.WarningSoftForeground = mix(p.Warning, p.Foreground, 0.467)
-		p.SuccessSoftForeground = mix(p.Success, p.Foreground, 0.429)
-		p.DangerSoftForeground = mix(p.Danger, p.Foreground, 0.364)
-	}
+	p.AccentSoftForeground = softMix(p.Accent, 70, 30)
+	p.SuccessSoftForeground = softMix(p.Success, successStatus, successInk)
+	p.WarningSoftForeground = softMix(p.Warning, warningStatus, warningInk)
+	p.DangerSoftForeground = softMix(p.Danger, dangerStatus, dangerInk)
+	p.InfoSoftForeground = softMix(p.Info, 70, 30)
 
-	p.SeparatorSecondary = mix(p.Surface, p.SurfaceForeground, 0.15)
-	p.SeparatorTertiary = mix(p.Surface, p.SurfaceForeground, 0.19)
-	p.BorderSecondary = mix(p.Surface, p.SurfaceForeground, 0.22)
-	p.BorderTertiary = mix(p.Surface, p.SurfaceForeground, 0.34)
+	p.SeparatorSecondary = mixRatio(p.Surface, p.SurfaceForeground, 85, 15)
+	p.SeparatorTertiary = mixRatio(p.Surface, p.SurfaceForeground, 81, 19)
+	p.BorderSecondary = mixRatio(p.Surface, p.SurfaceForeground, 78, 22)
+	p.BorderTertiary = mixRatio(p.Surface, p.SurfaceForeground, 66, 34)
 	return p
 }
 
-func softForeground(color, fg ui.Color, vibrant bool, weight float32) ui.Color {
-	if vibrant {
-		weight = 0.08
+// mixRatio blends b into a from their CSS color-mix percentages. Upstream
+// writes pairs that do not sum to 100, which CSS normalizes before mixing.
+func mixRatio(a, b ui.Color, aPct, bPct float32) ui.Color {
+	if total := aPct + bPct; total != 0 {
+		return mix(a, b, bPct/total)
 	}
-	return mix(color, fg, weight)
+	return a
 }
 
 // mix blends in premultiplied sRGB. It handles straight alpha exactly once.

@@ -97,22 +97,29 @@ func CheckboxGroup(c *ui.Context, o CheckboxGroupOptions, body func()) ui.Elemen
 		if o.Description != "" {
 			Description(c, o.Description)
 		}
-		if o.State != nil && o.SelectAllLabel != "" {
-			st := o.State
-			st.all = st.Checked() && !st.Indeterminate()
-			mixed := st.Indeterminate()
-			Checkbox(c, CheckboxOptions{
-				Checked:       &st.all,
-				Indeterminate: &mixed,
-				Label:         o.SelectAllLabel,
-				Invalid:       o.Invalid,
-				Disabled:      disabled,
-				Variant:       o.Variant,
-				OnChange:      st.Set,
-			})
-		}
+		// HeroUI's first choice sits 16 DIP under the label block: the
+		// group's 4 DIP line gap plus 12 DIP before the item column.
 		items := choiceItems(c, o.Orientation)
-		items.Children(body)
+		if o.Orientation == GroupVertical {
+			items.Padding(theme.Space12, 0, 0, 0)
+		}
+		items.Children(func() {
+			if o.State != nil && o.SelectAllLabel != "" {
+				st := o.State
+				st.all = st.Checked() && !st.Indeterminate()
+				mixed := st.Indeterminate()
+				Checkbox(c, CheckboxOptions{
+					Checked:       &st.all,
+					Indeterminate: &mixed,
+					Label:         o.SelectAllLabel,
+					Invalid:       o.Invalid,
+					Disabled:      disabled,
+					Variant:       o.Variant,
+					OnChange:      st.Set,
+				})
+			}
+			body()
+		})
 		if errText != "" {
 			FieldError(c, errText)
 		}

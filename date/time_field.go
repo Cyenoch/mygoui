@@ -117,7 +117,7 @@ func timeField(c *ui.Context, spec timeFieldSpec, buf *timeBuffer) ui.Element {
 		errorText = locale.M().Invalid
 	}
 	return formField(c, spec.field, errorText, func() {
-		group := fieldGroup(c, invalid, spec.field.disabled)
+		group := fieldGroup(c, invalid, spec.field.disabled, nil)
 		if spec.width > 0 && !spec.field.fullWidth {
 			group = group.Width(spec.width)
 		}

@@ -11,40 +11,49 @@ import (
 // drawChevron paints a two-segment chevron pointing right at angle degrees,
 // clockwise, around the center of r. It strokes a ui.Path: ui.Painter.Line
 // paints only horizontal and vertical strokes, so a diagonal one came out as
-// a bar across the indicator.
-func drawChevron(p *ui.Painter, r ui.Rect, angle float32, width float32, color ui.Color) {
+// a bar across the indicator. path holds the strokes between paints, so a
+// repainting frame rebuilds no command slice.
+func drawChevron(p *ui.Painter, path *ui.Path, r ui.Rect, angle float32, width float32, color ui.Color) {
 	cx, cy := r.X+r.W/2, r.Y+r.H/2
 	d := min(r.W, r.H) / 4
 	sin, cos := sinCos(angle)
-	var path ui.Path
-	path.MoveTo(cx-d*cos+2*d*sin, cy-d*sin-2*d*cos).
+	path.Reset().
+		MoveTo(cx-d*cos+2*d*sin, cy-d*sin-2*d*cos).
 		LineTo(cx+d*cos, cy+d*sin).
 		LineTo(cx-d*cos-2*d*sin, cy-d*sin+2*d*cos)
-	p.StrokePath(&path, width, color)
+	p.StrokePath(path, width, color)
 }
 
 // drawChevronDown paints a chevron pointing down, turned clockwise by angle
-// degrees.
-func drawChevronDown(p *ui.Painter, r ui.Rect, angle float32, width float32, color ui.Color) {
+// degrees. It reuses path as drawChevron does.
+func drawChevronDown(p *ui.Painter, path *ui.Path, r ui.Rect, angle float32, width float32, color ui.Color) {
 	cx, cy := r.X+r.W/2, r.Y+r.H/2
 	d := min(r.W, r.H) / 4
 	sin, cos := sinCos(angle)
-	var path ui.Path
-	path.MoveTo(cx-d*cos+d/2*sin, cy-d*sin-d/2*cos).
+	path.Reset().
+		MoveTo(cx-d*cos+d/2*sin, cy-d*sin-d/2*cos).
 		LineTo(cx-d/2*sin, cy+d/2*cos).
 		LineTo(cx+d*cos+d/2*sin, cy+d*sin-d/2*cos)
-	p.StrokePath(&path, width, color)
+	p.StrokePath(path, width, color)
 }
 
-// drawCheck paints HeroUI's checkmark in r.
-func drawCheck(p *ui.Painter, r ui.Rect, color ui.Color) {
+// drawCheck paints HeroUI's checkmark in r, drawn in up to progress of its
+// length as the selected state's stroke dash offset does. path holds the
+// strokes between paints.
+func drawCheck(p *ui.Painter, path *ui.Path, r ui.Rect, progress float32, color ui.Color) {
+	if progress <= 0 {
+		return
+	}
 	cx, cy := r.X+r.W/2, r.Y+r.H/2
 	s := min(r.W, r.H)
-	var path ui.Path
-	path.MoveTo(cx-s*0.30, cy).
+	path.Reset().
+		MoveTo(cx-s*0.30, cy).
 		LineTo(cx-s*0.08, cy+s*0.22).
 		LineTo(cx+s*0.32, cy-s*0.24)
-	p.StrokePath(&path, 1.5, color)
+	if progress < 1 {
+		path.Trim(0, progress)
+	}
+	p.StrokePath(path, 1.5, color)
 }
 
 // sinCos returns the sine and cosine of angle degrees, for the rotated
@@ -54,9 +63,10 @@ func sinCos(angle float32) (sin, cos float32) {
 	return float32(s), float32(c)
 }
 
-// drawDot paints HeroUI's selected-radio dot in r.
-func drawDot(p *ui.Painter, r ui.Rect, color ui.Color) {
-	s := min(r.W, r.H) / 2
+// drawDot paints HeroUI's selected-radio dot in r at the fraction of its
+// full size: 0.7 while it is hidden, 1 when it shows.
+func drawDot(p *ui.Painter, r ui.Rect, size float32, color ui.Color) {
+	s := min(r.W, r.H) / 2 * min(max(size, 0), 1)
 	p.Fill(ui.Rect{X: r.X + r.W/2 - s, Y: r.Y + r.H/2 - s, W: 2 * s, H: 2 * s}, color, s)
 }
 

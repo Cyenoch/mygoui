@@ -32,7 +32,7 @@ func Alert(c *ui.Context, o AlertOptions) ui.Element {
 			}
 			ui.Icon(c, icon).Size(theme.Scale(c, theme.IconMD), theme.Scale(c, theme.IconMD)).Shrink(0)
 		}).TextColor(ink)
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Start).Children(func() {
 			if o.Title != "" {
 				ts := theme.SM()
 				ts.LineHeight, ts.Weight = 24, theme.WeightMedium

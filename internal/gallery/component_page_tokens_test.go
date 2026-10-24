@@ -99,11 +99,11 @@ func TestThemeTokenCardsShowValuesAndRoles(t *testing.T) {
 			if !tt.HasText(token) {
 				t.Fatalf("%dx%d: token %q card lost its name", size.width, size.height, token)
 			}
-			lc, ok := paletteColor(light, token)
+			lc, ok := paletteColor(&light, token)
 			if !ok {
 				t.Fatalf("%dx%d: token %q does not resolve in the light palette", size.width, size.height, token)
 			}
-			dc, ok := paletteColor(dark, token)
+			dc, ok := paletteColor(&dark, token)
 			if !ok {
 				t.Fatalf("%dx%d: token %q does not resolve in the dark palette", size.width, size.height, token)
 			}
@@ -144,7 +144,8 @@ func TestThemeTokenCardsMarkCustomTokens(t *testing.T) {
 	state.Selected = "card"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1100, 900)
 	tt.Frame()
-	if _, ok := paletteColor(theme.ColorsForMode(false), "SurfaceShadows"); ok {
+	light := theme.ColorsForMode(false)
+	if _, ok := paletteColor(&light, "SurfaceShadows"); ok {
 		t.Fatal("SurfaceShadows unexpectedly resolves to a palette color")
 	}
 	r := revealContent(t, tt, state, "token card SurfaceShadows", 1100, 900)

@@ -56,11 +56,13 @@ func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
 	if c == nil {
 		return ui.Element{}
 	}
-	t := theme.Colors(c)
 	root := ui.Box(c).MinWidth(0)
 	if o.FullWidth {
 		root.FillWidth()
 	}
+	// Keep the overlay layer present while closed so the panel's fade in and
+	// out has a parent in both frames.
+	ui.Overlay(c, func() {})
 	value := o.Value
 	if value == nil {
 		value = ui.Local(root, datePickerValueKey{}, func() time.Time { return time.Time{} })
@@ -81,6 +83,7 @@ func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
 		width = 200
 	}
 	width = theme.Scale(c, width)
+	var triggerHandle ui.Handle
 	spec := dateFieldSpec{
 		field: fieldSpec{
 			label:       o.Label,
@@ -98,6 +101,7 @@ func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
 		placeholder:   o.Placeholder,
 		loc:           locationOf(*value, c),
 		width:         width,
+		triggerFocus:  &triggerHandle,
 		onChange:      o.OnChange,
 	}
 	buf := newDateBuffer(root, spec)
@@ -128,6 +132,7 @@ func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
 					o.OnOpenChange(true)
 				}
 			})
+			trigger.Bind(&triggerHandle)
 		}
 		field, group = dateField(c, spec, buf)
 		if *refocus && trigger.Valid() {
@@ -177,7 +182,6 @@ func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
 	if o.Handle != nil {
 		field.Bind(o.Handle)
 	}
-	_ = t
 	return root
 }
 
@@ -217,11 +221,20 @@ func triggerButton(c *ui.Context, label string, onClick func()) ui.Element {
 }
 
 // popoverPanel styles the floating calendar panel: HeroUI's overlay surface,
-// 12 DIP padding, min(32, 2.5 × radius) corners and the overlay shadow.
+// 12 DIP padding, min(32, 2.5 × radius) corners, the overlay shadow and the
+// 150 ms arrival fade. The fade needs the overlay layer to have shown in the
+// frame before, which the picker keeps warm.
 func popoverPanel(c *ui.Context, panel, anchor ui.Element, place mygoui.Placement) ui.Element {
 	t := theme.Colors(c)
 	radius := min(float32(32), theme.RadiusBase()*2.5)
 	p := panel.Padding(theme.Space12).Radius(radius).Clip().Background(t.Overlay)
 	p = style.Shadow(p, c, theme.OverlayShadows(c.Theme().Dark))
-	return anchored.Apply(p, anchor, place, mygoui.SideBottom)
+	p = anchored.Apply(p, anchor, place, mygoui.SideBottom)
+	if !theme.ReduceMotion(c) {
+		fade := ui.Motion{Opacity: 0}
+		p = p.Transition(ui.ElementTransition{
+			Duration: 150 * time.Millisecond, Ease: ui.EaseOut, Enter: &fade, Exit: &fade,
+		})
+	}
+	return p
 }

@@ -32,6 +32,31 @@ const (
 	ProgressLarge
 )
 
+// progressDuration is HeroUI's indicator transition: 300 ms on --ease-out.
+const progressDuration = 300 * time.Millisecond
+
+// indicatorTransition animates a value change on the indicator. MyGo lays the
+// fill out at each width on the way, so the track never jumps and asks for
+// frames only while the value moves.
+var indicatorTransition = ui.ElementTransition{
+	Duration: progressDuration, Ease: ui.EaseOut, Size: true,
+}
+
+// indicatorAnimation is the same cadence for paint that is not a box, as the
+// determinate ring.
+var indicatorAnimation = ui.Animation{Duration: progressDuration, Ease: ui.EaseOut}
+
+// progressFill lays the bar's fill in its track and eases a value change,
+// unless the desktop asks for less motion.
+func progressFill(c *ui.Context, pct, height, radius float32, fill ui.Color) {
+	bar := ui.Box(c).Height(height).WidthPercent(pct * 100).
+		Background(fill).Radius(radius)
+	if theme.ReduceMotion(c) {
+		return
+	}
+	bar.Transition(indicatorTransition)
+}
+
 // ProgressOptions configures a HeroUI bar indicator.
 type ProgressOptions struct {
 	Label           string
@@ -56,30 +81,39 @@ func ProgressBar(c *ui.Context, o ProgressOptions) ui.Element {
 		e.Range(lo, hi, o.Value)
 	}
 	e.Children(func() {
-		progressHeading(c, o.Label, o.ShowOutput, progressText(o))
+		output := ""
+		if o.ShowOutput {
+			output = progressText(o)
+		}
+		progressHeading(c, o.Label, o.ShowOutput, output)
 		height, radius := progressMetrics(o.Size)
+		fill := indicatorFill(c, o.Color)
 		track := ui.Box(c).FillWidth().Height(height).Radius(radius).Clip().
 			Background(t.Default)
 		if o.Indeterminate {
 			start := ui.Local(track, progressStartKey{}, func() time.Time { return c.Now() })
 			track.DrawOver(func(p *ui.Painter, r ui.Rect) {
-				band := r.W * 0.4
-				if theme.ReduceMotion(c) {
-					p.Fill(ui.Rect{X: r.X + r.W*0.3, Y: r.Y, W: band, H: r.H},
-						indicatorFill(c, o.Color), radius)
+				if r.W <= 0 || r.H <= 0 {
 					return
 				}
+				band := r.W * 0.4
+				if theme.ReduceMotion(c) {
+					// HeroUI's reduced motion holds the 2/5 fill at the start.
+					p.Fill(ui.Rect{X: r.X, Y: r.Y, W: band, H: r.H}, fill, radius)
+					return
+				}
+				// HeroUI's 1.5 s cubic-bezier(0.65, 0, 0.35, 1) sweep from
+				// -100% to 350% of the band's own width.
 				const period = 1500 * time.Millisecond
 				phase := float32(p.Now().Sub(*start)%period) / float32(period)
-				x := r.X - band + phase*(r.W+band)
-				p.Fill(ui.Rect{X: x, Y: r.Y, W: band, H: r.H}, indicatorFill(c, o.Color), radius)
+				x := r.X - band + ui.EaseInOut(phase)*(band*4.5)
+				p.Fill(ui.Rect{X: x, Y: r.Y, W: band, H: r.H}, fill, radius)
 				p.AnimationFrame()
 			})
 		} else {
 			pct := progressFraction(o.Value, lo, hi)
 			track.Children(func() {
-				ui.Box(c).Height(height).WidthPercent(pct * 100).
-					Background(indicatorFill(c, o.Color)).Radius(radius)
+				progressFill(c, pct, height, radius, fill)
 			})
 		}
 	})
@@ -103,13 +137,17 @@ func Meter(c *ui.Context, o MeterOptions) ui.Element {
 	e := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space4).
 		Role(ui.RoleMeter).Label(o.Label).Range(lo, hi, o.Value)
 	e.Children(func() {
-		progressHeading(c, o.Label, o.ShowOutput, meterText(o))
+		output := ""
+		if o.ShowOutput {
+			output = meterText(o)
+		}
+		progressHeading(c, o.Label, o.ShowOutput, output)
 		height, radius := progressMetrics(o.Size)
 		pct := progressFraction(o.Value, lo, hi)
+		fill := indicatorFill(c, o.Color)
 		ui.Box(c).FillWidth().Height(height).Radius(radius).Clip().Background(t.Default).
 			Children(func() {
-				ui.Box(c).Height(height).WidthPercent(pct * 100).
-					Background(indicatorFill(c, o.Color)).Radius(radius)
+				progressFill(c, pct, height, radius, fill)
 			})
 	})
 	return e
@@ -129,7 +167,8 @@ func progressHeading(c *ui.Context, label string, showOutput bool, output string
 			ui.Spacer(c)
 			ts := theme.SM()
 			ts.Weight = theme.WeightMedium
-			style.Text(ui.Text(c, output), c, ts).TextColor(theme.Colors(c).Muted)
+			style.Text(ui.Text(c, output), c, ts).TextColor(theme.Colors(c).Foreground).
+				FontFeatures("tnum")
 		}
 	})
 }
@@ -243,19 +282,26 @@ func ProgressCircle(c *ui.Context, o ProgressCircleOptions) ui.Element {
 	progress := progressFraction(o.Value, lo, hi)
 	e := ui.Box(c).Size(size, size).Shrink(0).Role(ui.RoleProgress).
 		Range(lo, hi, o.Value).Label(label)
+	// A ring has no box that could carry the value, so the native channel
+	// eases the painted arc instead: frames are asked for only while it moves.
+	progress = e.AnimateTo(progressRingKey{}, progress, indicatorAnimation)
+	fill := indicatorFill(c, o.Color)
 	e.Draw(func(p *ui.Painter, r ui.Rect) {
-		drawRing(p, r, progress, indicatorFill(c, o.Color), t.Default)
+		drawRing(p, r, progress, fill, t.Default)
 	})
 	if o.ShowOutput {
 		e.Children(func() {
 			ui.Box(c).Size(size, size).Center().Children(func() {
 				style.Text(ui.Text(c, percentText(o.Value, o.Min, o.Max)), c, theme.XS()).
-					TextColor(t.Muted)
+					TextColor(t.Muted).FontFeatures("tnum")
 			})
 		})
 	}
 	return e
 }
+
+// progressRingKey is the animated channel of one determinate ring.
+type progressRingKey struct{}
 
 // ringDirections holds the unit-circle offsets of the progress ring's dots.
 // They depend only on the segment count, not on a frame or a context.

@@ -14,10 +14,16 @@ const (
 )
 
 // fieldSurface paints HeroUI's field background, border and invalid/focus
-// states around a native editor. The editor keeps its own focus ring and
-// editing behavior; this only supplies the visual chrome.
+// states, including the field ring, around a native editor.
 func fieldSurface(e ui.Element, c *ui.Context, variant ControlVariant, invalid, disabled bool) ui.Element {
 	return formstyle.Surface(e, c, variant == ControlSecondary, invalid, disabled)
+}
+
+// triggerSurface is fieldSurface for a button-like popup trigger, whose
+// upstream CSS rings on :focus-visible rather than every focus.
+func triggerSurface(e ui.Element, c *ui.Context, variant ControlVariant, invalid, disabled bool) ui.Element {
+	return formstyle.SurfaceMode(e, c, formstyle.RingOnKeyboardFocus,
+		variant == ControlSecondary, invalid, disabled)
 }
 
 // fieldText applies HeroUI's 14/20 field typography and foreground.

@@ -1,7 +1,9 @@
 package color
 
 import (
-	"fmt"
+	"math"
+	"strconv"
+	"time"
 
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
@@ -111,8 +113,9 @@ func ColorArea(c *ui.Context, o ColorAreaOptions) ui.Element {
 		return false
 	})
 
-	area = area.Value(fmt.Sprintf("%.0f%%, %.0f%%",
-		s.Saturation()*100, s.Brightness()*100))
+	sat, bright := s.Saturation(), s.Brightness()
+	area = area.Value(strconv.FormatInt(int64(math.Round(sat*100)), 10) + "%, " +
+		strconv.FormatInt(int64(math.Round(bright*100)), 10) + "%")
 	hue := hsvColor(s.Hue(), 1, 1)
 	white := ui.RGB(255, 255, 255)
 	clear := ui.RGBA(0, 0, 0, 0)
@@ -120,6 +123,8 @@ func ColorArea(c *ui.Context, o ColorAreaOptions) ui.Element {
 	// Snapshot the area's states in the build: a retained copy of a
 	// leaving element paints in later passes, where area has expired.
 	pressed, focused := area.Pressed(), area.FocusVisible()
+	thumbColor := s.Value
+	thumbSize := theme.Scale(c, 16)
 	area.Draw(func(p *ui.Painter, r ui.Rect) {
 		p.FillGradient(r, ui.LinearGradient{From: white, To: hue, Angle: 90}, radius)
 		p.FillGradient(r, ui.LinearGradient{From: clear, To: black, Angle: 180}, radius)
@@ -130,23 +135,37 @@ func ColorArea(c *ui.Context, o ColorAreaOptions) ui.Element {
 			p.Clip(r, radius, func() {
 				for y := r.Y; y < r.Y+r.H; y += gap {
 					for x := r.X; x < r.X+r.W; x += gap {
-						p.Fill(ui.Rect{X: x - 0.5, Y: y - 0.5, W: 1, H: 1}, dot, 0.5)
+						// HeroUI's radial dot is 2 DIP across, one pixel of
+						// body each side of the 8 DIP grid point.
+						p.Fill(ui.Rect{X: x - 1, Y: y - 1, W: 2, H: 2}, dot, 1)
 					}
 				}
 			})
 		}
-		d := float32(16)
-		if pressed {
-			d = 20
-		}
-		cx := r.X + r.W*float32(s.Saturation())
-		cy := r.Y + r.H*float32(1-s.Brightness())
-		paintThumb(p, cx, cy, d, s.Value)
-		if focused {
-			rr := d / 2
-			p.FocusRing(ui.Rect{X: cx - rr, Y: cy - rr, W: d, H: d},
-				[4]float32{d / 2, d / 2, d / 2, d / 2})
-		}
+	})
+	// The thumb is its own element so the native pose can grow it on press
+	// (16 → 20 DIP, 150 ms) in paint-only frames. Tracking it as a 1 DIP
+	// anchor keeps the pointer position exact and the scale centered.
+	scale := float32(1)
+	if pressed {
+		scale = 1.25
+	}
+	area.Children(func() {
+		thumb := ui.Box(c).Key(colorAreaThumbKey{}).Absolute().Role(ui.RoleNone).
+			Size(1, 1).LeftPercent(float32(sat * 100)).TopPercent(float32((1 - bright) * 100))
+		thumb.AnimatePose(ui.Pose{Scale: scale},
+			ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut})
+		thumb.Draw(func(p *ui.Painter, r ui.Rect) {
+			cx, cy := r.X+r.W/2, r.Y+r.H/2
+			paintThumb(p, cx, cy, thumbSize, thumbColor)
+			if focused {
+				half := thumbSize / 2
+				p.FocusRing(ui.Rect{X: cx - half, Y: cy - half, W: thumbSize, H: thumbSize},
+					[4]float32{half, half, half, half})
+			}
+		})
 	})
 	return area
 }
+
+type colorAreaThumbKey struct{}

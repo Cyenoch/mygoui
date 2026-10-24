@@ -17,7 +17,7 @@ func init() {
 		Examples: []ComponentExample{
 			{
 				Title:       "Headings",
-				Description: "Six semantic heading levels share one type scale.",
+				Description: "Six semibold heading levels share one type scale and tight tracking.",
 				Demo:        func(c *ui.Context, s *State) { typographyHeadingsBody(c) },
 			},
 			{
@@ -27,7 +27,7 @@ func init() {
 			},
 			{
 				Title:       "Code and prose",
-				Description: "Inline code stays selectable, and Prose groups flowing blocks.",
+				Description: "The code role is an inline chip that stays selectable in Prose.",
 				Demo:        func(c *ui.Context, s *State) { typographyCodeProseBody(c) },
 			},
 		},
@@ -42,9 +42,11 @@ mygoui.Typography(c, "Changes apply immediately.", mygoui.TypographyOptions{
 			{"Muted", "bool", "false", "Paints the secondary foreground for supporting copy."},
 			{"Selectable", "bool", "false", "Lets the user select and copy the text."},
 			{"Truncate", "bool", "false", "Keeps one line and ends it with an ellipsis."},
+			{"Align", "ui.Align", "ui.Start", "Horizontal alignment of the text."},
+			{"Weight", "int", "0", "Overrides the role's weight; zero keeps it."},
 			{"Level", "int", "0", "Heading level for assistive technology; zero derives it from Type."},
 		},
-		Tokens: []string{"Foreground", "Muted"},
+		Tokens: []string{"Foreground", "Muted", "Default"},
 	})
 
 	RegisterComponent(ComponentPage{
@@ -99,9 +101,9 @@ mygoui.Typography(c, "Changes apply immediately.", mygoui.TypographyOptions{
 })`,
 		Params: []ComponentParam{
 			{"Orientation", "mygoui.Orientation", "Horizontal", "Horizontal rules divide rows; vertical rules divide columns."},
-			{"Color", "mygoui.SeparatorColor", "SeparatorDefault", "Uses the separator or border palette entry."},
+			{"Color", "mygoui.SeparatorColor", "SeparatorDefault", "Default, secondary or tertiary separator tone."},
 		},
-		Tokens: []string{"Separator", "Border"},
+		Tokens: []string{"Separator", "SeparatorSecondary", "SeparatorTertiary"},
 	})
 
 	RegisterComponent(ComponentPage{
@@ -126,7 +128,7 @@ mygoui.Typography(c, "Changes apply immediately.", mygoui.TypographyOptions{
 			{"Keys", "[]string", "nil", "Keys of the chord, drawn as separate caps."},
 			{"Light", "bool", "false", "Drops the keycap background for inline use."},
 		},
-		Tokens: []string{"Default", "DefaultForeground", "Border"},
+		Tokens: []string{"Default", "Muted"},
 	})
 
 	RegisterComponent(ComponentPage{
@@ -277,16 +279,24 @@ mygoui.Typography(c, "Changes apply immediately.", mygoui.TypographyOptions{
 			{"Label", "string", "", "Accessible name for the group."},
 			{"Title", "string", "required", "Item title (ListGroupItem)."},
 			{"Description", "string", "", "Supporting line under the title."},
+			{"Prefix", "func()", "nil", "Leading slot of a row (ListGroupItem)."},
+			{"Suffix", "func()", "nil", "Trailing slot of a row (ListGroupItem)."},
 			{"Chevron", "bool", "false", "Shows the disclosure chevron."},
 			{"Disabled", "bool", "false", "Removes activation and dims the row."},
+			{"OnClick", "func()", "nil", "Makes the row a native action (ListGroupItem)."},
 		},
-		Tokens: []string{"Surface", "SurfaceForeground", "Border", "Muted"},
+		Tokens: []string{"Surface", "SurfaceForeground", "SurfaceHover", "Muted"},
 	})
 
 	RegisterComponent(ComponentPage{
 		ID: "emptystate", Title: "EmptyState", Group: "Foundations", Order: 90,
 		Description: "A low-emphasis placeholder with a real recovery action.",
 		Examples: []ComponentExample{
+			{
+				Title:       "Default copy",
+				Description: "With no content it shows the localized empty placeholder.",
+				Demo:        func(c *ui.Context, s *State) { emptyTextBody(c) },
+			},
 			{
 				Title:       "Default",
 				Description: "An icon, title and one line explain what is missing.",
@@ -306,7 +316,7 @@ mygoui.Typography(c, "Changes apply immediately.", mygoui.TypographyOptions{
     Icon: lucide.Search(),
 })`,
 		Params: []ComponentParam{
-			{"Title", "string", "required", "What is missing."},
+			{"Title", "string", "", "What is missing; empty shows the locale placeholder."},
 			{"Description", "string", "", "One line that explains the next step."},
 			{"Icon", "*ui.SVG", "nil", "Muted leading glyph."},
 			{"Action", "func()", "nil", "Builds the recovery button."},

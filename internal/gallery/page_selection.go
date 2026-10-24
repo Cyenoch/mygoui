@@ -24,14 +24,17 @@ type selectionState struct {
 	tagSelect     form.SelectState
 	clearSelect   form.SelectState
 	sectionSelect form.SelectState
+	variantSelect form.SelectState
 
 	combo       form.ComboBoxState
 	comboMulti  form.ComboBoxState
 	comboCustom form.ComboBoxState
+	comboFlat   form.ComboBoxState
 
 	auto      form.AutocompleteState
 	autoEmpty form.AutocompleteState
 	autoLoad  form.AutocompleteState
+	autoFlat  form.AutocompleteState
 
 	listNote   string
 	selectNote string
@@ -68,7 +71,7 @@ func (st *selectionState) initState() {
 	st.autoNote = "Paris"
 }
 
-// selectionFruits, selectionTags and the other panels are read-only item
+// selectionFruits, selectionTags and the other panels are immutable item
 // definitions shared by the specimens; all mutable state lives in
 // selectionState.
 var selectionFruits = []list.ListBoxItem{
@@ -172,6 +175,23 @@ func selectionSelectExampleDefault(c *ui.Context, st *selectionState) {
 	selectionNote(c, "Current fruit: ", st.fruitSelect.List.SelectedKey)
 }
 
+// selectionSelectExampleSecondary shows the flat secondary trigger face.
+func selectionSelectExampleSecondary(c *ui.Context, st *selectionState) {
+	form.Select(c, form.SelectOptions{
+		Label:       "Fruit",
+		Placeholder: "Choose a fruit",
+		Items:       selectionFruits,
+		State:       &st.variantSelect,
+		Variant:     form.ControlSecondary,
+		FullWidth:   true,
+		MaxHeight:   theme.Scale(c, 220),
+		OnChange: func(keys []string) {
+			st.selectNote = strings.Join(keys, ", ")
+		},
+	})
+	selectionNote(c, "Current fruit: ", st.variantSelect.List.SelectedKey)
+}
+
 // selectionSelectExampleMultiple shows removable multiple choices.
 func selectionSelectExampleMultiple(c *ui.Context, st *selectionState) {
 	form.Select(c, form.SelectOptions{
@@ -237,6 +257,23 @@ func selectionComboBoxExampleDefault(c *ui.Context, st *selectionState) {
 	})
 }
 
+// selectionComboBoxExampleSecondary shows the flat secondary field face.
+func selectionComboBoxExampleSecondary(c *ui.Context, st *selectionState) {
+	form.ComboBox(c, form.ComboBoxOptions{
+		Label:       "Language",
+		Placeholder: "Pick a language",
+		Items:       selectionFrameworks,
+		Clearable:   true,
+		State:       &st.comboFlat,
+		Variant:     form.ControlSecondary,
+		FullWidth:   true,
+		MaxHeight:   theme.Scale(c, 220),
+		OnChange: func(keys []string) {
+			st.comboNote = strings.Join(keys, ", ")
+		},
+	})
+}
+
 // selectionComboBoxExampleMultiple shows removable chips for each choice.
 func selectionComboBoxExampleMultiple(c *ui.Context, st *selectionState) {
 	form.ComboBox(c, form.ComboBoxOptions{
@@ -282,6 +319,25 @@ func selectionAutocompleteExampleFiltering(c *ui.Context, st *selectionState) {
 		Items:             selectionCities,
 		Clearable:         true,
 		State:             &st.auto,
+		FullWidth:         true,
+		MaxHeight:         theme.Scale(c, 220),
+		OnChange: func(keys []string) {
+			st.autoNote = strings.Join(keys, ", ")
+		},
+	})
+}
+
+// selectionAutocompleteExampleSecondary shows the flat secondary trigger.
+func selectionAutocompleteExampleSecondary(c *ui.Context, st *selectionState) {
+	form.Autocomplete(c, form.AutocompleteOptions{
+		Label:             "Destination",
+		Placeholder:       "Choose a city",
+		SearchPlaceholder: "Filter cities",
+		SearchLabel:       "Filter destinations",
+		Items:             selectionCities,
+		Clearable:         true,
+		State:             &st.autoFlat,
+		Variant:           form.ControlSecondary,
 		FullWidth:         true,
 		MaxHeight:         theme.Scale(c, 220),
 		OnChange: func(keys []string) {

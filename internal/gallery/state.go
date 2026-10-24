@@ -18,22 +18,30 @@ type Page struct {
 	Group       string
 	Order       int
 	Build       func(c *ui.Context, s *State) ui.Element
+
+	// searchKey is the lowercased title, description and group the sidebar
+	// search matches, and navRank is the group's navigation position. Both are
+	// prepared at registration so no build pass derives them again.
+	searchKey string
+	navRank   int
 }
 
 var (
-	pagesMu sync.RWMutex
-	pages   []Page
+	pagesMu   sync.RWMutex
+	pages     []Page
+	pagesByID = map[string]Page{}
 )
 
 // RegisterPage adds a page to the catalog. Call it from a page file's init.
 func RegisterPage(p Page) {
+	p.searchKey = strings.ToLower(p.Title + " " + p.Description + " " + p.Group)
+	p.navRank = navRankOf(p.Group)
 	pagesMu.Lock()
 	defer pagesMu.Unlock()
-	for _, existing := range pages {
-		if existing.ID == p.ID {
-			panic("gallery: duplicate page " + p.ID)
-		}
+	if _, ok := pagesByID[p.ID]; ok {
+		panic("gallery: duplicate page " + p.ID)
 	}
+	pagesByID[p.ID] = p
 	pages = append(pages, p)
 	sort.SliceStable(pages, func(i, j int) bool {
 		if pages[i].Order != pages[j].Order {
@@ -52,22 +60,27 @@ func Pages() []Page {
 	return out
 }
 
+// pageFor returns the page with id.
+func pageFor(id string) (Page, bool) {
+	pagesMu.RLock()
+	defer pagesMu.RUnlock()
+	p, ok := pagesByID[id]
+	return p, ok
+}
+
 // State is the window-owned gallery state. Page state is typed and stored by
 // page ID, so sibling pages do not share a struct or initialization order.
 type State struct {
-	Selected string
-	// ActiveComponent is the catalog entry the navigation highlights; its
-	// PageID is what the content pane shows.
-	ActiveComponent string
-	Dark            bool
-	Search          string
-	Accent          int
-	Radius          float32
-	NavOpen         bool
-	Sidebar         ui.ScrollState
-	NavScroll       ui.ScrollState
-	Content         ui.ScrollState
-	pages           map[string]any
+	Selected  string
+	Dark      bool
+	Search    string
+	Accent    int
+	Radius    float32
+	NavOpen   bool
+	Sidebar   ui.ScrollState
+	NavScroll ui.ScrollState
+	Content   ui.ScrollState
+	pages     map[string]any
 }
 
 // New returns the default gallery state.
@@ -93,16 +106,16 @@ func StateOf[T any](s *State, page string) *T {
 }
 
 // filterPages returns the pages matching the current search. An empty query
-// returns every page.
+// returns every page. The result is one fresh slice the caller may sort; the
+// per-page haystack was lowercased at registration, so a build pass only
+// compares it.
 func (s *State) filterPages() []Page {
 	query := strings.ToLower(strings.TrimSpace(s.Search))
-	if query == "" {
-		return Pages()
-	}
-	var out []Page
-	for _, page := range Pages() {
-		haystack := strings.ToLower(page.Title + " " + page.Description + " " + page.Group)
-		if strings.Contains(haystack, query) {
+	pagesMu.RLock()
+	defer pagesMu.RUnlock()
+	out := make([]Page, 0, len(pages))
+	for _, page := range pages {
+		if query == "" || strings.Contains(page.searchKey, query) {
 			out = append(out, page)
 		}
 	}

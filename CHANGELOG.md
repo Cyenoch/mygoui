@@ -18,6 +18,12 @@ shims are provided.
   `theme.Apply` composes its native theme from the resolved palette, and
   `theme.UpdatePreferences` edits typography without dropping it. `ColorInfo`
   joins the status colors, defaulting to the accent family.
+- `TableOptions.Footer` adds HeroUI's in-frame footer row for pagination or
+  summaries; `ToggleButtonGroupOptions.Separators` draws the joined-group
+  divider; `ModalExtraSmall` and `ModalCover` extend the modal size scale.
+- `theme.PalettePatch.FieldBorder` lets a host opt into a field outline while
+  HeroUI's default stays transparent; `TextStyle.Tracking` and
+  `theme.TrackingTight` carry the official heading tracking.
 - Root components: Alert, Avatar, AvatarGroup, Badge, BadgeAnchor, Button,
   ButtonGroup, Card and parts, Chip, CloseButton, EmptyState, Header, Kbd, Link,
   LinkButton, ListGroup, Meter, PressableFeedback, ProgressBar, ProgressCircle,
@@ -65,6 +71,25 @@ shims are provided.
 
 ### Changed
 
+- Official parity and motion pass across the component families: button and
+  toggle pressed scales, switch/checkbox/radio/slider state motion, sliding
+  tabs indicator, accordion/disclosure panel fades, calendar and color
+  transitions, HeroUI's progress/skeleton timings, menu indicator draws and
+  popover/tooltip zoom. All motion uses native MyGo scheduling and settles
+  immediately under reduced motion.
+- BottomSheet is now a floating sheet with 16 DIP screen gutters and rounded
+  corners, slides up over 250 ms, follows a handle swipe, slides out on a long
+  drag or the close button, and clears its scrim with the sheet. Short drags
+  spring back; the body keeps native scrolling.
+- Table uses HeroUI's primary/secondary chrome: a secondary header band, white
+  body card, 44 DIP rows, 12 DIP muted headers, hairline rows, column
+  separators and an in-frame footer. The gallery Table page mirrors the official
+  four-column, paginated demo.
+- NumberField builds its steppers in official order (decrement, editor,
+  increment), restoring the single `40 / 1fr / 40` row, 36 DIP height, inner
+  separators and a compact 200 DIP demo width.
+- RangeCalendar gallery examples reserve the range summary's width and height,
+  so completing a range no longer shifts the grid.
 - Upgraded MyGo to v0.6.3 and mygoicons to v0.2.1.
 - Theme application now installs a HeroUI palette derived from upstream
   variables; `theme.Configure` publishes process-wide accent, radius,
@@ -83,6 +108,14 @@ shims are provided.
 
 ### Fixed
 
+- Performance: shared shadow tables and a cached radius scale remove per-build
+  allocations; `theme.ApplyMode` stops reinstalling an identical native theme;
+  Table caches row metadata per pass and ListBox typeahead folds without
+  allocating; Toast expresses the collapsed deck in geometry instead of
+  scaling shadowed cards (the hover regression fell from 51 s to 0.3 s);
+  OTP blinks on a repaint deadline instead of every display frame; ComboBox
+  and Autocomplete filtering avoids per-item lowercasing; gallery token cards
+  and page lookup no longer use reflection or linear scans per frame.
 - Toast: restored spring entry/exit, stacked cards, hover/focus expansion,
   continuous insertion/removal and horizontal swipe dismissal. Animated
   declared geometry survives MyGo's absolute-overlay relayout. Reduced motion

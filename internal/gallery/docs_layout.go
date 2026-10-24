@@ -89,19 +89,26 @@ func docsPadding(c *ui.Context) float32 {
 	return theme.Scale(c, theme.Space40)
 }
 
-// docsContentWidth returns the width available to the page column.
+// docsContentWidth returns the width available to the page column. It reads
+// the window size once: callers run it inside every API table and token grid,
+// so a second measurement per call is wasted work.
 func docsContentWidth(c *ui.Context, rail bool) float32 {
 	width, _ := c.Size()
+	compact := width < theme.Scale(c, docsCompactBelow)
 	available := width
-	if !docsCompact(c) {
+	if !compact {
 		available -= theme.Scale(c, docsSidebarWidth)
 	}
 	if rail {
 		available -= theme.Scale(c, docsRailWidth)
 	}
+	padding := theme.Scale(c, theme.Space40)
+	if compact {
+		padding = theme.Scale(c, theme.Space24)
+	}
 	// The max width caps the column's border box, padding included.
 	column := min(theme.Scale(c, docsMaxWidth), max(0, available))
-	return max(0, column-2*docsPadding(c))
+	return max(0, column-2*padding)
 }
 
 // pageWidth is the width of a component page's main column, rail included.
@@ -118,25 +125,25 @@ func overviewWidth(c *ui.Context) float32 {
 // project footer room. Binding the page handle lets the rail translate a
 // section's committed bounds into a scroll offset.
 func docsPageColumn(c *ui.Context, s *State) {
-	page := currentPage(s)
+	page, ok := currentPage(s)
 	pad := docsPadding(c)
 	e := ui.Column(c).FillWidth().MinWidth(0).MaxWidth(theme.Scale(c, docsMaxWidth)).
 		AlignSelf(ui.Center).Padding(pad, pad, theme.Scale(c, theme.Space64), pad).
 		Gap(theme.Scale(c, theme.Space32))
 	e.Children(func() {
-		if page == nil {
+		if !ok {
 			mygoui.EmptyState(c, mygoui.EmptyStateOptions{
 				Title: "No components match", Description: s.Search,
 			})
 			return
 		}
 		if page.ID != "overview" {
-			docsPageHeader(c, s, *page)
+			docsPageHeader(c, s, page)
 		}
 		page.Build(c, s)
 	})
-	if page != nil {
-		if _, ok := componentPage(page.ID); ok {
+	if ok {
+		if _, isComponent := componentPage(page.ID); isComponent {
 			e.Bind(&docsChromeOf(s, page.ID).Page)
 		}
 	}
@@ -267,8 +274,11 @@ func docsSectionOffset(c *ui.Context, chrome *docsChromeState, id string) (float
 	if h == nil {
 		return 0, false
 	}
-	section := h.Bounds(c)
-	page := chrome.Page.Bounds(c)
+	return sectionOffset(h.Bounds(c), chrome.Page.Bounds(c))
+}
+
+// sectionOffset measures a section from the page column's top.
+func sectionOffset(section, page ui.Rect) (float32, bool) {
 	if section.H <= 0 || page.H <= 0 {
 		return 0, false
 	}
@@ -287,12 +297,21 @@ func docsScrollToSection(c *ui.Context, s *State, chrome *docsChromeState, id st
 }
 
 // docsActiveSection reports the section at the rail's reading position. It
-// is derived from committed bounds, not from the click that got there.
+// is derived from committed bounds, not from the click that got there, and
+// measures the page column once for every section it compares.
 func docsActiveSection(c *ui.Context, s *State, chrome *docsChromeState) string {
+	page := chrome.Page.Bounds(c)
+	if page.H <= 0 {
+		return ""
+	}
 	active := ""
 	limit := s.Content.Y + theme.Scale(c, 220)
 	for _, section := range docsTOCSections {
-		if offset, ok := docsSectionOffset(c, chrome, section.id); ok && offset <= limit {
+		h := chrome.sectionHandle(section.id)
+		if h == nil {
+			continue
+		}
+		if offset, ok := sectionOffset(h.Bounds(c), page); ok && offset <= limit {
 			active = section.id
 		}
 	}

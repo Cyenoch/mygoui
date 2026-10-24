@@ -368,6 +368,13 @@ func listChoice(st *foundationsState) string {
 	return st.ListChoice
 }
 
+// emptyTextBody renders the placeholder HeroUI shows without content.
+func emptyTextBody(c *ui.Context) {
+	ui.Column(c).AlignItems(ui.Center).Children(func() {
+		mygoui.EmptyState(c, mygoui.EmptyStateOptions{})
+	})
+}
+
 // emptyDefaultBody renders the placeholder without a recovery action.
 func emptyDefaultBody(c *ui.Context) {
 	ui.Column(c).AlignItems(ui.Center).Children(func() {

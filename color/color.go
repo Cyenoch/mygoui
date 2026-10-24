@@ -296,10 +296,25 @@ func ParseHex(text string) (ui.Color, error) {
 
 // FormatHex returns "#rrggbb", or "#rrggbbaa" when the color is translucent.
 func FormatHex(c ui.Color) string {
-	if c.A == 255 {
-		return fmt.Sprintf("#%02x%02x%02x", c.R, c.G, c.B)
+	var b [9]byte
+	b[0] = '#'
+	putHex(b[1:7], c.R, c.G, c.B)
+	if c.A != 255 {
+		putHex(b[7:9], c.A)
+		return string(b[:9])
 	}
-	return fmt.Sprintf("#%02x%02x%02x%02x", c.R, c.G, c.B, c.A)
+	return string(b[:7])
+}
+
+const hexDigits = "0123456789abcdef"
+
+// putHex writes each byte as two lowercase hex digits; dst holds twice as
+// many bytes as there are values.
+func putHex(dst []byte, v ...uint8) {
+	for i, x := range v {
+		dst[2*i] = hexDigits[x>>4]
+		dst[2*i+1] = hexDigits[x&0xf]
+	}
 }
 
 func hexDigit(c byte) (uint8, bool) {

@@ -32,8 +32,18 @@ type ToggleButtonOptions struct {
 }
 
 // ToggleButton is a focusable native toggle whose selected paint follows the
-// caller's bool. It is not a radio: each button owns its state.
+// caller's bool. It is not a radio: each button owns its state. A press
+// scales it like a HeroUI button; joined groups keep their size.
 func ToggleButton(c *ui.Context, o ToggleButtonOptions) ui.Element {
+	var adj joinAdjust
+	if o.Corners != nil {
+		adj.corners, adj.hasCorners = *o.Corners, true
+	}
+	return toggleButtonView(c, o, adj)
+}
+
+// toggleButtonView is the builder ToggleButton and ToggleButtonGroup share.
+func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.Element {
 	t := theme.Colors(c)
 	selected := o.Selected != nil && *o.Selected
 	height := theme.ButtonHeight(o.Size)
@@ -50,7 +60,7 @@ func ToggleButton(c *ui.Context, o ToggleButtonOptions) ui.Element {
 		normal, hover, fg = t.AccentSoft, t.AccentSoftHover, t.AccentSoftForeground
 	}
 	if o.Size == theme.ButtonSmall {
-		paddingX, glyph = theme.Space12, theme.IconMD
+		paddingX = theme.Space12
 	}
 	if o.Size == theme.ButtonLarge {
 		font = theme.Base()
@@ -59,28 +69,39 @@ func ToggleButton(c *ui.Context, o ToggleButtonOptions) ui.Element {
 	if o.IconOnly {
 		paddingX = 0
 	}
-	e := ui.ButtonBase(c).MinHeight(theme.Scale(c, height)).Gap(theme.Space8).
-		PaddingX(paddingX).PaddingY(0).Center().Shrink(0).Radius(radius).
+	side := theme.Scale(c, height)
+	iconSize := theme.Scale(c, glyph)
+
+	e := ui.ButtonBase(c).MinHeight(side).Gap(theme.Space8).
+		PaddingX(paddingX).PaddingY(0).Center().Shrink(0).
 		FocusRing(true).Label(o.Label).TextColor(fg).
 		Role(ui.RoleToggleButton).Checked(selected)
+	if adj.hasCorners {
+		e = e.Radius(adj.corners[0], adj.corners[1], adj.corners[2], adj.corners[3])
+	} else {
+		e = e.Radius(radius)
+	}
+	// Disable before the faces read their pointer state: a disabled toggle
+	// paints its rest face, matching HeroUI's pointer-events:none.
+	e = style.Disabled(e, o.Disabled)
 	if o.FullWidth {
 		e.FillWidth()
 	} else {
 		e.AlignSelf(ui.Start)
 	}
 	if o.IconOnly {
-		e.Width(theme.Scale(c, height)).MinWidth(theme.Scale(c, height))
+		e.Width(side).MinWidth(side)
 	}
 	content := func() {
 		if o.Icon != nil {
-			ui.Icon(c, o.Icon).Size(theme.Scale(c, glyph), theme.Scale(c, glyph)).Shrink(0)
+			ui.Icon(c, o.Icon).Size(iconSize, iconSize).Shrink(0).Margin(0, -2)
 		}
 		if !o.IconOnly {
 			style.Text(ui.Text(c, o.Label), c, font).SingleLine()
 		}
 	}
-	if o.Corners != nil {
-		e = style.CornerFill(c, e, theme.Space8, *o.Corners, normal, hover, hover, content)
+	if adj.hasCorners {
+		e = style.CornerFill(c, e, theme.Space8, adj.corners, normal, hover, hover, content)
 	} else {
 		e = style.Background(e, radius, normal, hover, hover)
 		e.Children(content)
@@ -98,7 +119,13 @@ func ToggleButton(c *ui.Context, o ToggleButtonOptions) ui.Element {
 	} else if o.IconOnly && o.Label != "" {
 		e.Tooltip(o.Label)
 	}
-	return style.Disabled(e, o.Disabled)
+	if !adj.grouped {
+		e = pressedPose(e, e.Pressed(), buttonPressScale(o.Size))
+	}
+	if adj.seam {
+		e = joinSeam(e, adj.vertical, c.Direction() == ui.RightToLeft, fg)
+	}
+	return e
 }
 
 // ToggleButtonGroupOptions controls a joined or detached toggle set.
@@ -106,14 +133,19 @@ type ToggleButtonGroupOptions struct {
 	Orientation Orientation
 	FullWidth   bool
 	Detached    bool
+	// Separators paints HeroUI's divider at each shared edge. Detached sets
+	// hide it, as HeroUI does.
+	Separators bool
 }
 
 // ToggleButtonGroup lays out caller-owned toggle states. Each option carries
 // its own Selected pointer, so single- and multi-select are both explicit Go
-// state rather than an ambient group context.
+// state rather than an ambient group context. HeroUI removes the press scale
+// from every toggle inside a group, detached ones included.
 func ToggleButtonGroup(c *ui.Context, o ToggleButtonGroupOptions, buttons ...ToggleButtonOptions) ui.Element {
+	vertical := o.Orientation == Vertical
 	var e ui.Element
-	if o.Orientation == Vertical {
+	if vertical {
 		e = ui.Column(c).Gap(0).MinWidth(0)
 	} else {
 		e = ui.Row(c).Gap(0).MinWidth(0)
@@ -127,41 +159,21 @@ func ToggleButtonGroup(c *ui.Context, o ToggleButtonGroupOptions, buttons ...Tog
 		e.AlignSelf(ui.Start)
 	}
 	radius := theme.RadiusScale().XXXL
+	rtl := c.Direction() == ui.RightToLeft
 	n := len(buttons)
 	e.Children(func() {
 		for i := range buttons {
 			b := buttons[i]
+			adj := joinAdjust{grouped: true, vertical: vertical}
 			if !o.Detached {
-				switch o.Orientation {
-				case Vertical:
-					switch {
-					case n == 1:
-						b.Corners = &[4]float32{radius, radius, radius, radius}
-					case i == 0:
-						b.Corners = &[4]float32{radius, radius, 0, 0}
-					case i == n-1:
-						b.Corners = &[4]float32{0, 0, radius, radius}
-					default:
-						b.Corners = &[4]float32{}
-					}
-				default:
-					switch {
-					case n == 1:
-						b.Corners = &[4]float32{radius, radius, radius, radius}
-					case i == 0:
-						b.Corners = &[4]float32{radius, 0, 0, radius}
-					case i == n-1:
-						b.Corners = &[4]float32{0, radius, radius, 0}
-					default:
-						b.Corners = &[4]float32{}
-					}
-				}
+				adj.corners, adj.hasCorners = joinCorners(vertical, i, n, radius, rtl), true
+				adj.seam = o.Separators && i > 0
 			}
-			if o.FullWidth && o.Orientation == Vertical {
+			if o.FullWidth && vertical {
 				b.FullWidth = true
 			}
-			item := ToggleButton(c, b)
-			if o.FullWidth && o.Orientation == Horizontal {
+			item := toggleButtonView(c, b, adj)
+			if o.FullWidth && !vertical {
 				item.Grow(1).Basis(0).MinWidth(0)
 			}
 		}

@@ -3,6 +3,7 @@ package mygoui
 import (
 	"strconv"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -33,28 +34,16 @@ type AvatarOptions struct {
 	Badge    func()
 }
 
-type avatarState struct {
-	name, fallback, initials string
-}
-
 // Avatar shows an already-loaded image or initials. It never fetches.
 func Avatar(c *ui.Context, o AvatarOptions) ui.Element {
 	t := theme.Colors(c)
-	size, radius, ts := float32(theme.HeightAvatarMD), theme.RadiusScale().XXXL, theme.SM()
-	ts.Weight = theme.WeightMedium
-	switch o.Size {
-	case AvatarSmall:
-		size, radius, ts = theme.HeightAvatarSM, theme.RadiusScale().XXL, theme.XS()
-		ts.Weight = theme.WeightMedium
-	case AvatarLarge:
-		size, radius, ts = theme.HeightAvatarLG, theme.RadiusScale().XXXL, theme.Base()
-		ts.Weight = theme.WeightMedium
-	}
-	size = theme.Scale(c, size)
+	size, radius, ts := avatarMetrics(c, o.Size)
+	status := StatusColors(c, o.Color)
 	bg := t.Default
 	if o.Soft {
-		bg = StatusColors(c, o.Color).Soft
+		bg = status.Soft
 	}
+	ink := status.SoftForeground
 	e := ui.Box(c).Size(size, size).Shrink(0).Radius(radius).
 		Role(ui.RoleImage).Label(o.Name)
 	if o.Ring {
@@ -72,11 +61,21 @@ func Avatar(c *ui.Context, o AvatarOptions) ui.Element {
 		ui.Row(c).Size(size, size).Center().Radius(radius).Clip().Background(bg).
 			Children(func() {
 				if hasImage(o.Image) {
-					ui.Image(c, o.Image).Size(size, size).Fit(ui.Cover).Role(ui.RoleNone)
+					image := ui.Image(c, o.Image).Size(size, size).Fit(ui.Cover).Role(ui.RoleNone)
+					if !theme.ReduceMotion(c) {
+						// HeroUI fades a portrait in over the fallback. MyGo
+						// plays Enter only when the portrait outlives the
+						// frame that made it, so a first build shows at once.
+						image.Transition(ui.ElementTransition{
+							Duration: 250 * time.Millisecond,
+							Ease:     ui.EaseOut,
+							Enter:    &ui.Motion{Opacity: 0},
+						})
+					}
 					return
 				}
 				fallback := style.Text(ui.Text(c, st.initials), c, ts)
-				fallback.TextColor(StatusColors(c, o.Color).Foreground).SingleLine().Role(ui.RoleNone)
+				fallback.TextColor(ink).SingleLine().Role(ui.RoleNone)
 			})
 		if o.Badge != nil {
 			ui.Box(c).Absolute().Right(0).Bottom(0).Children(o.Badge)
@@ -85,7 +84,26 @@ func Avatar(c *ui.Context, o AvatarOptions) ui.Element {
 	return e
 }
 
+// avatarMetrics resolves HeroUI's portrait size, corner radius and fallback
+// type role. The overflow count shares them.
+func avatarMetrics(c *ui.Context, size AvatarSize) (float32, float32, theme.TextStyle) {
+	dip, radius, ts := float32(theme.HeightAvatarMD), theme.RadiusScale().XXXL, theme.SM()
+	switch size {
+	case AvatarSmall:
+		dip, radius, ts = theme.HeightAvatarSM, theme.RadiusScale().XXL, theme.XS()
+	case AvatarLarge:
+		dip, radius, ts = theme.HeightAvatarLG, theme.RadiusScale().XXXL, theme.Base()
+	}
+	ts.Weight = theme.WeightMedium
+	return theme.Scale(c, dip), radius, ts
+}
+
 type avatarStateKey struct{}
+
+// avatarState keeps the initials generated for the last name and fallback.
+type avatarState struct {
+	name, fallback, initials string
+}
 
 func hasImage(source ui.ImageSource) bool {
 	switch image := source.(type) {
@@ -165,19 +183,19 @@ func AvatarGroup(c *ui.Context, o AvatarGroupOptions) ui.Element {
 			avatar.Role(ui.RoleImage)
 		}
 		if o.Total > len(o.Avatars) {
+			dip, radius, ts := avatarMetrics(c, o.Size)
 			count := ui.Row(c).Center().Shrink(0).
-				MinWidth(theme.Scale(c, theme.HeightAvatarSM)).
-				MinHeight(theme.Scale(c, theme.HeightAvatarSM)).
-				PaddingX(theme.Space6).Radius(theme.RadiusScale().XXXL).
-				Background(t.Default).TextColor(t.DefaultForeground)
+				MinWidth(dip).MinHeight(dip).PaddingX(theme.Space6).Radius(radius).
+				Background(t.Default).TextColor(t.DefaultSoftForeground)
 			if len(o.Avatars) > 0 && !o.Grid {
 				count.MarginStart(-overlap)
 			}
-			if o.Ring {
+			if o.Ring && !o.Grid {
 				count.Shadow(0, 0, 0, 2, t.Background)
 			}
 			count.Children(func() {
-				style.Text(ui.Text(c, "+"+strconv.Itoa(o.Total-len(o.Avatars))), c, theme.XS()).SingleLine()
+				style.Text(ui.Text(c, "+"+strconv.Itoa(o.Total-len(o.Avatars))), c, ts).
+					SingleLine().FontFeatures("tnum")
 			})
 		}
 	})

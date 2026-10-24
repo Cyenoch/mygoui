@@ -8,7 +8,8 @@
 package list
 
 import (
-	"strings"
+	"time"
+	"unicode"
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui/internal/style"
@@ -110,7 +111,8 @@ type ListBoxOptions struct {
 	Height float32
 	// MaxHeight caps a content-sized viewport in DIPs.
 	MaxHeight float32
-	// Padding is the content inset; zero uses HeroUI's 4 DIP base.
+	// Padding is the content inset; zero uses HeroUI's 4 DIP base, scaled
+	// with the host's text scale.
 	Padding float32
 	// Empty is shown when the list has no rows.
 	Empty string
@@ -443,6 +445,14 @@ var typeRunes = [...]rune{
 	'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
 }
 
+// firstFold returns the first letter of s, folded to lower case, or 0.
+func firstFold(s string) rune {
+	for _, r := range s {
+		return unicode.ToLower(r)
+	}
+	return 0
+}
+
 // typeahead moves the highlight to the next row whose label starts with r.
 func (s *ListBoxState) typeahead(r rune) string {
 	n := len(s.rows)
@@ -458,16 +468,12 @@ func (s *ListBoxState) typeahead(r rune) string {
 		if !s.selectable(i) {
 			continue
 		}
-		label := s.rows[i].label
-		if label == "" {
+		if firstFold(s.rows[i].label) != r {
 			continue
 		}
-		first := []rune(strings.ToLower(label))[0]
-		if first == r {
-			s.Highlight = i
-			s.List.ScrollIntoView(i)
-			return s.rows[i].key
-		}
+		s.Highlight = i
+		s.List.ScrollIntoView(i)
+		return s.rows[i].key
 	}
 	return ""
 }
@@ -484,22 +490,41 @@ func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
 	if s.List.Key == nil {
 		s.List.Key = s.keyAt
 		s.List.Label = s.labelAt
-		s.List.Header = func(i int) bool {
-			return i >= 0 && i < len(s.rows) && s.rows[i].header
-		}
+		// Headers scroll with their section, as HeroUI's do. The native
+		// ListState.Header would pin them to the viewport top, where they
+		// would overlap the rows scrolling under them.
+		s.List.Header = nil
 	}
 	n := len(s.rows)
 	padding := o.Padding
 	if padding == 0 {
-		padding = theme.Space4
+		padding = theme.Scale(c, theme.Space4)
 	}
 	t := theme.Colors(c)
-	radius := theme.RadiusScale().XXL
 	mode := o.Selection
-
+	st := rowStyle{
+		palette: t,
+		radius:  theme.RadiusScale().XXL,
+		padX:    theme.Scale(c, theme.Space8),
+		padY:    theme.Scale(c, theme.Space6),
+		gap:     theme.Scale(c, theme.Space12),
+		// HeroUI reserves pe-7 for the absolutely placed indicator and puts
+		// the 16 DIP mark 8 DIP from the row's end.
+		endPad:   theme.Scale(c, theme.Space(7)),
+		mark:     theme.Scale(c, theme.Space16),
+		check:    theme.Scale(c, theme.Space(2.5)),
+		blockGap: theme.Scale(c, theme.Space4),
+	}
+	// The list's focus is the same for every row built in this pass; resolve
+	// it once, when the first row is built and the list is bound.
+	var focused, focusKnown bool
 	list := ui.List(c, &s.List, n, func(i int) {
-		buildRow(c, s, o, i, radius, t)
-	}).Padding(padding).Gap(theme.Space4).MinWidth(0).FillWidth().
+		if !focusKnown {
+			focused = c.Resolve(s.List.Handle).FocusVisible()
+			focusKnown = true
+		}
+		buildRow(c, s, o, i, st, focused)
+	}).Padding(padding).Gap(0).MinWidth(0).FillWidth().
 		Focusable().FocusRing(false).Label(o.Label)
 	if o.Height > 0 {
 		list.Height(o.Height)
@@ -513,7 +538,7 @@ func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
 	if n == 0 && o.Empty != "" {
 		list.Children(func() {
 			style.Text(ui.Text(c, o.Empty), c, theme.SM()).
-				TextColor(t.Muted).Padding(theme.Space8)
+				TextColor(t.Muted).Padding(theme.Scale(c, theme.Space8))
 		})
 	}
 	if !o.Disabled {
@@ -522,15 +547,32 @@ func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
 	return list
 }
 
-func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, radius float32, t theme.Palette) {
+// rowStyle is the measured form of a list's options, shared by the rows built
+// in one pass. Spacing and icons follow HeroUI's rem metrics, so they scale
+// with the host's text scale.
+type rowStyle struct {
+	palette             theme.Palette
+	radius              float32
+	padX, padY, gap     float32
+	endPad, mark, check float32
+	// blockGap separates a block: an ungrouped row, or a whole section. A
+	// section's own rows sit flush, as HeroUI's gap-0 section does.
+	blockGap float32
+}
+
+func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, st rowStyle, focused bool) {
 	r := s.rows[i]
+	gap := st.blockGapAfter(s, i)
 	if r.header {
 		sec := &o.Sections[r.section]
-		header := ui.Row(c).FillWidth().Shrink(0).Gap(theme.Space8).AlignItems(ui.Center).
-			Padding(theme.Space6, theme.Space8, theme.Space4, theme.Space8)
+		header := ui.Row(c).FillWidth().Shrink(0).
+			Gap(theme.Scale(c, theme.Space8)).AlignItems(ui.Center).
+			Margin(0, 0, gap, 0).
+			Padding(theme.Scale(c, theme.Space(1.5)), theme.Scale(c, theme.Space8),
+				theme.Scale(c, theme.Space4), theme.Scale(c, theme.Space8))
 		header.Children(func() {
 			style.Text(ui.Text(c, sec.Label), c, theme.XS()).
-				FontWeight(theme.WeightMedium).TextColor(t.Muted).
+				FontWeight(theme.WeightMedium).TextColor(st.palette.Muted).
 				Role(ui.RoleHeading).Level(3).Grow(1)
 			if sec.Options.End != nil {
 				sec.Options.End()
@@ -545,39 +587,43 @@ func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, radius fl
 		it = &o.Sections[r.section].Items[r.item]
 	}
 	variant := rowVariant(o.Variant, it)
-	fg := t.Foreground
+	fg := st.palette.Foreground
 	if variant == ListBoxDanger {
-		fg = t.Danger
+		fg = st.palette.Danger
 	}
 	height := it.Options.Height
 	if height == 0 {
 		height = 36
 	}
-	row := ui.Row(c).FillWidth().Shrink(0).Gap(theme.Space12).AlignItems(ui.Center).
-		Padding(theme.Space6, theme.Space8, theme.Space6, theme.Space8).
-		MinHeight(theme.Scale(c, height)).Radius(radius).
-		Label(it.Label).TextColor(fg)
+	showIndicator := indicator(o.Selection, it)
 	selected := s.IsSelected(r.key)
-	highlighted := s.Highlight == i
-	focused := false
-	if el := c.Resolve(s.List.Handle); el.Valid() {
-		focused = el.FocusVisible()
+	row := ui.Row(c).FillWidth().Shrink(0).Gap(st.gap).AlignItems(ui.Center).
+		Margin(0, 0, gap, 0).Padding(st.padY, st.padX).
+		MinHeight(theme.Scale(c, height)).Radius(st.radius).Clip().
+		Label(it.Label).TextColor(fg)
+	if showIndicator {
+		row.PaddingEnd(st.endPad)
 	}
-	row.Selected(selected).TextColor(fg)
-	row.Background(ui.Transparent).Radius(radius).Clip()
+	highlighted := s.Highlight == i
+	// Selected sets the toolkit's accent face; HeroUI's selected row changes
+	// only its indicator, so the fill is cleared while the chosen state stays
+	// for assistive technology.
+	row.Selected(selected).TextColor(fg).Background(ui.Transparent)
 	// Snapshot the row's hover in the build: a retained copy of a leaving
 	// row paints in later passes, where row has expired.
 	hovered := row.Hovered()
 	row.Draw(func(p *ui.Painter, box ui.Rect) {
 		if hovered {
-			p.Fill(box, t.Default, radius)
+			p.Fill(box, st.palette.Default, st.radius)
 		}
 		if focused && highlighted {
-			p.FocusRing(ui.Rect{X: box.X + 3, Y: box.Y + 3, W: box.W - 6, H: box.H - 6},
-				[4]float32{radius, radius, radius, radius})
+			p.FocusRing(box, [4]float32{st.radius, st.radius, st.radius, st.radius})
 		}
 	})
-	showIndicator := indicator(o.Selection, it)
+	enabled := !o.Disabled && !it.Disabled
+	if enabled {
+		row.Cursor(ui.CursorPointer)
+	}
 	row.Children(func() {
 		if it.Start != nil {
 			it.Start()
@@ -591,24 +637,17 @@ func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, radius fl
 				style.Text(ui.Text(c, it.Label), c, theme.SM()).
 					TextColor(fg).SingleLine()
 				style.Text(ui.Text(c, it.Description), c, theme.XS()).
-					TextColor(t.Muted).SingleLine()
+					TextColor(st.palette.Muted).SingleLine()
 			}
 		})
 		if it.End != nil {
 			it.End()
 		}
 		if showIndicator {
-			mark := ui.Box(c).Width(theme.Scale(c, 16)).Height(theme.Scale(c, 16)).
-				Shrink(0).Center().Role(ui.RoleNone)
-			if selected {
-				mark.Children(func() {
-					ui.Icon(c, checkIcon).Size(theme.Scale(c, 10), theme.Scale(c, 10)).
-						TextColor(fg)
-				})
-			}
+			indicatorMark(c, st, fg, selected)
 		}
 	})
-	if !o.Disabled && !it.Disabled {
+	if enabled {
 		row.OnClick(func() {
 			if !o.NoFocusOnClick {
 				s.List.Focus(c)
@@ -616,7 +655,45 @@ func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, radius fl
 			activate(c, s, o, r.key, o.Selection)
 		})
 	}
-	style.Disabled(row, o.Disabled || it.Disabled)
+	style.Disabled(row, !enabled)
+}
+
+// blockGapAfter returns the space below row i: none inside a section, and the
+// list's block gap after an ungrouped row or a whole section. The last row
+// leaves the end to the list's padding.
+func (st rowStyle) blockGapAfter(s *ListBoxState, i int) float32 {
+	if i+1 >= len(s.rows) {
+		return 0
+	}
+	r, next := s.rows[i], s.rows[i+1]
+	if r.section >= 0 && next.section == r.section && !next.header {
+		return 0
+	}
+	return st.blockGap
+}
+
+// indicatorMark is HeroUI's absolutely placed check slot: the row reserves
+// its 28 DIP end padding, so the mark never moves the label. The mark scales
+// and fades in as the selection changes, as HeroUI's check draws in.
+func indicatorMark(c *ui.Context, st rowStyle, fg ui.Color, selected bool) {
+	mark := ui.Box(c).Absolute().End(theme.Scale(c, theme.Space8)).Top(0).Bottom(0).
+		Width(st.mark).Height(st.mark).
+		Margin(ui.Auto, 0, ui.Auto, 0).Center().
+		Role(ui.RoleNone)
+	mark.Children(func() {
+		if theme.ReduceMotion(c) {
+			if selected {
+				ui.Icon(c, checkIcon).Size(st.check, st.check).TextColor(fg)
+			}
+			return
+		}
+		check := ui.Icon(c, checkIcon).Size(st.check, st.check).TextColor(fg)
+		pose := ui.Pose{Scale: 0.6, Fade: 1}
+		if selected {
+			pose = ui.Pose{}
+		}
+		check.AnimatePose(pose, ui.Animation{Duration: 200 * time.Millisecond, Ease: ui.EaseOut})
+	})
 }
 
 // notify reports the keys chosen for mode.

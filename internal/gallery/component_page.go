@@ -2,7 +2,6 @@ package gallery
 
 import (
 	"fmt"
-	"reflect"
 	"regexp"
 	"sort"
 	"strconv"
@@ -430,10 +429,11 @@ func codeRow(c *ui.Context, number int, line string) {
 	t := theme.Colors(c)
 	ts := theme.Code()
 	ts.Size = 13
+	label := strconv.Itoa(number)
 	ui.Row(c).AlignItems(ui.Start).Gap(theme.Space12).Shrink(0).Children(func() {
 		ui.Column(c).Width(theme.Scale(c, 24)).Shrink(0).AlignItems(ui.End).Children(func() {
-			gutter := style.Text(ui.Text(c, strconv.Itoa(number)), c, ts).TextColor(t.Muted)
-			gutter.Label("line " + strconv.Itoa(number)).TextAlign(ui.End).SingleLine()
+			gutter := style.Text(ui.Text(c, label), c, ts).TextColor(t.Muted)
+			gutter.Label("line " + label).TextAlign(ui.End).SingleLine()
 		})
 		if line == "" {
 			line = " "
@@ -457,7 +457,9 @@ var goKeywords = map[string]bool{
 // foreground color.
 func goSpans(c *ui.Context, line string) []ui.Span {
 	t := theme.Colors(c)
-	var spans []ui.Span
+	// A source line usually splits into a handful of tokens; sizing the slice
+	// up front keeps a build from growing it three or four times per line.
+	spans := make([]ui.Span, 0, 8)
 	add := func(text string, color ui.Color, italic bool) {
 		if text == "" {
 			return
@@ -551,16 +553,20 @@ func apiTable(c *ui.Context, params []ComponentParam) {
 	if len(params) == 0 {
 		return
 	}
-	if pageWidth(c) < theme.Scale(c, 600) {
+	width := pageWidth(c)
+	if width < theme.Scale(c, 600) {
 		apiStacked(c, params)
 		return
 	}
+	// The panel's padding is the only thing between the page column and the
+	// columns; measuring it once keeps every row from re-measuring the page.
+	available := width - 2*theme.Scale(c, theme.Space16)
 	panel(c, func() {
 		ui.Column(c).FillWidth().MinWidth(0).Children(func() {
-			apiRow(c, ComponentParam{Name: "Name", Type: "Type", Default: "Default", Description: "Description"}, true)
+			apiRow(c, ComponentParam{Name: "Name", Type: "Type", Default: "Default", Description: "Description"}, true, available)
 			for _, param := range params {
 				mygoui.Separator(c, mygoui.SeparatorOptions{Color: mygoui.SeparatorSecondary})
-				apiRow(c, param, false)
+				apiRow(c, param, false, available)
 			}
 		})
 	})
@@ -608,9 +614,8 @@ func apiDescription(c *ui.Context, description string) {
 	})
 }
 
-func apiRow(c *ui.Context, p ComponentParam, header bool) {
+func apiRow(c *ui.Context, p ComponentParam, header bool, available float32) {
 	// Wide columns: Name 20%, Type 30%, Default 20%, Description the rest.
-	available := pageWidth(c) - 2*theme.Scale(c, theme.Space16)
 	gaps := float32(3 * theme.Space12)
 	nameW := available * 0.20
 	typeW := available * 0.30
@@ -699,10 +704,21 @@ var tokenRoles = map[string]string{
 	"AccentHover":                "Accent fill under the pointer.",
 	"AccentSoft":                 "Selected or softly highlighted surface.",
 	"AccentSoftForeground":       "Text on an AccentSoft surface.",
+	"AccentSoftHover":            "AccentSoft fill under the pointer.",
 	"Backdrop":                   "Dims the page behind a modal.",
 	"Background":                 "Window background behind every surface.",
+	"BackgroundInverse":          "Canvas turned over for contrast, as tooltips use.",
+	"BackgroundSecondary":        "Quiet alternative canvas, one step from Background.",
+	"BackgroundTertiary":         "Third canvas level for grouped background regions.",
 	"Border":                     "Outlines that separate surfaces and controls.",
+	"BorderSecondary":            "Stronger surface outline for emphasis.",
+	"BorderTertiary":             "Strongest surface outline.",
 	"Danger":                     "Destructive actions and invalid state.",
+	"DangerForeground":           "Text and icons on a Danger fill.",
+	"DangerHover":                "Danger fill under the pointer.",
+	"DangerSoft":                 "Destructive action at low emphasis.",
+	"DangerSoftForeground":       "Text on a DangerSoft surface.",
+	"DangerSoftHover":            "DangerSoft fill under the pointer.",
 	"Default":                    "Neutral control surface, chips and keycaps.",
 	"DefaultForeground":          "Text and icons on the neutral Default surface.",
 	"DefaultHover":               "Neutral surface under the pointer.",
@@ -710,15 +726,21 @@ var tokenRoles = map[string]string{
 	"DefaultSoftForeground":      "Text on a DefaultSoft surface.",
 	"DefaultSoftHover":           "DefaultSoft fill under the pointer.",
 	"FieldBackground":            "Input and text-field fill.",
-	"FieldBorder":                "Input outline at rest.",
+	"FieldBorder":                "Input outline at rest; transparent by default.",
 	"FieldBorderHover":           "Input outline under the pointer.",
 	"FieldBorderFocus":           "Input outline while focused.",
-	"FieldFocus":                 "Input outline and caret while focused.",
+	"FieldFocus":                 "Input fill while focused.",
 	"FieldForeground":            "Text typed into a field.",
 	"FieldHover":                 "Input fill under the pointer.",
 	"FieldPlaceholder":           "Placeholder text inside an empty field.",
-	"Focus":                      "Focus ring around the keyboard target.",
+	"Focus":                      "Ring around the focused control.",
 	"Foreground":                 "Primary body and heading text.",
+	"Info":                       "Informational status; starts as the Accent family.",
+	"InfoForeground":             "Text and icons on an Info fill.",
+	"InfoHover":                  "Info fill under the pointer.",
+	"InfoSoft":                   "Informational status at low emphasis.",
+	"InfoSoftForeground":         "Text on an InfoSoft surface.",
+	"InfoSoftHover":              "InfoSoft fill under the pointer.",
 	"Link":                       "Inline link text.",
 	"Muted":                      "Secondary and supporting text.",
 	"Overlay":                    "Popover, menu and tooltip surface.",
@@ -726,38 +748,190 @@ var tokenRoles = map[string]string{
 	"Scrollbar":                  "Scrollbar thumb.",
 	"Segment":                    "Selected segment in a control.",
 	"SegmentForeground":          "Text on a Segment.",
+	"Selection":                  "Selected row and selected-text fill.",
 	"Separator":                  "Divider rule between sections.",
+	"SeparatorSecondary":         "Stronger divider rule.",
+	"SeparatorTertiary":          "Strongest divider rule.",
 	"Success":                    "Positive status and valid state.",
 	"SuccessForeground":          "Text on a Success fill.",
+	"SuccessHover":               "Success fill under the pointer.",
 	"SuccessSoft":                "Positive status fill at low emphasis.",
 	"SuccessSoftForeground":      "Text on a SuccessSoft surface.",
+	"SuccessSoftHover":           "SuccessSoft fill under the pointer.",
 	"Surface":                    "Base card and panel fill.",
 	"SurfaceForeground":          "Text on a Surface.",
+	"SurfaceHover":               "Surface fill under the pointer.",
 	"SurfaceSecondary":           "Secondary panel, section and input surface.",
 	"SurfaceSecondaryForeground": "Text on a SurfaceSecondary surface.",
 	"SurfaceShadows":             "Elevation shadow layers for cards and overlays.",
 	"SurfaceTertiary":            "Tertiary, quietest surface.",
+	"SurfaceTertiaryForeground":  "Text on a SurfaceTertiary surface.",
 	"Warning":                    "Caution status and attention state.",
 	"WarningForeground":          "Text on a Warning fill.",
+	"WarningHover":               "Warning fill under the pointer.",
 	"WarningSoft":                "Caution status fill at low emphasis.",
 	"WarningSoftForeground":      "Text on a WarningSoft surface.",
+	"WarningSoftHover":           "WarningSoft fill under the pointer.",
 }
-
-var paletteColorType = reflect.TypeOf(ui.Color{})
 
 // paletteColor resolves a token name to the matching theme.Palette field, so
 // the gallery shows the colors the library actually ships. It reports false
-// for tokens that are not palette colors, such as shadows.
-func paletteColor(p theme.Palette, token string) (ui.Color, bool) {
-	field := reflect.ValueOf(p).FieldByName(token)
-	if !field.IsValid() || field.Type() != paletteColorType {
-		return ui.Color{}, false
+// for tokens that are not palette colors, such as shadows. The name switch is
+// one hash lookup per card build; reflection here allocated and scanned every
+// field for each of tens of cards on every frame.
+func paletteColor(p *theme.Palette, token string) (ui.Color, bool) {
+	switch token {
+	case "Accent":
+		return p.Accent, true
+	case "AccentForeground":
+		return p.AccentForeground, true
+	case "AccentHover":
+		return p.AccentHover, true
+	case "AccentSoft":
+		return p.AccentSoft, true
+	case "AccentSoftForeground":
+		return p.AccentSoftForeground, true
+	case "AccentSoftHover":
+		return p.AccentSoftHover, true
+	case "Backdrop":
+		return p.Backdrop, true
+	case "Background":
+		return p.Background, true
+	case "BackgroundInverse":
+		return p.BackgroundInverse, true
+	case "BackgroundSecondary":
+		return p.BackgroundSecondary, true
+	case "BackgroundTertiary":
+		return p.BackgroundTertiary, true
+	case "Border":
+		return p.Border, true
+	case "BorderSecondary":
+		return p.BorderSecondary, true
+	case "BorderTertiary":
+		return p.BorderTertiary, true
+	case "Danger":
+		return p.Danger, true
+	case "DangerForeground":
+		return p.DangerForeground, true
+	case "DangerHover":
+		return p.DangerHover, true
+	case "DangerSoft":
+		return p.DangerSoft, true
+	case "DangerSoftForeground":
+		return p.DangerSoftForeground, true
+	case "DangerSoftHover":
+		return p.DangerSoftHover, true
+	case "Default":
+		return p.Default, true
+	case "DefaultForeground":
+		return p.DefaultForeground, true
+	case "DefaultHover":
+		return p.DefaultHover, true
+	case "DefaultSoft":
+		return p.DefaultSoft, true
+	case "DefaultSoftForeground":
+		return p.DefaultSoftForeground, true
+	case "DefaultSoftHover":
+		return p.DefaultSoftHover, true
+	case "FieldBackground":
+		return p.FieldBackground, true
+	case "FieldBorder":
+		return p.FieldBorder, true
+	case "FieldBorderFocus":
+		return p.FieldBorderFocus, true
+	case "FieldBorderHover":
+		return p.FieldBorderHover, true
+	case "FieldFocus":
+		return p.FieldFocus, true
+	case "FieldForeground":
+		return p.FieldForeground, true
+	case "FieldHover":
+		return p.FieldHover, true
+	case "FieldPlaceholder":
+		return p.FieldPlaceholder, true
+	case "Focus":
+		return p.Focus, true
+	case "Foreground":
+		return p.Foreground, true
+	case "Info":
+		return p.Info, true
+	case "InfoForeground":
+		return p.InfoForeground, true
+	case "InfoHover":
+		return p.InfoHover, true
+	case "InfoSoft":
+		return p.InfoSoft, true
+	case "InfoSoftForeground":
+		return p.InfoSoftForeground, true
+	case "InfoSoftHover":
+		return p.InfoSoftHover, true
+	case "Link":
+		return p.Link, true
+	case "Muted":
+		return p.Muted, true
+	case "Overlay":
+		return p.Overlay, true
+	case "OverlayForeground":
+		return p.OverlayForeground, true
+	case "Scrollbar":
+		return p.Scrollbar, true
+	case "Segment":
+		return p.Segment, true
+	case "SegmentForeground":
+		return p.SegmentForeground, true
+	case "Selection":
+		return p.Selection, true
+	case "Separator":
+		return p.Separator, true
+	case "SeparatorSecondary":
+		return p.SeparatorSecondary, true
+	case "SeparatorTertiary":
+		return p.SeparatorTertiary, true
+	case "Success":
+		return p.Success, true
+	case "SuccessForeground":
+		return p.SuccessForeground, true
+	case "SuccessHover":
+		return p.SuccessHover, true
+	case "SuccessSoft":
+		return p.SuccessSoft, true
+	case "SuccessSoftForeground":
+		return p.SuccessSoftForeground, true
+	case "SuccessSoftHover":
+		return p.SuccessSoftHover, true
+	case "Surface":
+		return p.Surface, true
+	case "SurfaceForeground":
+		return p.SurfaceForeground, true
+	case "SurfaceHover":
+		return p.SurfaceHover, true
+	case "SurfaceSecondary":
+		return p.SurfaceSecondary, true
+	case "SurfaceSecondaryForeground":
+		return p.SurfaceSecondaryForeground, true
+	case "SurfaceTertiary":
+		return p.SurfaceTertiary, true
+	case "SurfaceTertiaryForeground":
+		return p.SurfaceTertiaryForeground, true
+	case "Warning":
+		return p.Warning, true
+	case "WarningForeground":
+		return p.WarningForeground, true
+	case "WarningHover":
+		return p.WarningHover, true
+	case "WarningSoft":
+		return p.WarningSoft, true
+	case "WarningSoftForeground":
+		return p.WarningSoftForeground, true
+	case "WarningSoftHover":
+		return p.WarningSoftHover, true
 	}
-	return field.Interface().(ui.Color), true
+	return ui.Color{}, false
 }
 
 // tokenCards shows a component's theme tokens as cards: the live swatch, its
-// name and hex, the light and dark variants and what the token is for.
+// name and hex, the light and dark variants and what the token is for. The
+// three palettes are resolved once for every card in the section.
 func tokenCards(c *ui.Context, tokens []string) {
 	if len(tokens) == 0 {
 		return
@@ -769,9 +943,10 @@ func tokenCards(c *ui.Context, tokens []string) {
 	if two {
 		cardWidth = (width - gap) / 2
 	}
+	current, light, dark := theme.Colors(c), theme.ColorsForMode(false), theme.ColorsForMode(true)
 	ui.Row(c).FillWidth().MinWidth(0).Wrap().Gap(gap).Children(func() {
 		for _, token := range tokens {
-			tokenCard(c, token, cardWidth, two)
+			tokenCard(c, &current, &light, &dark, token, cardWidth, two)
 		}
 	})
 }
@@ -779,10 +954,9 @@ func tokenCards(c *ui.Context, tokens []string) {
 // tokenCard is one token: a current-mode swatch with its mono name and hex,
 // L/D variants and the token's role. Unknown tokens say so instead of
 // inventing a color.
-func tokenCard(c *ui.Context, token string, width float32, grid bool) {
-	t := theme.Colors(c)
-	light, lightOK := paletteColor(theme.ColorsForMode(false), token)
-	dark, darkOK := paletteColor(theme.ColorsForMode(true), token)
+func tokenCard(c *ui.Context, t, lightPalette, darkPalette *theme.Palette, token string, width float32, grid bool) {
+	light, lightOK := paletteColor(lightPalette, token)
+	dark, darkOK := paletteColor(darkPalette, token)
 	current, currentOK := paletteColor(t, token)
 	known := lightOK && darkOK && currentOK
 
@@ -838,8 +1012,8 @@ func tokenCard(c *ui.Context, token string, width float32, grid bool) {
 		if known {
 			ui.Row(c).FillWidth().MinWidth(0).Wrap().Gap(theme.Space12).
 				AlignItems(ui.Center).Children(func() {
-				tokenMode(c, "L", light)
-				tokenMode(c, "D", dark)
+				tokenMode(c, t, "L", light)
+				tokenMode(c, t, "D", dark)
 			})
 		}
 		mygoui.Typography(c, role, mygoui.TypographyOptions{
@@ -849,8 +1023,7 @@ func tokenCard(c *ui.Context, token string, width float32, grid bool) {
 }
 
 // tokenMode is one light or dark swatch with its letter and hex value.
-func tokenMode(c *ui.Context, label string, value ui.Color) {
-	t := theme.Colors(c)
+func tokenMode(c *ui.Context, t *theme.Palette, label string, value ui.Color) {
 	ui.Row(c).Gap(theme.Space4).AlignItems(ui.Center).Shrink(0).Children(func() {
 		ts := theme.XS()
 		ts.Mono = true

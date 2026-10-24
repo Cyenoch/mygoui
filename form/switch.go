@@ -94,7 +94,7 @@ func Switch(c *ui.Context, o SwitchOptions) ui.Element {
 			Description(c, o.Description).PaddingStart(indent)
 		}
 		if errText != "" {
-			FieldError(c, errText).PaddingStart(indent)
+			choiceErrorMessage(c, errText).PaddingStart(indent)
 		}
 	})
 	return style.Disabled(outer, disabled)
@@ -134,26 +134,52 @@ func switchIndicator(c *ui.Context, on *bool, size SwitchSize, disabled bool, ow
 	t := theme.Colors(c)
 	m := switchMetrics(c, size)
 	rtl := c.Direction() == ui.RightToLeft
+	reduceMotion := theme.ReduceMotion(c)
 	track := ui.Box(c).Size(m.w, m.h).Shrink(0)
-	pos := choiceOnOff(*on)
+	onNow := *on
+	pos := choiceOnOff(onNow)
 	if !disabled {
-		pos = track.Animate("switch-thumb", pos, 200*time.Millisecond)
+		// Upstream moves the thumb with a 300 ms ease-out-fluid margin.
+		pos = track.Animate("switch-thumb", pos, 300*time.Millisecond)
 	}
 	// Snapshot the row's states in the build: a retained copy of a leaving
 	// element paints in later passes, where owner has expired.
 	hovered, pressed, focused := owner.Hovered(), owner.Pressed(), owner.FocusVisible()
-	track.Draw(func(p *ui.Painter, r ui.Rect) {
-		fill := t.Default
-		switch {
-		case *on:
-			fill = t.Accent
-			if hovered || pressed {
-				fill = t.AccentHover
-			}
-		case hovered || pressed:
-			fill = t.DefaultHover
+	trackFill := t.Default
+	switch {
+	case onNow:
+		trackFill = t.Accent
+		if hovered || pressed {
+			trackFill = t.AccentHover
 		}
-		p.Fill(r, fill, m.radius)
+	case hovered || pressed:
+		trackFill = t.DefaultHover
+	}
+	face := ui.RGB(255, 255, 255)
+	if onNow {
+		face = t.AccentForeground
+	}
+	if disabled {
+		switch {
+		case onNow:
+			face = face.Alpha(0.4)
+		default:
+			face = t.DefaultForeground.Alpha(0.2)
+		}
+	}
+	if !reduceMotion {
+		// Track and thumb colors follow HeroUI's 250 ms and 200 ms curves.
+		trackFill = track.AnimateColor("switch-track", trackFill, ui.Animation{
+			Duration: 250 * time.Millisecond, Ease: ui.EaseOut,
+		})
+		face = track.AnimateColor("switch-face", face, ui.Animation{
+			Duration: 200 * time.Millisecond, Ease: ui.EaseOut,
+		})
+	}
+	// Resolve the theme's field shadow once per build, not per paint.
+	shadows := theme.FieldShadows(c.Theme().Dark)
+	track.Draw(func(p *ui.Painter, r ui.Rect) {
+		p.Fill(r, trackFill, m.radius)
 
 		off, end := m.inset, r.W-m.inset-m.thumbW
 		if rtl {
@@ -164,14 +190,16 @@ func switchIndicator(c *ui.Context, on *bool, size SwitchSize, disabled bool, ow
 			X: r.X + x, Y: r.Y + (r.H-m.thumbH)/2,
 			W: m.thumbW, H: m.thumbH,
 		}
-		face := ui.RGB(255, 255, 255)
-		if *on {
-			face = t.AccentForeground
+		if onNow {
+			// HeroUI lifts the chosen thumb with its own three shadows.
+			p.Shadow(thumb, m.thumbRadius, 0, 0, 5, 0, ui.RGBA(0, 0, 0, 0.02))
+			p.Shadow(thumb, m.thumbRadius, 0, 2, 10, 0, ui.RGBA(0, 0, 0, 0.06))
+			p.Shadow(thumb, m.thumbRadius, 0, 0, 1, 0, ui.RGBA(0, 0, 0, 0.3))
+		} else {
+			for _, shadow := range shadows {
+				p.Shadow(thumb, m.thumbRadius, shadow.X, shadow.Y, shadow.Blur, shadow.Spread, shadow.Color)
+			}
 		}
-		if disabled && *on {
-			face = face.Alpha(0.4)
-		}
-		p.Shadow(thumb, m.thumbRadius, 0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.18))
 		p.Fill(thumb, face, m.thumbRadius)
 		if focused {
 			p.FocusRing(r, choiceRadii(m.radius))

@@ -1,6 +1,8 @@
 package form
 
 import (
+	"time"
+
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -96,58 +98,90 @@ func Radio[T comparable](c *ui.Context, o RadioOptions[T]) ui.Element {
 }
 
 // radioControl draws HeroUI's 16 DIP circle and its inner dot. owner supplies
-// the live hover, pressed and focus state.
+// the live hover, pressed and focus state. The dot fills the control while
+// unselected and shrinks to the 6 DIP mark when chosen, as upstream's
+// indicator does.
 func radioControl(c *ui.Context, selected, invalid bool, variant ControlVariant, owner ui.Element) ui.Element {
 	t := theme.Colors(c)
 	size := float32(theme.Space16)
 	radius := theme.RadiusScale().LG
-	box := ui.Box(c).Size(size, size).Shrink(0)
 	// Snapshot the row's states in the build: a retained copy of a leaving
 	// element paints in later passes, where owner has expired.
 	hovered, pressed, focused := owner.Hovered(), owner.Pressed(), owner.FocusVisible()
-	box.Draw(func(p *ui.Painter, r ui.Rect) {
-		fill := t.FieldBackground
-		border := t.FieldBorder
-		if variant == ControlSecondary {
-			fill = t.Default
-			if !selected && (hovered || pressed) {
-				fill = t.DefaultHover
-			}
+	reduceMotion := theme.ReduceMotion(c)
+
+	baseFill := t.FieldBackground
+	if variant == ControlSecondary {
+		baseFill = t.Default
+	}
+	fill := baseFill
+	switch {
+	case selected:
+		fill = t.Accent
+		if pressed {
+			fill = t.AccentHover
 		}
-		switch {
-		case selected:
-			border = ui.Transparent
-			fill = t.Accent
-			if pressed {
-				fill = t.AccentHover
-			}
-		case hovered:
+	case hovered:
+		if variant == ControlSecondary {
+			fill = t.DefaultHover
+		} else {
+			fill = t.FieldHover
+		}
+	}
+	// The upstream dot is the 14 DIP inside the border, which scales to
+	// 0.4286 (6 DIP) when chosen and 0.5714 (8 DIP) while pressed.
+	dotScale := float32(1)
+	switch {
+	case selected && pressed:
+		dotScale = 0.5714
+	case selected:
+		dotScale = 0.4286
+	}
+	dotFill := baseFill
+	switch {
+	case selected:
+		dotFill = t.AccentForeground
+	case hovered && variant == ControlSecondary:
+		dotFill = t.DefaultHover
+	case hovered:
+		dotFill = t.FieldHover
+	}
+
+	box := ui.Box(c).Size(size, size).Shrink(0).Center()
+	if !reduceMotion {
+		// A color change is part of the switch between faces upstream, so
+		// it follows the same 200 ms curve as the dot's scale.
+		dotFill = box.AnimateColor("radio-dot", dotFill, ui.Animation{
+			Duration: 200 * time.Millisecond, Ease: ui.EaseOut,
+		})
+	}
+	box.Draw(func(p *ui.Painter, r ui.Rect) {
+		border := t.FieldBorder
+		if !selected && !invalid && hovered {
 			border = t.FieldBorderHover
-			if variant != ControlSecondary {
-				fill = t.FieldHover
-			}
 		}
 		if variant != ControlSecondary {
 			p.Shadow(r, radius, 0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.08))
 		}
 		p.Fill(r, fill, radius)
-		if selected {
-			d := r.W * 0.4286
-			if pressed {
-				d = r.W * 0.5714
-			}
-			p.Fill(ui.Rect{
-				X: r.X + (r.W-d)/2, Y: r.Y + (r.H-d)/2, W: d, H: d,
-			}, t.AccentForeground, d/2)
-		}
-		if invalid {
-			p.Stroke(r, t.Danger, radius, theme.Hairline)
-		} else if border.A != 0 {
+		if border.A != 0 {
 			p.Stroke(r, border, radius, theme.Hairline)
 		}
-		if focused {
+		switch {
+		case focused:
 			choiceFocusRing(p, r, radius, invalid, t)
+		case invalid:
+			choiceInvalidRing(p, r, radius, t)
 		}
+	})
+	box.Children(func() {
+		dot := ui.Box(c).Size(size-2*theme.Hairline, size-2*theme.Hairline).Shrink(0)
+		dot.Draw(func(p *ui.Painter, r ui.Rect) {
+			p.Fill(r, dotFill, r.W/2)
+		})
+		dot.AnimatePose(ui.Pose{Scale: dotScale}, ui.Animation{
+			Duration: 200 * time.Millisecond, Ease: ui.EaseOut,
+		})
 	})
 	return box
 }

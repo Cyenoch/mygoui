@@ -51,7 +51,7 @@ func Breadcrumb(c *ui.Context, o BreadcrumbOptions) ui.Element {
 	underline := e.Hovered() || e.FocusVisible()
 	e.DrawOver(func(p *ui.Painter, r ui.Rect) {
 		if underline {
-			p.Line(r.X, r.Y+r.H-1, r.X+r.W, r.Y+r.H-1, 1, t.Muted.Alpha(0.5))
+			p.Line(r.X, r.Y+r.H-1, r.X+r.W, r.Y+r.H-1, 1, t.Muted)
 		}
 	})
 	e.Children(func() {
@@ -83,24 +83,14 @@ func Breadcrumbs(c *ui.Context, o BreadcrumbsOptions) ui.Element {
 			tail = o.MaxVisible - 2
 			head = 1
 		}
-		first := true
-		separator := func() {
-			if first {
-				first = false
-				return
-			}
-			sep := ui.Icon(c, lucide.ChevronRight()).Size(scale(c, theme.IconXS), scale(c, theme.IconXS)).
-				Shrink(0).TextColor(t.Muted)
-			if c.Direction() == ui.RightToLeft {
-				sep.Rotate(180)
-			}
-		}
+		// Upstream wraps each crumb and its separator in one item with a
+		// 4 DIP gap, and keeps 6 DIP between items: the separator trails the
+		// crumb it follows.
+		var slots []func()
 		add := func(i int) {
-			separator()
 			it := o.Items[i]
 			it.Current = it.Current || i == len(o.Items)-1
-			item := ui.Row(c).AlignItems(ui.Center).Shrink(0)
-			item.Children(func() {
+			slots = append(slots, func() {
 				Breadcrumb(c, BreadcrumbOptions{
 					Label:    it.Label,
 					Current:  it.Current,
@@ -120,33 +110,34 @@ func Breadcrumbs(c *ui.Context, o BreadcrumbsOptions) ui.Element {
 			add(i)
 		}
 		if tail < len(o.Items)-head {
-			separator()
-			btn := ui.ButtonBase(c).Size(scale(c, theme.Space24), scale(c, theme.Space24)).Center().
-				Radius(theme.RadiusScale().MD).FocusRing(true).Label(more).
-				Background(ui.Transparent).TextColor(t.Muted)
-			// Snapshot the button's states in the build, as above.
-			hovered, pressed := btn.Hovered(), btn.Pressed()
-			btn.Draw(func(p *ui.Painter, r ui.Rect) {
-				if hovered || pressed {
-					p.Fill(r, t.DefaultHover, theme.RadiusScale().MD)
-				}
-			})
-			btn.Children(func() {
-				ui.Icon(c, lucide.Ellipsis()).Size(scale(c, theme.IconMD), scale(c, theme.IconMD)).Shrink(0)
-			})
-			btn.Menu(func(m *ui.Menu) {
-				for i := head; i < len(o.Items)-tail; i++ {
-					it := o.Items[i]
-					mi := m.Item(it.Label).Disabled(it.Disabled)
-					if mi.Chosen() {
-						if it.OnClick != nil {
-							it.OnClick()
-						}
-						if o.OnSelect != nil {
-							o.OnSelect(i)
+			slots = append(slots, func() {
+				btn := ui.ButtonBase(c).Size(scale(c, theme.Space24), scale(c, theme.Space24)).Center().
+					Radius(theme.RadiusScale().MD).FocusRing(true).Label(more).
+					Background(ui.Transparent).TextColor(t.Muted)
+				// Snapshot the button's states in the build, as above.
+				hovered, pressed := btn.Hovered(), btn.Pressed()
+				btn.Draw(func(p *ui.Painter, r ui.Rect) {
+					if hovered || pressed {
+						p.Fill(r, t.DefaultHover, theme.RadiusScale().MD)
+					}
+				})
+				btn.Children(func() {
+					ui.Icon(c, lucide.Ellipsis()).Size(scale(c, theme.IconMD), scale(c, theme.IconMD)).Shrink(0)
+				})
+				btn.Menu(func(m *ui.Menu) {
+					for i := head; i < len(o.Items)-tail; i++ {
+						it := o.Items[i]
+						mi := m.Item(it.Label).Disabled(it.Disabled)
+						if mi.Chosen() {
+							if it.OnClick != nil {
+								it.OnClick()
+							}
+							if o.OnSelect != nil {
+								o.OnSelect(i)
+							}
 						}
 					}
-				}
+				})
 			})
 		}
 		for i := len(o.Items) - tail; i < len(o.Items); i++ {
@@ -154,6 +145,21 @@ func Breadcrumbs(c *ui.Context, o BreadcrumbsOptions) ui.Element {
 				continue
 			}
 			add(i)
+		}
+		for j := range slots {
+			item := ui.Row(c).AlignItems(ui.Center).Gap(scale(c, theme.Space4)).Shrink(0)
+			last := j == len(slots)-1
+			item.Children(func() {
+				slots[j]()
+				if last {
+					return
+				}
+				sep := ui.Icon(c, lucide.ChevronRight()).Size(scale(c, theme.IconXS), scale(c, theme.IconXS)).
+					Shrink(0).TextColor(t.Muted)
+				if c.Direction() == ui.RightToLeft {
+					sep.Rotate(180)
+				}
+			})
 		}
 	})
 	return root

@@ -23,10 +23,11 @@ func init() {
 // promises, and one card per component group with its count and page links.
 func buildOverview(c *ui.Context, s *State) ui.Element {
 	width := overviewWidth(c)
-	groups := overviewGroups()
+	all := Pages()
+	groups := overviewGroups(all)
 	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space32)).
 		Children(func() {
-			overviewHero(c, len(groups))
+			overviewHero(c, len(all), len(groups))
 			mygoui.Separator(c, mygoui.SeparatorOptions{})
 			ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space16)).
 				Children(func() {
@@ -35,7 +36,7 @@ func buildOverview(c *ui.Context, s *State) ui.Element {
 						ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(func() {
 							mygoui.Typography(c, "Component groups", mygoui.TypographyOptions{Type: theme.TypeH3})
 						})
-						mygoui.Typography(c, fmt.Sprintf("%d pages in %d groups", len(Pages()), len(groups)),
+						mygoui.Typography(c, fmt.Sprintf("%d pages in %d groups", len(all), len(groups)),
 							mygoui.TypographyOptions{Type: theme.TypeBodySM, Muted: true})
 					})
 					overviewGroupGrid(c, s, groups, width)
@@ -45,7 +46,7 @@ func buildOverview(c *ui.Context, s *State) ui.Element {
 
 // overviewHero is the title block: library name, one-line promise, counts and
 // the three feature points.
-func overviewHero(c *ui.Context, groups int) {
+func overviewHero(c *ui.Context, pages, groups int) {
 	ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space12)).Children(func() {
 		mygoui.Typography(c, "Overview", mygoui.TypographyOptions{
 			Type: theme.TypeBodyXS, Weight: theme.WeightMedium, Muted: true,
@@ -56,7 +57,7 @@ func overviewHero(c *ui.Context, groups int) {
 		})
 		ui.Row(c).Wrap().Gap(theme.Scale(c, theme.Space16)).AlignItems(ui.Center).Children(func() {
 			for _, text := range []string{
-				fmt.Sprintf("%d components", len(Pages())-1),
+				fmt.Sprintf("%d components", pages-1),
 				fmt.Sprintf("%d groups", groups),
 				"Light and dark",
 				"Native keyboard and clipboard",
@@ -95,9 +96,9 @@ func overviewFeatures(c *ui.Context) {
 
 // overviewGroups returns the navigation groups except Overview, in the same
 // order as the sidebar.
-func overviewGroups() []pageGroup {
+func overviewGroups(all []Page) []pageGroup {
 	var groups []pageGroup
-	for _, group := range pageGroups(filterPagesInOrder(Pages())) {
+	for _, group := range pageGroups(filterPagesInOrder(all)) {
 		if group.name == "Overview" {
 			continue
 		}

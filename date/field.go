@@ -105,8 +105,10 @@ func formField(c *ui.Context, spec fieldSpec, errorText string, body func()) ui.
 
 // fieldGroup is HeroUI's date-input-group surface: the field background, its
 // hover and focus-within states, the danger ring when invalid, and 12 DIP
-// horizontal padding around a 36 DIP row.
-func fieldGroup(c *ui.Context, invalid, disabled bool) ui.Element {
+// horizontal padding around a 36 DIP row. ignoreFocus, when set, is the
+// picker's trigger: HeroUI keeps the field face quiet while only that trigger
+// has the focus, since the trigger draws its own ring.
+func fieldGroup(c *ui.Context, invalid, disabled bool, ignoreFocus *ui.Handle) ui.Element {
 	t := theme.Colors(c)
 	radius := theme.RadiusScale().Field
 	e := ui.Row(c).MinHeight(theme.Scale(c, 36)).AlignItems(ui.Center).
@@ -114,6 +116,11 @@ func fieldGroup(c *ui.Context, invalid, disabled bool) ui.Element {
 	// Snapshot the states in the build: a retained copy of a leaving
 	// element paints in later passes, where e has expired.
 	focused, hovered := e.FocusWithin(), e.Hovered()
+	if ignoreFocus != nil && ignoreFocus.Focused(c) {
+		// HeroUI's group excludes its trigger from :focus-within; with the
+		// pointer on that trigger neither the hover nor the focus face shows.
+		focused, hovered = false, false
+	}
 	e.Draw(func(p *ui.Painter, r ui.Rect) {
 		fill := t.FieldBackground
 		switch {
@@ -132,6 +139,10 @@ func fieldGroup(c *ui.Context, invalid, disabled bool) ui.Element {
 			p.Stroke(r, t.Danger, radius, width)
 		case focused:
 			p.FocusRing(r, [4]float32{radius, radius, radius, radius})
+		case hovered:
+			if t.FieldBorderHover.A != 0 {
+				p.Stroke(r, t.FieldBorderHover, radius, theme.Hairline)
+			}
 		}
 	})
 	e = style.Shadow(e, c, theme.FieldShadows(c.Theme().Dark))
@@ -154,7 +165,10 @@ type dateFieldSpec struct {
 	loc           *time.Location
 	width         float32
 	suffix        func()
-	onChange      func(time.Time)
+	// triggerFocus is the popup trigger built by suffix, when there is one:
+	// the group hides its focus face while that trigger holds the focus.
+	triggerFocus *ui.Handle
+	onChange     func(time.Time)
 }
 
 // dateField builds the field and returns it with the input group, which
@@ -178,7 +192,7 @@ func dateGroup(c *ui.Context, spec dateFieldSpec, buf *dateBuffer, invalid bool)
 	if placeholder == "" {
 		placeholder = "YYYY-MM-DD"
 	}
-	group := fieldGroup(c, invalid, spec.field.disabled)
+	group := fieldGroup(c, invalid, spec.field.disabled, spec.triggerFocus)
 	if spec.width > 0 && !spec.field.fullWidth {
 		group = group.Width(spec.width)
 	}

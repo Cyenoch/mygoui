@@ -12,7 +12,7 @@ import (
 type PopoverOptions struct {
 	Title, Description string
 	// Placement anchors the panel with mygoui.Placement. SideAuto falls
-	// back to below the anchor; zero Offset uses 4 DIPs, or 7 with Arrow.
+	// back to below the anchor; a zero Offset uses HeroUI's 8 DIPs.
 	Placement mygoui.Placement
 	// Arrow draws HeroUI's 12 DIP arrow at the anchor-facing edge.
 	Arrow bool
@@ -38,26 +38,35 @@ func Popover(c *ui.Context, anchor ui.Element, open *bool, o PopoverOptions) ui.
 	}
 	t := theme.Colors(c)
 	radius := overlayRadius()
-	side := resolveSide(o.Placement, mygoui.SideBottom)
+	want := resolveSide(o.Placement, mygoui.SideBottom)
 	label := o.Label
 	if label == "" {
 		label = o.Title
 	}
+	minWidth := o.MinWidth
+	if minWidth == 0 && o.Width <= 0 {
+		minWidth = 180
+	}
 	p := ui.PopoverBase(c, anchor, open, func(panel ui.Element) {
-		panel = popupMotion(c, panel, popoverKey{open})
+		// Key the panel before reading the side it settled on: a keyed
+		// element keeps its state, and so its committed box, from frame to
+		// frame. The attach engine flips a panel that no longer fits below
+		// its anchor, and both the arrow and the zoom follow that side.
+		panel = panel.Key(popoverKey{open})
+		side := arrowSide(panel, anchor, want)
+		panel = popupMotion(c, panel, side)
 		panel.Radius(radius).Background(t.Overlay).TextColor(t.OverlayForeground).
-			Padding(theme.Space16).MinWidth(o.MinWidth)
+			Padding(theme.Space16)
 		if o.Width > 0 {
 			panel.Width(o.Width)
 		}
-		if o.MinWidth > 0 {
-			panel.MinWidth(o.MinWidth)
-		} else if o.Width <= 0 {
-			panel.MinWidth(180)
+		if minWidth > 0 {
+			panel.MinWidth(minWidth)
 		}
 		if o.Arrow {
+			along := arrowAlong(panel, anchor, side)
 			panel.Draw(func(p *ui.Painter, r ui.Rect) {
-				paintArrow(p, r, side, t.Overlay)
+				paintArrow(p, r, side, t.Overlay, along)
 			})
 		}
 		panel = panelElevation(c, panel)
@@ -95,15 +104,9 @@ func Popover(c *ui.Context, anchor ui.Element, open *bool, o PopoverOptions) ui.
 				ui.Row(c).FillWidth().Justify(ui.End).Gap(theme.Space8).Children(o.Footer)
 			}
 		})
-		placement := o.Placement
-		if placement.Offset == 0 {
-			if o.Arrow {
-				placement.Offset = 7
-			} else {
-				placement.Offset = 4
-			}
-		}
-		anchored.Apply(panel, anchor, placement, mygoui.SideBottom)
+		// A zero Offset keeps HeroUI's React Aria default of 8 DIPs, which
+		// the anchor placement applies, with or without an arrow.
+		anchored.Apply(panel, anchor, o.Placement, mygoui.SideBottom)
 	})
 	return p
 }

@@ -1,6 +1,8 @@
 package overlay
 
 import (
+	"math"
+
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
@@ -121,33 +123,44 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 				h.Margin(0, 0, bodyFooter, 0)
 			}
 			if hasClose {
-				h.PaddingEnd(theme.Space32)
+				// HeroUI floats the close trigger 16 DIPs inside the panel
+				// edge, over the padding, and reserves nothing. Native text
+				// cannot run under a button, so reserve exactly the part of
+				// the button that reaches past the padding.
+				if overlap := closeInset + theme.Scale(c, closeButtonSize) - padding; overlap > 0 {
+					h.PaddingEnd(overlap)
+				}
 			}
 			h.Children(func() {
 				if p.header != nil {
 					p.header()
 					return
 				}
+				// HeroUI's modal, alert-dialog and drawer headers are one
+				// column with gap-3: the icon, heading and description are
+				// all 12 DIPs apart.
 				if p.icon != nil {
 					p.icon()
 				}
-				inner := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space4)
-				inner.Children(func() {
-					if p.title != "" {
-						title := style.Text(ui.Text(c, p.title), c, p.titleStyle)
-						title.FontWeight(theme.WeightMedium).TextColor(t.OverlayForeground).
-							Role(ui.RoleHeading).Level(level)
-					}
-					if p.description != "" {
-						style.Text(ui.Text(c, p.description), c, p.descriptionStyle).TextColor(t.Muted)
-					}
-				})
+				if p.title != "" {
+					title := style.Text(ui.Text(c, p.title), c, p.titleStyle)
+					title.FontWeight(theme.WeightMedium).TextColor(t.OverlayForeground).
+						Role(ui.RoleHeading).Level(level)
+				}
+				if p.description != "" {
+					style.Text(ui.Text(c, p.description), c, p.descriptionStyle).TextColor(t.Muted)
+				}
 			})
 		}
 		if hasBody {
-			b := ui.Scroll(c).FillWidth().Grow(1).MinHeight(0)
+			// HeroUI bleeds the body by -3 DIPs and pads it by 3, so a
+			// child's 2 DIP focus ring, 1 DIP outside its box, still paints
+			// inside the scroll viewport's clip. The content stays where the
+			// panel's padding puts it.
+			b := ui.Scroll(c).FillWidth().Grow(1).MinHeight(0).Padding(bodyBleed).
+				Margin(0, -bodyBleed, 0, -bodyBleed)
 			if hasFooter {
-				b.Margin(0, 0, bodyFooter, 0)
+				b.Margin(0, -bodyBleed, bodyFooter, -bodyBleed)
 			}
 			if p.bodyLabel != "" {
 				b.Label(p.bodyLabel)
@@ -203,24 +216,96 @@ func resolveSide(p mygoui.Placement, fallback mygoui.Side) mygoui.Side {
 	return p.Side
 }
 
-// paintArrow draws HeroUI's 12 DIP overlay arrow as a rounded square turned
-// 45°, half of it outside the panel's edge facing the anchor. The panel must
-// not Clip, or the protruding half disappears.
-func paintArrow(p *ui.Painter, r ui.Rect, side mygoui.Side, fill ui.Color) {
-	const size = 9
-	cx := r.X + r.W/2
-	var cy float32
+// HeroUI's overlay arrow: 12 DIPs wide and 6 DIPs tall, its base on the
+// panel's edge facing the anchor, as OverlayArrow places the 12×12 art whose
+// filled bezier (M0 0C5.48 8 6.5 8 12 0Z) is 12 wide and 6 tall.
+const (
+	arrowWidth  = 12
+	arrowHeight = 6
+
+	// closeButtonSize is mygoui.CloseButton's box, which the header reserves
+	// room for.
+	closeButtonSize = theme.Space24
+
+	// bodyBleed is HeroUI's 3 DIP body margin and padding pair.
+	bodyBleed = 3
+)
+
+// paintArrow draws HeroUI's overlay arrow outside the panel's edge facing the
+// anchor, along the edge at along of its length, where arrowAlong puts the
+// anchor's center. The panel must not Clip, or the protruding part disappears.
+//
+// The painter fills rectangles, not paths: the bezier's outline is drawn as a
+// square turned 45° with rounded corners, clipped to the arrow's half of it,
+// which leaves the same 12 DIP base and 6 DIP rounded tip.
+func paintArrow(p *ui.Painter, r ui.Rect, side mygoui.Side, fill ui.Color, along float32) {
+	half := float32(arrowWidth) / 2
+	var band ui.Rect
+	var cx, cy float32
 	switch side {
 	case mygoui.SideTop:
-		cy = r.Y + r.H
+		cx, cy = r.X+r.W*along, r.Y+r.H
+		band = ui.Rect{X: cx - half, Y: cy, W: arrowWidth, H: arrowHeight}
 	case mygoui.SideLeft:
-		cx, cy = r.X+r.W, r.Y+r.H/2
+		cx, cy = r.X+r.W, r.Y+r.H*along
+		band = ui.Rect{X: cx, Y: cy - half, W: arrowHeight, H: arrowWidth}
 	case mygoui.SideRight:
-		cx, cy = r.X, r.Y+r.H/2
+		cx, cy = r.X, r.Y+r.H*along
+		band = ui.Rect{X: cx - arrowHeight, Y: cy - half, W: arrowHeight, H: arrowWidth}
 	default:
-		cy = r.Y
+		cx, cy = r.X+r.W*along, r.Y
+		band = ui.Rect{X: cx - half, Y: cy - arrowHeight, W: arrowWidth, H: arrowHeight}
 	}
-	p.Transform(ui.Rotation(45), cx, cy, func() {
-		p.Fill(ui.Rect{X: cx - size/2, Y: cy - size/2, W: size, H: size}, fill, 1.5)
+	// The square's diagonal is the arrow's width, so its apex is the tip.
+	side2 := half * 0.70711
+	p.Clip(band, 0, func() {
+		p.Transform(ui.Rotation(45), cx, cy, func() {
+			p.Fill(ui.Rect{X: cx - side2, Y: cy - side2, W: 2 * side2, H: 2 * side2}, fill, 1.6)
+		})
 	})
+}
+
+// arrowAlong returns where along the edge the arrow points, as a fraction of
+// its length: the anchor's center, as React Aria holds OverlayArrow, kept half
+// an arrow plus a DIP inside either end. The layout boxes of the frame before
+// are in the same coordinates as the rect a Draw callback paints.
+func arrowAlong(panel, anchor ui.Element, side mygoui.Side) float32 {
+	const middle = 0.5
+	pr, ar := panel.LayoutBounds(), anchor.LayoutBounds()
+	vertical := side == mygoui.SideTop || side == mygoui.SideBottom
+	size, center, start := pr.W, ar.X+ar.W/2, pr.X
+	if !vertical {
+		size, center, start = pr.H, ar.Y+ar.H/2, pr.Y
+	}
+	if size <= 0 || ar.W <= 0 || ar.H <= 0 {
+		return middle
+	}
+	margin := (arrowWidth/2 + 1) / size
+	if margin >= middle {
+		return middle
+	}
+	return min(1-margin, max(margin, (center-start)/size))
+}
+
+// arrowSide returns the side the panel settled on, from the boxes the frame
+// before laid out: the attach engine flips a panel that would overflow the
+// window, so the requested side is only the estimate for the frame a panel
+// first appears in. The side is the one whose edges are closest, which holds
+// for any alignment along the other axis.
+func arrowSide(panel, anchor ui.Element, want mygoui.Side) mygoui.Side {
+	pr, ar := panel.LayoutBounds(), anchor.LayoutBounds()
+	if pr.W <= 0 || pr.H <= 0 || ar.W <= 0 || ar.H <= 0 {
+		return want
+	}
+	best, gap := want, float32(math.Inf(1))
+	consider := func(side mygoui.Side, d float32) {
+		if d = float32(math.Abs(float64(d))); d < gap {
+			best, gap = side, d
+		}
+	}
+	consider(mygoui.SideBottom, pr.Y-(ar.Y+ar.H))
+	consider(mygoui.SideTop, ar.Y-(pr.Y+pr.H))
+	consider(mygoui.SideRight, pr.X-(ar.X+ar.W))
+	consider(mygoui.SideLeft, ar.X-(pr.X+pr.W))
+	return best
 }

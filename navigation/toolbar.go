@@ -35,10 +35,9 @@ func Toolbar(c *ui.Context, o ToolbarOptions) ui.Element {
 		radius := min(scale(c, theme.Space32), theme.RadiusScale().XXXL)
 		root.Background(t.Surface).TextColor(t.SurfaceForeground).Radius(radius).Clip().
 			Padding(scale(c, theme.Space4))
+		// shadow-overlay is the whole rim: in dark mode it is an inset
+		// hairline, so no extra border is added.
 		root = style.Shadow(root, c, theme.OverlayShadows(c.Theme().Dark))
-		if c.Theme().Dark {
-			root.Border(hairline, t.Border)
-		}
 	}
 	if o.Label != "" {
 		root.Label(o.Label)

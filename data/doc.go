@@ -5,17 +5,21 @@
 // resized and reordered by the toolkit's own header gestures, and row
 // selection is the toolkit's (ListState.Selected and ListState.Selection).
 // The package adds HeroUI's column declaration, caller-owned table state,
-// sorting, hidden columns, row actions and an empty slot.
+// sorting, hidden columns, row actions, a footer slot and an empty slot.
 //
 // # Limits
 //
-// MyGo's Table owns the header and cell geometry, so a few upstream details
-// are approximations rather than CSS translations: body text is 14 DIP,
-// header text is 14 DIP semibold rather than 12 DIP medium, and the header
-// shares the body surface because the toolkit paints the header and rows as
-// one surface. TableSecondary keeps that surface instead of making its cells
-// transparent. Row separators are the toolkit's, not HeroUI's per-cell
-// hairlines.
+// MyGo's Table owns the header geometry, so a few upstream details are
+// approximations rather than CSS translations: the header text is 12 DIP
+// semibold rather than 12 DIP medium, the header row is 32 DIP rather than
+// 36, and its cell padding is the toolkit's 10 by 6. In the primary variant
+// the header sits on the frame's secondary surface above the white body card;
+// the secondary variant paints HeroUI's standalone header card over
+// transparent cells. The toolkit paints a column separator only as the
+// resize grip, so a column shows one when TableColumnOptions.Resizable is
+// set. Body cells carry HeroUI's 16 by 12 inset and a hairline separator on
+// each row boundary. A chosen row paints one tint across the full row,
+// covering the toolkit's own accent face.
 //
 // Columns are resizable only when TableColumnOptions.Resizable is set. Because
 // the toolkit expresses "not resizable" with TableColumn.Fixed, a column that
@@ -35,6 +39,8 @@
 // choice after the frame: a selection that lands on a disabled row is
 // restored, and disabled keys are removed from a multiple selection. Pointer
 // and keyboard input may therefore move through a disabled row for one frame.
+// OnSelectionChange reports a change the user made: sorting or inserting rows
+// moves the chosen row with its key without reporting it.
 // Native cell blocks (ListState.CellSelect) and drag selection are available
 // through TableState.List but are not exercised by this package's tests.
 package data

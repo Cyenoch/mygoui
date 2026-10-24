@@ -18,6 +18,9 @@ func navigationStateOf(s *State) *navigationState {
 	if st.pageSmall == 0 {
 		st.pageSmall = 2
 	}
+	if st.pageSummary == 0 {
+		st.pageSummary = 2
+	}
 	if !st.menuInit {
 		st.menuSelected = []string{"Notifications", "Weekly digest"}
 		st.menuInit = true
@@ -203,8 +206,10 @@ navigation.Tabs(c, navigation.TabsOptions{
 
 	RegisterComponent(ComponentPage{
 		ID: "pagination", Title: "Pagination", Group: "Navigation", Order: 60,
-		Description: "Numbered pages with ellipses, previous and next controls in three sizes.",
+		Description: "Numbered pages with ellipses, previous and next controls in three sizes and an optional summary.",
 		Examples: []ComponentExample{
+			{Title: "With summary", Description: "A result range beside the controls; it stacks when the page is narrow.",
+				Demo: func(c *ui.Context, s *State) { paginationSummaryExample(c, navigationStateOf(s)) }},
 			{Title: "Large range", Description: "Twelve pages with two boundaries and one sibling.",
 				Demo: func(c *ui.Context, s *State) { paginationLargeExample(c, navigationStateOf(s)) }},
 			{Title: "Medium range", Description: "The default control height with eight pages.",
@@ -214,14 +219,15 @@ navigation.Tabs(c, navigation.TabsOptions{
 		},
 		Code: `page := 4
 navigation.Pagination(c, navigation.PaginationOptions{
-    Label:      "Search results",
-    Page:       &page,
-    Pages:      12,
-    Size:       navigation.PaginationLarge,
-    Siblings:   1,
-    Boundaries: 2,
-    PreviousLabel: "Previous",
-    NextLabel:     "Next",
+    Label:   "Search results",
+    Page:    &page,
+    Pages:   12,
+    Siblings: 1,
+    Summary: func() {
+        mygoui.Typography(c, "Showing 31-40 of 120 results", mygoui.TypographyOptions{
+            Type: theme.TypeBodySM, Muted: true,
+        })
+    },
 })`,
 		Params: []ComponentParam{
 			{"Page", "*int", "nil", "Caller-owned 1-based page; nil keeps it internal."},
@@ -229,6 +235,7 @@ navigation.Pagination(c, navigation.PaginationOptions{
 			{"Size", "navigation.PaginationSize", "PaginationMedium", "Small, medium or large control height."},
 			{"Siblings", "int", "1", "Number of pages shown beside the current one."},
 			{"Boundaries", "int", "1", "Number of pages pinned at each end."},
+			{"Summary", "func()", "nil", "Builds a muted line before the controls; the row stacks below 640 DIP."},
 			{"OnChange", "func(page int)", "nil", "Reports the newly selected page."},
 		},
 		Tokens: []string{"Default", "DefaultForeground", "DefaultHover", "Muted"},

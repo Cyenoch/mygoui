@@ -3,6 +3,7 @@ package navigation_test
 import (
 	"image"
 	"testing"
+	"time"
 
 	"github.com/Cyenoch/mygoui/navigation"
 	"github.com/Cyenoch/mygoui/theme"
@@ -219,20 +220,23 @@ func TestMenuIndicatorGlyphsAreDrawn(t *testing.T) {
 		if err := tt.Click("Actions"); err != nil {
 			t.Fatalf("%s: %v", name, err)
 		}
+		// The panel fades in over 150 ms; read it once it has arrived.
+		tt.Advance(300 * time.Millisecond)
 		edit, ok := tt.Find("Edit")
 		if !ok {
 			t.Fatalf("%s: the selected row is not shown", name)
 		}
-		// The row pads 10 DIP, then the 16 DIP indicator.
-		checkBox := ui.Rect{X: edit.X + 10, Y: edit.Y + (edit.H-16)/2, W: 16, H: 16}
+		// The indicator is absolute, 8 DIP into the row, in a 16 DIP box.
+		checkBox := ui.Rect{X: edit.X + 8, Y: edit.Y + (edit.H-16)/2, W: 16, H: 16}
 		assertCheck(t, tt.Image(), checkBox, name+" menu check")
 
 		share, ok := tt.Find("Share")
 		if !ok {
 			t.Fatalf("%s: the submenu row is not shown", name)
 		}
-		// The row pads 10 DIP after its 14 DIP chevron.
-		chevBox := ui.Rect{X: share.X + share.W - 10 - 14, Y: share.Y + (share.H-14)/2, W: 14, H: 14}
+		// A submenu row ends its content 28 DIP in, before the 14 DIP
+		// chevron; its indicator moves to the end.
+		chevBox := ui.Rect{X: share.X + share.W - 28 - 14, Y: share.Y + (share.H-14)/2, W: 14, H: 14}
 		assertRightChevron(t, tt.Image(), chevBox, name+" menu chevron")
 	}
 }

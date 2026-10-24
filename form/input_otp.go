@@ -1,6 +1,10 @@
 package form
 
 import (
+	"time"
+	"unicode/utf8"
+
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -53,7 +57,7 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 
 	// Keep the caller's value within the field before the editor reads it.
 	state.Value = otpSanitize(state.Value, length, filter)
-	state.Complete = len(state.Value) >= length
+	state.Complete = utf8.RuneCountInString(state.Value) >= length
 	if state.Complete {
 		state.completed = state.Value
 	} else {
@@ -67,7 +71,17 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 	reduceMotion := theme.ReduceMotion(c)
 
 	build := func() ui.Element {
-		runes := []rune(state.Value)
+		// The accepted characters, in a fixed buffer: the value is already
+		// filtered and at most 12 runes, so the build copies no slice.
+		var runes [12]rune
+		n := 0
+		for _, r := range state.Value {
+			if n == length {
+				break
+			}
+			runes[n] = r
+			n++
+		}
 		filled := t.FieldFocus
 		base, hover := t.FieldBackground, t.FieldHover
 		if o.Variant == ControlSecondary {
@@ -76,19 +90,25 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 		container := ui.Row(c).Gap(gap).Height(slotHeight).AlignItems(ui.Center).FillWidth().
 			MinWidth(theme.Scale(c, float32(length)*38+float32(length-1)*8))
 
+		var slotShadows []theme.Shadow
+		if o.Variant == ControlPrimary {
+			// One slice per build, not one per slot.
+			slotShadows = theme.FieldShadows(c.Theme().Dark)
+		}
+
 		var editor ui.Element
 		var selStart, selEnd, activeIndex int
 		focusedNow := false
 		container.Children(func() {
 			for index := range length {
 				char := ""
-				if index < len(runes) {
+				if index < n {
 					char = string(runes[index])
 				}
 				slot := ui.Box(c).Key(index).Grow(1).Basis(0).MinWidth(0).Height(slotHeight).
 					Center().Radius(radius).Clip()
 				if o.Variant == ControlPrimary {
-					slot = style.Shadow(slot, c, theme.FieldShadows(c.Theme().Dark))
+					slot = style.Shadow(slot, c, slotShadows)
 				}
 				// Snapshot the slot's hover in the build: a retained copy of
 				// a leaving element paints in later passes, where slot has
@@ -120,12 +140,21 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 						p.Stroke(r, border, radius, theme.Hairline)
 					}
 					if active {
-						p.FocusRing(r, [4]float32{radius, radius, radius, radius})
+						ring := t.Focus
+						if o.Invalid {
+							ring = t.Danger
+						}
+						formstyle.FieldRing(p, r, radius, ring)
 						if char == "" {
+							// Blink at 500 ms a phase, but repaint only at the
+							// boundary instead of at every display frame.
 							visible := true
 							if !reduceMotion {
-								visible = (p.Now().UnixMilli()/500)%2 == 0
-								p.AnimationFrame()
+								const phase = 500
+								now := p.Now().UnixMilli()
+								left := now % phase
+								visible = left < phase/2
+								p.After(time.Duration(phase-left) * time.Millisecond)
 							}
 							if visible {
 								w := theme.Scale(c, 2)
@@ -142,8 +171,18 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 				})
 				if char != "" {
 					slot.Children(func() {
-						style.Text(ui.Text(c, char), c, theme.LG()).FontWeight(theme.WeightSemibold).
+						value := style.Text(ui.Text(c, char), c, theme.LG()).FontWeight(theme.WeightSemibold).
 							TextColor(t.FieldForeground).LetterSpacing(theme.Scale(c, -0.27))
+						if !reduceMotion {
+							// Upstream raises each new slot value from below
+							// over 250 ms.
+							value.Transition(ui.ElementTransition{
+								Duration: 250 * time.Millisecond,
+								Ease:     ui.EaseOut,
+								Colors:   true,
+								Enter:    &ui.Motion{Y: theme.Scale(c, 8), Scale: 0.8, Opacity: 0},
+							})
+						}
 					})
 				}
 			}
@@ -162,7 +201,7 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 				sanitized := otpSanitize(state.Value, length, filter)
 				changed := sanitized != state.Value
 				state.Value = sanitized
-				if len(sanitized) >= length {
+				if utf8.RuneCountInString(sanitized) >= length {
 					state.Complete = true
 					if state.completed != sanitized {
 						state.completed = sanitized
@@ -209,9 +248,26 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 // ASCII, without spaces or control characters.
 func otpPrintableASCII(r rune) bool { return r >= 0x21 && r <= 0x7e }
 
-// otpSanitize filters s and keeps at most length accepted runes.
+// otpSanitize filters s and keeps at most length accepted runes. A value that
+// already satisfies the filter and the length is returned untouched, so the
+// steady state of a field does not allocate on every build.
 func otpSanitize(s string, length int, filter func(rune) bool) string {
-	out := make([]rune, 0, min(len(s), length))
+	n := 0
+	clean := true
+	for _, r := range s {
+		if !filter(r) {
+			clean = false
+			continue
+		}
+		n++
+		if n > length {
+			clean = false
+		}
+	}
+	if clean {
+		return s
+	}
+	out := make([]rune, 0, min(n, length))
 	for _, r := range s {
 		if filter(r) {
 			if len(out) == length {

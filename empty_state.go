@@ -2,6 +2,7 @@ package mygoui
 
 import (
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -13,11 +14,17 @@ type EmptyStateOptions struct {
 	Action             func()
 }
 
-// EmptyState is HeroUI's low-emphasis "no content" block.
+// EmptyState is HeroUI's low-emphasis "no content" block. With no icon,
+// text or action it shows the localized empty placeholder, as HeroUI shows
+// its default copy.
 func EmptyState(c *ui.Context, o EmptyStateOptions) ui.Element {
 	t := theme.Colors(c)
 	e := ui.Column(c).Gap(theme.Space4).Padding(theme.Space8).MinWidth(0)
 	e.Children(func() {
+		if o.Icon == nil && o.Title == "" && o.Description == "" && o.Action == nil {
+			style.Text(ui.Text(c, locale.M().Empty), c, theme.SM()).TextColor(t.Muted)
+			return
+		}
 		if o.Icon != nil {
 			ui.Icon(c, o.Icon).Size(theme.Scale(c, theme.IconLG), theme.Scale(c, theme.IconLG)).
 				TextColor(t.Muted)

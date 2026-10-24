@@ -38,11 +38,18 @@ const (
 	WeightBold     = 700
 )
 
-// TextStyle describes an unscaled HeroUI type role.
+// TrackingTight is Tailwind's tracking-tight, a letter spacing of -0.025em.
+// HeroUI sets it on every heading role and on prose headings.
+const TrackingTight = -0.025
+
+// TextStyle describes an unscaled HeroUI type role. Tracking is letter
+// spacing as a fraction of the font size: zero keeps the font's own spacing,
+// TrackingTight tightens headings.
 type TextStyle struct {
 	Size       float32
 	LineHeight float32
 	Weight     int
+	Tracking   float32
 	Mono       bool
 }
 
@@ -61,23 +68,35 @@ func LG() TextStyle { return TextStyle{Size: 18, LineHeight: 28, Weight: WeightN
 // XL is text-xl: 20/28.
 func XL() TextStyle { return TextStyle{Size: 20, LineHeight: 28, Weight: WeightNormal} }
 
-// H1 is the HeroUI heading level 1 role.
-func H1() TextStyle { return TextStyle{Size: 36, LineHeight: 40, Weight: WeightSemibold} }
+// H1 is HeroUI's text-4xl heading role, 36/40 semibold and tracking-tight.
+func H1() TextStyle {
+	return TextStyle{Size: 36, LineHeight: 40, Weight: WeightSemibold, Tracking: TrackingTight}
+}
 
-// H2 is the HeroUI heading level 2 role.
-func H2() TextStyle { return TextStyle{Size: 30, LineHeight: 36, Weight: WeightSemibold} }
+// H2 is HeroUI's text-3xl heading role, 30/36 semibold and tracking-tight.
+func H2() TextStyle {
+	return TextStyle{Size: 30, LineHeight: 36, Weight: WeightSemibold, Tracking: TrackingTight}
+}
 
-// H3 is the HeroUI heading level 3 role.
-func H3() TextStyle { return TextStyle{Size: 24, LineHeight: 32, Weight: WeightSemibold} }
+// H3 is HeroUI's text-2xl heading role, 24/32 semibold and tracking-tight.
+func H3() TextStyle {
+	return TextStyle{Size: 24, LineHeight: 32, Weight: WeightSemibold, Tracking: TrackingTight}
+}
 
-// H4 is the HeroUI heading level 4 role.
-func H4() TextStyle { return TextStyle{Size: 20, LineHeight: 28, Weight: WeightSemibold} }
+// H4 is HeroUI's text-xl heading role, 20/28 semibold and tracking-tight.
+func H4() TextStyle {
+	return TextStyle{Size: 20, LineHeight: 28, Weight: WeightSemibold, Tracking: TrackingTight}
+}
 
-// H5 is the HeroUI heading level 5 role.
-func H5() TextStyle { return TextStyle{Size: 18, LineHeight: 28, Weight: WeightSemibold} }
+// H5 is HeroUI's text-lg heading role, 18/28 semibold and tracking-tight.
+func H5() TextStyle {
+	return TextStyle{Size: 18, LineHeight: 28, Weight: WeightSemibold, Tracking: TrackingTight}
+}
 
-// H6 is the HeroUI heading level 6 role.
-func H6() TextStyle { return TextStyle{Size: 16, LineHeight: 24, Weight: WeightSemibold} }
+// H6 is HeroUI's text-base heading role, 16/24 semibold and tracking-tight.
+func H6() TextStyle {
+	return TextStyle{Size: 16, LineHeight: 24, Weight: WeightSemibold, Tracking: TrackingTight}
+}
 
 // Code is the inline code role.
 func Code() TextStyle { return TextStyle{Size: 14, LineHeight: 20, Weight: WeightNormal, Mono: true} }
@@ -141,16 +160,19 @@ func RadiusBase() float32 { return PreferencesSnapshot().Radius }
 // Radii is HeroUI's radius scale derived from the configured base.
 type Radii struct{ XS, SM, MD, LG, XL, XXL, XXXL, XXXXL, Field float32 }
 
-// RadiusScale returns the current scale. Upstream values at the 8 DIP base:
+// radii derives the scale from a base. Upstream values at the 8 DIP base:
 // 2, 4, 6, 8, 12, 16, 24, 32, field 12.
-func RadiusScale() Radii {
-	r := RadiusBase()
+func radii(base float32) Radii {
 	return Radii{
-		XS: r * 0.25, SM: r * 0.5, MD: r * 0.75, LG: r,
-		XL: r * 1.5, XXL: r * 2, XXXL: r * 3, XXXXL: r * 4,
-		Field: r * 1.5,
+		XS: base * 0.25, SM: base * 0.5, MD: base * 0.75, LG: base,
+		XL: base * 1.5, XXL: base * 2, XXXL: base * 3, XXXXL: base * 4,
+		Field: base * 1.5,
 	}
 }
+
+// RadiusScale returns the scale published with the current preferences, so
+// components do not re-derive it on every build.
+func RadiusScale() Radii { return snapshot().radii }
 
 // Component metrics in desktop DIPs. HeroUI's mobile button heights are 4 DIPs
 // taller; this library targets desktop windows.
@@ -207,31 +229,49 @@ type Shadow struct {
 	Inset              bool
 }
 
-// SurfaceShadows returns the light card shadow. Dark surfaces separate by
-// contrast; upstream disables the shadow.
-func SurfaceShadows(dark bool) []Shadow {
-	if dark {
-		return nil
-	}
-	return []Shadow{
+// HeroUI's three elevation tokens, layer for layer. The slices are shared by
+// every caller, so a build pass allocates nothing to paint a surface; callers
+// read them, and an append to one allocates its own array. Dark surfaces
+// separate by contrast, so upstream gives them no drop shadow.
+var (
+	lightSurfaceShadows = []Shadow{
 		{X: 0, Y: 2, Blur: 4, Color: ui.RGBA(0, 0, 0, 0.04)},
 		{X: 0, Y: 1, Blur: 2, Color: ui.RGBA(0, 0, 0, 0.06)},
 		{X: 0, Y: 0, Blur: 1, Color: ui.RGBA(0, 0, 0, 0.06)},
 	}
-}
-
-// OverlayShadows returns the floating-panel shadow. Dark overlays use
-// HeroUI's inset white hairline instead.
-func OverlayShadows(dark bool) []Shadow {
-	if dark {
-		return []Shadow{{X: 0, Y: 0, Blur: 1, Color: ui.RGBA(255, 255, 255, 0.3), Inset: true}}
+	darkOverlayShadows = []Shadow{
+		{X: 0, Y: 0, Blur: 1, Color: ui.RGBA(255, 255, 255, 0.3), Inset: true},
 	}
-	return []Shadow{
+	lightOverlayShadows = []Shadow{
 		{X: 0, Y: 2, Blur: 8, Color: ui.RGBA(0, 0, 0, 0.06)},
 		{X: 0, Y: -6, Blur: 12, Color: ui.RGBA(0, 0, 0, 0.03)},
 		{X: 0, Y: 14, Blur: 28, Color: ui.RGBA(0, 0, 0, 0.08)},
 	}
+)
+
+// shared returns s with its capacity trimmed to its length, so appending to
+// the result allocates instead of writing into the package's table.
+func shared(s []Shadow) []Shadow { return s[:len(s):len(s)] }
+
+// SurfaceShadows returns the light card shadow. Dark surfaces separate by
+// contrast; upstream disables the shadow. The result is shared and read-only.
+func SurfaceShadows(dark bool) []Shadow {
+	if dark {
+		return nil
+	}
+	return shared(lightSurfaceShadows)
 }
 
-// FieldShadows returns the form-field elevation.
+// OverlayShadows returns the floating-panel shadow. Dark overlays use
+// HeroUI's inset white hairline instead. The result is shared and read-only.
+func OverlayShadows(dark bool) []Shadow {
+	if dark {
+		return shared(darkOverlayShadows)
+	}
+	return shared(lightOverlayShadows)
+}
+
+// FieldShadows returns the form-field elevation, which is the surface shadow
+// in light and a transparent inset placeholder upstream. The result is shared
+// and read-only.
 func FieldShadows(dark bool) []Shadow { return SurfaceShadows(dark) }

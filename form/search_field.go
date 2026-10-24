@@ -27,7 +27,6 @@ type SearchFieldOptions struct {
 func SearchField(c *ui.Context, value *string, o SearchFieldOptions) ui.Element {
 	value = inputTextAnchor(value)
 	t := theme.Colors(c)
-	radius := theme.RadiusScale().Field
 
 	build := func() ui.Element {
 		row := ui.Row(c).AlignItems(ui.Center).MinHeight(theme.Scale(c, theme.HeightInput)).Shrink(0)
@@ -38,12 +37,11 @@ func SearchField(c *ui.Context, value *string, o SearchFieldOptions) ui.Element 
 		}
 		row = fieldSurface(row, c, o.Variant, o.Invalid, o.Disabled)
 
-		var editor ui.Element
 		row.Children(func() {
 			ui.Icon(c, lucide.Search()).Size(theme.Scale(c, theme.IconMD), theme.Scale(c, theme.IconMD)).
 				Shrink(0).MarginStart(theme.Space12).TextColor(t.FieldPlaceholder)
 
-			editor = ui.TextInputBase(c, value).Grow(1).MinWidth(0).
+			editor := ui.TextInputBase(c, value).Grow(1).MinWidth(0).
 				PaddingStart(theme.Space8).PaddingEnd(theme.Space8).PaddingY(theme.Space8)
 			editor = fieldText(editor, c)
 			if o.Placeholder != "" {
@@ -105,15 +103,6 @@ func SearchField(c *ui.Context, value *string, o SearchFieldOptions) ui.Element 
 				})
 			}
 		})
-
-		if editor.Valid() {
-			focusVisible := editor.FocusVisible()
-			row.DrawOver(func(p *ui.Painter, r ui.Rect) {
-				if focusVisible {
-					p.FocusRing(r, [4]float32{radius, radius, radius, radius})
-				}
-			})
-		}
 		return row
 	}
 

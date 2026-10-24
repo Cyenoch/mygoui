@@ -1,6 +1,8 @@
 package mygoui
 
 import (
+	"time"
+
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/plugins/loading"
@@ -44,6 +46,8 @@ func Spinner(c *ui.Context, o SpinnerOptions) ui.Element {
 	}
 	return loading.Arc(c, loading.Options{
 		Size: theme.Scale(c, size), Color: statusForeground(theme.Colors(c), o.Color),
+		// HeroUI's --animate-spin-fast: one turn every 750 ms.
+		Duration: 750 * time.Millisecond,
 	}).Label(label)
 }
 

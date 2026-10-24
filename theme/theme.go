@@ -41,6 +41,7 @@ type Preferences struct {
 type state struct {
 	prefs  Preferences
 	family string
+	radii  Radii
 	light  Palette
 	dark   Palette
 }
@@ -50,7 +51,8 @@ var current atomic.Pointer[state]
 func init() { Configure(Preferences{}) }
 
 // Configure publishes host preferences and recomputes both palettes. Call on
-// the UI thread, then invalidate affected windows.
+// the UI thread, then invalidate affected windows. Publishing the same
+// preferences again is a no-op, so a view root may call it on every build.
 func Configure(p Preferences) {
 	if p.FontSize == 0 {
 		p.FontSize = 16
@@ -61,17 +63,19 @@ func Configure(p Preferences) {
 	if p.Accent.A == 0 {
 		p.Accent = ui.Color{}
 	}
+	// Compare before deriving the family string: Configure is on the build
+	// path, and the published value may be unchanged.
+	if existing := current.Load(); existing != nil && existing.prefs == p {
+		return
+	}
 	family := Sans
 	if p.FontFamily != "" {
 		family = p.FontFamily + ", " + Sans
 	}
-	if existing := current.Load(); existing != nil &&
-		existing.prefs == p && existing.family == family {
-		return
-	}
 	current.Store(&state{
 		prefs:  p,
 		family: family,
+		radii:  radii(p.Radius),
 		light:  buildPalette(false, p),
 		dark:   buildPalette(true, p),
 	})
@@ -122,11 +126,18 @@ func ReduceMotion(c *ui.Context) bool { return c.Preferences().ReduceMotion }
 func Apply(c *ui.Context) *ui.Theme { return ApplyMode(c, c.Theme().Dark) }
 
 // ApplyMode installs HeroUI for an explicit mode. Previews and tests use it.
+// Reinstalling the theme already in place is a no-op, so a view root may call
+// it on every build without allocating a theme or restyling the root.
 func ApplyMode(c *ui.Context, dark bool) *ui.Theme {
-	t := nativeTheme(ColorsForMode(dark), dark)
-	t.Font, t.FontSize = FontFamily(c), FontSize()
-	c.SetTheme(&t)
-	return &t
+	want := nativeTheme(ColorsForMode(dark), dark)
+	want.Font, want.FontSize = FontFamily(c), FontSize()
+	if installed := c.Theme(); installed != nil && *installed == want {
+		return installed
+	}
+	installed := new(ui.Theme)
+	*installed = want
+	c.SetTheme(installed)
+	return installed
 }
 
 // Colors returns the live tokens for the context's current mode.

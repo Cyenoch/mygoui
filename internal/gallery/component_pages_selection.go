@@ -14,6 +14,7 @@ func init() {
 		Description: "A trigger that opens a virtualized list of single or multiple choices.",
 		Examples: []ComponentExample{
 			{Title: "Default", Description: "A single-choice trigger with a chosen fruit.", Demo: selectionExampleDemo(selectionSelectExampleDefault)},
+			{Title: "Secondary", Description: "The flat secondary trigger face.", Demo: selectionExampleDemo(selectionSelectExampleSecondary)},
 			{Title: "Multiple", Description: "Several choices show as removable values.", Demo: selectionExampleDemo(selectionSelectExampleMultiple)},
 			{Title: "Clearable", Description: "The clear action empties the trigger.", Demo: selectionExampleDemo(selectionSelectExampleClearable)},
 			{Title: "Sections", Description: "Grouped choices keep their headers in the popup.", Demo: selectionExampleDemo(selectionSelectExampleSections)},
@@ -25,6 +26,7 @@ func init() {
 })`,
 		Params: []ComponentParam{
 			{"Placeholder", "string", "", "Hint shown while nothing is chosen."},
+			{"Variant", "form.ControlVariant", "ControlPrimary", "Primary field face or the flat secondary face."},
 			{"Selection", "list.SelectionMode", "SelectionSingle", "Single or multiple choice."},
 			{"Clearable", "bool", "false", "Shows the clear action when something is chosen."},
 			{"MaxHeight", "float32", "0", "Caps the popup list's height."},
@@ -39,6 +41,7 @@ func init() {
 		Description: "A text input that filters its options, with chips and custom values.",
 		Examples: []ComponentExample{
 			{Title: "Default", Description: "Typing filters the options of a single choice.", Demo: selectionExampleDemo(selectionComboBoxExampleDefault)},
+			{Title: "Secondary", Description: "The flat secondary field face.", Demo: selectionExampleDemo(selectionComboBoxExampleSecondary)},
 			{Title: "Multiple", Description: "Each choice becomes a removable chip.", Demo: selectionExampleDemo(selectionComboBoxExampleMultiple)},
 			{Title: "Custom value", Description: "Typed text that matches no option survives.", Demo: selectionExampleDemo(selectionComboBoxExampleCustom)},
 		},
@@ -48,6 +51,7 @@ func init() {
     OnChange: func(keys []string) { report(keys) },
 })`,
 		Params: []ComponentParam{
+			{"Variant", "form.ControlVariant", "ControlPrimary", "Primary field face or the flat secondary face."},
 			{"Selection", "list.SelectionMode", "SelectionSingle", "Single choice or removable multiple chips."},
 			{"AllowsCustomValue", "bool", "false", "Keeps typed text that matches no option."},
 			{"Clearable", "bool", "false", "Shows the clear action."},
@@ -63,6 +67,7 @@ func init() {
 		Description: "A field-styled trigger that opens a searchable list of options.",
 		Examples: []ComponentExample{
 			{Title: "Filtering", Description: "The popup search narrows the option list.", Demo: selectionExampleDemo(selectionAutocompleteExampleFiltering)},
+			{Title: "Secondary", Description: "The flat secondary trigger face.", Demo: selectionExampleDemo(selectionAutocompleteExampleSecondary)},
 			{Title: "Empty", Description: "The list states why it has no matches.", Demo: selectionExampleDemo(selectionAutocompleteExampleEmpty)},
 			{Title: "Loading", Description: "The caller-owned loading state is shown.", Demo: selectionExampleDemo(selectionAutocompleteExampleLoading)},
 		},
@@ -73,6 +78,7 @@ func init() {
     OnChange: func(keys []string) { report(keys) },
 })`,
 		Params: []ComponentParam{
+			{"Variant", "form.ControlVariant", "ControlPrimary", "Primary field face or the flat secondary face."},
 			{"SearchPlaceholder", "string", "", "Hint in the popup's search field."},
 			{"SearchLabel", "string", "", "Accessible name for the popup search."},
 			{"Empty", "string", "localized", "Message when nothing matches."},

@@ -3,6 +3,7 @@ package form
 import (
 	"math"
 	"strconv"
+	"time"
 
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
@@ -162,6 +163,7 @@ func sliderSingle(c *ui.Context, o SliderOptions, state SliderState, min, max, s
 	// Snapshot the slider's states in the build: a retained copy of a
 	// leaving element paints in later passes, where el has expired.
 	pressed, focused := el.Pressed(), el.FocusVisible()
+	scale := sliderThumbScale(el, pressed)
 	el.Draw(func(p *ui.Painter, r ui.Rect) {
 		f := sliderFraction(*state.Value, min, max)
 		x := r.X + pad + (r.W-2*pad)*f
@@ -170,7 +172,7 @@ func sliderSingle(c *ui.Context, o SliderOptions, state SliderState, min, max, s
 		}
 		sliderPaintTrack(p, r, t, x, rtl, radius, trackH)
 		thumb := ui.Rect{X: x - knobW/2, Y: r.Y + (r.H-trackH)/2, W: knobW, H: trackH}
-		sliderPaintThumb(p, t, thumb, innerW, innerH, innerRadius, pressed, focused, radius)
+		sliderPaintThumb(p, t, thumb, innerW, innerH, innerRadius, scale, focused, radius)
 	})
 }
 
@@ -195,6 +197,7 @@ func sliderRange(c *ui.Context, o SliderOptions, state SliderState, min, max, st
 		el.OnChange(o.OnChange)
 	}
 	focusWithin := el.FocusWithin()
+	scale := sliderThumbScale(el, el.Pressed())
 	el.DrawOver(func(p *ui.Painter, r ui.Rect) {
 		f0, f1 := sliderFraction(*state.Low, min, max), sliderFraction(*state.High, min, max)
 		x0 := r.X + pad + (r.W-2*pad)*f0
@@ -210,7 +213,7 @@ func sliderRange(c *ui.Context, o SliderOptions, state SliderState, min, max, st
 		p.Fill(ui.Rect{X: x0, Y: track.Y, W: x1 - x0, H: trackH}, t.Accent, radius)
 		for _, x := range [2]float32{x0, x1} {
 			thumb := ui.Rect{X: x - knobW/2, Y: track.Y, W: knobW, H: trackH}
-			sliderPaintThumb(p, t, thumb, innerW, innerH, innerRadius, false, focusWithin, radius)
+			sliderPaintThumb(p, t, thumb, innerW, innerH, innerRadius, scale, focusWithin, radius)
 		}
 	})
 }
@@ -251,6 +254,7 @@ func sliderVertical(c *ui.Context, o SliderOptions, state SliderState, min, max,
 			el.OnChange(o.OnChange)
 		}
 		pressed, focused := el.Pressed(), el.FocusVisible()
+		scale := sliderThumbScale(el, pressed)
 		el.Draw(func(p *ui.Painter, r ui.Rect) {
 			f := sliderFraction(*state.Value, min, max)
 			x := r.X + r.W/2
@@ -259,7 +263,7 @@ func sliderVertical(c *ui.Context, o SliderOptions, state SliderState, min, max,
 			p.Fill(track, t.Default, radius)
 			p.Fill(ui.Rect{X: track.X, Y: cy, W: trackW, H: track.Y + track.H - cy}, t.Accent, radius)
 			thumb := ui.Rect{X: track.X, Y: cy - knobH/2, W: trackW, H: knobH}
-			sliderPaintThumb(p, t, thumb, innerW, innerH, innerRadius, pressed, focused, radius)
+			sliderPaintThumb(p, t, thumb, innerW, innerH, innerRadius, scale, focused, radius)
 		})
 		ui.Spacer(c)
 	})
@@ -301,21 +305,28 @@ func sliderPaintTrack(p *ui.Painter, r ui.Rect, t theme.Palette, x float32, rtl 
 	p.Fill(fill, t.Accent, radius)
 }
 
+// sliderThumbScale animates HeroUI's pressed thumb down to 90% and back.
+func sliderThumbScale(el ui.Element, pressed bool) float32 {
+	scale := float32(1)
+	if pressed {
+		scale = 0.9
+	}
+	return el.Animate("slider-thumb-press", scale, 250*time.Millisecond)
+}
+
 // sliderPaintThumb paints HeroUI's accent pill with its inner knob, ringed
 // while focused.
-func sliderPaintThumb(p *ui.Painter, t theme.Palette, thumb ui.Rect, innerW, innerH, innerRadius float32, pressed, focused bool, radius float32) {
+func sliderPaintThumb(p *ui.Painter, t theme.Palette, thumb ui.Rect, innerW, innerH, innerRadius, scale float32, focused bool, radius float32) {
 	p.Fill(thumb, t.Accent, radius)
-	w, h := innerW, innerH
-	if pressed {
-		w, h = w*0.9, h*0.9
-	}
+	w, h := innerW*scale, innerH*scale
 	inner := ui.Rect{
 		X: thumb.X + (thumb.W-w)/2,
 		Y: thumb.Y + (thumb.H-h)/2,
 		W: w, H: h,
 	}
-	p.Shadow(inner, innerRadius, 0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.12))
-	p.Fill(inner, t.AccentForeground, innerRadius)
+	innerR := innerRadius * scale
+	p.Shadow(inner, innerR, 0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.12))
+	p.Fill(inner, t.AccentForeground, innerR)
 	if focused {
 		p.FocusRing(thumb, choiceRadii(radius))
 	}
@@ -370,7 +381,7 @@ func sliderOutput(c *ui.Context, o SliderOptions, state SliderState, t theme.Pal
 		text = format(*state.Value)
 	}
 	style.Text(ui.Text(c, text), c, theme.SM()).FontWeight(theme.WeightMedium).
-		TextColor(t.Foreground).SingleLine()
+		FontFeatures("tnum").TextColor(t.Foreground).SingleLine()
 }
 
 // sliderNumberFormat returns the output formatter for a slider's step: whole

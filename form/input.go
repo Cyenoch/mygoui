@@ -85,7 +85,6 @@ func inputEditor(c *ui.Context, value *string, o inputCoreOptions) ui.Element {
 	e = e.PaddingX(theme.Space12).PaddingY(theme.Space8).
 		MinHeight(theme.Scale(c, theme.HeightInput)).Shrink(0)
 	e = fieldSurface(e, c, o.Variant, o.Invalid, o.Disabled)
-	e.FocusRing(true)
 	if o.OnChange != nil {
 		e.OnChange(o.OnChange)
 	}

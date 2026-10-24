@@ -100,7 +100,10 @@ type TableState struct {
 	disabledDone bool
 
 	leadUnder   int
+	leadKey     any
+	leadHas     bool
 	snapshot    []any
+	snapshotSet map[any]struct{}
 	snapshotLen int
 	snapshotOK  bool
 }
@@ -134,6 +137,8 @@ func (s *TableState) ColumnHidden(id string) bool { return s.Hidden[id] }
 // sort and for the hidden set; Header is its title and the fallback ID. Width
 // 0 shares the room the other columns leave, MinWidth and MaxWidth bound it,
 // and Cell builds a body cell. A nil Cell falls back to TableOptions.Cell.
+// Cells inherit the table's 14 DIP size and HeroUI's 20 DIP line box; a
+// builder that applies its own type role keeps that role's metrics.
 type TableColumnOptions struct {
 	ID       string
 	Header   string
@@ -238,6 +243,10 @@ type TableOptions struct {
 	// Empty builds the empty state shown when Rows is 0 or every column is
 	// hidden. Without it, the table shows the localized empty message.
 	Empty func(c *ui.Context) ui.Element
+	// Footer builds the row under the body, inside the table's frame, with
+	// HeroUI's footer inset and vertical centering. Use it for a result
+	// summary and pagination; FillWidth or Grow its element to span the row.
+	Footer func(c *ui.Context) ui.Element
 }
 
 // Table creates a HeroUI table. Rows are virtualized and the header is fixed
@@ -261,9 +270,7 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 	}
 
 	t := theme.Colors(c)
-	switch o.Variant {
-	case TableSecondary:
-	case TablePrimary:
+	if o.Variant == TablePrimary {
 		radius := min(theme.Space32, theme.RadiusBase()*2.5)
 		root.Padding(0, theme.Space4, theme.Space4, theme.Space4).
 			Radius(radius).Clip().
@@ -281,9 +288,11 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 		st.syncOrder(&o)
 	}
 
-	tl := newTableLayout(c, o, st)
+	tl := newTableLayout(c, o, st, t)
+	chrome := tableChrome(o, t, len(tl.columns) > 0 || tl.actions >= 0)
 	if o.Rows <= 0 || len(tl.columns) == 0 {
-		root.Children(func() { buildEmpty(c, o, st, tl) })
+		root.Children(func() { buildEmpty(c, o, st, tl, chrome) })
+		buildTableFooter(c, o, root)
 		return root
 	}
 
@@ -293,8 +302,15 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 		table = ui.Table(c, &st.List, tl.nativeColumns(), o.Rows, func(row, col int) { tl.buildCell(c, row, col) }).
 			Grow(1).MinWidth(0).
 			Label(o.Label).
-			Background(t.Surface).
-			FontSize(theme.Scale(c, 14))
+			// The toolkit draws header text at the inherited size; HeroUI's
+			// header is 12 DIP. Cells set their own 14 DIP size.
+			FontSize(theme.Scale(c, 12))
+		if chrome != nil {
+			table.Draw(chrome)
+		}
+		if line := tableHeaderLine(t, true); line != nil {
+			table.DrawOver(line)
+		}
 	})
 
 	changed := st.afterBuild(&o, table.Changed(), sortChanged)
@@ -306,7 +322,62 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 			o.OnRowActivate(row)
 		}
 	}
+	buildTableFooter(c, o, root)
 	return root
+}
+
+// tableChrome paints the surfaces the toolkit leaves transparent: the primary
+// variant's white body card, inset under the header, or the secondary
+// variant's standalone header card. The table itself paints nothing, so the
+// root's gray frame shows through the header.
+func tableChrome(o TableOptions, t theme.Palette, hasHeader bool) func(p *ui.Painter, r ui.Rect) {
+	radius := min(theme.Space32, theme.RadiusScale().XXL)
+	if o.Variant == TablePrimary {
+		top := theme.Space(8) + theme.Hairline
+		return func(p *ui.Painter, r ui.Rect) {
+			p.Fill(ui.Rect{X: r.X, Y: r.Y + top, W: r.W, H: r.H - top}, t.Surface, radius)
+		}
+	}
+	if !hasHeader {
+		return nil
+	}
+	return func(p *ui.Painter, r ui.Rect) {
+		p.Fill(ui.Rect{X: r.X, Y: r.Y, W: r.W, H: theme.Space(8)}, t.SurfaceSecondary, radius)
+	}
+}
+
+// tableHeaderLine paints HeroUI's header border over the toolkit's divider,
+// which is darker than the separator at half strength.
+func tableHeaderLine(t theme.Palette, hasHeader bool) func(p *ui.Painter, r ui.Rect) {
+	if !hasHeader {
+		return nil
+	}
+	// Opaque, because it covers the toolkit's own darker divider.
+	line := mixColor(t.SurfaceSecondary, t.Separator, 0.5)
+	return func(p *ui.Painter, r ui.Rect) {
+		p.Fill(ui.Rect{X: r.X, Y: r.Y + theme.Space(8), W: r.W, H: theme.Hairline}, line, 0)
+	}
+}
+
+// mixColor returns t of the way from a to b.
+func mixColor(a, b ui.Color, t float32) ui.Color {
+	mix := func(x, y uint8) uint8 {
+		return uint8(float32(x)*(1-t) + float32(y)*t + 0.5)
+	}
+	return ui.RGB(mix(a.R, b.R), mix(a.G, b.G), mix(a.B, b.B))
+}
+
+// buildTableFooter adds the footer row inside the table's frame.
+func buildTableFooter(c *ui.Context, o TableOptions, root ui.Element) {
+	if o.Footer == nil {
+		return
+	}
+	root.Children(func() {
+		foot := ui.Row(c).FillWidth().Shrink(0).
+			Gap(theme.Scale(c, theme.Space8)).AlignItems(ui.Center).
+			Padding(theme.Scale(c, theme.Space10), theme.Scale(c, theme.Space16))
+		foot.Children(func() { o.Footer(c) })
+	})
 }
 
 // columnBuild is one visible column: its public description and its cell
@@ -319,12 +390,23 @@ type columnBuild struct {
 type tableLayout struct {
 	o       TableOptions
 	st      *TableState
+	colors  theme.Palette
 	columns []columnBuild
 	actions int // visible index of the actions column, -1 for none
+
+	// A row is resolved once for all of its cells in a pass: RowKey and the
+	// selection lookup are per row, not per cell.
+	rowPos int
+	row    TableRow
+	rowOK  bool
+
+	// The row paints are built once per pass, so attaching one to a cell
+	// allocates nothing per cell in paint callbacks.
+	paintRow, paintSelected, paintSelectedFirst func(p *ui.Painter, box ui.Rect)
 }
 
-func newTableLayout(c *ui.Context, o TableOptions, st *TableState) *tableLayout {
-	tl := &tableLayout{o: o, st: st, actions: -1}
+func newTableLayout(c *ui.Context, o TableOptions, st *TableState, t theme.Palette) *tableLayout {
+	tl := &tableLayout{o: o, st: st, colors: t, actions: -1}
 	for _, co := range o.Columns {
 		id := co.ID
 		if id == "" {
@@ -352,7 +434,60 @@ func newTableLayout(c *ui.Context, o TableOptions, st *TableState) *tableLayout 
 	if o.RowActions != nil {
 		tl.actions = len(tl.columns)
 	}
+	// The toolkit pads every table cell by 6 DIP vertically and 10 DIP
+	// horizontally. A cell's content box is inset by that padding, so a row
+	// tint painted on the content box alone leaves seams of the native
+	// selected color between cells. Painting through Draw, which the cell
+	// does not clip to the content box, reaches the cell edges again.
+	padX, padY := float32(theme.Space10), float32(theme.Space6)
+	line := ui.RGBA(t.SeparatorTertiary.R, t.SeparatorTertiary.G, t.SeparatorTertiary.B, 0.5)
+	selected := t.SurfaceSecondary
+	if o.Variant == TableSecondary {
+		// A secondary table is transparent, so its chosen row keeps the
+		// neutral default tone rather than the primary table's gray card.
+		selected = t.Default
+	}
+	tl.paintRow = cellPaint(ui.Color{}, line, padX, padY)
+	tl.paintSelected = cellPaint(selected, line, padX, padY)
+	tl.paintSelectedFirst = cellPaint(selected, ui.Color{}, padX, padY)
 	return tl
+}
+
+// cellPaint returns a cell's Draw: an optional full-cell row fill and an
+// optional separator on the row's top edge, both reaching the native cell
+// padding. The separator belongs to the lower row so that row's fill, painted
+// later, cannot cover it.
+func cellPaint(tint, line ui.Color, padX, padY float32) func(p *ui.Painter, box ui.Rect) {
+	if tint.A == 0 && line.A == 0 {
+		return nil
+	}
+	return func(p *ui.Painter, box ui.Rect) {
+		if tint.A != 0 {
+			p.Fill(ui.Rect{X: box.X - padX, Y: box.Y - padY, W: box.W + 2*padX, H: box.H + 2*padY}, tint, 0)
+		}
+		if line.A != 0 {
+			p.Fill(ui.Rect{X: box.X - padX, Y: box.Y - padY, W: box.W + 2*padX, H: theme.Hairline}, line, 0)
+		}
+	}
+}
+
+// cellColumn returns the column description a cell of col shows, or an empty
+// one for the actions column and an out-of-range column.
+func cellColumn(tl *tableLayout, col int) TableColumn {
+	if col < 0 || col >= len(tl.columns) {
+		return TableColumn{Align: ui.End}
+	}
+	return tl.columns[col].column
+}
+
+// rowAt returns the metadata of displayed row pos, reused by every cell of
+// that row in this pass.
+func (tl *tableLayout) rowAt(pos int) TableRow {
+	if tl.rowOK && tl.rowPos == pos {
+		return tl.row
+	}
+	tl.rowPos, tl.row, tl.rowOK = pos, tl.st.rowAt(&tl.o, pos), true
+	return tl.row
 }
 
 func (tl *tableLayout) nativeColumns() []ui.TableColumn {
@@ -392,18 +527,43 @@ const actionsColumnID = "\x00data.table.actions"
 // buildCell builds body cell (row, col). It runs inside ui.Table's row build,
 // so constructors called by the caller's builder attach to the cell.
 func (tl *tableLayout) buildCell(c *ui.Context, row, col int) {
-	st := tl.st
-	if row < 0 || row >= len(st.order) {
+	if row < 0 || row >= len(tl.st.order) {
 		return
 	}
-	r := st.rowAt(&tl.o, row)
-	t := theme.Colors(c)
-	background := ui.Color{}
+	r := tl.rowAt(row)
+	t := tl.colors
 	ink := t.SurfaceForeground
-	if r.Selected {
-		background = t.SurfaceSecondary
+	if tl.o.Variant == TableSecondary {
+		ink = t.Foreground
 	}
-	cell := ui.Box(c).FillWidth().FillHeight().MinWidth(0).Background(background).TextColor(ink)
+	cell := ui.Box(c).FillWidth().FillHeight().MinWidth(0).TextColor(ink).
+		// HeroUI's cells are px-4 py-3 with a text-sm line box; the
+		// toolkit's own cell padding is 10 by 6, so the remaining inline 6
+		// restores the 16 by 12 metric. A builder with its own type role
+		// keeps that role's metrics.
+		FontSize(theme.Scale(c, theme.Space14)).
+		FixedLineHeight(theme.Scale(c, theme.Space20)).
+		Padding(theme.Scale(c, theme.Space6)).
+		// The content box fills the cell so the row paint can reach its
+		// edges; the column's alignment therefore has to place the content
+		// here rather than in the toolkit's cell, and the content stays
+		// vertically centered as align-middle does.
+		Justify(ui.Center)
+	switch column := cellColumn(tl, col); column.Align {
+	case ui.Center:
+		cell.AlignItems(ui.Center)
+	case ui.End:
+		cell.AlignItems(ui.End)
+	}
+	first := row == 0
+	switch {
+	case r.Selected && first:
+		cell.Draw(tl.paintSelectedFirst)
+	case r.Selected:
+		cell.Draw(tl.paintSelected)
+	case !first:
+		cell.Draw(tl.paintRow)
+	}
 	cell.Children(func() {
 		var e ui.Element
 		switch {

@@ -47,7 +47,7 @@ func init() {
 			{"Color", "mygoui.StatusColor", "ColorDefault", "Default, accent, info, success, warning or danger."},
 			{"Variant", "mygoui.ChipVariant", "ChipSecondary", "Primary, secondary, soft or tertiary."},
 			{"Size", "mygoui.ChipSize", "ChipMedium", "Small, medium or large."},
-			{"Icon", "*ui.SVG", "nil", "Leading icon."},
+			{"Icon", "*ui.SVG", "nil", "Leading icon, sized with the chip's text."},
 		},
 		Tokens: []string{"DefaultSoft", "DefaultSoftForeground", "AccentSoft", "SuccessSoft"},
 	})
@@ -115,13 +115,15 @@ func init() {
 })`,
 		Params: []ComponentParam{
 			{"Name", "string", "", "The name whose initials form the fallback."},
+			{"Fallback", "string", "", "Overrides the generated initials."},
 			{"Image", "ui.ImageSource", "nil", "Portrait image, when one is available."},
 			{"Size", "mygoui.AvatarSize", "AvatarMedium", "Small, medium or large."},
 			{"Soft", "bool", "false", "Uses the soft status fill instead of a flat one."},
 			{"Ring", "bool", "false", "Draws the background-colored ring."},
 			{"Color", "mygoui.StatusColor", "ColorDefault", "Status color of the fill."},
+			{"Badge", "func()", "nil", "Content anchored at the bottom-right corner."},
 		},
-		Tokens: []string{"Default", "DefaultForeground", "AccentSoft", "Background"},
+		Tokens: []string{"Default", "DefaultSoftForeground", "AccentSoft", "Background"},
 	})
 
 	RegisterComponent(ComponentPage{
@@ -152,13 +154,13 @@ func init() {
 })`,
 		Params: []ComponentParam{
 			{"Avatars", "[]mygoui.AvatarOptions", "nil", "The avatars to overlap."},
-			{"Size", "mygoui.AvatarSize", "AvatarMedium", "Size applied to every avatar."},
+			{"Size", "mygoui.AvatarSize", "AvatarMedium", "Size applied to every avatar and the count."},
 			{"Overlap", "float32", "8", "How far each avatar overlaps the previous one."},
 			{"Ring", "bool", "false", "Separates avatars with the background ring."},
 			{"Grid", "bool", "false", "Lays the avatars out as a grid instead of a row."},
 			{"Total", "int", "0", "Positive values add an overflow count."},
 		},
-		Tokens: []string{"Background", "Border", "AccentSoft"},
+		Tokens: []string{"Default", "DefaultSoftForeground", "AccentSoft", "Background"},
 	})
 
 	RegisterComponent(ComponentPage{
@@ -172,12 +174,12 @@ func init() {
 			},
 			{
 				Title:       "Removable",
-				Description: "Removable tags show their own dismiss action.",
+				Description: "A removed tag fades out where it stood while the caller drops it.",
 				Demo:        func(c *ui.Context, s *State) { tagRemovableBody(c) },
 			},
 			{
 				Title:       "Disabled",
-				Description: "A disabled tag dims and stops selecting or removing.",
+				Description: "A disabled tag dims, keeps no hover face and stops removing.",
 				Demo:        func(c *ui.Context, s *State) { tagDisabledBody(c) },
 			},
 		},
@@ -186,7 +188,7 @@ func init() {
     OnRemove: func() { remove("engineering") },
 })`,
 		Params: []ComponentParam{
-			{"Key", "string", "required", "Identity used by a TagGroup."},
+			{"Key", "string", "required", "Identity used by a TagGroup and by the removal fade."},
 			{"Label", "string", "required", "Visible tag text."},
 			{"Icon", "*ui.SVG", "nil", "Leading icon."},
 			{"Removable", "bool", "false", "Shows the remove action."},
@@ -274,7 +276,7 @@ func init() {
 			{"Icon", "*ui.SVG", "status icon", "Overrides the status indicator."},
 			{"Action", "func()", "nil", "Builds a trailing action."},
 		},
-		Tokens: []string{"SuccessSoft", "SuccessSoftForeground", "Border"},
+		Tokens: []string{"Surface", "SurfaceForeground", "SuccessSoftForeground"},
 	})
 
 	RegisterComponent(ComponentPage{
@@ -296,11 +298,11 @@ func init() {
     Size: mygoui.SpinnerMedium, Color: mygoui.ColorAccent, Label: "Loading",
 })`,
 		Params: []ComponentParam{
-			{"Size", "mygoui.SpinnerSize", "SpinnerMedium", "Small, medium or large."},
+			{"Size", "mygoui.SpinnerSize", "SpinnerMedium", "Small, medium, large or extra large."},
 			{"Color", "mygoui.StatusColor", "ColorAccent", "Status color of the arc."},
 			{"Label", "string", "Loading", "Accessible name announced while spinning."},
 		},
-		Tokens: []string{"Accent", "Muted"},
+		Tokens: []string{"Accent", "Success", "Danger"},
 	})
 
 	RegisterComponent(ComponentPage{
@@ -314,7 +316,7 @@ func init() {
 			},
 			{
 				Title:       "Animations",
-				Description: "Shimmer, pulse or no animation at all.",
+				Description: "A 2 s shimmer sweep, a 2 s pulse, or no animation at all.",
 				Demo:        func(c *ui.Context, s *State) { skeletonAnimationsBody(c) },
 			},
 		},
@@ -328,7 +330,7 @@ func init() {
 			{"Circle", "bool", "false", "Makes the placeholder a circle."},
 			{"Animation", "mygoui.SkeletonAnimation", "SkeletonShimmer", "Shimmer, pulse or none."},
 		},
-		Tokens: []string{"SurfaceTertiary", "Muted"},
+		Tokens: []string{"SurfaceTertiary", "Surface"},
 	})
 
 	RegisterComponent(ComponentPage{
@@ -369,7 +371,7 @@ func init() {
 		Examples: []ComponentExample{
 			{
 				Title:       "Determinate",
-				Description: "A value between its bounds, with output and caller-driven controls.",
+				Description: "A value between its bounds; each change eases the fill over 300 ms.",
 				Demo: func(c *ui.Context, s *State) {
 					progressBarBody(c, displayStateOf(s))
 				},
@@ -381,7 +383,7 @@ func init() {
 			},
 			{
 				Title:       "Indeterminate",
-				Description: "A looping band while the total is unknown.",
+				Description: "A looping 2/5 band while the total is unknown.",
 				Demo:        func(c *ui.Context, s *State) { progressIndeterminateBody(c) },
 			},
 		},
@@ -392,12 +394,14 @@ func init() {
 			{"Label", "string", "", "Title above the track."},
 			{"Value", "float64", "0", "Current value between Min and Max."},
 			{"Min", "float64", "0", "Lower bound."},
-			{"Max", "float64", "100", "Upper bound."},
+			{"Max", "float64", "100", "Upper bound; 0 with a 0 Min means 100."},
 			{"Indeterminate", "bool", "false", "Loops the indicator while the total is unknown."},
-			{"Color", "mygoui.IndicatorColor", "IndicatorAccent", "Accent, success, warning or danger."},
+			{"Color", "mygoui.IndicatorColor", "IndicatorAccent", "Accent, default, success, warning or danger."},
+			{"Size", "mygoui.ProgressSize", "ProgressMedium", "Small, medium or large track."},
 			{"ShowOutput", "bool", "false", "Shows the value beside the label."},
+			{"OutputText", "string", "", "Replaces the computed percentage."},
 		},
-		Tokens: []string{"Accent", "AccentSoft", "Default", "Muted"},
+		Tokens: []string{"Accent", "Default", "Foreground"},
 	})
 
 	RegisterComponent(ComponentPage{
@@ -406,7 +410,7 @@ func init() {
 		Examples: []ComponentExample{
 			{
 				Title:       "Determinate",
-				Description: "The ring fills to the value and can print it at its center.",
+				Description: "The ring eases to its value over 300 ms and can print it at its center.",
 				Demo: func(c *ui.Context, s *State) {
 					progressCircleDeterminateBody(c, displayStateOf(s))
 				},
@@ -426,13 +430,14 @@ func init() {
     Label: "Download", Value: 65, Max: 100, ShowOutput: true,
 })`,
 		Params: []ComponentParam{
-			{"Label", "string", "", "Title above the ring."},
+			{"Label", "string", "", "Accessible name; defaults to the percentage."},
 			{"Value", "float64", "0", "Current value between Min and Max."},
 			{"Min", "float64", "0", "Lower bound."},
-			{"Max", "float64", "100", "Upper bound."},
+			{"Max", "float64", "100", "Upper bound; 0 with a 0 Min means 100."},
 			{"Indeterminate", "bool", "false", "Spins the ring while the total is unknown."},
 			{"Color", "mygoui.IndicatorColor", "IndicatorAccent", "Status color of the ring."},
-			{"ShowOutput", "bool", "false", "Shows the value beside the label."},
+			{"Size", "mygoui.ProgressSize", "ProgressMedium", "Small, medium or large ring."},
+			{"ShowOutput", "bool", "false", "Prints the percentage at the ring's center."},
 		},
 		Tokens: []string{"Accent", "Default", "Muted"},
 	})
@@ -443,7 +448,7 @@ func init() {
 		Examples: []ComponentExample{
 			{
 				Title:       "Quantities",
-				Description: "Each meter measures a different range.",
+				Description: "Each meter measures a different range; changes ease over 300 ms.",
 				Demo: func(c *ui.Context, s *State) {
 					meterQuantitiesBody(c, displayStateOf(s))
 				},
@@ -466,10 +471,12 @@ func init() {
 			{"Label", "string", "", "Title above the track."},
 			{"Value", "float64", "0", "Measured value between Min and Max."},
 			{"Min", "float64", "0", "Lower bound."},
-			{"Max", "float64", "100", "Upper bound."},
+			{"Max", "float64", "100", "Upper bound; 0 with a 0 Min means 100."},
 			{"Color", "mygoui.IndicatorColor", "IndicatorAccent", "Status color of the fill."},
+			{"Size", "mygoui.ProgressSize", "ProgressMedium", "Small, medium or large track."},
+			{"ShowOutput", "bool", "false", "Shows the value beside the label."},
 			{"OutputText", "string", "", "Overrides the formatted value output."},
 		},
-		Tokens: []string{"Accent", "Default", "Muted", "Success"},
+		Tokens: []string{"Accent", "Default", "Foreground", "Success"},
 	})
 }

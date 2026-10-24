@@ -135,7 +135,8 @@ func buttonIconsBody(c *ui.Context, st *buttonsState) {
 	})
 }
 
-// buttonLoadingBody renders the pending state, which blocks activation.
+// buttonLoadingBody renders the pending state: a leading spinner, the full
+// readable face and no activation.
 func buttonLoadingBody(c *ui.Context) {
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(theme.Space8).Children(func() {
 		mygoui.Button(c, mygoui.ButtonOptions{Label: "Saving", Loading: true})
@@ -195,6 +196,25 @@ func buttonGroupVerticalBody(c *ui.Context, st *buttonsState) {
 			},
 		)
 	})
+}
+
+// buttonGroupOutlineBody renders outline segments whose shared borders
+// collapse to a single hairline.
+func buttonGroupOutlineBody(c *ui.Context, st *buttonsState) {
+	mygoui.ButtonGroup(c, mygoui.ButtonGroupOptions{},
+		mygoui.ButtonOptions{
+			Label: "Copy", Variant: mygoui.ButtonOutline,
+			OnClick: func() { st.hit("Group copy") },
+		},
+		mygoui.ButtonOptions{
+			Label: "Move", Variant: mygoui.ButtonOutline,
+			OnClick: func() { st.hit("Group move") },
+		},
+		mygoui.ButtonOptions{
+			Label: "Delete", Variant: mygoui.ButtonOutline,
+			OnClick: func() { st.hit("Group delete") },
+		},
+	)
 }
 
 // closeButtonBody renders the dismiss action inside the notice it closes.
@@ -285,7 +305,9 @@ func toggleDisabledBody(c *ui.Context) {
 
 // toggleGroupBody renders the joined single-selection group and its state.
 func toggleGroupBody(c *ui.Context, st *buttonsState) {
-	mygoui.ToggleButtonGroup(c, mygoui.ToggleButtonGroupOptions{Orientation: mygoui.Horizontal},
+	mygoui.ToggleButtonGroup(c, mygoui.ToggleButtonGroupOptions{
+		Orientation: mygoui.Horizontal, Separators: true,
+	},
 		mygoui.ToggleButtonOptions{
 			Label: "Left", Icon: lucide.AlignLeft(), Selected: &st.AlignLeft,
 			OnChange: func(on bool) {
@@ -378,7 +400,7 @@ func pressableBody(c *ui.Context, st *buttonsState) {
 				TextColor(t.Accent).Shrink(0)
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(func() {
 				mygoui.Typography(c, "Press feedback", mygoui.TypographyOptions{Type: theme.TypeBodySM})
-				mygoui.Typography(c, "Hover and pressed surfaces follow the live pointer.",
+				mygoui.Typography(c, "A 0.985 press scale and surface fade follow the pointer.",
 					mygoui.TypographyOptions{Type: theme.TypeBodyXS, Muted: true})
 			})
 		})

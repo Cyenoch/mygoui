@@ -1,6 +1,8 @@
 package color
 
 import (
+	"time"
+
 	mygoui "github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/anchored"
 	"github.com/Cyenoch/mygoui/internal/style"
@@ -32,15 +34,21 @@ type ColorPickerOptions struct {
 	OnChange func()
 }
 
+// defaultSwatchList is the shared palette the picker reads without copying;
+// DefaultSwatches hands callers their own copy.
+var defaultSwatchList = [...]ui.Color{
+	ui.Hex("#ef4444"), ui.Hex("#f97316"), ui.Hex("#eab308"),
+	ui.Hex("#22c55e"), ui.Hex("#14b8a6"), ui.Hex("#3b82f6"),
+	ui.Hex("#6366f1"), ui.Hex("#a855f7"), ui.Hex("#ec4899"),
+	ui.Hex("#71717a"), ui.Hex("#000000"), ui.Hex("#ffffff"),
+}
+
 // DefaultSwatches returns the palette a picker shows unless configured
 // otherwise: a full hue ring plus black, white and a neutral.
 func DefaultSwatches() []ui.Color {
-	return []ui.Color{
-		ui.Hex("#ef4444"), ui.Hex("#f97316"), ui.Hex("#eab308"),
-		ui.Hex("#22c55e"), ui.Hex("#14b8a6"), ui.Hex("#3b82f6"),
-		ui.Hex("#6366f1"), ui.Hex("#a855f7"), ui.Hex("#ec4899"),
-		ui.Hex("#71717a"), ui.Hex("#000000"), ui.Hex("#ffffff"),
-	}
+	out := make([]ui.Color, len(defaultSwatchList))
+	copy(out, defaultSwatchList[:])
+	return out
 }
 
 // ColorPicker is HeroUI v3's ColorPicker. The trigger shows the current color
@@ -56,9 +64,12 @@ func ColorPicker(c *ui.Context, o ColorPickerOptions) ui.Element {
 		label = "Color picker"
 	}
 	t := theme.Colors(c)
+	// Keep the overlay layer present while closed so the panel's fade in and
+	// out has a parent in both frames.
+	ui.Overlay(c, func() {})
 	root := ui.Row(c).Shrink(0).AlignItems(ui.Center)
 	root.Children(func() {
-		trigger := ui.ButtonBase(c).Padding(theme.Space4).
+		trigger := ui.ButtonBase(c).
 			Radius(theme.RadiusScale().SM).Gap(theme.Space12).
 			Role(ui.RoleColorWell).Label(label).
 			Expanded(o.Open != nil && *o.Open).
@@ -71,10 +82,11 @@ func ColorPicker(c *ui.Context, o ColorPickerOptions) ui.Element {
 		})
 		trigger.Children(func() {
 			current := s.Value
-			ui.Box(c).Size(24, 24).Shrink(0).Radius(12).
+			// HeroUI's default trigger swatch is MD: 32 DIP, 16 DIP round.
+			ui.Box(c).Size(32, 32).Shrink(0).Radius(16).
 				Role(ui.RoleNone).Clip().Draw(func(p *ui.Painter, r ui.Rect) {
-				paintSwatch(p, r, current, 12)
-				paintSwatchBorder(p, r, 12)
+				paintSwatch(p, r, current, 16)
+				paintSwatchBorder(p, r, 16)
 			})
 			style.Text(ui.Text(c, s.Hex()), c, theme.SM()).
 				TextColor(t.Foreground).SingleLine()
@@ -93,15 +105,23 @@ func ColorPicker(c *ui.Context, o ColorPickerOptions) ui.Element {
 		ui.PopoverBase(c, trigger, o.Open, func(panel ui.Element) {
 			panel = anchored.Apply(panel, trigger, place, mygoui.SideBottom)
 			panel.Background(t.Overlay).Radius(panelRadius).
-				Border(theme.Hairline, t.Border).
 				Width(248).Shrink(0).Column().Gap(theme.Space12).
 				Padding(theme.Space8, theme.Space8, theme.Space12, theme.Space8).
 				Label(label)
 			panel = style.Shadow(panel, c, theme.OverlayShadows(c.Theme().Dark))
+			if !theme.ReduceMotion(c) {
+				fade := ui.Motion{Opacity: 0}
+				panel = panel.Transition(ui.ElementTransition{
+					Duration: 150 * time.Millisecond, Ease: ui.EaseOut,
+					Enter: &fade, Exit: &fade,
+				})
+			}
 			panel.Children(func() {
 				if !o.HideArea {
+					// HeroUI's picker stretches the area to the panel's
+					// content width (248 - 16 padding).
 					ColorArea(c, ColorAreaOptions{
-						Label: "Color area", State: s, Size: 224,
+						Label: "Color area", State: s, Size: 232,
 						Disabled: o.Disabled, OnChange: o.OnChange,
 					})
 				}
@@ -128,7 +148,7 @@ func ColorPicker(c *ui.Context, o ColorPickerOptions) ui.Element {
 				if !o.HideSwatches {
 					swatches := o.Swatches
 					if swatches == nil {
-						swatches = DefaultSwatches()
+						swatches = defaultSwatchList[:]
 					}
 					if len(swatches) > 0 {
 						picked := s.Value

@@ -113,37 +113,32 @@ var groupRank = map[string]int{
 	"Dates": 8, "Color": 9, "Data": 10,
 }
 
+// navRankOf returns a group's navigation position; unknown groups sort last.
+func navRankOf(group string) int {
+	if rank, ok := groupRank[group]; ok {
+		return rank
+	}
+	return 99
+}
+
 // navPages returns the pages in navigation order: by group rank, then the
 // order each page registered with.
 func navPages() []Page {
 	list := Pages()
-	sort.SliceStable(list, func(i, j int) bool {
-		ri, iok := groupRank[list[i].Group]
-		rj, jok := groupRank[list[j].Group]
-		if !iok {
-			ri = 99
-		}
-		if !jok {
-			rj = 99
-		}
-		return ri < rj
-	})
+	sort.SliceStable(list, func(i, j int) bool { return list[i].navRank < list[j].navRank })
 	return list
 }
 
 // pageGroups folds pages into one block per group, never repeating a heading
-// when a search splits a group.
+// when a search splits a group. The list is in navigation order, so a new
+// block starts wherever the group changes.
 func pageGroups(list []Page) []pageGroup {
 	var groups []pageGroup
-	index := map[string]int{}
 	for _, page := range list {
-		i, ok := index[page.Group]
-		if !ok {
-			i = len(groups)
-			index[page.Group] = i
+		if n := len(groups); n == 0 || groups[n-1].name != page.Group {
 			groups = append(groups, pageGroup{name: page.Group})
 		}
-		groups[i].pages = append(groups[i].pages, page)
+		groups[len(groups)-1].pages = append(groups[len(groups)-1].pages, page)
 	}
 	return groups
 }
@@ -167,13 +162,7 @@ func pageList(c *ui.Context, s *State, choose func(Page)) {
 
 // filterPagesInOrder keeps the navigation order of a filtered page list.
 func filterPagesInOrder(list []Page) []Page {
-	rank := func(p Page) int {
-		if r, ok := groupRank[p.Group]; ok {
-			return r
-		}
-		return 99
-	}
-	sort.SliceStable(list, func(i, j int) bool { return rank(list[i]) < rank(list[j]) })
+	sort.SliceStable(list, func(i, j int) bool { return list[i].navRank < list[j].navRank })
 	return list
 }
 
@@ -267,7 +256,7 @@ func content(c *ui.Context, s *State, compact bool) {
 			AlignItems(ui.Stretch).Children(func() {
 			ui.Scroll(c).TrackScroll(&s.Content).Grow(1).Basis(0).MinWidth(0).
 				Children(func() { docsPageColumn(c, s) })
-			if page := currentPage(s); page != nil && docsRailVisible(c) {
+			if page, ok := currentPage(s); ok && docsRailVisible(c) {
 				if cp, ok := componentPage(page.ID); ok {
 					docsRail(c, s, cp)
 				}
@@ -276,14 +265,17 @@ func content(c *ui.Context, s *State, compact bool) {
 	})
 }
 
-func currentPage(s *State) *Page {
-	for i := range pages {
-		if pages[i].ID == s.Selected {
-			return &pages[i]
-		}
+// currentPage returns the selected page, or the first registered page when
+// the selection names none. It reads the catalog under its lock and by ID, so
+// a build does not scan or alias the shared slice.
+func currentPage(s *State) (Page, bool) {
+	if page, ok := pageFor(s.Selected); ok {
+		return page, true
 	}
-	if len(pages) > 0 {
-		return &pages[0]
+	pagesMu.RLock()
+	defer pagesMu.RUnlock()
+	if len(pages) == 0 {
+		return Page{}, false
 	}
-	return nil
+	return pages[0], true
 }

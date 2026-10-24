@@ -55,7 +55,7 @@ func colorAreaDisabledExample(c *ui.Context, st *colorsState) {
 			Label: "Locked fill color", State: &st.Color, Disabled: true,
 			Size: theme.Scale(c, 160),
 		})
-		mygoui.Typography(c, "A disabled area keeps the current color.", mygoui.TypographyOptions{
+		mygoui.Typography(c, "A locked area keeps the current color.", mygoui.TypographyOptions{
 			Type: theme.TypeBodyXS, Muted: true,
 		})
 	})
@@ -127,7 +127,7 @@ func colorFieldCompactExample(c *ui.Context, st *colorsState) {
 func colorFieldDisabledExample(c *ui.Context, st *colorsState) {
 	color.ColorField(c, color.ColorFieldOptions{
 		Label: "Locked hex", State: &st.Color, Disabled: true,
-		Description: "A disabled field keeps the current color",
+		Description: "A locked field keeps the current color",
 	})
 }
 
@@ -214,11 +214,11 @@ func colorSwatchPickerSquareExample(c *ui.Context, st *colorsState) {
 func colorSwatchPickerReadOnlyExample(c *ui.Context, _ *colorsState) {
 	ui.Column(c).Gap(theme.Space12).Children(func() {
 		color.ColorSwatchPicker(c, color.ColorSwatchPickerOptions{
-			Label:  "Read-only palette",
+			Label:  "Palette without a selection",
 			Colors: color.DefaultSwatches()[:6],
 			Size:   color.SwatchMD,
 		})
-		mygoui.Typography(c, "A nil Value makes the palette read-only.", mygoui.TypographyOptions{
+		mygoui.Typography(c, "Without a caller-owned Value the palette shows no current color.", mygoui.TypographyOptions{
 			Type: theme.TypeBodyXS, Muted: true,
 		})
 	})

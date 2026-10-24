@@ -177,6 +177,7 @@ func (s *TableState) afterBuild(o *TableOptions, nativeChanged, sortChanged bool
 	if !s.snapshotOK {
 		s.takeSnapshot()
 		s.leadUnder = s.underlying(s.Selection.Row)
+		s.rememberLead(o, s.leadUnder)
 	}
 	restored := false
 	if pos := s.Selection.Row; pos >= 0 && pos < len(s.order) && s.isDisabled(s.order[pos]) {
@@ -197,23 +198,53 @@ func (s *TableState) afterBuild(o *TableOptions, nativeChanged, sortChanged bool
 	under := s.underlying(s.Selection.Row)
 	changed := false
 	if !restored {
-		changed = under != s.leadUnder
+		// With a stable identity, the chosen row is its key: inserting or
+		// sorting rows changes its position, not the selection, so no
+		// callback reports it. Without one, the position is the identity.
+		if o.RowKey != nil {
+			changed = s.leadKeyDiffers(o, under)
+		} else {
+			changed = under != s.leadUnder
+		}
 		if s.Selection.Mode == TableSelectionMultiple {
 			changed = changed || s.Selection.Rows.Len() != s.snapshotLen
 		}
-		// A same-size change of a multiple selection (a Shift range moving)
-		// is invisible in the identity and the count; the toolkit's change
-		// flag still reports it. A sort also sets the flag, but the sort
-		// reconciliation above already knows that case.
-		if !changed && nativeChanged && !sortChanged && s.Selection.Mode != TableSelectionNone {
-			changed = true
+		// A multiple selection can change to another of the same size, as a
+		// Shift range moving, which neither the lead row nor the count
+		// shows. Compare the chosen keys then. A sort click sets the
+		// toolkit's change flag too, but sortChanged identifies it, and its
+		// intermediate pass changes no keys.
+		if !changed && nativeChanged && !sortChanged && s.Selection.Mode == TableSelectionMultiple {
+			changed = s.selectionSetChanged()
 		}
 	}
 	s.leadUnder = under
+	s.rememberLead(o, under)
 	if changed {
 		s.takeSnapshot()
 	}
 	return changed
+}
+
+// rememberLead records the identity of the row the selection is on.
+func (s *TableState) rememberLead(o *TableOptions, under int) {
+	s.leadHas = under >= 0
+	s.leadKey = nil
+	if s.leadHas {
+		s.leadKey = s.keyRow(o.RowKey, under)
+	}
+}
+
+// leadKeyDiffers reports whether the row of the last frame's selection is not
+// the row of under. RowKey must not be nil.
+func (s *TableState) leadKeyDiffers(o *TableOptions, under int) bool {
+	if under < 0 {
+		return s.leadHas
+	}
+	if !s.leadHas {
+		return true
+	}
+	return s.keyRow(o.RowKey, under) != s.leadKey
 }
 
 // savedPosition returns the displayed position of the row the selection is
@@ -235,11 +266,38 @@ func (s *TableState) restoreSnapshot() {
 
 func (s *TableState) takeSnapshot() {
 	s.snapshot = s.snapshot[:0]
+	s.snapshotLen = 0
+	s.snapshotOK = true
+	if s.Selection.Mode != TableSelectionMultiple {
+		if s.snapshotSet != nil {
+			clear(s.snapshotSet)
+		}
+		return
+	}
+	if s.snapshotSet == nil {
+		s.snapshotSet = make(map[any]struct{}, s.Selection.Rows.Len())
+	} else {
+		clear(s.snapshotSet)
+	}
 	for key := range s.Selection.Rows.All() {
 		s.snapshot = append(s.snapshot, key)
+		s.snapshotSet[key] = struct{}{}
 	}
 	s.snapshotLen = s.Selection.Rows.Len()
-	s.snapshotOK = true
+}
+
+// selectionSetChanged reports whether a multiple selection no longer holds the
+// keys of the last snapshot, at the same size.
+func (s *TableState) selectionSetChanged() bool {
+	if s.Selection.Rows.Len() != len(s.snapshotSet) {
+		return true
+	}
+	for key := range s.Selection.Rows.All() {
+		if _, ok := s.snapshotSet[key]; !ok {
+			return true
+		}
+	}
+	return false
 }
 
 // activeRow returns the row Enter or a double click activated.

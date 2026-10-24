@@ -2,6 +2,7 @@ package form
 
 import (
 	"strings"
+	"time"
 
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/anchored"
@@ -69,6 +70,9 @@ type ComboBoxState struct {
 	items        []list.ListBoxItem
 	sectionItems []list.ListBoxItem
 	sections     []list.ListBoxSection
+	filtered     bool
+	filterQuery  string
+	filterSource listSource
 }
 
 // SelectedKeys returns the chosen keys, single choice first.
@@ -91,8 +95,9 @@ func (s *ComboBoxState) Clear() {
 // listChosen returns chosen keys and labels in item order.
 func listChosen(items []list.ListBoxItem, sections []list.ListBoxSection, ls *list.ListBoxState) (keys, labels []string) {
 	eachSelectItem(items, sections, func(it *list.ListBoxItem) bool {
-		if ls.IsSelected(itemKey(it)) {
-			keys = append(keys, itemKey(it))
+		key := itemKey(it)
+		if ls.IsSelected(key) {
+			keys = append(keys, key)
 			labels = append(labels, it.Label)
 		}
 		return true
@@ -117,12 +122,17 @@ func comboMode(m list.SelectionMode) list.SelectionMode {
 }
 
 // applyFilter rebuilds the filtered items and sections in caller-owned scratch
-// capacity, so a frame with the same size does not allocate.
+// capacity. An unchanged query over the same option slices reuses the last
+// result, so rebuilding the popup for a highlight or hover does not rescan
+// every option.
 func (s *ComboBoxState) applyFilter(o ComboBoxOptions, query string) {
-	totalSections := 0
-	for si := range o.Sections {
-		totalSections += len(o.Sections[si].Items)
+	src := sourceOf(o.Items, o.Sections)
+	if s.filtered && query == s.filterQuery && src == s.filterSource {
+		return
 	}
+	s.filtered, s.filterQuery, s.filterSource = true, query, src
+
+	totalSections := src.sectionItems
 	if cap(s.items) < len(o.Items) {
 		s.items = make([]list.ListBoxItem, 0, len(o.Items))
 	}
@@ -135,15 +145,7 @@ func (s *ComboBoxState) applyFilter(o ComboBoxOptions, query string) {
 		s.sections = make([]list.ListBoxSection, 0, len(o.Sections))
 	}
 	s.sections = s.sections[:0]
-	match := func(it *list.ListBoxItem) bool {
-		if query == "" {
-			return true
-		}
-		if o.Filter != nil {
-			return o.Filter(query, it)
-		}
-		return strings.Contains(strings.ToLower(it.Label), strings.ToLower(query))
-	}
+	match := filterMatch(query, o.Filter)
 	for i := range o.Items {
 		if match(&o.Items[i]) {
 			s.items = append(s.items, o.Items[i])
@@ -178,7 +180,6 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 		panic("form: ComboBox requires a caller-owned State")
 	}
 	mode := comboMode(o.Selection)
-	t := theme.Colors(c)
 	invalid := o.Invalid || o.Error != ""
 	errText := fieldMessage(invalid, o.Error)
 
@@ -214,13 +215,19 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 			}
 			s.Input.Focus(c)
 		})
-		keys, _ := listChosen(o.Items, o.Sections, &s.List)
+		// Multiple chooses chips in item order, which needs one scan; a
+		// single choice keeps its label in Text, so it skips the walk.
+		var keys, labels []string
+		multiple := mode == list.SelectionMultiple
+		if multiple {
+			keys, labels = listChosen(o.Items, o.Sections, &s.List)
+		}
 		var input ui.Element
 		field.Children(func() {
-			if mode == list.SelectionMultiple {
-				for _, key := range keys {
-					k := key
-					comboChip(c, comboLabel(o, k), func() { comboRemove(c, o, s, k) })
+			if multiple {
+				for i, key := range keys {
+					k, label := key, labels[i]
+					comboChip(c, label, func() { comboRemove(c, o, s, k) })
 				}
 			}
 			input = ui.TextInputBase(c, &s.Text).Grow(1).MinWidth(0).
@@ -230,17 +237,17 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 			input.Role(ui.RoleComboBox).Expanded(s.Open)
 			input.Bind(&s.Input)
 			if o.Clearable {
-				if len(keys) > 0 || s.Custom != "" || s.Text != "" {
+				chosen := s.List.SelectedKey != ""
+				if multiple {
+					chosen = len(keys) > 0
+				}
+				if chosen || s.Custom != "" || s.Text != "" {
 					selectClearButton(c, func() { comboClear(c, o, s) })
 				} else {
 					ui.Box(c).Width(theme.Scale(c, 20)).Height(theme.Scale(c, 20)).Shrink(0)
 				}
 			}
-			indicator := ui.Icon(c, selectChevron).Size(theme.Scale(c, 16), theme.Scale(c, 16)).
-				Shrink(0).TextColor(t.FieldPlaceholder)
-			if s.Open {
-				indicator.Rotate(180)
-			}
+			selectIndicator(c, s.Open)
 		})
 		if input.Valid() {
 			focused := input.Focused() || s.Input.FocusWithin(c)
@@ -471,6 +478,7 @@ func comboPopup(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, field ui.Ele
 		panel.MinWidth(anchor.Bounds().W)
 		panel.Padding(0).Radius(radius).Background(t.Overlay).Clip().KeepFocus()
 		panel = style.Shadow(panel, c, theme.OverlayShadows(c.Theme().Dark))
+		panel = popoverMotion(c, panel, o.Placement, mygoui.SideBottom, 150*time.Millisecond)
 		anchored.Apply(panel, anchor, o.Placement, mygoui.SideBottom)
 		list.ListBox(c, list.ListBoxOptions{
 			Label:          o.Label,

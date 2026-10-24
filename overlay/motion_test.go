@@ -130,29 +130,28 @@ func TestModalMotionPaintsArrivalAndDeparture(t *testing.T) {
 }
 
 // TestEdgeSurfacesPaintArrivalAndDeparture covers every edge a drawer comes
-// from, the bottom sheet and an edge dialog: the native backdrop is absolute
-// in the window, and its motion must survive that layout.
+// from and an edge dialog: the native backdrop is absolute in the window,
+// and its motion must survive that layout. The bottom sheet slides instead,
+// so it has its own arrival and departure test.
 func TestEdgeSurfacesPaintArrivalAndDeparture(t *testing.T) {
 	for _, tc := range []struct {
-		name  string
-		build func(c *ui.Context, open *bool)
+		name     string
+		duration time.Duration
+		build    func(c *ui.Context, open *bool)
 	}{
-		{"drawer left", func(c *ui.Context, open *bool) {
+		{"drawer left", drawerMotionDuration, func(c *ui.Context, open *bool) {
 			Drawer(c, open, DrawerOptions{Side: DrawerLeft, Title: "Panel"})
 		}},
-		{"drawer right", func(c *ui.Context, open *bool) {
+		{"drawer right", drawerMotionDuration, func(c *ui.Context, open *bool) {
 			Drawer(c, open, DrawerOptions{Side: DrawerRight, Title: "Panel"})
 		}},
-		{"drawer top", func(c *ui.Context, open *bool) {
+		{"drawer top", drawerMotionDuration, func(c *ui.Context, open *bool) {
 			Drawer(c, open, DrawerOptions{Side: DrawerTop, Title: "Panel"})
 		}},
-		{"drawer bottom", func(c *ui.Context, open *bool) {
+		{"drawer bottom", drawerMotionDuration, func(c *ui.Context, open *bool) {
 			Drawer(c, open, DrawerOptions{Side: DrawerBottom, Title: "Panel"})
 		}},
-		{"bottom sheet", func(c *ui.Context, open *bool) {
-			BottomSheet(c, open, BottomSheetOptions{Title: "Panel"})
-		}},
-		{"edge dialog", func(c *ui.Context, open *bool) {
+		{"edge dialog", dialogMotionDuration, func(c *ui.Context, open *bool) {
 			Dialog(c, open, DialogOptions{
 				Placement: mygoui.Placement{Side: mygoui.SideRight},
 				Title:     "Panel",
@@ -173,7 +172,7 @@ func TestEdgeSurfacesPaintArrivalAndDeparture(t *testing.T) {
 				t.Fatal("the surface did not open")
 			}
 			area := motionLabel(t, tt, "Panel")
-			motionAssertSurface(t, tt, area, dialogMotionDuration, func() {
+			motionAssertSurface(t, tt, area, tc.duration, func() {
 				tt.Key(0, ui.KeyEscape)
 				if open || tt.HasText("Panel") {
 					t.Fatal("Escape did not close the surface")

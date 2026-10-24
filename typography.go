@@ -45,7 +45,9 @@ func Typography(c *ui.Context, text string, o TypographyOptions) ui.Element {
 		}
 		e.Role(ui.RoleHeading).Level(level)
 	} else if o.Type == theme.TypeCode {
-		e.Font(theme.Mono)
+		// HeroUI's code role is an inline chip on the default fill.
+		e.Background(theme.Colors(c).Default).Radius(theme.RadiusScale().MD).
+			PaddingX(theme.Space6).PaddingY(theme.Space2).AlignSelf(ui.Start)
 	}
 	return e
 }

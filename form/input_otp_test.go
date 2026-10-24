@@ -74,6 +74,29 @@ func TestInputOTPFilterOption(t *testing.T) {
 	}
 }
 
+func TestInputOTPCountsRunesWithCustomFilter(t *testing.T) {
+	var state OTPState
+	var completed []string
+	tester := formTextTester(t, func(c *ui.Context) {
+		InputOTP(c, &state, OTPOptions{
+			Length: 2,
+			Label:  "Nickname code",
+			Filter: func(r rune) bool { return r != ' ' },
+			OnComplete: func(value string) {
+				completed = append(completed, value)
+			},
+		})
+	})
+	formTextClick(t, tester, "Nickname code")
+	tester.Type("好a")
+	if state.Value != "好a" || !state.Complete {
+		t.Fatalf("two runes: value %q, complete %v", state.Value, state.Complete)
+	}
+	if len(completed) != 1 || completed[0] != "好a" {
+		t.Fatalf("completion: %v", completed)
+	}
+}
+
 func TestInputOTPDisabledTakesNoInput(t *testing.T) {
 	var state OTPState
 	tester := formTextTester(t, func(c *ui.Context) {

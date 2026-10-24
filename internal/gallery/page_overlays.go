@@ -48,12 +48,16 @@ type overlaysState struct {
 
 func modalSizeName(size overlay.ModalSize) string {
 	switch size {
+	case overlay.ModalExtraSmall:
+		return "Extra small"
 	case overlay.ModalSmall:
 		return "Small"
 	case overlay.ModalLarge:
 		return "Large"
 	case overlay.ModalExtraLarge:
 		return "Extra large"
+	case overlay.ModalCover:
+		return "Cover"
 	case overlay.ModalFull:
 		return "Full screen"
 	}
@@ -91,8 +95,9 @@ func modalSizesExample(c *ui.Context, st *overlaysState) {
 	ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space12).Children(func() {
 		ui.Row(c).Wrap().AlignItems(ui.Center).Gap(theme.Space8).Children(func() {
 			for _, size := range []overlay.ModalSize{
-				overlay.ModalSmall, overlay.ModalMedium, overlay.ModalLarge,
-				overlay.ModalExtraLarge, overlay.ModalFull,
+				overlay.ModalExtraSmall, overlay.ModalSmall, overlay.ModalMedium,
+				overlay.ModalLarge, overlay.ModalExtraLarge, overlay.ModalCover,
+				overlay.ModalFull,
 			} {
 				size := size
 				label := modalSizeName(size)
@@ -343,7 +348,7 @@ func sheetFooterExample(c *ui.Context, st *overlaysState) {
 			Variant: mygoui.ButtonSecondary,
 			OnClick: func() { st.sheetOpen = true },
 		})
-		mygoui.Typography(c, "Dismiss by pressing the backdrop or Escape.", mygoui.TypographyOptions{
+		mygoui.Typography(c, "Drag the handle down, press the backdrop or press Escape.", mygoui.TypographyOptions{
 			Type: theme.TypeBodyXS, Muted: true,
 		})
 	})
@@ -351,7 +356,7 @@ func sheetFooterExample(c *ui.Context, st *overlaysState) {
 		Title:       "Quick actions",
 		Description: "Native HeroUI's bottom sheet surface.",
 		Body: func() {
-			mygoui.Paragraph(c, "The sheet caps at 85% of the window height and keeps the drag handle purely visual.", true)
+			mygoui.Paragraph(c, "The sheet floats 16 DIPs from the window edges, caps at 85% of its height and follows the handle as you drag it.", true)
 			ui.Row(c).Wrap().Gap(theme.Space8).Children(func() {
 				mygoui.Chip(c, mygoui.ChipOptions{Label: "Duplicate", Variant: mygoui.ChipSoft})
 				mygoui.Chip(c, mygoui.ChipOptions{
@@ -377,7 +382,7 @@ func sheetTallExample(c *ui.Context, st *overlaysState) {
 			Label: "Open tall sheet", Variant: mygoui.ButtonSecondary,
 			OnClick: func() { st.sheetTallOpen = true },
 		})
-		mygoui.Typography(c, "A fixed height with no drag handle.", mygoui.TypographyOptions{
+		mygoui.Typography(c, "A fixed height with no handle and no swipe.", mygoui.TypographyOptions{
 			Type: theme.TypeBodyXS, Muted: true,
 		})
 	})
@@ -386,7 +391,7 @@ func sheetTallExample(c *ui.Context, st *overlaysState) {
 		Height:     theme.Scale(c, 320),
 		HideHandle: true,
 		Body: func() {
-			mygoui.Paragraph(c, "The panel keeps its height regardless of its content.", true)
+			mygoui.Paragraph(c, "The panel keeps its height regardless of its content; the backdrop, Escape and the close button dismiss it.", true)
 		},
 	})
 }

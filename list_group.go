@@ -16,20 +16,21 @@ type ListGroupOptions struct {
 // ListGroup is a rounded surface containing related rows.
 func ListGroup(c *ui.Context, o ListGroupOptions, body func()) ui.Element {
 	t := theme.Colors(c)
-	variant := o.Variant
-	background := t.Surface
-	switch variant {
+	background, ink, shadowed := t.Surface, t.SurfaceForeground, true
+	switch o.Variant {
 	case SurfaceSecondary:
-		background = t.SurfaceSecondary
+		background, ink = t.SurfaceSecondary, t.SurfaceSecondaryForeground
 	case SurfaceTertiary:
-		background = t.SurfaceTertiary
+		background, ink = t.SurfaceTertiary, t.SurfaceTertiaryForeground
 	case SurfaceTransparent:
-		background = ui.Transparent
+		background, ink, shadowed = ui.Transparent, t.Foreground, false
 	}
 	radius := min(theme.Space32, theme.RadiusScale().XXXL)
 	e := ui.Column(c).FillWidth().MinWidth(0).Padding(0).Radius(radius).Clip().
-		Background(background).TextColor(t.SurfaceForeground).Label(o.Label)
-	e = style.Shadow(e, c, theme.SurfaceShadows(c.Theme().Dark))
+		Background(background).TextColor(ink).Label(o.Label)
+	if shadowed {
+		e = style.Shadow(e, c, theme.SurfaceShadows(c.Theme().Dark))
+	}
 	return e.Children(body)
 }
 
@@ -64,8 +65,9 @@ func ListGroupItem(c *ui.Context, o ListGroupItemOptions) ui.Element {
 		}
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(func() {
 			if o.Title != "" {
+				// The title inherits the group's surface foreground.
 				style.Text(ui.Text(c, o.Title), c, theme.Base()).
-					FontWeight(theme.WeightMedium).TextColor(t.Foreground).SingleLine()
+					FontWeight(theme.WeightMedium).SingleLine()
 			}
 			if o.Description != "" {
 				style.Text(ui.Text(c, o.Description), c, theme.SM()).

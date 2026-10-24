@@ -19,6 +19,11 @@ const (
 	ModalExtraLarge
 	// ModalFull fills the window without radius or shadow.
 	ModalFull
+	// ModalExtraSmall is max-w-xs (320 DIPs), HeroUI's smallest dialog.
+	ModalExtraSmall
+	// ModalCover fills the space its container leaves, keeping the floating
+	// surface's radius and shadow.
+	ModalCover
 )
 
 // ModalOptions configures a HeroUI modal.
@@ -72,7 +77,7 @@ func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
 			pad = 0
 		}
 		back = paintBackdrop(c, back, o.Backdrop)
-		back = dialogMotion(c, back)
+		back = dialogMotion(c, back, dialogMotionDuration)
 		back.Padding(pad).Row().Center()
 
 		t := theme.Colors(c)
@@ -81,14 +86,20 @@ func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
 			radius = 0
 		}
 		panel.Radius(radius).Clip().Background(t.Overlay).TextColor(t.OverlayForeground)
-		panel = panelElevation(c, panel)
-		if full {
+		if !full {
+			panel = panelElevation(c, panel)
+		}
+		availW := max(float32(0), w-2*pad)
+		availH := max(float32(0), h-2*pad)
+		switch {
+		case full:
 			panel.Width(w).Height(h)
-		} else {
-			width := modalWidth(o.Size)
-			avail := max(float32(0), w-2*pad)
-			panel.Width(min(width, avail)).MaxWidth(avail).
-				MaxHeight(max(float32(0), h-2*pad)).MinHeight(0)
+		case o.Size == ModalCover:
+			panel.Width(availW).MaxWidth(availW).Height(availH).
+				MaxHeight(availH).MinHeight(0)
+		default:
+			panel.Width(min(modalWidth(o.Size), availW)).MaxWidth(availW).
+				MaxHeight(availH).MinHeight(0)
 		}
 		panel.Label(o.Title)
 		if o.Description != "" {
@@ -120,14 +131,20 @@ func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
 	return p
 }
 
+// modalWidth is HeroUI's max-w for a floating size. ModalFull and ModalCover
+// take the space their container leaves instead.
 func modalWidth(size ModalSize) float32 {
 	switch size {
+	case ModalExtraSmall:
+		return 320
 	case ModalSmall:
 		return 384
 	case ModalLarge:
 		return 512
 	case ModalExtraLarge:
 		return 576
+	case ModalFull, ModalCover:
+		return 0
 	}
 	return 448
 }

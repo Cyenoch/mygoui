@@ -51,7 +51,7 @@ type CalendarOptions struct {
 	// FirstWeekday is the first column of the week. The zero value is Sunday,
 	// matching time.Weekday.
 	FirstWeekday time.Weekday
-	// Disabled makes the whole calendar read-only at 50% opacity.
+	// Disabled makes the whole calendar inert at 50% opacity.
 	Disabled bool
 	// HideYearPicker removes the heading's year selector and keeps the static
 	// month heading.
@@ -247,17 +247,43 @@ func buildCalendar(c *ui.Context, spec calendarSpec, view *CalendarViewState, va
 	weekdayH := theme.Scale(c, 24)
 	headerH := theme.Scale(c, 24)
 	gap := theme.Scale(c, 4)
-	dayGridH := weekdayH + gap + 6*cellH
+	// HeroUI pads each range cell by 2 DIPs above and below so the band reads
+	// as a track between week rows; the cap inside stays square.
+	rowInset := float32(0)
+	rangeMode := sel.inRange != nil
+	if rangeMode {
+		rowInset = theme.Scale(c, theme.Space2)
+	}
+	dayGridH := weekdayH + gap + 6*(cellH+2*rowInset)
 
 	root := ui.Column(c).Width(width).MinWidth(width).Shrink(0).Gap(0)
 	focusHeading := ui.Local(root, calendarFocusKey{}, func() bool { return false })
 
 	root.Children(func() {
-		buildHeader(c, spec, view, month, cursor, monthText, headerH, focusHeading)
+		buildHeader(c, spec, view, month, cursor, monthText, headerH, rangeMode, focusHeading)
 		if view.YearOpen && !spec.hideYearPicker {
-			buildYearGrid(c, spec, view, month, cursor, dayGridH, focusHeading)
+			grid := buildYearGrid(c, spec, view, month, cursor, dayGridH, focusHeading)
+			// HeroUI fades the year grid in over the day grid, and removes it
+			// at once when it closes; the native transition interrupts cleanly
+			// if the user toggles again while it runs.
+			if !theme.ReduceMotion(c) {
+				fade := ui.Motion{Opacity: 0}
+				grid.Transition(ui.ElementTransition{
+					Duration: 200 * time.Millisecond, Ease: ui.EaseOut, Enter: &fade,
+				})
+			}
 		} else {
-			buildDayGrid(c, spec, view, sel, month, cursor, today, cellW, cellH, weekdayH, gap)
+			grid := buildDayGrid(c, spec, view, sel, month, cursor, today,
+				cellW, cellH, weekdayH, gap, rowInset)
+			// The day grid fades as it swaps with the year grid, which also
+			// covers the first arrival without a parent that showed before.
+			if !theme.ReduceMotion(c) {
+				fade := ui.Motion{Opacity: 0}
+				grid.Transition(ui.ElementTransition{
+					Duration: 120 * time.Millisecond, Ease: ui.EaseOut,
+					Enter: &fade, Exit: &fade,
+				})
+			}
 		}
 	})
 
@@ -268,12 +294,17 @@ func buildCalendar(c *ui.Context, spec calendarSpec, view *CalendarViewState, va
 }
 
 func buildHeader(c *ui.Context, spec calendarSpec, view *CalendarViewState, month, cursor time.Time,
-	monthText string, height float32, focusHeading *bool) {
+	monthText string, height float32, rangeMode bool, focusHeading *bool) {
 	t := theme.Colors(c)
 	radii := theme.RadiusScale()
-	navRadius := radii.LG + 4 // HeroUI rounded-2xl for the calendar header.
+	// HeroUI rounds the single calendar's nav buttons by 16 DIP and the range
+	// calendar's by 12.
+	navRadius := radii.XXL
+	if rangeMode {
+		navRadius = radii.XL
+	}
 
-	ui.Row(c).AlignItems(ui.Center).Gap(theme.Space4).
+	ui.Row(c).AlignItems(ui.Center).
 		Padding(0, 2, theme.Space16, 2).Shrink(0).Children(func() {
 		open := view.YearOpen && !spec.hideYearPicker
 		ink := t.Foreground
@@ -286,7 +317,7 @@ func buildHeader(c *ui.Context, spec calendarSpec, view *CalendarViewState, mont
 			heading = ui.Row(c).Grow(1).MinWidth(0).Height(height).AlignItems(ui.Center)
 		} else {
 			heading = ui.ButtonBase(c).Grow(1).MinWidth(0).Height(height).
-				Radius(radii.SM).FocusRing(true).
+				Justify(ui.Start).Radius(radii.LG).FocusRing(true).
 				Label(monthText + ", " + spec.years()).Cursor(ui.CursorPointer)
 			heading = heading.OnClick(func() {
 				view.YearOpen = !view.YearOpen
@@ -302,9 +333,10 @@ func buildHeader(c *ui.Context, spec calendarSpec, view *CalendarViewState, mont
 				if !spec.hideYearPicker {
 					icon := ui.Icon(c, lucide.ChevronRight()).Size(theme.Scale(c, 12), theme.Scale(c, 12)).
 						TextColor(t.AccentSoftForeground)
-					if open {
-						icon.Rotate(90)
-					}
+					// HeroUI turns the chevron 90° in 150 ms as the picker
+					// opens; the pose animates in paint-only frames.
+					icon.AnimatePose(ui.Pose{Rotate: openDegrees(open)},
+						ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut})
 				}
 			})
 		})
@@ -314,27 +346,50 @@ func buildHeader(c *ui.Context, spec calendarSpec, view *CalendarViewState, mont
 		}
 
 		previous := navButton(c, spec.prev(), navRadius)
-		if canShiftMonth(month, spec.min, spec.max, -1) {
+		if !open && canShiftMonth(month, spec.min, spec.max, -1) {
 			previous = previous.OnClick(func() { shiftMonth(view, month, cursor, -1) })
 		} else {
 			previous = style.Disabled(previous, true)
 		}
+		// HeroUI hides the month arrows while the year grid covers the days:
+		// they keep their room but take neither the press nor the keyboard.
+		// The pose is always set so closing fades them back in.
+		previous.AnimatePose(ui.Pose{Fade: fadeGone(open)},
+			ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut})
 		previous.Children(func() {
 			ui.Icon(c, lucide.ChevronLeft()).Size(theme.Scale(c, 16), theme.Scale(c, 16)).
 				TextColor(t.AccentSoftForeground)
 		})
 
 		next := navButton(c, spec.next(), navRadius)
-		if canShiftMonth(month, spec.min, spec.max, 1) {
+		if !open && canShiftMonth(month, spec.min, spec.max, 1) {
 			next = next.OnClick(func() { shiftMonth(view, month, cursor, 1) })
 		} else {
 			next = style.Disabled(next, true)
 		}
+		next.AnimatePose(ui.Pose{Fade: fadeGone(open)},
+			ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut})
 		next.Children(func() {
 			ui.Icon(c, lucide.ChevronRight()).Size(theme.Scale(c, 16), theme.Scale(c, 16)).
 				TextColor(t.AccentSoftForeground)
 		})
 	})
+}
+
+// openDegrees is the chevron's turn while the year grid is open.
+func openDegrees(open bool) float32 {
+	if open {
+		return 90
+	}
+	return 0
+}
+
+// fadeGone is the pose fade of a control hidden behind the year grid.
+func fadeGone(hidden bool) float32 {
+	if hidden {
+		return 1
+	}
+	return 0
 }
 
 func navButton(c *ui.Context, label string, radius float32) ui.Element {
@@ -346,14 +401,16 @@ func navButton(c *ui.Context, label string, radius float32) ui.Element {
 }
 
 func buildDayGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cellSelection,
-	month, cursor, today time.Time, cellW, cellH, weekdayH, gap float32) {
+	month, cursor, today time.Time, cellW, cellH, weekdayH, gap, rowInset float32) ui.Element {
 	t := theme.Colors(c)
 	label := spec.label
 	if label == "" {
 		label = spec.monthText(month)
 	}
+	rowH := cellH + 2*rowInset
 
-	grid := ui.Column(c).Shrink(0).Focusable().FocusRing(false).Role(ui.RoleTable).Label(label)
+	grid := ui.Column(c).Key(dayGridKey{}).Shrink(0).Focusable().FocusRing(false).
+		Role(ui.RoleTable).Label(label)
 	if spec.autofocus {
 		grid = grid.AutoFocus()
 	}
@@ -363,10 +420,13 @@ func buildDayGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel
 		ui.Row(c).Shrink(0).Height(weekdayH).Children(func() {
 			for i := range 7 {
 				day := time.Weekday((int(spec.firstWeekday) + i) % 7)
-				cell := ui.Box(c).Width(cellW).Height(weekdayH).Center().
-					Role(ui.RoleColumnHeader).Label(day.String())
+				// HeroUI hides the weekday row from assistive technology; each
+				// day cell names its own full date. The 8 DIP bottom padding
+				// keeps the labels on HeroUI's baseline.
+				cell := ui.Box(c).Width(cellW).Height(weekdayH).
+					Padding(0, 0, theme.Space8, 0).Center().Role(ui.RoleNone)
 				cell.Children(func() {
-					style.Text(ui.Text(c, spec.weekdayText(day)), c, theme.XS()).
+					style.Text(ui.Text(c, spec.weekdayText(day)).Role(ui.RoleNone), c, theme.XS()).
 						FontWeight(theme.WeightMedium).TextColor(t.Muted).SingleLine()
 				})
 			}
@@ -384,7 +444,7 @@ func buildDayGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel
 					for col := range 7 {
 						day := start.AddDate(0, 0, week*7+col)
 						cell := dayCell(c, spec, view, sel, day, month, cursor, today,
-							cellW, cellH, col, grid)
+							cellW, cellH, rowInset, rowH, col, grid)
 						if sameDay(day, cursor) {
 							cursorCell = cell
 						}
@@ -411,10 +471,12 @@ func buildDayGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel
 	})
 	grid.OnShortcut(0, ui.KeyEnter, func() { activateDay(spec, view, month, sel, cursor) })
 	grid.OnShortcut(0, ui.KeySpace, func() { activateDay(spec, view, month, sel, cursor) })
+	return grid
 }
 
 func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cellSelection,
-	day, month, cursor, today time.Time, cellW, cellH float32, col int, grid ui.Element) ui.Element {
+	day, month, cursor, today time.Time, cellW, cellH, rowInset, rowH float32, col int,
+	grid ui.Element) ui.Element {
 	t := theme.Colors(c)
 	outside := !sameMonth(day, month)
 	disabled := spec.disabledDay(day)
@@ -440,13 +502,34 @@ func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cell
 		ink = t.Foreground
 	}
 
-	// HeroUI's rounded-3xl cell: 24 DIP, clamped to half the square cell so
-	// the endpoints read as circles rather than rounded squares.
+	// HeroUI's rounded-3xl cap: 24 DIP, clamped to half the square cell so the
+	// endpoints read as circles rather than rounded squares.
 	radius := min(theme.Scale(c, 24), cellH/2)
 	bandEdge := theme.RadiusScale().LG
+	// Resolve the band's corners in the build. Painting runs on every repaint,
+	// including inert exit copies, so it must not call DisabledDates or the
+	// range predicates again.
+	var tl, tr, br, bl float32
+	if rangeMode && inRange && !outside && !disabled {
+		switch {
+		case isStart:
+			tl, bl = radius, radius
+		case col == 0 || !bandContinues(spec, sel, day.AddDate(0, 0, -1), month):
+			tl, bl = bandEdge, bandEdge
+		}
+		switch {
+		case isEnd:
+			tr, br = radius, radius
+		case col == 6 || !bandContinues(spec, sel, day.AddDate(0, 0, 1), month):
+			tr, br = bandEdge, bandEdge
+		}
+	}
 	cell := ui.Box(c).Key(dayKey{day.Year(), day.Month(), day.Day()}).
-		Size(cellW, cellH).Center().Shrink(0).Radius(radius).
+		Size(cellW, rowH).Center().Shrink(0).Radius(radius).
 		Role(ui.RoleButton).Label(spec.dayText(day)).
+		// MyGo's Selected paints an accent background and text color, so only
+		// the single calendar marks its day here; a range's selected days are
+		// painted by the band and named by their full-date labels.
 		Selected(isSelected)
 	if !disabled && sel.activate != nil {
 		cell = cell.Cursor(ui.CursorPointer).OnClick(func() { activateDay(spec, view, month, sel, day) })
@@ -458,7 +541,7 @@ func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cell
 	}
 
 	cell.Children(func() {
-		text := style.Text(ui.Text(c, strconv.Itoa(day.Day())), c, theme.SM()).
+		text := style.Text(ui.Text(c, dayNumbers[day.Day()]), c, theme.SM()).
 			FontWeight(theme.WeightMedium).TextColor(ink).SingleLine().FontFeatures("tnum")
 		if disabled && !outside {
 			text.Strikethrough()
@@ -468,47 +551,55 @@ func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cell
 	// leaving element paints in later passes, where cell has expired.
 	cellPressed, cellHovered := cell.Pressed(), cell.Hovered()
 	cell.Draw(func(p *ui.Painter, r ui.Rect) {
+		// The range row keeps 2 DIPs above and below its track; the single
+		// calendar fills its square cell.
+		inner := ui.Rect{X: r.X, Y: r.Y + rowInset, W: r.W, H: cellH}
 		// Disabled and outside days stay plain: 50% opacity and, for disabled
 		// days, a line-through, but never a hover, today, selected or range
 		// fill. A disabled day inside a range breaks the band.
-		if disabled || outside {
+		if disabled {
+			return
+		}
+		if outside {
+			if rangeMode && inRange {
+				// HeroUI tints a range's outside-month days with 20% of the
+				// default surface, under the cell's 50% opacity.
+				p.Fill(inner, ui.Color{R: t.Default.R, G: t.Default.G, B: t.Default.B, A: t.Default.A / 5}, radius)
+			} else if !rangeMode && isSelected {
+				p.Fill(inner, t.Default, radius)
+			}
 			return
 		}
 		if rangeMode {
 			if inRange {
-				// The band fills the whole cell, square in the middle of a
+				// The band fills the cell's track, square in the middle of a
 				// week and HeroUI's rounded-lg where the row or the range
 				// ends, with the cap radius on an endpoint's outer side.
-				var tl, tr, br, bl float32
-				switch {
-				case isStart:
-					tl, bl = radius, radius
-				case col == 0 || !bandContinues(spec, sel, day.AddDate(0, 0, -1), month):
-					tl, bl = bandEdge, bandEdge
-				}
-				switch {
-				case isEnd:
-					tr, br = radius, radius
-				case col == 6 || !bandContinues(spec, sel, day.AddDate(0, 0, 1), month):
-					tr, br = bandEdge, bandEdge
-				}
-				fillBand(p, r, t.AccentSoft, tl, tr, br, bl)
+				fillBand(p, inner, t.AccentSoft, tl, tr, br, bl)
 			}
 			switch {
 			case isStart || isEnd:
+				// HeroUI shrinks the cap to 0.9 while pressed, revealing the
+				// soft track around it.
+				cap := inner
+				if cellPressed {
+					cap = shrink(cap, 0.9)
+				}
 				fill := t.Accent
 				if cellPressed {
 					fill = t.AccentHover
 				}
-				p.Fill(r, fill, radius)
+				p.Fill(cap, fill, min(radius, cap.H/2))
+			case cellPressed:
+				p.Fill(inner, t.Default, radius)
 			case isToday:
 				fill := t.AccentSoft
 				if cellHovered {
 					fill = t.AccentSoftHover
 				}
-				p.Fill(r, fill, radius)
+				p.Fill(inner, fill, radius)
 			case cellHovered:
-				p.Fill(r, t.Default, radius)
+				p.Fill(inner, t.Default, radius)
 			}
 			return
 		}
@@ -518,23 +609,32 @@ func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cell
 			if cellPressed {
 				fill = t.AccentHover
 			}
-			p.Fill(r, fill, radius)
+			p.Fill(inner, fill, radius)
+		case cellPressed:
+			p.Fill(inner, t.Default, radius)
 		case isToday:
 			fill := t.AccentSoft
 			if cellHovered {
 				fill = t.AccentSoftHover
 			}
-			p.Fill(r, fill, radius)
+			p.Fill(inner, fill, radius)
 		case cellHovered:
-			p.Fill(r, t.Default, radius)
+			p.Fill(inner, t.Default, radius)
 		}
 	})
 	if isCursor && grid.FocusVisible() {
 		cell.DrawOver(func(p *ui.Painter, r ui.Rect) {
-			p.FocusRing(r, [4]float32{radius, radius, radius, radius})
+			inner := ui.Rect{X: r.X, Y: r.Y + rowInset, W: r.W, H: cellH}
+			p.FocusRing(inner, [4]float32{radius, radius, radius, radius})
 		})
 	}
 	return cell
+}
+
+// shrink returns r scaled by f around its center.
+func shrink(r ui.Rect, f float32) ui.Rect {
+	w, h := r.W*f, r.H*f
+	return ui.Rect{X: r.X + (r.W-w)/2, Y: r.Y + (r.H-h)/2, W: w, H: h}
 }
 
 // bandContinues reports whether the range band covers d: in range, in the
@@ -633,7 +733,7 @@ func canShiftMonth(month, min, max time.Time, delta int) bool {
 
 // buildYearGrid paints the 3-column year picker over the day grid's area.
 func buildYearGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, month, cursor time.Time,
-	height float32, focusHeading *bool) {
+	height float32, focusHeading *bool) ui.Element {
 	t := theme.Colors(c)
 	lo, hi := yearPage(month.Year(), spec.min, spec.max)
 	selectedYear := month.Year()
@@ -654,7 +754,7 @@ func buildYearGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, mo
 	radius := cellH / 2
 	itemH := cellH + theme.Space4
 
-	scroll := ui.Scroll(c).Height(height).Shrink(0)
+	scroll := ui.Scroll(c).Key(yearGridKey{}).Height(height).Shrink(0)
 	scroller := ui.Local(scroll, yearScrollKey{}, func() ui.ScrollState { return ui.ScrollState{} })
 	scroll.TrackScroll(scroller)
 	scrolled := ui.Local(scroll, yearScrollInitKey{}, func() bool { return false })
@@ -673,8 +773,9 @@ func buildYearGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, mo
 		grid.Children(func() {
 			for y := lo; y <= hi; y++ {
 				year := y
+				label := strconv.Itoa(year)
 				cell := ui.Box(c).Key(yearKey(year)).Height(cellH).Center().
-					Radius(radius).Role(ui.RoleButton).Label(strconv.Itoa(year)).
+					Radius(radius).Role(ui.RoleButton).Label(label).
 					Selected(year == selectedYear).Cursor(ui.CursorPointer)
 				cell = cell.OnClick(func() { chooseYear(view, month, cursor, year, focusHeading) })
 				ink := t.Foreground
@@ -682,7 +783,7 @@ func buildYearGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, mo
 					ink = t.AccentForeground
 				}
 				cell.Children(func() {
-					style.Text(ui.Text(c, strconv.Itoa(year)), c, theme.SM()).
+					style.Text(ui.Text(c, label), c, theme.SM()).
 						FontWeight(theme.WeightMedium).TextColor(ink).SingleLine().FontFeatures("tnum")
 				})
 				// Snapshot the cell's states in the build: a retained copy of
@@ -740,6 +841,7 @@ func buildYearGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, mo
 		cursorCell.ScrollIntoView()
 		*wantScroll = false
 	}
+	return scroll
 }
 
 func chooseYear(view *CalendarViewState, month, cursor time.Time, year int, focusHeading *bool) {
@@ -820,6 +922,22 @@ type dayKey struct {
 }
 
 type yearKey int
+
+// The animated swap between the day grid and the year grid needs a stable
+// identity for each grid, independent of its cells.
+type dayGridKey struct{}
+type yearGridKey struct{}
+
+// dayNumbers are the labels the day cells show, one per day of a month. The
+// grid rebuilds on every hover and selection, so formatting them once keeps
+// that path allocation-free.
+var dayNumbers = func() [32]string {
+	var n [32]string
+	for i := 1; i < len(n); i++ {
+		n[i] = strconv.Itoa(i)
+	}
+	return n
+}()
 
 // Calendar date arithmetic. Only year, month and day participate; the clock
 // and location of a stored time are preserved but never compared.

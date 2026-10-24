@@ -3,6 +3,7 @@ package color
 import (
 	"image"
 	"testing"
+	"time"
 
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -27,9 +28,9 @@ func wantColorHoverPixel(t *testing.T, img *image.RGBA, x, y int, c ui.Color, wh
 }
 
 // TestColorSwatchPickerHoverGrowsSwatch checks the picker item's hover
-// snapshot: HeroUI scales the swatch to 1.1, so the rest fill becomes the
-// color under the pointer and shrinks back when it leaves. The single
-// ColorSwatch preview is a RoleImage with no pointer state.
+// snapshot: HeroUI scales the swatch to 1.1 over 100 ms, so the rest fill
+// becomes the color under the pointer and shrinks back when it leaves. The
+// swatch sits inside the item's border, so the growth stays within the item.
 func TestColorSwatchPickerHoverGrowsSwatch(t *testing.T) {
 	var colors theme.Palette
 	red := ui.RGB(255, 0, 0)
@@ -51,16 +52,21 @@ func TestColorSwatchPickerHoverGrowsSwatch(t *testing.T) {
 	if !ok {
 		t.Fatal("red swatch missing")
 	}
-	// One pixel inside the resting circle, exposed when it grows 1.1×.
-	x, y := int(item.X)-1, int(item.Y+item.H/2)
+	// One DIP inside the item's transparent border, exposed when the 28 DIP
+	// swatch grows 1.1×.
+	x, y := int(item.X)+1, int(item.Y+item.H/2)
 	wantColorHoverPixel(t, tt.Image(), x, y, colors.Background, "swatch rest fill")
 
 	tt.Move(item.X+item.W/2, item.Y+item.H/2)
 	tt.Frame()
+	wantColorHoverPixel(t, tt.Image(), x, y, colors.Background, "swatch before the grow")
+	tt.Advance(120 * time.Millisecond)
 	wantColorHoverPixel(t, tt.Image(), x, y, red, "swatch hover fill")
 
 	tt.Move(2, 2)
 	tt.Frame()
+	wantColorHoverPixel(t, tt.Image(), x, y, red, "swatch before the shrink")
+	tt.Advance(120 * time.Millisecond)
 	wantColorHoverPixel(t, tt.Image(), x, y, colors.Background, "swatch fill after leaving")
 }
 
@@ -96,8 +102,20 @@ func TestColorAreaThumbPressed(t *testing.T) {
 		t.Fatal("the resting thumb already covers the pressed sample")
 	}
 
+	notWhite := func(what string) {
+		t.Helper()
+		r, g, b := colorHoverPixel(tt.Image(), x, y)
+		if colorHoverNear(r, white.R) && colorHoverNear(g, white.G) && colorHoverNear(b, white.B) {
+			t.Fatalf("%s: the thumb already covers the pressed sample", what)
+		}
+	}
 	tt.Press(cx, cy)
 	tt.Frame()
+	// The pose starts from the resting size and grows in paint-only frames.
+	notWhite("before the grow")
+	tt.Advance(160 * time.Millisecond)
 	wantColorHoverPixel(t, tt.Image(), x, y, white, "thumb pressed border")
 	tt.Release(cx, cy)
+	tt.Advance(160 * time.Millisecond)
+	notWhite("after release")
 }

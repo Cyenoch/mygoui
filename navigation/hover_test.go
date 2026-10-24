@@ -27,9 +27,10 @@ func wantNavHoverPixel(t *testing.T, img *image.RGBA, x, y int, c ui.Color, what
 	}
 }
 
-// TestTabsHoverPaint checks an unselected tab's hover face follows the
-// pointer and reverts. The selected tab keeps its segment face.
-func TestTabsHoverPaint(t *testing.T) {
+// TestTabsHoverDimsLabel checks an unselected tab follows the pointer the
+// way upstream's opacity-70 does: the label dims and no face is painted,
+// while the selected tab keeps its pill.
+func TestTabsHoverDimsLabel(t *testing.T) {
 	var colors theme.Palette
 	selected := 0
 	tt := ui.NewTester(func(c *ui.Context) {
@@ -51,20 +52,39 @@ func TestTabsHoverPaint(t *testing.T) {
 	if !ok {
 		t.Fatal("unselected tab missing")
 	}
-	// The strip container paints Default; the hover face is Foreground at
-	// 4% over it.
-	normal := colors.Default
-	hover := colors.Foreground.Alpha(0.04).Over(normal)
+	// The strip container paints Default behind an unselected tab.
 	x, y := int(tab.X)+4, int(tab.Y+tab.H/2)
-	wantNavHoverPixel(t, tt.Image(), x, y, normal, "tab normal fill")
+	wantNavHoverPixel(t, tt.Image(), x, y, colors.Default, "tab normal fill")
+	normal := darkestIn(tt.Image(), tab)
 
 	tt.Move(tab.X+tab.W/2, tab.Y+tab.H/2)
 	tt.Frame()
-	wantNavHoverPixel(t, tt.Image(), x, y, hover, "tab hover fill")
+	wantNavHoverPixel(t, tt.Image(), x, y, colors.Default, "tab hover hides no face")
+	hovered := darkestIn(tt.Image(), tab)
+	if hovered <= normal+30 {
+		t.Fatalf("hovered label ink sums %d against %d: the label did not dim", hovered, normal)
+	}
 
 	tt.Move(2, 2)
 	tt.Frame()
-	wantNavHoverPixel(t, tt.Image(), x, y, normal, "tab fill after leaving")
+	if got := darkestIn(tt.Image(), tab); got > normal+6 {
+		t.Fatalf("label ink sums %d after leaving, want about %d", got, normal)
+	}
+}
+
+// darkestIn returns the smallest color sum of the pixels inside r, away from
+// its edges, as the label's ink is the darkest thing there.
+func darkestIn(img *image.RGBA, r ui.Rect) int {
+	best := 3 * 255
+	for y := int(r.Y) + 8; y < int(r.Y+r.H)-8; y++ {
+		for x := int(r.X) + 12; x < int(r.X+r.W)-12; x++ {
+			c := img.RGBAAt(x, y)
+			if sum := int(c.R) + int(c.G) + int(c.B); sum < best {
+				best = sum
+			}
+		}
+	}
+	return best
 }
 
 // TestAccordionHeaderHoverPaint checks a closed section's header paint follows

@@ -178,7 +178,7 @@ form.Input(c, &query, form.InputOptions{
 		Description: "A multiline editor that grows to its line limit, then scrolls.",
 		Examples: []ComponentExample{
 			{Title: "Default", Description: "The editor grows to its line limit, then scrolls.", Demo: formsExampleDemo(formsTextAreaExampleDefault)},
-			{Title: "Read-only", Description: "Text stays selectable but cannot change.", Demo: formsExampleDemo(formsTextAreaExampleReadOnly)},
+			{Title: "Locked", Description: "Text stays selectable; typing cannot change it.", Demo: formsExampleDemo(formsTextAreaExampleReadOnly)},
 			{Title: "Invalid", Description: "The danger border pairs with the error message.", Demo: formsExampleDemo(formsTextAreaExampleInvalid)},
 		},
 		Code: `form.TextArea(c, &bio, form.TextAreaOptions{
@@ -302,7 +302,7 @@ form.Input(c, &query, form.InputOptions{
 		},
 		Code: `form.NumberField(c, &seats, form.NumberFieldOptions{
     Label: "Seats", Description: "Between one and twelve.",
-    Min: new(float64(1)), Max: new(float64(12)), Step: 1, FullWidth: true,
+    Min: new(float64(1)), Max: new(float64(12)), Step: 1,
 })`,
 		Params: []ComponentParam{
 			{"Min", "*float64", "nil", "Lower bound; typed values clamp to it."},
@@ -312,7 +312,7 @@ form.Input(c, &query, form.InputOptions{
 			{"Disabled", "bool", "false", "Stops stepping and editable text."},
 			{"Invalid", "bool", "false", "Paints the danger border and error."},
 		},
-		Tokens: []string{"FieldBackground", "FieldBorder", "FieldForeground", "DefaultHover", "Danger"},
+		Tokens: []string{"FieldBackground", "FieldBorder", "FieldForeground", "FieldPlaceholder", "Danger"},
 	})
 
 	RegisterComponent(ComponentPage{
@@ -320,6 +320,7 @@ form.Input(c, &query, form.InputOptions{
 		Description: "A single caller-owned check box with mixed and invalid states.",
 		Examples: []ComponentExample{
 			{Title: "Default", Description: "A single caller-owned check box.", Demo: formsExampleDemo(formsCheckboxExampleDefault)},
+			{Title: "Secondary", Description: "The flat secondary control face.", Demo: formsExampleDemo(formsCheckboxExampleSecondary)},
 			{Title: "With description", Description: "Supporting copy indents under the label.", Demo: formsExampleDemo(formsCheckboxExampleDescription)},
 			{Title: "Mixed", Description: "The indeterminate mark shows a partial selection.", Demo: formsExampleDemo(formsCheckboxExampleMixed)},
 			{Title: "Invalid", Description: "The danger control pairs with the error message.", Demo: formsExampleDemo(formsCheckboxExampleInvalid)},
@@ -332,6 +333,7 @@ form.Input(c, &query, form.InputOptions{
 		Params: []ComponentParam{
 			{"Checked", "*bool", "required", "Caller-owned value flipped by the row."},
 			{"Indeterminate", "*bool", "nil", "Paints the mixed mark until activation clears it."},
+			{"Variant", "form.ControlVariant", "ControlPrimary", "Primary field face or the flat secondary face."},
 			{"Description", "string", "", "Supporting line indented under the label."},
 			{"Required", "bool", "false", "Marks the label as required."},
 			{"Invalid", "bool", "false", "Paints the danger control and error."},

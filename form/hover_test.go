@@ -43,13 +43,16 @@ func TestCheckboxHoverAndPressedPaint(t *testing.T) {
 			Checkbox(c, CheckboxOptions{Checked: &checked, Label: "Accept"})
 		})
 	}, 400, 140)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
 
 	row, ok := tt.Find("Accept")
 	if !ok {
 		t.Fatal("checkbox missing")
 	}
-	// The 16 DIP box sits at the row's start; sample off its check mark.
-	x, y := int(row.X)+3, int(row.Y+row.H/2)
+	// The 16 DIP box sits at the row's start; sample inside it, below the
+	// check mark's path.
+	x := int(row.X) + 8
+	y := int(row.Y+(row.H-float32(theme.Space16))/2) + 13
 	wantFormHoverPixel(t, tt.Image(), x, y, colors.Accent, "checkbox normal fill")
 
 	tt.Move(row.X+row.W/2, row.Y+row.H/2)
@@ -87,6 +90,7 @@ func TestRadioHoverAndPressedPaint(t *testing.T) {
 				})
 			})
 		}, 400, 200)
+		tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
 
 		row, ok := tt.Find("Alpha")
 		if !ok {
@@ -118,6 +122,7 @@ func TestRadioHoverAndPressedPaint(t *testing.T) {
 				})
 			})
 		}, 400, 200)
+		tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
 
 		row, ok := tt.Find("Alpha")
 		if !ok {
@@ -168,6 +173,7 @@ func TestSwitchHoverPaint(t *testing.T) {
 					Switch(c, SwitchOptions{On: &on, Label: "Wifi"})
 				})
 			}, 400, 140)
+			tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
 
 			row, ok := tt.Find("Wifi")
 			if !ok {
@@ -205,6 +211,7 @@ func TestSliderPressedShrinksKnob(t *testing.T) {
 			})
 		})
 	}, 400, 200)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
 
 	header, ok := tt.Find("Volume")
 	if !ok {
@@ -242,6 +249,7 @@ func TestInputGroupHoverPaint(t *testing.T) {
 			InputGroup(c, &value, InputGroupOptions{Label: "Name", FullWidth: true})
 		})
 	}, 460, 180)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
 
 	row, ok := tt.Find("Name")
 	if !ok {

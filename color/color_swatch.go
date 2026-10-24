@@ -2,6 +2,7 @@ package color
 
 import (
 	"strings"
+	"time"
 
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
@@ -117,7 +118,7 @@ type ColorSwatchPickerOptions struct {
 	// empty names fall back to the color's hex value.
 	Names []string
 	// Value is the caller-owned selection. A click or the arrow keys choose a
-	// color into it. A nil Value makes the picker read-only.
+	// color into it. A nil Value leaves the palette with no current color.
 	Value    *ui.Color
 	Size     ColorSwatchSize
 	Shape    ColorSwatchShape
@@ -144,8 +145,7 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 		}
 	}
 	side := o.Size.side()
-	itemRadius, swatchRadiusValue := pickerRadii(o.Size, o.Shape)
-	fieldBg := theme.Colors(c).FieldBackground
+	itemRadius := pickerRadii(o.Size, o.Shape)
 	border := float32(2)
 	switch o.Size {
 	case SwatchXS:
@@ -161,45 +161,65 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 	if o.Disabled {
 		cursor = ui.CursorDefault
 	}
+	// HeroUI's border sits inside the item, so the swatch fills the content
+	// box and grows on hover without escaping its item.
+	content := side - 2*border
 	group := ui.RadioGroup(c, func() {
 		for i, col := range o.Colors {
 			i, col := i, col
 			name := pickerName(o, i, col)
-			item := ui.RadioBase(c, &selected, i).Size(side, side).
-				Shrink(0).Radius(itemRadius).FocusRing(false).
-				Cursor(cursor).Label(name).Tooltip(name)
 			chosen := i == selected
-			// Snapshot the swatch's states in the build: a retained copy of
-			// a leaving element paints in later passes, where item has
-			// expired.
-			hovered, focused := item.Hovered() && !o.Disabled, item.FocusVisible()
-			item.Draw(func(p *ui.Painter, r ui.Rect) {
-				scale := float32(1)
+			borderColor := ui.Transparent
+			if chosen {
+				borderColor = col
+			}
+			item := ui.RadioBase(c.Key(colorItemKey(i)), &selected, i).
+				Size(side, side).Center().Shrink(0).Radius(itemRadius).
+				Border(border, borderColor).FocusRing(true).
+				Cursor(cursor).Label(name).Tooltip(name)
+			// Snapshot the item's hover in the build: the pose then animates
+			// the swatch in paint-only frames, as HeroUI's scale transition
+			// does.
+			hovered := item.Hovered() && !o.Disabled
+			itemColor := col
+			item.Children(func() {
+				swatchScale := float32(1)
+				switch {
+				case chosen:
+					swatchScale = 0.77
+				case hovered:
+					swatchScale = 1.1
+				}
+				innerRadius := itemRadius
+				if o.Shape == SwatchSquare && o.Size == SwatchSM && chosen {
+					// HeroUI rounds a selected small square swatch to 6 DIP
+					// inside its 8 DIP item.
+					innerRadius = 6
+				}
+				swatch := ui.Box(c).Size(content, content).Role(ui.RoleNone)
+				swatch.AnimatePose(ui.Pose{Scale: swatchScale},
+					ui.Animation{Duration: 100 * time.Millisecond, Ease: ui.EaseOut})
+				swatch.Draw(func(p *ui.Painter, r ui.Rect) {
+					paintSwatch(p, r, itemColor, innerRadius)
+				})
+
+				// The tick is its own layer so its arrival (a 150 ms scale and
+				// fade) stays centered in the item rather than the swatch.
+				ink := ui.RGB(255, 255, 255)
+				if luminance(itemColor) > 0.5 {
+					ink = ui.RGB(0, 0, 0)
+				}
+				checkScale, checkFade := float32(0.8), float32(1)
 				if chosen {
-					scale = 0.77
-				} else if hovered {
-					scale = 1.1
+					checkScale, checkFade = 1, 0
 				}
-				sw := side * scale
-				sr := swatchRadiusValue * scale
-				box := ui.Rect{
-					X: r.X + (r.W-sw)/2, Y: r.Y + (r.H-sw)/2,
-					W: sw, H: sw,
-				}
-				paintSwatch(p, box, col, sr)
-				paintSwatchBorder(p, box, sr)
-				if chosen {
-					ink := visibleColor(col, fieldBg)
-					p.Stroke(r, ink, itemRadius, border)
-					check := ui.RGB(255, 255, 255)
-					if luminance(ink) > 0.5 {
-						check = ui.RGB(0, 0, 0)
-					}
-					paintCheckmark(p, r, check)
-				}
-				if focused {
-					p.FocusRing(r, [4]float32{itemRadius, itemRadius, itemRadius, itemRadius})
-				}
+				check := ui.Box(c).Absolute().Role(ui.RoleNone).
+					Left(0).Top(0).Size(content, content)
+				check.AnimatePose(ui.Pose{Scale: checkScale, Fade: checkFade},
+					ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut})
+				check.Draw(func(p *ui.Painter, r ui.Rect) {
+					paintCheckmark(p, r, ink)
+				})
 			})
 			item.OnChange(func() {
 				if o.Value == nil {
@@ -223,26 +243,30 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 	return style.Disabled(group, o.Disabled)
 }
 
-// pickerRadii returns the item and inner swatch radii of a picker.
-func pickerRadii(size ColorSwatchSize, shape ColorSwatchShape) (item, swatch float32) {
+// colorItemKey identifies one swatch of a palette across builds.
+type colorItemKey int
+
+// pickerRadii returns the item radius of a picker; the inner swatch inherits
+// it, as HeroUI's swatch does.
+func pickerRadii(size ColorSwatchSize, shape ColorSwatchShape) (item float32) {
 	if shape == SwatchSquare {
 		switch size {
 		case SwatchXS:
-			return 6, 6
+			return 6
 		case SwatchSM:
-			return 8, 8
+			return 8
 		}
-		return 12, 8
+		return 12
 	}
 	switch size {
 	case SwatchXS:
-		return 8, 8
+		return 8
 	case SwatchSM:
-		return 12, 12
+		return 12
 	case SwatchLG, SwatchXL:
-		return 24, 24
+		return 24
 	}
-	return 16, 16
+	return 16
 }
 
 // pickerName returns the accessible name of swatch i.
@@ -252,5 +276,5 @@ func pickerName(o ColorSwatchPickerOptions, i int, col ui.Color) string {
 			return name
 		}
 	}
-	return strings.ToUpper(FormatHex(col))
+	return FormatHex(col)
 }

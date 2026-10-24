@@ -1,6 +1,8 @@
 package form
 
 import (
+	"time"
+
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -94,38 +96,22 @@ func checkboxControl(c *ui.Context, checked *bool, indeterminate *bool, invalid 
 	size := float32(theme.Space16)
 	radius := theme.RadiusScale().MD
 	stroke := theme.Scale(c, 2.5)
-	box := ui.Box(c).Size(size, size).Shrink(0)
-	// Snapshot the row's states in the build: a retained copy of a leaving
-	// element paints in later passes, where owner has expired.
+	// Snapshot the row's states and the value in the build: a retained copy
+	// of a leaving element paints in later passes, where owner has expired
+	// and the caller may have cleared the check box.
 	hovered, pressed, focused := owner.Hovered(), owner.Pressed(), owner.FocusVisible()
+	selected, mixed := *checked, indeterminate != nil && *indeterminate
+	on := selected || mixed
+	reduceMotion := theme.ReduceMotion(c)
+
+	box := ui.Box(c).Size(size, size).Shrink(0).Center()
 	box.Draw(func(p *ui.Painter, r ui.Rect) {
-		selected := *checked
-		mixed := indeterminate != nil && *indeterminate
 		fill := t.FieldBackground
 		border := t.FieldBorder
-		if variant == ControlSecondary && !selected && !mixed {
+		if variant == ControlSecondary {
 			fill = t.Default
 		}
-		switch {
-		case selected || mixed:
-			border = ui.Transparent
-			switch {
-			case invalid:
-				fill = t.Danger
-			case mixed:
-				fill = t.Accent
-				if pressed {
-					fill = t.AccentHover
-				}
-			default:
-				fill = t.Accent
-				if hovered || pressed {
-					fill = t.AccentHover
-				}
-			}
-		case invalid:
-			border = t.Danger
-		case hovered:
+		if !on && !invalid && hovered {
 			border = t.FieldBorderHover
 		}
 		if variant != ControlSecondary {
@@ -135,32 +121,71 @@ func checkboxControl(c *ui.Context, checked *bool, indeterminate *bool, invalid 
 		if border.A != 0 {
 			p.Stroke(r, border, radius, theme.Hairline)
 		}
-		if selected || mixed {
-			fg := t.AccentForeground
-			if invalid {
-				fg = t.DangerForeground
-			}
-			if mixed {
-				h := float32(1.5)
-				p.Fill(ui.Rect{X: r.X + r.W*0.25, Y: r.Y + (r.H-h)/2, W: r.W * 0.5, H: h}, fg, h/2)
-			} else {
-				p.StrokePath(choiceCheckPath(r), stroke, fg)
-			}
-		}
-		if focused {
+		switch {
+		case focused:
 			choiceFocusRing(p, r, radius, invalid, t)
+		case invalid:
+			choiceInvalidRing(p, r, radius, t)
 		}
 	})
+	if on {
+		// HeroUI paints the chosen face as a layer over the field and scales
+		// it from 70% as the check appears. The native transition keeps the
+		// last face alive on the way out, without restructuring the row.
+		fill, fg := t.Accent, t.AccentForeground
+		switch {
+		case invalid:
+			fill, fg = t.Danger, t.DangerForeground
+		case hovered || pressed:
+			fill = t.AccentHover
+		}
+		box.Children(func() {
+			layer := ui.Box(c).Size(size, size).Shrink(0).Center()
+			layer.Draw(func(p *ui.Painter, r ui.Rect) {
+				p.Fill(r, fill, radius)
+				if mixed {
+					// Upstream draws a 9 DIP line in the middle of its 12 DIP
+					// indicator; round caps make the mark 10.5 DIP wide.
+					w, h := r.W*0.65625, r.H*0.09375
+					p.Fill(ui.Rect{
+						X: r.X + (r.W-w)/2, Y: r.Y + (r.H-h)/2,
+						W: w, H: h,
+					}, fg, h/2)
+					return
+				}
+				mark := r.W * 0.625 // the checkmark's 10 DIP box
+				p.StrokePath(choiceCheckPath(ui.Rect{
+					X: r.X + (r.W-mark)/2, Y: r.Y + (r.H-mark)/2,
+					W: mark, H: mark,
+				}), stroke, fg)
+			})
+			if !reduceMotion {
+				layer.Transition(ui.ElementTransition{
+					Duration: 150 * time.Millisecond,
+					Ease:     ui.EaseOut,
+					Colors:   true,
+					Enter:    &ui.Motion{Scale: 0.7, Opacity: 0},
+					Exit:     &ui.Motion{Scale: 0.7, Opacity: 0},
+				})
+			}
+		})
+	}
 	return box
 }
 
-// choiceCheckPath is the upstream check mark, within a 16 DIP box.
+// choiceCheckPath is HeroUI's check mark fitted into a 10 DIP box: the
+// upstream 17×18 viewBox drawn without stretching.
 func choiceCheckPath(r ui.Rect) *ui.Path {
-	x, y, s := r.X+r.W*0.19, r.Y+r.H*0.19, r.W*0.62
 	var p ui.Path
-	return p.MoveTo(x+s*0.22, y+s*0.52).
-		LineTo(x+s*0.42, y+s*0.71).
-		LineTo(x+s*0.78, y+s*0.31)
+	return p.MoveTo(r.X+r.W*0.084, r.Y+r.H*0.5).
+		LineTo(r.X+r.W*0.417, r.Y+r.H*0.778).
+		LineTo(r.X+r.W*0.861, r.Y+r.H*0.222)
+}
+
+// choiceInvalidRing paints HeroUI's unfocused invalid outline: a one DIP
+// danger ring just outside the control.
+func choiceInvalidRing(p *ui.Painter, r ui.Rect, radius float32, t theme.Palette) {
+	p.Stroke(choiceExpand(r, 1), t.Danger, radius+1, 1)
 }
 
 // choiceFocusRing paints HeroUI's two-pixel ring, in Danger for an invalid
@@ -192,10 +217,18 @@ func choiceField(c *ui.Context, description, errText string, disabled bool, inde
 			Description(c, description).PaddingStart(indent)
 		}
 		if errText != "" {
-			FieldError(c, errText).PaddingStart(indent)
+			choiceErrorMessage(c, errText).PaddingStart(indent)
 		}
 	})
 	return style.Disabled(outer, disabled)
+}
+
+// choiceErrorMessage is the muted field-level error a check box, radio or
+// switch shows; HeroUI overrides the danger tone for these rows, which mark
+// the control and label instead.
+func choiceErrorMessage(c *ui.Context, text string) ui.Element {
+	return style.Text(ui.Text(c, text), c, theme.HelpText()).
+		TextColor(theme.Colors(c).Muted).Role(ui.RoleStatus)
 }
 
 // choiceErrorText resolves a caller's error text, falling back to the
