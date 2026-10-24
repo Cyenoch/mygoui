@@ -87,7 +87,7 @@ authoritative usage reference for prototypes and state wiring.
 | `Modal` | Focus-contained dialog in seven sizes, including cover and extra small; opaque/blur/transparent backdrop, scrollable body, footer and close button. |
 | `AlertDialog` | Explicit action/cancel dialog; backdrop and Escape do not accept. |
 | `Drawer` | Floating edge panel in four directions with 16 DIP screen gutters, rounded corners and the native dialog focus contract. |
-| `BottomSheet` | Floating bottom panel with 16 DIP gutters, a 250 ms slide-in, handle swipe dismissal (short drags spring back, long drags slide out) and a scrim that clears with the sheet. Close, backdrop and Escape also slide out from the close button or fade from native dismissal. |
+| `BottomSheet` | Floating bottom panel with 16 DIP gutters, a 250 ms slide-in, handle swipe dismissal (short drags spring back, long drags slide out) and a scrim that clears with the sheet. The close button runs the same slide-out; backdrop and Escape use the native fade. |
 | `Dialog` | Native center or edge modal with header/body/footer. |
 | `Popover` | Anchored rich panel with HeroUI placement, arrow, zoom entry and dismissal. |
 | `Tooltip` | Native hover/focus description with placement, zoom entry and Escape dismissal. |
