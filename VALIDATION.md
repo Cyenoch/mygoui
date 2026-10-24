@@ -15,7 +15,8 @@ v0.2.1. Module metadata targets Go 1.27.1. The public repository is
   internal helpers have no tests. Fixed test counts are not retained here;
   they become stale as behavior regressions are added or removed.
 - `make race` passed with `CGO_ENABLED=1` after those changes, with no data
-  races; `internal/gallery` took 49.6 s under the race detector.
+  races; the slowest package, `internal/gallery`, took about 50–75 s depending
+  on host load.
 - `golangci-lint run ./...` reported zero issues and `make wasm` built every
   package for `GOOS=js GOARCH=wasm`.
 - Toast's semantic-name smoke verified title and description-only

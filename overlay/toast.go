@@ -344,19 +344,26 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 	left := (layout.full - layout.width) / 2
 	width := layout.width
 	// HeroUI enters and leaves the deck by the card's own height, from the
-	// window edge: translateY(100%) below and -100% above. The entrance is
-	// declared geometry, which MyGo re-lays after transitions, and the exit is
-	// the transition's own translation, which the rasterizer folds: a scale
-	// here would put the card's shadow on the per-pixel transformed path every
-	// animated frame.
-	dir := height
+	// window edge: translateY(100%) below and -100% above. The deck keeps a
+	// 16 DIP gutter, so include it or the first frame leaves a sliver of the
+	// card visible at the edge. The entrance is declared geometry, which MyGo
+	// re-lays after transitions, and the exit is the transition's own
+	// translation, which the rasterizer folds: a scale here would put the
+	// card's shadow on the per-pixel transformed path every animated frame.
+	dir := height + theme.Space16
 	if layout.placement == ToastTop {
-		dir = -height
+		dir = -height - theme.Space16
 	}
 	entry := ui.Local(root, "entry", func() bool { return false })
 	if !layout.quiet {
 		if !*entry {
+			// Only the arrival translation and fade animate. A new card is
+			// already at its measured size: animating height/width as well
+			// made it unfold from a sliver before settling.
 			root.Jump("top", top+dir)
+			root.Jump("left", left)
+			root.Jump("width", width)
+			root.Jump("height", height)
 			*entry = true
 		}
 		top = root.AnimateTo("top", top, toastSpring)

@@ -80,7 +80,7 @@ shims are provided.
 - BottomSheet is now a floating sheet with 16 DIP screen gutters and rounded
   corners, slides up over 250 ms, follows a handle swipe, slides out on a long
   drag or the close button, and clears its scrim with the sheet. Short drags
-  spring back; the body keeps native scrolling.
+  ease back; the body keeps native scrolling.
 - Table uses HeroUI's primary/secondary chrome: a secondary header band, white
   body card, 44 DIP rows, 12 DIP muted headers, hairline rows, column
   separators and an in-frame footer. The gallery Table page mirrors the official
@@ -108,6 +108,9 @@ shims are provided.
 
 ### Fixed
 
+- Toast: a new card starts fully outside the deck's 16 DIP gutter and no longer
+  animates its own width and height on entry; only its translation and fade
+  animate, so an action's result does not unfold from a sliver before settling.
 - Performance: shared shadow tables and a cached radius scale remove per-build
   allocations; `theme.ApplyMode` stops reinstalling an identical native theme;
   Table caches row metadata per pass and ListBox typeahead folds without

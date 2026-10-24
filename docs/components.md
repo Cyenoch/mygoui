@@ -46,7 +46,7 @@ authoritative usage reference for prototypes and state wiring.
 | Component | Behavior |
 | --- | --- |
 | `Field`, `Label`, `Description`, `FieldError`, `ErrorMessage`, `Fieldset`, `FieldGroup`, `FieldActions`, `Form` | Native field association, grouping, help and error text. |
-| `Input`, `TextArea`, `TextField` | Native single/multiline editing, primary/secondary variants, labels, descriptions, validation, read-only and disabled states. |
+| `Input`, `TextArea`, `TextField` | Native single/multiline editing, primary/secondary variants, labels, descriptions, validation, disabled states, and values that stay selectable without changing. |
 | `InputGroup` | One native editor with inline or block prefix/suffix regions. |
 | `InputOTP` | Slot-guided one-time code entry over one native editor, committed ASCII filtering and completion callback. |
 | `SearchField` | Native search input with icon, clear action, Escape and Enter behavior. |
@@ -87,7 +87,7 @@ authoritative usage reference for prototypes and state wiring.
 | `Modal` | Focus-contained dialog in seven sizes, including cover and extra small; opaque/blur/transparent backdrop, scrollable body, footer and close button. |
 | `AlertDialog` | Explicit action/cancel dialog; backdrop and Escape do not accept. |
 | `Drawer` | Floating edge panel in four directions with 16 DIP screen gutters, rounded corners and the native dialog focus contract. |
-| `BottomSheet` | Floating bottom panel with 16 DIP gutters, a 250 ms slide-in, handle swipe dismissal (short drags spring back, long drags slide out) and a scrim that clears with the sheet. The close button runs the same slide-out; backdrop and Escape use the native fade. |
+| `BottomSheet` | Floating bottom panel with 16 DIP gutters, a 250 ms slide-in, handle swipe dismissal (short drags ease back, long drags slide out) and a scrim that clears with the sheet. The close button runs the same slide-out; backdrop and Escape use the native fade. |
 | `Dialog` | Native center or edge modal with header/body/footer. |
 | `Popover` | Anchored rich panel with HeroUI placement, arrow, zoom entry and dismissal. |
 | `Tooltip` | Native hover/focus description with placement, zoom entry and Escape dismissal. |
@@ -155,7 +155,9 @@ These boundaries are native platform decisions, not missing glue:
   Selected rows paint a full-bleed tint while native selection semantics and
   keyboard behavior remain intact. The toolkit owns the header row's exact 32
   DIP height, 10/6 padding and 600 weight; the library sets the 12 DIP muted
-  type and 16 DIP column insets around that chrome.
+  type and 16 DIP column insets around that chrome. Column separators are the
+  native resize grip: a column shows one only when `Resizable`, and the last
+  column never does.
 - **Menus:** native popup placement and OS menu appearance remain
   platform-owned.
 - **Tooltips:** timing follows MyGo's native hover/focus policy rather than

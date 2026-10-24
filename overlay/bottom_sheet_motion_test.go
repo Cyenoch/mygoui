@@ -362,6 +362,26 @@ func TestBottomSheetCloseButtonSlidesOut(t *testing.T) {
 
 func sumRGB(c color.RGBA) int { return int(c.R) + int(c.G) + int(c.B) }
 
+// TestBottomSheetHideHandleCloseStillDismisses checks the close path when the
+// handle, and so the grab strip, is absent: there is no slide channel, but the
+// close button must still dismiss the sheet.
+func TestBottomSheetHideHandleCloseStillDismisses(t *testing.T) {
+	tt, f := newSheetTest(t, func(*ui.Context) BottomSheetOptions {
+		return BottomSheetOptions{Title: "Actions", Height: 300, HideHandle: true}
+	})
+	openSheet(t, tt)
+	f.settleEntrance(t, tt)
+	if err := tt.Click("Close"); err != nil {
+		t.Fatal(err)
+	}
+	if f.open || f.dismissed != 1 {
+		t.Fatalf("close without a handle: open=%v dismissed=%d", f.open, f.dismissed)
+	}
+	if !tt.Focused("Open") {
+		t.Fatal("closing the sheet did not restore the focus")
+	}
+}
+
 // TestBottomSheetLongDragSlidesOutAndDismisses checks the swipe dismissal:
 // the sheet follows the pointer, slides below the window, and only then
 // closes and gives the focus back to its opener.
