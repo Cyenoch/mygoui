@@ -1,183 +1,245 @@
-// Give controls stable identities with Context.Key before construction in collections.
 package mygoui
 
 import (
-	locales "github.com/Cyenoch/mygoui/locale"
+	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
-	myui "github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/plugins/loading"
+	"github.com/egoist/mygo/ui"
 )
 
+// ButtonVariant is HeroUI's button color variant.
 type ButtonVariant uint8
 
 const (
-	ButtonDefault ButtonVariant = iota
-	ButtonOutline
+	ButtonPrimary ButtonVariant = iota
 	ButtonSecondary
+	ButtonTertiary
+	ButtonOutline
 	ButtonGhost
-	ButtonDestructive
-	ButtonLink
+	ButtonDanger
+	ButtonDangerSoft
 )
 
-type ButtonSize uint8
+// ButtonAlign places button content.
+type ButtonAlign uint8
 
 const (
-	ButtonSizeDefault ButtonSize = iota
-	ButtonXS
-	ButtonSM
-	ButtonLG
-	ButtonIcon
-	ButtonIconXS
-	ButtonIconSM
-	ButtonIconLG
+	ButtonAlignCenter ButtonAlign = iota
+	ButtonAlignStart
+	ButtonAlignEnd
 )
 
+// ButtonOptions configures a native button. Label is always the accessible
+// name, including icon-only layouts and custom content.
 type ButtonOptions struct {
-	Label              string
-	Icon, TrailingIcon *myui.SVG
-	Variant            ButtonVariant
-	Size               ButtonSize
-	Disabled, Loading  bool
-	Invalid, Rounded   bool
-	OnClick            func()
-	Handle             *myui.Handle
-	Tooltip            string
-	Wrap               bool
-	// Content replaces the default icons and label during this build. Loading
-	// prepends its spinner and still disables activation. Label remains the
-	// accessible name; the callback must not retain Context or Element values.
-	Content func()
+	Label     string
+	Icon      *ui.SVG
+	EndIcon   *ui.SVG
+	Variant   ButtonVariant
+	Size      theme.ButtonSize
+	IconOnly  bool
+	FullWidth bool
+	Loading   bool
+	Disabled  bool
+	OnClick   func()
+	Handle    *ui.Handle
+	Tooltip   string
+	Content   func()
+
+	// Align overrides the centered label placement, for navigation rows and
+	// other left-aligned actions.
+	Align ButtonAlign
+
+	// Corners overrides the uniform HeroUI radius. Nil keeps the default;
+	// a zero array makes square corners.
+	Corners *[4]float32
 }
 
-// Button handles pointer, Enter, Space, focus and accessibility through ButtonBase.
-// Missing actions, loading and disabled controls cannot activate. Icon sizes retain
-// Label as their accessible title without drawing it. Wrap allows multiline
-// labels within caller width constraints. Content replaces the default body.
-// The returned Element is valid only for this build; use Handle for persistent focus.
-// Source: https://ui.shadcn.com/r/styles/base-rhea/button.json
-func Button(c *myui.Context, o ButtonOptions) myui.Element {
-	disabled := o.Disabled || o.Loading || o.OnClick == nil
-	b := myui.ButtonBase(c).Label(o.Label).Disabled(disabled)
+// Button constructs a HeroUI button on the native focusable button base.
+// Hover and pressed paints follow live pointer state; pending buttons do not
+// activate and keep their full opacity. HeroUI's pressed scale is not ported
+// because MyGo layouts do not transform live element boxes.
+func Button(c *ui.Context, o ButtonOptions) ui.Element {
+	t := theme.Colors(c)
+	disabled := o.Disabled || o.Loading
+	height := theme.ButtonHeight(o.Size)
+	radius := theme.RadiusScale().XXXL
+	paddingX := float32(theme.Space16)
+	glyph := float32(theme.IconMD)
+	font := theme.SM()
+	font.Weight = theme.WeightMedium
+	if o.Size == theme.ButtonSmall {
+		paddingX = theme.Space12
+		glyph = theme.IconMD
+	}
+	if o.Size == theme.ButtonLarge {
+		font = theme.Base()
+		font.Weight = theme.WeightMedium
+	}
+	if o.IconOnly {
+		paddingX = 0
+	}
+
+	e := ui.ButtonBase(c).MinHeight(theme.Scale(c, height)).Gap(theme.Space8).
+		PaddingX(paddingX).PaddingY(0).Center().Shrink(0).
+		Radius(radius).FocusRing(true).Label(o.Label)
+	if o.FullWidth {
+		e.FillWidth()
+	} else {
+		e.AlignSelf(ui.Start)
+	}
+	switch o.Align {
+	case ButtonAlignStart:
+		e.Justify(ui.Start)
+	case ButtonAlignEnd:
+		e.Justify(ui.End)
+	}
+	if o.IconOnly {
+		e.Width(theme.Scale(c, height)).MinWidth(theme.Scale(c, height))
+	}
+	e = style.Disabled(e, o.Disabled)
 	if o.Handle != nil {
-		b.Bind(o.Handle)
+		e.Bind(o.Handle)
 	}
-	height, padding, gap, glyph, iconOnly := buttonMetrics(o.Size)
-	font := theme.Body().Size
-	if o.Size == ButtonXS || o.Size == ButtonIconXS {
-		font = theme.Small().Size
+
+	bg, hover, pressed, fg := buttonColors(t, o.Variant)
+	if disabled {
+		fg = fg.Alpha(0.7)
 	}
-	height = max(height, theme.Scale(c, font*1.25)+theme.Space8)
-	b.MinHeight(height).Gap(gap).PaddingX(padding).
-		Radius(theme.Radii().XXL).Font(theme.FontFamily(c)).FontSize(theme.Scale(c, font)).FontWeight(500)
-	if o.Wrap {
-		b.MinWidth(0)
+	e.TextColor(fg)
+	if o.Variant == ButtonOutline {
+		e.Border(theme.Hairline, t.Border)
 	}
-	if !iconOnly {
-		start, end := padding, padding
-		if o.Icon != nil || o.Loading {
-			start -= 2
-		}
-		if o.TrailingIcon != nil {
-			end -= 2
-		}
-		b.Padding(0, end, 0, start)
+	if o.OnClick != nil && !disabled {
+		e.OnClick(o.OnClick)
 	}
-	if iconOnly {
-		b.Size(height, height).Shrink(0).Padding(0).Center()
+	if o.Tooltip != "" {
+		e.Tooltip(o.Tooltip)
+	} else if o.IconOnly && o.Label != "" {
+		e.Tooltip(o.Label)
 	}
-	if o.Rounded {
-		b.Radius(height)
-	}
-	tooltip := o.Tooltip
-	if tooltip == "" && iconOnly {
-		tooltip = o.Label
-	}
-	if tooltip != "" {
-		b.Tooltip(tooltip)
-	}
-	paintAction(c, b, o.Variant, disabled)
-	if o.Invalid {
-		b.Border(theme.HairlineWidth, theme.Colors(c).Destructive).Error(o.Label)
-	}
-	if o.Loading {
-		b.Description(locales.ComponentLoading())
-	}
-	b.OnClick(o.OnClick).Children(func() {
+
+	content := func() {
 		if o.Loading {
-			Spinner(c, SpinnerOptions{Size: glyph, Label: locales.ComponentLoading()})
+			loading.Arc(c, loading.Options{
+				Size: theme.Scale(c, glyph), Color: fg,
+			}).Label(locale.M().Loading)
+		} else if o.Icon != nil {
+			ui.Icon(c, o.Icon).Size(theme.Scale(c, glyph), theme.Scale(c, glyph)).Shrink(0)
 		}
 		if o.Content != nil {
 			o.Content()
-			return
+		} else if !o.IconOnly {
+			style.Text(ui.Text(c, o.Label), c, font).SingleLine()
 		}
-		if !o.Loading && o.Icon != nil {
-			myui.Icon(c, o.Icon).Size(theme.Scale(c, glyph), theme.Scale(c, glyph)).Shrink(0)
+		if o.EndIcon != nil && !o.IconOnly {
+			ui.Icon(c, o.EndIcon).Size(theme.Scale(c, glyph), theme.Scale(c, glyph)).Shrink(0)
 		}
-		if !iconOnly {
-			text := myui.Text(c, o.Label).MinWidth(0)
-			if !o.Wrap {
-				text.SingleLine()
+	}
+	if o.Corners != nil {
+		e = style.CornerFill(c, e, theme.Space8, *o.Corners, bg, hover, pressed, content)
+	} else {
+		e = style.Background(e, radius, bg, hover, pressed)
+		e.Children(content)
+	}
+
+	return e
+}
+
+func buttonColors(t theme.Palette, v ButtonVariant) (bg, hover, pressed, fg ui.Color) {
+	switch v {
+	case ButtonSecondary:
+		return t.Default, t.DefaultHover, t.DefaultHover, t.AccentSoftForeground
+	case ButtonTertiary:
+		return t.Default, t.DefaultHover, t.DefaultHover, t.DefaultForeground
+	case ButtonOutline:
+		return ui.Transparent, t.Default.Alpha(0.6), t.Default.Alpha(0.6), t.DefaultForeground
+	case ButtonGhost:
+		return ui.Transparent, t.Default, t.Default, t.DefaultForeground
+	case ButtonDanger:
+		return t.Danger, t.DangerHover, t.DangerHover, t.DangerForeground
+	case ButtonDangerSoft:
+		return t.DangerSoft, t.DangerSoftHover, t.DangerSoftHover, t.DangerSoftForeground
+	}
+	return t.Accent, t.AccentHover, t.AccentHover, t.AccentForeground
+}
+
+// ButtonGroupOrientation selects the join axis.
+type ButtonGroupOrientation uint8
+
+const (
+	GroupHorizontal ButtonGroupOrientation = iota
+	GroupVertical
+)
+
+// ButtonGroupOptions controls a joined set of HeroUI buttons.
+type ButtonGroupOptions struct {
+	Orientation ButtonGroupOrientation
+	FullWidth   bool
+	Separators  bool
+}
+
+// ButtonGroup builds buttons with only the outer corners rounded, as HeroUI
+// does. The caller supplies complete button options, avoiding an ambient
+// context and keeping each action independently focusable.
+func ButtonGroup(c *ui.Context, o ButtonGroupOptions, buttons ...ButtonOptions) ui.Element {
+	var e ui.Element
+	if o.Orientation == GroupVertical {
+		e = ui.Column(c).Gap(0).MinWidth(0)
+	} else {
+		e = ui.Row(c).Gap(0).MinWidth(0)
+	}
+	if o.FullWidth {
+		e.FillWidth()
+	} else {
+		e.AlignSelf(ui.Start)
+	}
+	radius := theme.RadiusScale().XXXL
+	n := len(buttons)
+	e.Children(func() {
+		for i := range buttons {
+			b := buttons[i]
+			switch o.Orientation {
+			case GroupVertical:
+				switch {
+				case n == 1:
+					b.Corners = &[4]float32{radius, radius, radius, radius}
+				case i == 0:
+					b.Corners = &[4]float32{radius, radius, 0, 0}
+				case i == n-1:
+					b.Corners = &[4]float32{0, 0, radius, radius}
+				default:
+					b.Corners = &[4]float32{}
+				}
+			default:
+				switch {
+				case n == 1:
+					b.Corners = &[4]float32{radius, radius, radius, radius}
+				case i == 0:
+					b.Corners = &[4]float32{radius, 0, 0, radius}
+				case i == n-1:
+					b.Corners = &[4]float32{0, radius, radius, 0}
+				default:
+					b.Corners = &[4]float32{}
+				}
 			}
-			if o.Variant == ButtonLink && b.Hovered() && !disabled {
-				text.Underline()
+			if o.FullWidth && o.Orientation == GroupVertical {
+				b.FullWidth = true
 			}
-		}
-		if o.TrailingIcon != nil {
-			myui.Icon(c, o.TrailingIcon).Size(theme.Scale(c, glyph), theme.Scale(c, glyph)).Shrink(0)
+			if o.Separators && i > 0 {
+				separatorColor := theme.Colors(c).Border
+				if o.Orientation == GroupVertical {
+					ui.Box(c).Height(theme.Hairline).FillWidth().Background(separatorColor)
+				} else {
+					ui.Box(c).Width(theme.Hairline).MinHeight(theme.Space20).Background(separatorColor)
+				}
+			}
+			item := Button(c, b)
+			if o.FullWidth && o.Orientation == GroupHorizontal {
+				item.Grow(1).Basis(0).MinWidth(0)
+			}
 		}
 	})
-	return b
-}
-
-func buttonMetrics(size ButtonSize) (height, padding, gap, glyph float32, icon bool) {
-	height, padding, gap, glyph = theme.HeightInput, theme.Space12, theme.Space6, theme.IconMedium
-	switch size {
-	case ButtonXS, ButtonIconXS:
-		height, padding, gap, glyph = theme.HeightChip, theme.Space10, theme.Space4, theme.IconMicro
-	case ButtonSM, ButtonIconSM:
-		height, padding, gap = theme.HeightButton, theme.Space12, theme.Space4
-	case ButtonLG, ButtonIconLG:
-		height, padding = theme.HeightRowCompact, theme.Space16
-	}
-	icon = size >= ButtonIcon
-	return
-}
-
-func paintAction(c *myui.Context, b myui.Element, variant ButtonVariant, disabled bool) {
-	t := theme.Colors(c)
-	fill, ink := t.Primary, t.PrimaryForeground
-	hover, pressed := t.PrimaryHover, t.PrimaryPressed
-	var border myui.Color
-	switch variant {
-	case ButtonOutline:
-		fill, ink, border = t.Background, t.Foreground, t.Border
-		if c.Theme().Dark {
-			fill = myui.Color{}
-		}
-		hover, pressed = t.AccentHover, t.AccentPressed
-	case ButtonSecondary:
-		fill, ink = t.Secondary, t.SecondaryForeground
-		hover, pressed = t.SecondaryHover, t.SecondaryPressed
-	case ButtonGhost:
-		fill, ink = myui.Color{}, t.Foreground
-		hover, pressed = t.AccentHover, t.AccentPressed
-	case ButtonDestructive:
-		strength := float32(0.1)
-		if c.Theme().Dark {
-			strength = 0.2
-		}
-		fill, ink = theme.Over(t.Destructive, t.Background, strength), t.Destructive
-		hover = theme.Over(t.DestructiveHover, t.Background, 0.2)
-		pressed = theme.Over(t.DestructivePressed, t.Background, 0.3)
-	case ButtonLink:
-		fill, ink = myui.Color{}, t.Primary
-		hover, pressed = fill, fill
-	}
-	if disabled {
-		fill, ink = t.DisabledSurface, t.DisabledForeground
-	} else if b.Pressed() {
-		fill = pressed
-	} else if b.Hovered() {
-		fill = hover
-	}
-	b.Background(fill).TextColor(ink).Border(theme.HairlineWidth, border)
+	return e
 }

@@ -1,55 +1,68 @@
-package form
+package form_test
 
 import (
+	"slices"
 	"testing"
 
+	"github.com/Cyenoch/mygoui/form"
+	"github.com/Cyenoch/mygoui/list"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
 
-func TestNativeSelectUsesOSMenuWithGroupsAndDisabledChoices(t *testing.T) {
-	value := "apple"
-	readonly, disabled := false, false
-	changes := 0
+func TestSelectSingleChoiceAndClear(t *testing.T) {
+	state := &form.SelectState{}
+	var changed []string
 	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		NativeSelect(c, &value, NativeSelectOptions{
-			ControlOptions: ControlOptions{Label: "Fruit", ReadOnly: readonly, Disabled: disabled},
-			OnChange:       func(string) { changes++ },
-		}, []SelectOption{
-			{Value: "apple", Label: "Apple", Group: "Available"},
-			{Value: "banana", Label: "Banana", Group: "Available"},
-			{Value: "pear", Label: "Pear", Disabled: true},
+		theme.ApplyMode(c, false)
+		form.Select(c, form.SelectOptions{
+			Label: "Fruit", Placeholder: "Choose a fruit", Clearable: true,
+			Items: comboItems(), State: state,
+			OnChange: func(keys []string) { changed = keys },
 		})
-	}, 300, 100)
-	tt.Click("Fruit")
-	if len(tt.Menu()) == 0 {
-		t.Fatal("select did not open platform menu")
-	}
-	if err := tt.ChooseMenuItem("Available", "Banana"); err != nil {
+	}, 360, 520)
+	if err := tt.Click("Choose a fruit"); err != nil {
 		t.Fatal(err)
 	}
-	if value != "banana" || changes != 1 {
-		t.Fatalf("native grouped choice: %q/%d", value, changes)
+	if err := tt.Click("Alpha"); err != nil {
+		t.Fatal(err)
 	}
-	tt.Click("Fruit")
-	_ = tt.ChooseMenuItem("Pear")
-	if value != "banana" || changes != 1 {
-		t.Fatal("disabled native menu option accepted selection")
+	if state.List.SelectedKey != "a" || !slices.Equal(changed, []string{"a"}) {
+		t.Fatalf("select key=%q changed=%v", state.List.SelectedKey, changed)
 	}
-	tt.CloseMenu()
-	readonly = true
-	tt.Frame()
-	tt.Click("Fruit")
-	_ = tt.ChooseMenuItem("Available", "Apple")
-	if value != "banana" || changes != 1 {
-		t.Fatal("read-only select accepted choice")
+	if !tt.HasText("Alpha") {
+		t.Fatal("trigger did not show the chosen value")
 	}
-	tt.CloseMenu()
-	readonly, disabled = false, true
-	tt.Frame()
-	tt.Click("Fruit")
-	if len(tt.Menu()) != 0 {
-		t.Fatal("disabled select opened platform menu")
+	if err := tt.Click("Clear"); err != nil {
+		t.Fatal(err)
+	}
+	if state.List.SelectedKey != "" || !slices.Equal(changed, []string{}) {
+		t.Fatalf("clear key=%q changed=%v", state.List.SelectedKey, changed)
+	}
+}
+
+func TestSelectMultipleKeepsPopupOpen(t *testing.T) {
+	state := &form.SelectState{}
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		form.Select(c, form.SelectOptions{
+			Label: "Fruit", Placeholder: "Choose fruit", Items: comboItems(),
+			Selection: list.SelectionMultiple, State: state,
+		})
+	}, 360, 520)
+	if err := tt.Click("Choose fruit"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("Alpha"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("Beta"); err != nil {
+		t.Fatal(err)
+	}
+	if got := state.SelectedKeys(); len(got) != 2 {
+		t.Fatalf("multiple keys = %v", got)
+	}
+	if !state.Open {
+		t.Fatal("multiple select closed after one choice")
 	}
 }

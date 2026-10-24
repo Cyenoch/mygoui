@@ -2,36 +2,47 @@ package mygoui
 
 import (
 	"github.com/Cyenoch/mygoui/theme"
-	myui "github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui"
 )
 
+// Orientation is a HeroUI layout direction.
+type Orientation uint8
+
+const (
+	Horizontal Orientation = iota
+	Vertical
+)
+
+// SeparatorColor is HeroUI's separator emphasis.
+type SeparatorColor uint8
+
+const (
+	SeparatorDefault SeparatorColor = iota
+	SeparatorSecondary
+	SeparatorTertiary
+)
+
+// SeparatorOptions configures a semantic divider.
 type SeparatorOptions struct {
-	Vertical bool
-	Length   float32
-	Label    string
+	Orientation Orientation
+	Color       SeparatorColor
 }
 
-// Separator fills the parent's cross axis unless Length is supplied. An unnamed
-// decorative rule stays out of AX; a named rule is exposed as a semantic group
-// because MyGo's splitter role implies interactive resizing.
-// Source: https://ui.shadcn.com/r/styles/base-rhea/separator.json
-func Separator(c *myui.Context, o SeparatorOptions) myui.Element {
-	e := myui.Box(c).Shrink(0).Background(theme.Colors(c).Border)
-	if o.Vertical {
-		e.Width(theme.HairlineWidth).AlignSelf(myui.Stretch)
-		if o.Length > 0 {
-			e.Height(o.Length)
-		}
-	} else {
-		e.Height(theme.HairlineWidth).FillWidth()
-		if o.Length > 0 {
-			e.Width(o.Length)
-		}
+// Separator draws a 1 DIP rule. Vertical rules stretch to the row height.
+func Separator(c *ui.Context, o SeparatorOptions) ui.Element {
+	t := theme.Colors(c)
+	color := t.Separator
+	switch o.Color {
+	case SeparatorSecondary:
+		color = t.SeparatorSecondary
+	case SeparatorTertiary:
+		color = t.SeparatorTertiary
 	}
-	if o.Label != "" {
-		e.Label(o.Label).Role(myui.RoleGroup)
+	e := ui.Box(c).Shrink(0).Background(color).Role(ui.RoleNone)
+	if o.Orientation == Vertical {
+		e.Width(theme.Hairline).MinHeight(theme.Space8).AlignSelf(ui.Stretch)
 	} else {
-		e.Role(myui.RoleNone)
+		e.Height(theme.Hairline).FillWidth()
 	}
 	return e
 }

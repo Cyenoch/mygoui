@@ -1,342 +1,459 @@
-package navigation
+package navigation_test
 
 import (
-	"slices"
+	"image"
 	"testing"
 	"time"
 
-	"github.com/Cyenoch/mygoui"
-	"github.com/Cyenoch/mygoui/overlay"
+	"github.com/Cyenoch/mygoui/navigation"
 	"github.com/Cyenoch/mygoui/theme"
-	ui "github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui"
 )
 
-func TestAccordionSelectionReorderAndDisabledKeyboard(t *testing.T) {
-	var s AccordionState[string]
-	mode := AccordionSingle
-	items := []AccordionItem[string]{
-		{Value: "a", Label: "Alpha", Content: func() {}},
-		{Value: "x", Label: "Unavailable", Disabled: true},
-		{Value: "b", Label: "Beta", Content: func() {}},
-	}
-	tt := ui.NewTester(func(c *ui.Context) { theme.Apply(c); Accordion(c, &s, AccordionOptions{Mode: mode}, items) }, 420, 340)
-	tt.Key(0, ui.KeyTab)
-	tt.Key(0, ui.KeyDown)
-	if !tt.Focused("Beta") {
-		t.Fatal("arrow did not skip disabled header")
-	}
-	tt.Key(0, ui.KeySpace)
-	if !slices.Equal(s.Open, []string{"b"}) {
-		t.Fatalf("single open=%v", s.Open)
-	}
-	slices.Reverse(items)
-	tt.Frame()
-	if !tt.Focused("Beta") || !slices.Equal(s.Open, []string{"b"}) {
-		t.Fatal("reorder lost stable identity")
-	}
-	mode = AccordionMultiple
-	tt.Frame()
-	tt.Click("Alpha")
-	if len(s.Open) != 2 {
-		t.Fatalf("multiple open=%v", s.Open)
-	}
-	tt.Click("Unavailable")
-	if len(s.Open) != 2 {
-		t.Fatal("disabled header changed open values")
-	}
-}
-
-func TestCollapsibleExternalCloseReturnsFocusAndDisablesExit(t *testing.T) {
-	s := CollapsibleState{Open: true}
-	actions := 0
+func TestAccordionSingleExpansionAndKeyboardFocus(t *testing.T) {
+	expanded := []string{}
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.Apply(c)
-		Collapsible(c, &s, CollapsibleOptions{Label: "Details"}, func() { mygoui.Button(c, mygoui.ButtonOptions{Label: "Inside", OnClick: func() { actions++ }}) })
-	}, 420, 340)
-	tt.Click("Inside")
-	if !tt.Focused("Inside") {
-		t.Fatal("content did not receive focus")
-	}
-	s.Open = false
-	tt.Frame()
-	if !tt.Focused("Details") {
-		t.Fatal("external close failed to restore trigger focus")
-	}
-	tt.Click("Inside")
-	tt.Advance(250 * time.Millisecond)
-	if actions != 1 || tt.HasText("Inside") {
-		t.Fatal("outgoing content was actionable or remained after transition")
-	}
-	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
-	tt.Click("Details")
-	if !tt.HasText("Inside") {
-		t.Fatal("reduced motion disclosure failed to open")
-	}
-}
+		navigation.Accordion(c, navigation.AccordionOptions{
+			Expanded: &expanded,
+			Items: []navigation.AccordionItemOptions{
+				{Key: "general", Title: "General", Body: func() { ui.Text(c, "General body") }},
+				{Key: "privacy", Title: "Privacy", Body: func() { ui.Text(c, "Privacy body") }},
+			},
+		})
+	}, 480, 420)
 
-func TestBreadcrumbOverflowAndPassiveCurrent(t *testing.T) {
-	var s BreadcrumbState
-	selected := ""
-	items := []BreadcrumbItem{
-		{ID: "root", Label: "Root", OnSelect: func() { selected = "root" }},
-		{ID: "one", Label: "First", OnSelect: func() { selected = "first" }},
-		{ID: "two", Label: "Second", OnSelect: func() { selected = "second" }},
-		{ID: "three", Label: "Third", OnSelect: func() { selected = "third" }},
-		{ID: "current", Label: "Current", OnSelect: func() { selected = "bad" }},
+	if err := tt.Click("General"); err != nil {
+		t.Fatal(err)
 	}
-	tt := ui.NewTester(func(c *ui.Context) { theme.Apply(c); Breadcrumb(c, &s, BreadcrumbOptions{MaxVisible: 3}, items) }, 600, 300)
-	tt.Click("Current")
-	if selected != "" {
-		t.Fatal("current page activated")
+	if len(expanded) != 1 || expanded[0] != "general" {
+		t.Fatalf("after opening General: %v", expanded)
 	}
-	tt.Click("More ancestors")
-	tt.Click("Second")
-	if selected != "second" {
-		t.Fatalf("overflow action=%q", selected)
+	if !tt.HasText("General body") {
+		t.Fatal("General panel is not shown")
 	}
-}
-
-func TestSelectCustomPopupTypeaheadDisabledAndReorder(t *testing.T) {
-	var s SelectState
-	value := "a"
-	changes := 0
-	choices := []Choice[string]{{Value: "a", Label: "Apple", Group: "Fruit"}, {Value: "x", Label: "Blocked", Disabled: true}, {Value: "b", Label: "Banana", Group: "Fruit"}, {Value: "c", Label: "Cherry", Group: "Fruit"}}
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		Select(c, &s, &value, SelectOptions[string]{Label: "Fruit", Width: 240, OnChange: func(string) { changes++ }}, choices)
-	}, 420, 400)
-	tt.Click("Fruit")
-	if len(tt.Menu()) != 0 || !tt.HasText("Banana") {
-		t.Fatal("Select did not use the custom popup")
+	if !tt.Focused("General") {
+		t.Fatal("clicked header did not take the focus")
 	}
 	tt.Key(0, ui.KeyDown)
-	tt.Key(0, ui.KeyEnter)
-	if value != "b" || changes != 1 {
-		t.Fatalf("keyboard disabled skip=%s/%d", value, changes)
+	if !tt.Focused("Privacy") {
+		t.Fatal("Down did not move the focus to the next header")
 	}
-	slices.Reverse(choices)
-	tt.Frame()
-	tt.Click("Fruit")
-	tt.Type("ch")
 	tt.Key(0, ui.KeyEnter)
-	if value != "c" {
-		t.Fatalf("typeahead after reorder=%q", value)
+	tt.Advance(400 * time.Millisecond)
+	if len(expanded) != 1 || expanded[0] != "privacy" {
+		t.Fatalf("single expansion keeps one open: %v", expanded)
 	}
-	tt.Click("Fruit")
-	tt.Key(0, ui.KeyEscape)
-	if !tt.Focused("Fruit") {
-		t.Fatal("Escape lost select trigger focus")
+	if tt.HasText("General body") {
+		t.Fatal("single expansion left the previous panel open")
+	}
+	if !tt.HasText("Privacy body") {
+		t.Fatal("Privacy panel is not shown")
 	}
 }
 
-func TestComboboxFilterChipsRemovalAndEmpty(t *testing.T) {
-	var s ComboboxState
-	var values []string
-	choices := []Choice[string]{{Value: "a", Label: "Apple"}, {Value: "x", Label: "Apricot", Disabled: true}, {Value: "b", Label: "Banana"}}
+func TestAccordionMultipleExpansion(t *testing.T) {
+	expanded := []string{}
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.Apply(c)
-		Combobox(c, &s, &values, ComboboxOptions[string]{Label: "Fruit", Multiple: true, Width: 260}, choices)
-	}, 500, 400)
-	tt.Click("Fruit")
-	tt.Type("ban")
-	tt.Key(0, ui.KeyEnter)
-	if !slices.Equal(values, []string{"b"}) {
-		t.Fatalf("filtered choice=%v", values)
+		navigation.Accordion(c, navigation.AccordionOptions{
+			Expanded: &expanded,
+			Multiple: true,
+			Items: []navigation.AccordionItemOptions{
+				{
+					Key: "one", Title: "One", Body: func() { ui.Text(c, "One body") },
+				},
+				{
+					Key: "two", Title: "Two", Body: func() { ui.Text(c, "Two body") },
+				},
+			},
+		})
+	}, 480, 420)
+
+	if err := tt.Click("One"); err != nil {
+		t.Fatal(err)
 	}
-	tt.Click("Fruit")
-	tt.Type("app")
-	tt.Key(0, ui.KeyEnter)
-	if !slices.Equal(values, []string{"b", "a"}) {
-		t.Fatalf("multiple choice=%v", values)
+	if err := tt.Click("Two"); err != nil {
+		t.Fatal(err)
 	}
-	tt.Click("Remove Banana")
-	if !slices.Equal(values, []string{"a"}) || !tt.Focused("Fruit") {
-		t.Fatal("chip removal lost focus or value")
+	tt.Advance(400 * time.Millisecond)
+	if len(expanded) != 2 || expanded[0] != "one" || expanded[1] != "two" {
+		t.Fatalf("multiple expansion: %v", expanded)
 	}
-	tt.Key(0, ui.KeyBackspace)
-	if len(values) != 0 {
-		t.Fatal("empty-query Backspace failed to remove chip")
-	}
-	tt.Type("zzzz")
-	if !tt.HasText("No matches") {
-		t.Fatal("empty feedback missing")
-	}
-	tt.Key(0, ui.KeyEnter)
-	if len(values) != 0 {
-		t.Fatal("empty state committed phantom choice")
+	if !tt.HasText("One body") || !tt.HasText("Two body") {
+		t.Fatal("multiple expansion did not keep both panels")
 	}
 }
 
-func TestCommandRanksActualActionsShortcutsAndEmpty(t *testing.T) {
-	var s CommandState
-	action := ""
-	items := []CommandItem{
-		{ID: "contains", Label: "Recent files", Group: "Files", OnSelect: func() { action = "recent" }},
-		{ID: "prefix", Label: "File search", Group: "Files", Shortcut: "⌘F", Mods: ui.Cmd, Key: ui.KeyF, OnSelect: func() { action = "search" }},
-		{ID: "disabled", Label: "File delete", Disabled: true, OnSelect: func() { action = "bad" }},
-		{ID: "settings", Label: "Settings", Group: "Application", Keywords: "preferences", OnSelect: func() { action = "settings" }},
-	}
-	tt := ui.NewTester(func(c *ui.Context) { theme.Apply(c); Command(c, &s, CommandOptions{Label: "Commands"}, items) }, 500, 420)
-	tt.Click("Commands")
-	tt.Type("file")
-	tt.Key(0, ui.KeyEnter)
-	if action != "search" {
-		t.Fatalf("prefix ranking=%q", action)
-	}
-	tt.Key(ui.Cmd, ui.KeyA)
-	tt.Type("preferences")
-	tt.Key(0, ui.KeyEnter)
-	if action != "settings" {
-		t.Fatalf("keyword action=%q", action)
-	}
-	tt.Key(ui.Cmd, ui.KeyA)
-	tt.Type("zzzz")
-	if !tt.HasText("No commands found") {
-		t.Fatal("command empty feedback missing")
-	}
-	tt.Key(0, ui.KeyEnter)
-	if action != "settings" {
-		t.Fatal("empty command ran action")
-	}
-	s.Query = ""
-	tt.Frame()
-	tt.Key(ui.Cmd, ui.KeyF)
-	if action != "search" {
-		t.Fatal("displayed shortcut did not execute")
-	}
-}
-func TestCommandDialogEscapeRestoresOpener(t *testing.T) {
-	var s CommandState
-	open := false
+func TestTabsSelectionAndPanelSwitch(t *testing.T) {
+	selected := 0
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.Apply(c)
-		mygoui.Button(c, mygoui.ButtonOptions{Label: "Open commands", OnClick: func() { open = true }})
-		CommandDialog(c, &open, &s, overlay.DialogOptions{Title: "Palette"}, CommandOptions{Label: "Search commands"}, nil)
-	}, 500, 400)
-	tt.Click("Open commands")
-	tt.Key(0, ui.KeyEscape)
-	tt.Advance(time.Second)
-	if open || !tt.Focused("Open commands") {
-		t.Fatal("command dialog failed to dismiss/restore focus")
-	}
-}
+		navigation.Tabs(c, navigation.TabsOptions{
+			Selected: &selected,
+			Label:    "Sections",
+			Items: []navigation.TabOptions{
+				{Label: "Overview", Content: func() { ui.Text(c, "Overview panel") }},
+				{Label: "Settings", Content: func() { ui.Text(c, "Settings panel") }},
+				{Label: "Advanced", Content: func() { ui.Text(c, "Advanced panel") }},
+			},
+		})
+	}, 640, 320)
 
-func TestNavigationMenuKeyboardAndRealLeafActions(t *testing.T) {
-	var s NavigationMenuState
-	actions := 0
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		NavigationMenu(c, &s, []NavigationMenuItem{{ID: "docs", Label: "Docs", Items: []overlay.MenuItem{{ID: "guide", Label: "Guide", OnSelect: func() { actions++ }}}}, {ID: "off", Label: "Disabled", Disabled: true}, {ID: "home", Label: "Home", OnSelect: func() { actions += 10 }}})
-	}, 600, 400)
-	tt.Key(0, ui.KeyTab)
-	tt.Key(0, ui.KeyDown)
-	tt.Key(0, ui.KeyEnter)
-	if actions != 1 {
-		t.Fatal("popup keyboard action did not execute")
+	if !tt.HasText("Overview panel") {
+		t.Fatal("initial panel is not shown")
+	}
+	if err := tt.Click("Settings"); err != nil {
+		t.Fatal(err)
+	}
+	if selected != 1 {
+		t.Fatalf("selection=%d, want 1", selected)
+	}
+	if !tt.HasText("Settings panel") || tt.HasText("Overview panel") {
+		t.Fatal("panel did not switch with the tab")
+	}
+	if !tt.Focused("Settings") {
+		t.Fatal("clicked tab did not take the focus")
 	}
 	tt.Key(0, ui.KeyRight)
-	if !tt.Focused("Home") {
-		t.Fatal("top navigation did not skip disabled entry")
+	if selected != 2 {
+		t.Fatalf("Right arrow selection=%d, want 2", selected)
 	}
-	tt.Key(0, ui.KeyEnter)
-	if actions != 11 {
-		t.Fatal("leaf navigation action failed")
+	if !tt.HasText("Advanced panel") || tt.HasText("Settings panel") {
+		t.Fatal("Right arrow did not switch the panel")
+	}
+	tt.Key(0, ui.KeyHome)
+	if selected != 0 {
+		t.Fatalf("Home selection=%d, want 0", selected)
 	}
 }
 
-func TestPaginationBoundariesAndActualPages(t *testing.T) {
+func TestPaginationBoundariesAndEllipsis(t *testing.T) {
 	page := 1
 	changes := 0
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.Apply(c)
-		Pagination(c, PaginationOptions{Page: page, Pages: 12, OnChange: func(n int) { page = n; changes++ }})
-	}, 390, 220)
-	tt.Click("Previous")
-	if page != 1 || changes != 0 {
-		t.Fatal("previous boundary activated")
+		navigation.Pagination(c, navigation.PaginationOptions{
+			Page: &page, Pages: 5, Siblings: 2, OnChange: func(int) { changes++ },
+		})
+	}, 640, 200)
+
+	if err := tt.Click("Next"); err != nil {
+		t.Fatal(err)
 	}
-	tt.Click("12")
-	if page != 12 {
-		t.Fatalf("last page=%d", page)
+	if page != 2 || changes != 1 {
+		t.Fatalf("Next page=%d changes=%d", page, changes)
 	}
-	tt.Click("Next")
-	if changes != 1 {
-		t.Fatal("next boundary activated")
+	if err := tt.Click("4"); err != nil {
+		t.Fatal(err)
 	}
-	tt.Click("12")
-	if changes != 1 {
-		t.Fatal("current page redundantly activated")
+	if page != 4 {
+		t.Fatalf("page link set page=%d, want 4", page)
 	}
-	tt.Click("Previous")
-	if page != 11 {
-		t.Fatal("previous failed to change actual page")
+	if err := tt.Click("Next"); err != nil {
+		t.Fatal(err)
+	}
+	if page != 5 {
+		t.Fatalf("Next to last page=%d, want 5", page)
+	}
+	if err := tt.Click("Next"); err != nil {
+		t.Fatal(err)
+	}
+	if page != 5 {
+		t.Fatalf("disabled Next moved to %d", page)
+	}
+	if err := tt.Click("Previous"); err != nil {
+		t.Fatal(err)
+	}
+	if page != 4 {
+		t.Fatalf("Previous page=%d, want 4", page)
+	}
+	if err := tt.Click("1"); err != nil {
+		t.Fatal(err)
+	}
+	if page != 1 {
+		t.Fatalf("page 1 link set page=%d", page)
+	}
+	if err := tt.Click("Previous"); err != nil {
+		t.Fatal(err)
+	}
+	if page != 1 {
+		t.Fatalf("disabled Previous moved to %d", page)
+	}
+
+	wide := 1
+	tw := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		navigation.Pagination(c, navigation.PaginationOptions{Page: &wide, Pages: 10})
+	}, 640, 200)
+	if !tw.HasText("\u2026") {
+		t.Fatal("expected an ellipsis between page groups")
+	}
+	if err := tw.Click("10"); err != nil {
+		t.Fatal(err)
+	}
+	if wide != 10 {
+		t.Fatalf("page link set page=%d, want 10", wide)
 	}
 }
 
-func TestSidebarCollapsedExpandedNarrowActions(t *testing.T) {
-	var s SidebarState
-	actions := 0
-	groupOpen := true
-	groups := []SidebarGroup{{ID: "main", Label: "Workspace", Open: &groupOpen, Items: []SidebarItem{{ID: "files", Label: "Files", OnSelect: func() { actions++ }}, {ID: "disabled", Label: "Unavailable", Disabled: true}, {ID: "settings", Label: "Settings", Action: &mygoui.ButtonOptions{Label: "Configure", OnClick: func() { actions += 10 }}}}}}
+func TestDropdownActivationAndSubmenu(t *testing.T) {
+	open := false
+	selected := []string{}
+	var calls []string
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.Apply(c)
-		Sidebar(c, &s, SidebarOptions{Label: "Navigation", NarrowAt: 600}, groups)
-	}, 800, 500)
-	tt.Click("Files")
-	tt.Click("Configure")
-	if s.Selected != "files" || actions != 11 {
-		t.Fatal("sidebar actions did not execute independently")
+		navigation.Dropdown(c, navigation.DropdownOptions{
+			Open:  &open,
+			Label: "Actions",
+			Menu: navigation.MenuOptions{
+				Selection: navigation.MenuSelectMultiple,
+				Selected:  &selected,
+				OnSelect:  func(key string) { calls = append(calls, key) },
+				Sections: []navigation.MenuSectionOptions{{
+					Items: []navigation.MenuItemOptions{
+						{Key: "edit", Label: "Edit", OnSelect: func() { calls = append(calls, "edit:cb") }},
+						{Key: "share", Label: "Share", Submenu: []navigation.MenuItemOptions{
+							{Key: "email", Label: "Email", OnSelect: func() { calls = append(calls, "email:cb") }},
+							{Key: "copy", Label: "Copy link"},
+						}},
+					},
+				}},
+			},
+		})
+	}, 640, 480)
+
+	if err := tt.Click("Actions"); err != nil {
+		t.Fatal(err)
 	}
-	tt.Click("Toggle Navigation")
-	if !s.Collapsed {
-		t.Fatal("sidebar did not collapse")
+	if !open {
+		t.Fatal("trigger did not open the menu")
 	}
-	tt.Click("Settings")
-	if s.Selected != "settings" {
-		t.Fatal("collapsed item did not select")
+	if !tt.HasText("Edit") {
+		t.Fatal("menu items are not shown")
 	}
-	tt.SetSize(390, 500)
-	tt.Click("Toggle Navigation")
-	if !s.Open || !tt.HasText("Workspace") {
-		t.Fatal("narrow sidebar did not open real sheet")
+	if err := tt.Click("Edit"); err != nil {
+		t.Fatal(err)
 	}
-	tt.Click("Files")
-	if s.Open || s.Selected != "files" || actions != 12 {
-		t.Fatal("narrow item failed to select and dismiss")
+	if open {
+		t.Fatal("choosing an item did not close the menu")
+	}
+	if len(calls) != 2 || calls[0] != "edit:cb" || calls[1] != "edit" {
+		t.Fatalf("item activation calls=%v", calls)
+	}
+	if len(selected) != 1 || selected[0] != "edit" {
+		t.Fatalf("selection=%v", selected)
+	}
+
+	if err := tt.Click("Actions"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("Share"); err != nil {
+		t.Fatal(err)
+	}
+	if !tt.HasText("Email") {
+		t.Fatal("submenu did not open")
+	}
+	if err := tt.Click("Email"); err != nil {
+		t.Fatal(err)
+	}
+	if open {
+		t.Fatal("choosing a submenu item did not close the menu")
+	}
+	if len(calls) != 4 || calls[3] != "email" {
+		t.Fatalf("submenu activation calls=%v", calls)
 	}
 }
 
-func TestTabsRoveSkipDisabledAndRetainValueAcrossReorder(t *testing.T) {
-	value := "a"
-	vertical := false
-	tabs := []Tab[string]{{Value: "a", Label: "Alpha", Content: func() {}}, {Value: "x", Label: "Unavailable", Disabled: true, Content: func() { t.Error("disabled panel constructed") }}, {Value: "b", Label: "Beta", Content: func() {}}}
+func TestDropdownKeyboardSubmenu(t *testing.T) {
+	open := false
+	var calls []string
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.Apply(c)
-		orientation := ui.Horizontal
-		if vertical {
-			orientation = ui.Vertical
-		}
-		Tabs(c, &value, TabsOptions[string]{Label: "Views", Variant: TabsLine, Orientation: orientation}, tabs)
-		mygoui.Button(c, mygoui.ButtonOptions{Label: "After", OnClick: func() {}})
-	}, 600, 400)
-	tt.Key(0, ui.KeyTab)
+		navigation.Dropdown(c, navigation.DropdownOptions{
+			Open:  &open,
+			Label: "More",
+			Menu: navigation.MenuOptions{
+				Sections: []navigation.MenuSectionOptions{{
+					Items: []navigation.MenuItemOptions{
+						{Key: "rename", Label: "Rename"},
+						{Key: "export", Label: "Export", Submenu: []navigation.MenuItemOptions{
+							{Key: "pdf", Label: "PDF", OnSelect: func() { calls = append(calls, "pdf") }},
+						}},
+					},
+				}},
+			},
+		})
+	}, 640, 480)
+
+	if err := tt.Click("More"); err != nil {
+		t.Fatal(err)
+	}
+	if !open {
+		t.Fatal("menu did not open")
+	}
+	if !tt.Focused("Rename") {
+		t.Fatal("opening did not focus the first item")
+	}
+	tt.Key(0, ui.KeyDown)
+	if !tt.Focused("Export") {
+		t.Fatal("Down did not move to the submenu trigger")
+	}
 	tt.Key(0, ui.KeyRight)
-	if value != "b" || !tt.Focused("Beta") {
-		t.Fatalf("roving selection=%q", value)
+	if !tt.HasText("PDF") {
+		t.Fatal("Right did not open the submenu")
 	}
-	slices.Reverse(tabs)
-	tt.Frame()
-	if value != "b" || !tt.Focused("Beta") {
-		t.Fatal("reorder lost selected tab identity")
+	if !tt.Focused("PDF") {
+		t.Fatal("submenu did not take the focus")
 	}
-	vertical = true
-	tt.Frame()
-	tt.Key(0, ui.KeyEnd)
-	if value != "a" {
-		t.Fatal("vertical End did not skip disabled")
+	tt.Key(0, ui.KeyEnter)
+	if len(calls) != 1 || calls[0] != "pdf" {
+		t.Fatalf("submenu keyboard activation=%v", calls)
 	}
-	tt.Key(0, ui.KeyTab)
-	if !tt.Focused("After") {
-		t.Fatal("tabs were more than one Tab stop")
+	if open {
+		t.Fatal("keyboard activation did not close the menu")
 	}
+}
+
+func TestDisclosureGroupSingleExpansion(t *testing.T) {
+	first, second := false, false
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		navigation.DisclosureGroup(c, navigation.DisclosureGroupOptions{
+			Items: []navigation.DisclosureOptions{
+				{Title: "First", Open: &first, Body: func() { ui.Text(c, "First body") }},
+				{Title: "Second", Open: &second, Body: func() { ui.Text(c, "Second body") }},
+			},
+		})
+	}, 480, 360)
+
+	if err := tt.Click("First"); err != nil {
+		t.Fatal(err)
+	}
+	if !first {
+		t.Fatal("First did not open")
+	}
+	if err := tt.Click("Second"); err != nil {
+		t.Fatal(err)
+	}
+	if !second || first {
+		t.Fatalf("single disclosure group first=%v second=%v", first, second)
+	}
+}
+
+func TestTabsHorizontalListFillsWidth(t *testing.T) {
+	selected := 0
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		ui.Column(c).Fill().Padding(16).Children(func() {
+			navigation.Tabs(c, navigation.TabsOptions{
+				Selected: &selected,
+				Items: []navigation.TabOptions{
+					{Label: "One", Content: func() { ui.Text(c, "One panel") }},
+					{Label: "Two", Content: func() { ui.Text(c, "Two panel") }},
+					{Label: "Three", Content: func() { ui.Text(c, "Three panel") }},
+				},
+			})
+		})
+	}, 640, 320)
+
+	var tabs []ui.Rect
+	for _, label := range []string{"One", "Two", "Three"} {
+		r, ok := tt.Find(label)
+		if !ok {
+			t.Fatalf("tab %q is not shown", label)
+		}
+		tabs = append(tabs, r)
+	}
+	// The strip spans the padded column: three equal tabs share 600 DIPs.
+	if got := tabs[2].X + tabs[2].W - tabs[0].X; got < 596 {
+		t.Fatalf("tab strip spans %v, want the column's width", got)
+	}
+	for i := 1; i < len(tabs); i++ {
+		if d := tabs[i].X - tabs[i-1].X; d < 190 || d > 210 {
+			t.Fatalf("tab %d starts %v after the previous, want equal thirds", i, d)
+		}
+	}
+}
+
+func TestTabsAlignVariantsPlaceLabels(t *testing.T) {
+	for _, tc := range []struct {
+		align navigation.TabsAlign
+		name  string
+	}{
+		{navigation.TabsAlignCenter, "center"},
+		{navigation.TabsAlignStart, "start"},
+		{navigation.TabsAlignEnd, "end"},
+	} {
+		selected := 0
+		align := tc.align
+		tt := ui.NewTester(func(c *ui.Context) {
+			theme.Apply(c)
+			ui.Column(c).Fill().Padding(16).Children(func() {
+				navigation.Tabs(c, navigation.TabsOptions{
+					Selected: &selected,
+					Align:    align,
+					Items: []navigation.TabOptions{
+						{Label: "One", Content: func() { ui.Text(c, "One panel") }},
+						{Label: "Two", Content: func() { ui.Text(c, "Two panel") }},
+					},
+				})
+			})
+		}, 640, 320)
+		tab, ok := tt.Find("Two")
+		if !ok {
+			t.Fatalf("%s: second tab is not shown", tc.name)
+		}
+		left, right := tabInk(tt.Image(), tab)
+		if left < 0 {
+			t.Fatalf("%s: no label ink in the second tab", tc.name)
+		}
+		center := float32(left+right) / 2
+		switch tc.align {
+		case navigation.TabsAlignCenter:
+			if d := center - (tab.X + tab.W/2); d < -8 || d > 8 {
+				t.Fatalf("%s: label center %v, tab center %v", tc.name, center, tab.X+tab.W/2)
+			}
+		case navigation.TabsAlignStart:
+			if d := float32(left) - tab.X; d < 8 || d > 28 {
+				t.Fatalf("%s: label starts %v into the tab", tc.name, d)
+			}
+		case navigation.TabsAlignEnd:
+			if d := tab.X + tab.W - float32(right); d < 8 || d > 28 {
+				t.Fatalf("%s: label ends %v before the tab's end", tc.name, d)
+			}
+		}
+	}
+}
+
+// tabInk returns the leftmost and rightmost columns of the label ink inside
+// a tab, ignoring its edges.
+func tabInk(img *image.RGBA, tab ui.Rect) (int, int) {
+	x0, y0 := int(tab.X)+8, int(tab.Y)+6
+	x1, y1 := int(tab.X+tab.W)-8, int(tab.Y+tab.H)-6
+	bg := img.RGBAAt(x0, y0)
+	left, right := -1, -1
+	for y := y0; y < y1; y++ {
+		for x := x0; x < x1; x++ {
+			p := img.RGBAAt(x, y)
+			d := absInt(int(p.R)-int(bg.R)) + absInt(int(p.G)-int(bg.G)) + absInt(int(p.B)-int(bg.B))
+			if d <= 60 {
+				continue
+			}
+			if left < 0 || x < left {
+				left = x
+			}
+			if x > right {
+				right = x
+			}
+		}
+	}
+	return left, right
+}
+
+func absInt(v int) int {
+	if v < 0 {
+		return -v
+	}
+	return v
 }

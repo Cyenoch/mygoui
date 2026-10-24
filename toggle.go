@@ -1,190 +1,170 @@
 package mygoui
 
 import (
-	"slices"
-
+	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
-	myui "github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui"
 )
 
-type ToggleVariant uint8
+// ToggleButtonVariant is HeroUI's toggle surface treatment.
+type ToggleButtonVariant uint8
 
 const (
-	ToggleDefault ToggleVariant = iota
-	ToggleOutline
+	ToggleDefault ToggleButtonVariant = iota
+	ToggleGhost
 )
 
-type ToggleSize uint8
-
-const (
-	ToggleSizeDefault ToggleSize = iota
-	ToggleSM
-	ToggleLG
-)
-
-type ToggleOptions struct {
-	Label    string
-	Icon     *myui.SVG
-	IconOnly bool
-	Variant  ToggleVariant
-	Size     ToggleSize
-	Disabled bool
-	Invalid  bool
-	OnChange func(bool)
-	Handle   *myui.Handle
+// ToggleButtonOptions configures a persistent pressed-state button. Selected
+// is caller-owned; clicking flips it and reports the new value.
+type ToggleButtonOptions struct {
+	Label     string
+	Icon      *ui.SVG
+	Variant   ToggleButtonVariant
+	Size      theme.ButtonSize
+	IconOnly  bool
+	FullWidth bool
+	Selected  *bool
+	Disabled  bool
+	OnChange  func(bool)
+	Tooltip   string
+	// Corners overrides the uniform radius. Nil keeps it.
+	Corners *[4]float32
 }
 
-// Toggle binds directly to persistent caller state; callbacks run once after
-// native input, without requiring a callback merely to edit the bound value.
-// Source: https://ui.shadcn.com/r/styles/base-rhea/toggle.json
-func Toggle(c *myui.Context, value *bool, o ToggleOptions) myui.Element {
-	e := myui.ToggleBase(c, value).Label(o.Label).Disabled(o.Disabled)
-	if o.Handle != nil {
-		e.Bind(o.Handle)
-	}
-	styleToggle(c, e, *value, o)
-	if o.OnChange != nil {
-		e.OnChange(func() { o.OnChange(*value) })
-	}
-	toggleContent(c, e, o)
-	return e
-}
-
-func styleToggle(c *myui.Context, e myui.Element, selected bool, o ToggleOptions) {
+// ToggleButton is a focusable native toggle whose selected paint follows the
+// caller's bool. It is not a radio: each button owns its state.
+func ToggleButton(c *ui.Context, o ToggleButtonOptions) ui.Element {
 	t := theme.Colors(c)
-	height := float32(theme.HeightInput)
-	switch o.Size {
-	case ToggleSM:
-		height = theme.HeightButton
-	case ToggleLG:
-		height = theme.HeightRowCompact
+	selected := o.Selected != nil && *o.Selected
+	height := theme.ButtonHeight(o.Size)
+	radius := theme.RadiusScale().XXXL
+	paddingX := float32(theme.Space16)
+	glyph := float32(theme.IconMD)
+	font := theme.SM()
+	font.Weight = theme.WeightMedium
+	normal, hover, fg := t.Default, t.DefaultHover, t.DefaultForeground
+	if o.Variant == ToggleGhost {
+		normal, hover, fg = ui.Transparent, t.Default, t.DefaultForeground
 	}
-	height = max(height, theme.Scale(c, theme.Body().Size*1.25)+theme.Space8)
-	e.MinHeight(height).MinWidth(height).PaddingX(theme.Space10).Gap(theme.Space4).
-		Radius(theme.Radii().XXL).Font(theme.FontFamily(c)).FontSize(theme.Scale(c, theme.Body().Size)).
-		FontWeight(500).TextColor(t.Foreground)
 	if selected {
-		e.Background(t.Muted)
+		normal, hover, fg = t.AccentSoft, t.AccentSoftHover, t.AccentSoftForeground
 	}
-	if o.Variant == ToggleOutline {
-		e.Border(theme.HairlineWidth, t.Input)
+	if o.Size == theme.ButtonSmall {
+		paddingX, glyph = theme.Space12, theme.IconMD
 	}
-	if o.Disabled {
-		e.TextColor(t.DisabledForeground).Background(t.DisabledSurface)
-	} else if e.Pressed() {
-		e.Background(t.AccentPressed)
-	} else if e.Hovered() {
-		e.Background(t.AccentHover)
+	if o.Size == theme.ButtonLarge {
+		font = theme.Base()
+		font.Weight = theme.WeightMedium
 	}
-	if o.Invalid {
-		e.Border(theme.HairlineWidth, t.Destructive).Error(o.Label)
+	if o.IconOnly {
+		paddingX = 0
 	}
-}
-
-func toggleContent(c *myui.Context, e myui.Element, o ToggleOptions) {
-	e.Children(func() {
+	e := ui.ButtonBase(c).MinHeight(theme.Scale(c, height)).Gap(theme.Space8).
+		PaddingX(paddingX).PaddingY(0).Center().Shrink(0).Radius(radius).
+		FocusRing(true).Label(o.Label).TextColor(fg).
+		Role(ui.RoleToggleButton).Checked(selected)
+	if o.FullWidth {
+		e.FillWidth()
+	} else {
+		e.AlignSelf(ui.Start)
+	}
+	if o.IconOnly {
+		e.Width(theme.Scale(c, height)).MinWidth(theme.Scale(c, height))
+	}
+	content := func() {
 		if o.Icon != nil {
-			myui.Icon(c, o.Icon).Size(theme.Scale(c, theme.IconMedium), theme.Scale(c, theme.IconMedium))
+			ui.Icon(c, o.Icon).Size(theme.Scale(c, glyph), theme.Scale(c, glyph)).Shrink(0)
 		}
 		if !o.IconOnly {
-			myui.Text(c, o.Label).SingleLine()
+			style.Text(ui.Text(c, o.Label), c, font).SingleLine()
 		}
-	})
-}
-
-// ToggleGroupState keeps selection by stable item value across reorder/hiding.
-// Zero state has no selection. Single selection permits toggling the choice off.
-// Set Values outside rendering for externally controlled selection.
-type ToggleGroupState struct {
-	Values []string
-}
-
-func (s *ToggleGroupState) Selected(value string) bool {
-	return slices.Contains(s.Values, value)
-}
-
-func (s *ToggleGroupState) toggle(value string, mode ToggleSelectionMode) {
-	at := slices.Index(s.Values, value)
-	if mode == ToggleSelectionSingle {
-		if at >= 0 {
-			s.Values = s.Values[:0]
-		} else {
-			s.Values = append(s.Values[:0], value)
-		}
-		return
 	}
-	if at >= 0 {
-		s.Values = slices.Delete(s.Values, at, at+1)
-		return
+	if o.Corners != nil {
+		e = style.CornerFill(c, e, theme.Space8, *o.Corners, normal, hover, hover, content)
+	} else {
+		e = style.Background(e, radius, normal, hover, hover)
+		e.Children(content)
 	}
-	s.Values = append(s.Values, value)
-}
-
-type ToggleSelectionMode uint8
-
-const (
-	ToggleSelectionSingle ToggleSelectionMode = iota
-	ToggleSelectionMultiple
-)
-
-type ToggleGroupOptions struct {
-	Label            string
-	Selection        ToggleSelectionMode
-	Vertical         bool
-	Disabled, Joined bool
-	Spacing          float32
-	Variant          ToggleVariant
-	Size             ToggleSize
-	OnChange         func()
-}
-
-type ToggleGroupItem struct {
-	Value, Label string
-	Icon         *myui.SVG
-	Disabled     bool
-	Handle       *myui.Handle
-}
-
-// ToggleGroup uses MyGo's native roving focus. Arrows follow orientation and
-// direction, skip disabled items, wrap, and Home/End choose an end. Selection
-// changes only on activation; Tab leaves the group as a single stop.
-// Source: https://ui.shadcn.com/r/styles/base-rhea/toggle-group.json
-func ToggleGroup(c *myui.Context, state *ToggleGroupState, o ToggleGroupOptions, items []ToggleGroupItem) myui.Element {
-	orientation := myui.Horizontal
-	group := myui.Row(c).Role(myui.RoleGroup).Label(o.Label).AlignItems(myui.Stretch)
-	if o.Vertical {
-		group.Column()
-		orientation = myui.Vertical
-	}
-	spacing := o.Spacing
-	if spacing == 0 && !o.Joined {
-		spacing = theme.Space8
-	}
-	group.Gap(spacing).FocusGroup(orientation).Children(func() {
-		for i, item := range items {
-			c.Key(item.Value)
-			disabled := o.Disabled || item.Disabled
-			e := myui.ButtonBase(c).Role(myui.RoleToggleButton).Label(item.Label).
-				Checked(state.Selected(item.Value)).Disabled(disabled)
-			if item.Handle != nil {
-				e.Bind(item.Handle)
+	if !o.Disabled && o.Selected != nil {
+		e.OnClick(func() {
+			*o.Selected = !*o.Selected
+			if o.OnChange != nil {
+				o.OnChange(*o.Selected)
 			}
-			options := ToggleOptions{
-				Label: item.Label, Icon: item.Icon, Variant: o.Variant,
-				Size: o.Size, Disabled: disabled,
-			}
-			styleToggle(c, e, state.Selected(item.Value), options)
-			if o.Joined {
-				joinControl(e, i, len(items), o.Vertical)
-			}
-			e.OnClick(func() {
-				state.toggle(item.Value, o.Selection)
-				if o.OnChange != nil {
-					o.OnChange()
+		})
+	}
+	if o.Tooltip != "" {
+		e.Tooltip(o.Tooltip)
+	} else if o.IconOnly && o.Label != "" {
+		e.Tooltip(o.Label)
+	}
+	return style.Disabled(e, o.Disabled)
+}
+
+// ToggleButtonGroupOptions controls a joined or detached toggle set.
+type ToggleButtonGroupOptions struct {
+	Orientation Orientation
+	FullWidth   bool
+	Detached    bool
+}
+
+// ToggleButtonGroup lays out caller-owned toggle states. Each option carries
+// its own Selected pointer, so single- and multi-select are both explicit Go
+// state rather than an ambient group context.
+func ToggleButtonGroup(c *ui.Context, o ToggleButtonGroupOptions, buttons ...ToggleButtonOptions) ui.Element {
+	var e ui.Element
+	if o.Orientation == Vertical {
+		e = ui.Column(c).Gap(0).MinWidth(0)
+	} else {
+		e = ui.Row(c).Gap(0).MinWidth(0)
+	}
+	if o.Detached {
+		e.Gap(theme.Space4)
+	}
+	if o.FullWidth {
+		e.FillWidth()
+	} else {
+		e.AlignSelf(ui.Start)
+	}
+	radius := theme.RadiusScale().XXXL
+	n := len(buttons)
+	e.Children(func() {
+		for i := range buttons {
+			b := buttons[i]
+			if !o.Detached {
+				switch o.Orientation {
+				case Vertical:
+					switch {
+					case n == 1:
+						b.Corners = &[4]float32{radius, radius, radius, radius}
+					case i == 0:
+						b.Corners = &[4]float32{radius, radius, 0, 0}
+					case i == n-1:
+						b.Corners = &[4]float32{0, 0, radius, radius}
+					default:
+						b.Corners = &[4]float32{}
+					}
+				default:
+					switch {
+					case n == 1:
+						b.Corners = &[4]float32{radius, radius, radius, radius}
+					case i == 0:
+						b.Corners = &[4]float32{radius, 0, 0, radius}
+					case i == n-1:
+						b.Corners = &[4]float32{0, radius, radius, 0}
+					default:
+						b.Corners = &[4]float32{}
+					}
 				}
-			})
-			toggleContent(c, e, options)
+			}
+			if o.FullWidth && o.Orientation == Vertical {
+				b.FullWidth = true
+			}
+			item := ToggleButton(c, b)
+			if o.FullWidth && o.Orientation == Horizontal {
+				item.Grow(1).Basis(0).MinWidth(0)
+			}
 		}
 	})
-	return group
+	return e
 }

@@ -1,38 +1,76 @@
 # Contributing
 
-Use Go 1.27.1 or later. UI changes should use the pinned MyGo public API, typed options and caller-owned state. Read `docs/design.md` before changing a public contract. Keep examples as real consumers and update the component catalog when behavior or limitations change.
+Use Go 1.27.1 or later and MyGo v0.6.3. The library is a native Go translation
+of HeroUI v3, not a React port: typed options, caller-owned state, native MyGo
+controls and no CSS/DOM runtime.
 
-## Validate a change
+## Set up
+
+```sh
+git submodule update --init --depth 1
+```
+
+`references/heroui` and `references/heroui-native` are pinned visual/API
+references. Read the relevant CSS, variant definitions and TSX before changing
+a component. `docs/references.md` records the update procedure.
+
+## Rules
+
+- Read `docs/design.md`, `docs/components.md` and `docs/mygo-0.6.md` first.
+- Keep components native: no providers, ambient scopes, build values stored in
+  structs, parallel render caches or per-frame allocation in paint callbacks.
+- Coordinated collections take typed slices. Freely composed content uses body
+  callbacks. Caller state stays explicit and window-scoped.
+- HeroUI `Start` is the zero `ui.Align` value; do not use zero as an "unset"
+  sentinel for alignment. MyGo `ui.Row` centers across its axis by default, so
+  set explicit alignment where CSS would not center.
+- Use `theme.Colors(c)` live, `internal/style` for text/paint, stable keys in
+  collections, and `FocusRing(true)` for keyboard focus.
+- Update the component catalog and limits when public behavior changes.
+
+## Validate
 
 ```sh
 go mod tidy
 make check
 make race
+make dev      # go run .../cmd/mygo@latest dev
 golangci-lint run ./...
 make wasm
-make workflows # requires actionlint (with shellcheck for embedded shell scripts)
+make workflows
+make vet
 go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 ```
 
-CI uses the latest Go 1.27 patch release and runs ordinary tests and builds on Linux, macOS and Windows. The Linux race suite runs in a parallel job. A separate Linux analysis job checks module metadata, formatting, MyGo lifetimes, WebAssembly, workflows, lint and reachable vulnerabilities. The lint action downloads a pinned binary and caches analysis; setup-go caches modules and build outputs. Superseded runs on the same ref are cancelled.
+The headless gallery suite renders every registered page at compact and wide
+widths in light and dark modes. Page-local tests exercise real controls. Tests
+must protect observable behavior, boundaries, focus, validation and paint
+states; do not assert implementation details or duplicate coverage.
 
-The ordinary suite runs without windows, external services or user configuration. Linux software rendering requires `libpangocairo-1.0-0`, `fonts-noto-cjk` and `fonts-noto-color-emoji` for the Unicode pixel fixtures; race detection requires a C compiler. Check the modified control with real native input on the relevant OS before claiming platform accessibility, GPU redraw or gesture acceptance. Use a disposable application, with no user data.
+Real OS gestures, native menu appearance, GPU presentation and screen-reader
+operation require separate platform checks. Record limits honestly in
+`docs/components.md` and `VALIDATION.md`.
 
-Tests should verify actions, editing, focus, selection, source fidelity, state transitions and real regressions. Preserve stable identities while filtering/reordering or hiding/reopening widgets. Prefer the toolkit's virtual clock to sleeps. Optional renderer artifacts use `MYGOUI_*` environment variables and paths outside tracked source.
+## Upstream updates
 
-## Dependencies
+```sh
+git -C references/heroui fetch --depth 1 origin v3
+git -C references/heroui checkout <commit>
+git -C references/heroui-native fetch --depth 1 origin main
+git -C references/heroui-native checkout <commit>
+git add references/heroui references/heroui-native
+```
 
-Pin stable MyGo and mygoicons releases in `go.mod`. Read upstream release notes and migration guidance, run `go tool mygo migrate-ui .` in preview, then verify public source before changing assumptions. Record relevant integration decisions in `docs/mygo-0.6.md` or a successor upgrade note. Run tidy, integrity, vulnerability, build and behavior checks. Keep releases free of local replacements and uncommitted workspaces.
-
-For sibling-module development, use an untracked `go.work`. The published library must build without that workspace. Before release, test an external consumer from the module archive with `GOWORK=off`; after publishing, also test fetching the exact public tag from a fresh module with no replace directives.
+Review upstream logs and changelogs, then re-read every affected CSS/TSX file.
+Do not infer current behavior from an older reference copy.
 
 ## Release
 
-1. Review public API changes and `CHANGELOG.md`; use semantic versioning. While v0, incompatible changes require a minor bump, and patches preserve public behavior.
-2. Run the validation commands and inspect CI on Linux, macOS and Windows. Record remaining platform limits honestly in `VALIDATION.md`.
-3. Verify module metadata with `go mod tidy`, `go mod verify` and a clean diff. Check license/notices and example import paths. Confirm the external archive consumer uses only resolvable dependencies.
-4. Replace the Unreleased heading with the chosen version/date and update installation examples to an actual version.
-5. Publish the reviewed repository to `github.com/Cyenoch/mygoui`. Create and push the reviewed `v0.x.y` tag, then create its GitHub release. There is no automatic publishing workflow.
-6. From a fresh external module, fetch `github.com/Cyenoch/mygoui@v0.x.y`, build a sample application and run a headless component action. Verify the exact version and module checksum without local replacements before announcing availability.
-
-Repository creation, push, tagging and release publication are separate maintainer actions. Local validation does not establish public availability.
+1. Review `CHANGELOG.md` and the public API. While v0, incompatible changes
+   require a minor bump; patches preserve behavior.
+2. Run the validation commands and inspect CI on Linux, macOS and Windows.
+3. Verify `go.mod` has no replacements or workspace requirements, and that
+   `git diff --check` and `go mod verify` are clean.
+4. Replace Unreleased with the version/date, then tag and publish. Release
+   publication is a maintainer action; local checks do not establish public
+   availability.

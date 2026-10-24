@@ -6,79 +6,95 @@ import (
 	"unicode"
 	"unicode/utf8"
 
-	locales "github.com/Cyenoch/mygoui/locale"
+	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
-	myui "github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui"
 )
 
+// AvatarSize is HeroUI's avatar scale.
 type AvatarSize uint8
 
 const (
-	AvatarDefault AvatarSize = iota
-	AvatarSM
-	AvatarLG
+	AvatarMedium AvatarSize = iota
+	AvatarSmall
+	AvatarLarge
 )
 
+// AvatarOptions configures a caller-loaded avatar. Name is the accessible
+// name; Fallback overrides generated initials.
 type AvatarOptions struct {
-	Image          myui.ImageSource
-	Name, Fallback string
-	Size           AvatarSize
-	Badge          func()
+	Image    ui.ImageSource
+	Name     string
+	Fallback string
+	Size     AvatarSize
+	Soft     bool
+	Ring     bool
+	Color    StatusColor
+	Badge    func()
 }
 
-type avatarFallbackKey struct{}
-
-type avatarFallbackState struct {
-	name, explicit, text string
+type avatarState struct {
+	name, fallback, initials string
 }
 
-// Avatar displays an already-loaded image or initials. Loading/decoding stays
-// outside the view; nil/empty images immediately expose the fallback. Name is
-// the image's accessible title even when initials differ from it.
-// Source: https://ui.shadcn.com/r/styles/base-rhea/avatar.json
-func Avatar(c *myui.Context, o AvatarOptions) myui.Element {
-	size := float32(theme.Space32)
+// Avatar shows an already-loaded image or initials. It never fetches.
+func Avatar(c *ui.Context, o AvatarOptions) ui.Element {
+	t := theme.Colors(c)
+	size, radius, ts := float32(theme.HeightAvatarMD), theme.RadiusScale().XXXL, theme.SM()
+	ts.Weight = theme.WeightMedium
 	switch o.Size {
-	case AvatarSM:
-		size = theme.Space24
-	case AvatarLG:
-		size = theme.Space20 * 2
+	case AvatarSmall:
+		size, radius, ts = theme.HeightAvatarSM, theme.RadiusScale().XXL, theme.XS()
+		ts.Weight = theme.WeightMedium
+	case AvatarLarge:
+		size, radius, ts = theme.HeightAvatarLG, theme.RadiusScale().XXXL, theme.Base()
+		ts.Weight = theme.WeightMedium
 	}
 	size = theme.Scale(c, size)
-	t := theme.Colors(c)
-	e := myui.Box(c).Size(size, size).Shrink(0).Role(myui.RoleImage).Label(o.Name)
-	fallback := myui.Local(e, avatarFallbackKey{}, func() avatarFallbackState { return avatarFallbackState{} })
-	if fallback.name != o.Name || fallback.explicit != o.Fallback || fallback.text == "" {
-		fallback.name, fallback.explicit, fallback.text = o.Name, o.Fallback, o.Fallback
-		if fallback.text == "" {
-			fallback.text = avatarInitials(o.Name)
+	bg := t.Default
+	if o.Soft {
+		bg = StatusColors(c, o.Color).Soft
+	}
+	e := ui.Box(c).Size(size, size).Shrink(0).Radius(radius).
+		Role(ui.RoleImage).Label(o.Name)
+	if o.Ring {
+		e.Shadow(0, 0, 0, 2, t.Background)
+	}
+	st := ui.Local(e, avatarStateKey{}, func() avatarState { return avatarState{} })
+	if st.name != o.Name || st.fallback != o.Fallback {
+		st.name, st.fallback = o.Name, o.Fallback
+		st.initials = o.Fallback
+		if st.initials == "" {
+			st.initials = avatarInitials(o.Name)
 		}
 	}
 	e.Children(func() {
-		myui.Row(c).Size(size, size).Center().Radius(size).Clip().
-			Background(t.Muted).Border(theme.HairlineWidth, t.Border).Children(func() {
-			if avatarHasImage(o.Image) {
-				myui.Image(c, o.Image).Size(size, size).Fit(myui.Cover).Role(myui.RoleNone)
-				return
-			}
-			myui.Text(c, fallback.text).SingleLine().Font(theme.FontFamily(c)).
-				FontSize(theme.Scale(c, theme.Small().Size)).TextColor(t.MutedForeground).Role(myui.RoleNone)
-		})
+		ui.Row(c).Size(size, size).Center().Radius(radius).Clip().Background(bg).
+			Children(func() {
+				if hasImage(o.Image) {
+					ui.Image(c, o.Image).Size(size, size).Fit(ui.Cover).Role(ui.RoleNone)
+					return
+				}
+				fallback := style.Text(ui.Text(c, st.initials), c, ts)
+				fallback.TextColor(StatusColors(c, o.Color).Foreground).SingleLine().Role(ui.RoleNone)
+			})
 		if o.Badge != nil {
-			myui.Row(c).Absolute().Right(0).Bottom(0).Children(o.Badge)
+			ui.Box(c).Absolute().Right(0).Bottom(0).Children(o.Badge)
 		}
 	})
 	return e
 }
 
-func avatarHasImage(source myui.ImageSource) bool {
+type avatarStateKey struct{}
+
+func hasImage(source ui.ImageSource) bool {
 	switch image := source.(type) {
-	case *myui.Bitmap:
+	case *ui.Bitmap:
 		if image != nil {
 			w, h := image.Size()
 			return w > 0 && h > 0
 		}
-	case *myui.SVG:
+	case *ui.SVG:
 		if image != nil {
 			w, h := image.Size()
 			return w > 0 && h > 0
@@ -88,59 +104,82 @@ func avatarHasImage(source myui.ImageSource) bool {
 }
 
 func avatarInitials(name string) string {
-	name = strings.TrimSpace(name)
-	first, _ := utf8.DecodeRuneInString(name)
-	if first == utf8.RuneError || name == "" {
+	fields := strings.Fields(name)
+	if len(fields) == 0 {
 		return "?"
 	}
-	last := first
-	hasLast := false
-	for i := len(name); i > 0; {
-		r, n := utf8.DecodeLastRuneInString(name[:i])
-		i -= n
-		if unicode.IsSpace(r) {
-			last, _ = utf8.DecodeRuneInString(strings.TrimLeftFunc(name[i+n:], unicode.IsSpace))
-			hasLast = true
-			break
+	initial := func(word string) string {
+		r, _ := utf8.DecodeRuneInString(word)
+		if r == utf8.RuneError {
+			return ""
 		}
+		return string(unicode.ToUpper(r))
 	}
-	if !hasLast {
-		return string(unicode.ToUpper(first))
+	first := initial(fields[0])
+	if first == "" {
+		return "?"
 	}
-	return string([]rune{unicode.ToUpper(first), unicode.ToUpper(last)})
+	if len(fields) == 1 {
+		return first
+	}
+	return first + initial(fields[len(fields)-1])
 }
 
-// AvatarGroup uses a native overlapping row; each image remains individually named.
-func AvatarGroup(c *myui.Context, body func()) myui.Element {
-	return myui.Row(c).Gap(-theme.Space8).Children(body)
+// AvatarGroupOptions configures a HeroUI avatar stack or grid.
+type AvatarGroupOptions struct {
+	Size    AvatarSize
+	Overlap float32
+	Ring    bool
+	Grid    bool
+	Total   int
+	Avatars []AvatarOptions
 }
 
-func AvatarGroupCount(c *myui.Context, count int) myui.Element {
-	label := "+" + strconv.Itoa(count)
-	return Avatar(c, AvatarOptions{Name: locales.ComponentMorePeople(count), Fallback: label})
-}
-
-type AvatarBadgeOptions struct {
-	Label string
-	Icon  *myui.SVG
-	Size  AvatarSize
-}
-
-// AvatarBadge is normally supplied through AvatarOptions.Badge, which positions it.
-func AvatarBadge(c *myui.Context, o AvatarBadgeOptions) myui.Element {
+// AvatarGroup overlaps avatars by 8 DIPs and optionally separates them with a
+// background-colored ring. A positive Total adds an overflow count.
+func AvatarGroup(c *ui.Context, o AvatarGroupOptions) ui.Element {
+	var e ui.Element
+	if o.Grid {
+		e = ui.Row(c).Wrap().Gap(theme.Space12).AlignItems(ui.Center)
+	} else {
+		e = ui.Row(c).Gap(0).AlignItems(ui.Center)
+	}
+	overlap := o.Overlap
+	if overlap == 0 {
+		overlap = theme.Space8
+	}
 	t := theme.Colors(c)
-	size := float32(theme.Space10)
-	switch o.Size {
-	case AvatarSM:
-		size = theme.Space8
-	case AvatarLG:
-		size = theme.Space12
-	}
-	size = theme.Scale(c, size)
-	return myui.Row(c).Center().Size(size, size).Radius(size).Background(t.Primary).
-		Border(2, t.Background).TextColor(t.PrimaryForeground).Label(o.Label).Children(func() {
-		if o.Icon != nil && o.Size != AvatarSM {
-			myui.Icon(c, o.Icon).Size(size-4, size-4)
+	e.Children(func() {
+		for i := range o.Avatars {
+			a := o.Avatars[i]
+			if a.Size == 0 {
+				a.Size = o.Size
+			}
+			if o.Ring && !o.Grid {
+				a.Ring = true
+			}
+			avatar := Avatar(c, a)
+			if i > 0 && !o.Grid {
+				avatar.MarginStart(-overlap)
+			}
+			avatar.Role(ui.RoleImage)
+		}
+		if o.Total > len(o.Avatars) {
+			count := ui.Row(c).Center().Shrink(0).
+				MinWidth(theme.Scale(c, theme.HeightAvatarSM)).
+				MinHeight(theme.Scale(c, theme.HeightAvatarSM)).
+				PaddingX(theme.Space6).Radius(theme.RadiusScale().XXXL).
+				Background(t.Default).TextColor(t.DefaultForeground)
+			if len(o.Avatars) > 0 && !o.Grid {
+				count.MarginStart(-overlap)
+			}
+			if o.Ring {
+				count.Shadow(0, 0, 0, 2, t.Background)
+			}
+			count.Children(func() {
+				style.Text(ui.Text(c, "+"+strconv.Itoa(o.Total-len(o.Avatars))), c, theme.XS()).SingleLine()
+			})
 		}
 	})
+	return e
 }

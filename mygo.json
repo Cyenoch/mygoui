@@ -1,0 +1,7 @@
+{
+  "name": "MyGo UI Gallery",
+  "identifier": "com.cyenoch.mygoui.gallery",
+  "version": "0.1.0",
+  "main": "./examples/gallery",
+  "out": ".mygo/build"
+}

@@ -1,107 +1,79 @@
-package theme
+package theme_test
 
 import (
-	"math"
 	"testing"
-	"time"
 
+	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
 
-func TestHostPreferencesComposeWithSystem(t *testing.T) {
-	previous := preferenceSnapshot()
-	t.Cleanup(func() { SetPreferences(previous) })
-	for _, tc := range []struct {
-		name       string
-		app        Preferences
-		os         ui.Preferences
-		wantScale  float32
-		wantMotion bool
+func TestPaletteModesDiffer(t *testing.T) {
+	light, dark := theme.ColorsForMode(false), theme.ColorsForMode(true)
+	if light.Background.R == dark.Background.R {
+		t.Fatal("light and dark backgrounds are identical")
+	}
+	if light.Accent.R != dark.Accent.R || light.Accent.G != dark.Accent.G {
+		t.Fatal("accent is shared between modes, as upstream specifies")
+	}
+	if light.Surface.R != 255 || dark.Surface.R == 255 {
+		t.Fatal("surface values do not follow the light/dark source palette")
+	}
+}
+
+func TestAccentCustomizationDerivesSoftAndHover(t *testing.T) {
+	defer theme.Configure(theme.Preferences{})
+	custom := ui.RGB(220, 20, 60)
+	theme.Configure(theme.Preferences{Accent: custom})
+	got := theme.ColorsForMode(false)
+	if got.Accent.R != custom.R || got.Accent.G != custom.G || got.Accent.B != custom.B {
+		t.Fatalf("accent = %v, want %v", got.Accent, custom)
+	}
+	if got.AccentSoft.A == 0 || got.AccentSoft.A == 255 {
+		t.Fatalf("soft accent alpha = %d, want translucent", got.AccentSoft.A)
+	}
+	if got.AccentHover == got.Accent {
+		t.Fatal("hover accent was not derived")
+	}
+}
+
+func TestLightStatusSoftForegroundStaysNearStatus(t *testing.T) {
+	light := theme.ColorsForMode(false)
+	cases := []struct {
+		name             string
+		status, soft, fg ui.Color
 	}{
-		{name: "defaults", os: ui.Preferences{TextScale: 1}, wantScale: 1},
-		{name: "numeric size", app: Preferences{FontSize: 18}, os: ui.Preferences{TextScale: 1}, wantScale: 1.125},
-		{name: "combined scale", app: Preferences{FontSize: 20}, os: ui.Preferences{TextScale: 1.2}, wantScale: 1.5},
-		{name: "panels disabled preserve progress", os: ui.Preferences{TextScale: 1}, wantScale: 1},
-		{name: "OS motion cannot be disabled", app: Preferences{PanelAnimationDuration: 400 * time.Millisecond}, os: ui.Preferences{TextScale: 1, ReduceMotion: true}, wantScale: 1, wantMotion: true},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			SetPreferences(tc.app)
-			var scale, font float32
-			var motion bool
-			var os ui.Preferences
-			tt := ui.NewTester(func(c *ui.Context) {
-				scale, motion, os = TextScale(c), ReduceMotion(c), c.Preferences()
-				font = Apply(c).FontSize
-				ui.Text(c, "Readable")
-			}, 300, 100)
-			tt.SetPreferences(tc.os)
-			tt.Frame()
-			if math.Abs(float64(scale-tc.wantScale)) > 0.0001 || motion != tc.wantMotion {
-				t.Fatalf("effective preferences = (%g, %v), want (%g, %v)", scale, motion, tc.wantScale, tc.wantMotion)
-			}
-			if math.Abs(float64(font-16*tc.wantScale)) > 0.0001 {
-				t.Errorf("root font = %g, want %g without compounding", font, 16*tc.wantScale)
-			}
-			if os != tc.os {
-				t.Errorf("read-only OS preferences changed: %+v, want %+v", os, tc.os)
-			}
-		})
+		{"warning", light.Warning, light.WarningSoftForeground, light.Foreground},
+		{"success", light.Success, light.SuccessSoftForeground, light.Foreground},
+		{"danger", light.Danger, light.DangerSoftForeground, light.Foreground},
 	}
-}
-
-func TestInterfaceFamilyAndPanelDuration(t *testing.T) {
-	previous := preferenceSnapshot()
-	t.Cleanup(func() { SetPreferences(previous) })
-	SetPreferences(Preferences{FontFamily: "monospace", FontSize: 16, PanelAnimationDuration: 200 * time.Millisecond})
-	var family string
-	var root, explicit float32
-	var duration time.Duration
-	tt := ui.NewTester(func(c *ui.Context) {
-		applied := Apply(c)
-		family, root = applied.Font, applied.FontSize
-		explicit, duration = Scale(c, 14), PanelAnimationDuration(c)
-		ui.Text(c, "Readable").FontSize(explicit)
-	}, 400, 160)
-	if family != "monospace, "+Sans || root != 16 || explicit != 14 || duration != 200*time.Millisecond {
-		t.Fatalf("source defaults/family = (%q, %g, %g, %s)", family, root, explicit, duration)
-	}
-	tt.SetPreferences(ui.Preferences{TextScale: 1.5, ReduceMotion: true})
-	if explicit != 21 || root != 24 || duration != 0 {
-		t.Fatalf("OS accessibility = (explicit %g, root %g, panel %s), want (21, 24, 0)", explicit, root, duration)
-	}
-	SetPreferences(Preferences{FontSize: 20})
-	tt.SetPreferences(ui.Preferences{TextScale: 1})
-	if explicit != 17.5 || root != 20 || duration != 0 || family != Sans {
-		t.Fatalf("numeric edit/reset = (%q, %g, %g, %s)", family, root, explicit, duration)
-	}
-}
-
-func TestNumericInterfaceFontChangesGlyphLayout(t *testing.T) {
-	previous := preferenceSnapshot()
-	t.Cleanup(func() { SetPreferences(previous) })
-	SetPreferences(Preferences{FontSize: 16})
-	const text = "Readable interface text"
-	tt := ui.NewTester(func(c *ui.Context) {
-		Apply(c)
-		ui.Text(c, text).Font(FontFamily(c)).FontSize(Scale(c, 14)).
-			FixedLineHeight(Scale(c, 20)).NoWrap().AlignSelf(ui.Start)
-	}, 500, 160)
-	before, ok := tt.Find(text)
-	if !ok {
-		t.Fatal("interface glyphs missing")
-	}
-	for _, size := range []float32{18, 20} {
-		SetPreferences(Preferences{FontSize: size})
-		tt.Frame()
-		after, ok := tt.Find(text)
-		if !ok || after.H <= before.H || after.W <= before.W {
-			t.Fatalf("size %g layout = %+v, baseline %+v", size, after, before)
+	for _, tc := range cases {
+		toStatus, toForeground := channelDistance(tc.soft, tc.status), channelDistance(tc.soft, tc.fg)
+		if toStatus >= toForeground {
+			t.Errorf("%s soft foreground = %v: distance to status %d >= distance to foreground %d",
+				tc.name, tc.soft, toStatus, toForeground)
 		}
 	}
-	SetPreferences(Preferences{FontSize: 16, FontFamily: "monospace"})
-	tt.Frame()
-	mono, ok := tt.Find(text)
-	if !ok || mono.W == before.W {
-		t.Fatalf("chosen family did not change glyph advances: system %+v, monospace %+v", before, mono)
+}
+
+func channelDistance(a, b ui.Color) int {
+	d := 0
+	for _, c := range [][2]uint8{{a.R, b.R}, {a.G, b.G}, {a.B, b.B}} {
+		if c[0] > c[1] {
+			d += int(c[0] - c[1])
+		} else {
+			d += int(c[1] - c[0])
+		}
+	}
+	return d
+}
+
+func TestRadiusAndTextPreferences(t *testing.T) {
+	defer theme.Configure(theme.Preferences{})
+	theme.Configure(theme.Preferences{Radius: 16, FontFamily: "Test Sans"})
+	if got := theme.RadiusScale().XXXL; got != 48 {
+		t.Fatalf("radius 3xl = %v, want 48", got)
+	}
+	if got := theme.FontSize(); got != 16 {
+		t.Fatalf("font size = %v, want 16", got)
 	}
 }

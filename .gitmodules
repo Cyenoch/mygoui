@@ -1,0 +1,8 @@
+[submodule "references/heroui"]
+	path = references/heroui
+	url = https://github.com/heroui-inc/heroui.git
+	branch = v3
+[submodule "references/heroui-native"]
+	path = references/heroui-native
+	url = https://github.com/heroui-inc/heroui-native.git
+	branch = main

@@ -1,22 +1,39 @@
 package mygoui
 
 import (
+	"strings"
+
+	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
-	myui "github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui"
 )
 
-// Kbd displays a key hint, without adding an input target or fake shortcut.
-// Source: https://ui.shadcn.com/r/styles/base-rhea/kbd.json
-func Kbd(c *myui.Context, label string) myui.Element {
-	t := theme.Colors(c)
-	return myui.Row(c).Center().MinHeight(max(theme.Space20, theme.Scale(c, theme.Small().Size)+theme.Space4)).
-		MinWidth(theme.Space20).PaddingX(theme.Space4).Radius(theme.Radii().MD).Background(t.Muted).
-		TextColor(t.MutedForeground).Children(func() {
-		myui.Text(c, label).SingleLine().Font(theme.FontFamily(c)).
-			FontSize(theme.Scale(c, theme.Small().Size)).FontWeight(500)
-	})
+// KbdOptions configures a keyboard chord.
+type KbdOptions struct {
+	Keys []string
+	// Light removes the default background.
+	Light bool
 }
 
-func KbdGroup(c *myui.Context, body func()) myui.Element {
-	return myui.Row(c).Gap(theme.Space4).Children(body)
+// Kbd renders one HeroUI keycap. Multiple keys form a chord separated by a
+// thin gap, with the concatenated chord as its accessible text.
+func Kbd(c *ui.Context, o KbdOptions) ui.Element {
+	t := theme.Colors(c)
+	background := t.Default
+	if o.Light {
+		background = ui.Transparent
+	}
+	label := strings.Join(o.Keys, " ")
+	e := ui.Row(c).Shrink(0).Center().AlignSelf(ui.Start).Gap(theme.Space2).
+		MinHeight(theme.Scale(c, theme.HeightKbd)).
+		PaddingX(theme.Space8).Radius(theme.RadiusScale().LG).Background(background).
+		TextColor(t.Muted).Label(label)
+	e.Children(func() {
+		ts := theme.SM()
+		ts.Weight = theme.WeightMedium
+		for _, key := range o.Keys {
+			style.Text(ui.Text(c, key), c, ts).SingleLine()
+		}
+	})
+	return e
 }

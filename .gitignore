@@ -6,3 +6,7 @@
 /artifacts/
 /go.work
 /go.work.sum
+/.mygo/
+/basic
+/gallery
+/*.wasm

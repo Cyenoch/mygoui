@@ -1,28 +1,44 @@
-# MyGo 0.6 upgrade
+# MyGo 0.6.3 integration
 
-Minimum toolkit: `github.com/egoist/mygo v0.6.0`. The reviewed upstream [release notes](https://github.com/egoist/mygo/releases/tag/v0.6.0) and [full comparison](https://github.com/egoist/mygo/compare/v0.5.5...v0.6.0) are the authority. The pinned `ui/doc.go`, `docs/ui/migration.md`, widget docs and public source were inspected during integration.
+Minimum toolkit: `github.com/egoist/mygo v0.6.3`, upgraded from v0.6.0 during
+this rewrite. The reviewed upstream release notes are the authority:
+[v0.6.1](https://github.com/egoist/mygo/releases/tag/v0.6.1),
+[v0.6.2](https://github.com/egoist/mygo/releases/tag/v0.6.2) and
+[v0.6.3](https://github.com/egoist/mygo/releases/tag/v0.6.3).
 
-## Relevant changes and integration
+The patch releases kept the public API stable. The library builds unchanged
+against 0.6.3; no migration shims were added.
 
-| Upstream change | Library integration |
+## Changes the components rely on
+
+| Upstream change | Integration |
 | --- | --- |
-| Partial GPU redraw, incremental layout, one measurement per text element, clipped-content paint culling | Components retain stable native keys, widget state and paint-only animation. No view ticker, extra rendering cache or forced full redraw is introduced. Existing pixel/layout/motion tests exercise native composition. GPU throughput remains a separate platform measurement. |
-| New `plugins/loading` with 29 native indicators | Spinner uses `loading.Arc`, deleting its own stationary-ring painter and delegating visibility, animation cadence, reduced-motion poses and progress semantics to the maintained plugin. The default arc preserves the intended compact style; no new variant registry is needed. |
-| Native cell blocks, drag row selection, row headers and cell menus | Table passes `Column.RowHeader` through, and retains caller-configurable `TableState.List.CellSelect`, `DragSelect`, `CellMenu` and `MenuKeepsSelection`. Native `CellSelected`, `SelectColumns`, `ExtendTo` and `ScrollToEnd` remain accessible through ListState. DataTable exposes the same state through `state.Table.List`. Gallery examples toggle real cell/drag selection. |
-| Wheel scrolling glides smoothly | ScrollArea continues to use native ScrollState. A regression uses `Tester.Wheel` and the virtual clock to verify actual bounded scrolling without moving a fixed header. |
-| List following its end no longer pushes short content down | Message Scroller delegates anchors/follow/end scrolling to the native ListState. Existing message/geometry regressions run against v0.6.0. |
-| Long select popup stays in the window; field labels align with descriptions | Form/navigation controls retain native base widgets and their sizing constraints; existing narrow/enlarged/input tests cover their composition. |
-| Rich text transition exit crash fixed; editor large-file improvements | Code Block uses native source editing/highlighting and selection, preserving exact source and streaming state. No replacement editor is introduced. |
-| Windows 11 menus and native menu shortcuts on Windows/Linux | Native menu compositions inherit platform changes. Platform input/appearance acceptance remains separate from headless tests. |
-| `Tester.Click`, `ClickWith` and `RightClick` reject off-window targets | The entire headless suite runs under the stricter contract. Controls intended for interaction must be visible and bounded. Use unique accessible labels when a row and its cell display the same text; a row's geometric center can be in a different column. |
-| Checked Element migration and persistent identity | `go tool mygo migrate-ui .` reports no required changes. `go tool mygo vet .` checks stored build values and goroutine captures. |
+| Faster text layout for large paragraphs and inline transforms checked once per text (0.6.3) | Typography and form help text benefit without a library-side cache. No copied text layout is kept. |
+| Table resizing leaves no edge after the last room-sharing column (0.6.3) | The Table component keeps native resize behavior and its regression test exercises header dragging. |
+| Presses pass through a hidden scrollbar's track (0.6.3) | Overlay bodies and menus continue to use native scroll views; no custom hit testing is added. |
+| Touchpad pinches reported as `InputZoom` (0.6.2) and GUI pinch tests corrected on macOS (0.6.3) | ScrollShadow and table scrolling stay native; diagram/zoom gestures remain application behavior. |
+| Windows ConPTY, DWM caption, WebView2, task dialog and Metal atlas fixes | No component changes; platform behavior is inherited from the toolkit. |
+| 0.6.0 partial GPU redraw, incremental layout, `plugins/loading`, native cell/drag selection, smooth wheel scrolling and strict `Tester.Click` bounds | Components keep stable keys and native state; Spinner delegates to `loading.Arc`; no view ticker or parallel render cache exists. |
 
-## Deliberate scope
+## Native layout defaults
 
-Terminal mirroring/search/graphics, WebView shortcuts, trash handling, tray icons, installers, signing, updater behavior and custom window buttons are host-application capabilities. This component library does not add application lifecycle or platform integration to expose them. Applications may use those MyGo APIs directly.
+MyGo is not CSS. Two defaults matter for HeroUI parity:
 
-Single sliders retain horizontal/vertical behavior and ranges retain the native two-thumb horizontal engine. This release does not add arbitrary-thumb or vertical-range APIs. Drawer remains an edge modal with no swipe/velocity arbitration. Those limits are explicit in the component catalog.
+- `ui.Row` centers children across the row by default; CSS flex rows stretch.
+  Rows that need top alignment set `AlignItems(ui.Start)`. Button content is
+  centered explicitly and can be left/right aligned with `ButtonAlign`.
+- `ui.Column` stretches children to its width, matching CSS's align-items:
+  stretch. Containers that should hug content set `Shrink(0)` or
+  `AlignSelf(ui.Start)`.
+
+HeroUI's `Start` is the zero `ui.Align` value. Components therefore do not use
+`ui.Align != 0` as a presence check; they define their own enum where the zero
+value must mean centered (for example `ButtonAlignCenter`).
 
 ## Verification
 
-`VALIDATION.md` records the exact completed checks. Headless tests verify native layout, input, selection, paint and virtual-clock behavior. They do not establish Metal/Direct3D/OpenGL partial-presentation performance, native OS menu appearance or screen-reader compatibility.
+`go build ./...`, `go vet ./...`, the ordinary and race suites, the WebAssembly
+build, lint and `make vet` (MyGo CLI at `@latest`) pass against v0.6.3. Headless tests cover
+native editing, focus, selection, scrolling, overlays, tables and paint states.
+GPU presentation, OS gestures, native menu appearance and screen-reader output
+remain platform checks.

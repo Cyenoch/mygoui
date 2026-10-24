@@ -1,192 +1,237 @@
 package theme
 
-import (
-	"runtime"
+import "github.com/egoist/mygo/ui"
 
-	"github.com/egoist/mygo/ui"
-)
+// Sans is MyGo's native interface family list.
+const Sans = "-apple-system, BlinkMacSystemFont, Segoe UI, system-ui, sans-serif"
 
+// Mono is MyGo's native monospace family list.
+const Mono = "ui-monospace, SF Mono, SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace"
+
+// HeroUI's spacing rhythm is 0.25rem at a 16 DIP root.
 const (
-	// Sans is MyGo's unquoted native interface family list.
-	Sans = "-apple-system, BlinkMacSystemFont, Segoe UI, system-ui, sans-serif"
-	// Mono is MyGo's unquoted native monospace family list.
-	Mono = "ui-monospace, SF Mono, SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace"
-	// SpaceUnit is the shared four-DIP spacing rhythm.
 	SpaceUnit = 4
-	// Space4 is one spacing unit.
-	Space4 = SpaceUnit
-	// Space6 is one and a half spacing units.
-	Space6 = 6
-	// Space8 is two spacing units.
-	Space8 = 8
-	// Space10 is two and a half spacing units.
-	Space10 = 10
-	// Space12 is three spacing units.
-	Space12 = 12
-	// Space14 is three and a half spacing units.
-	Space14 = 14
-	// Space16 is four spacing units.
-	Space16 = 16
-	// Space20 is five spacing units.
-	Space20 = 20
-	// Space24 is six spacing units.
-	Space24 = 24
-	// Space32 is eight spacing units.
-	Space32 = 32
-
-	// RadiusControl is the shared MD radius.
-	RadiusControl = RadiusCard * 8 / 10
-	// RadiusCard is the shared LG radius and radius-scale base.
-	RadiusCard = 10
-	// RadiusPanel is the shared XL radius at 1.4 times the base.
-	RadiusPanel = RadiusCard * 14 / 10
-	// RadiusChip is the shared SM radius for compact chips.
-	RadiusChip = RadiusCard * 6 / 10
-	// RadiusBubble is the 18-DIP conversation surface radius.
-	RadiusBubble = RadiusCard * 18 / 10
-
-	// HeightButton is the compact control height.
-	HeightButton = 28
-	// HeightInput is the default input height.
-	HeightInput = 32
-	// HeightChip is the compact chip height.
-	HeightChip = 24
-	// HeightHeader is the default reusable panel header height.
-	HeightHeader = 52
-	// HeightSidebarRow is the native dense navigation row target.
-	HeightSidebarRow = 34
-	// HeightSectionHeader is the compact navigation heading height.
-	HeightSectionHeader = 32
-	// HeightRowCompact is a compact list row target.
-	HeightRowCompact = 36
-	// HeightWorkRow is a dense activity row minimum height.
-	HeightWorkRow = 24
-	// SidebarRowRadius is the navigation row's control radius.
-	SidebarRowRadius = RadiusControl
-	// SidebarRowPadding is the navigation row's outer vertical padding.
-	SidebarRowPadding = 2
-	// SidebarRowInsetY is the inner navigation row's vertical inset.
-	SidebarRowInsetY = Space8
-	// SidebarRowInsetX is the navigation row's horizontal inset.
-	SidebarRowInsetX = Space10
-
-	// HairlineWidth is the 1 DIP separator width.
-	HairlineWidth = 1
-	// IconMicro is the small inline and section-heading glyph size.
-	IconMicro = 12
-	// IconSmall is the compact-control glyph size.
-	IconSmall = 14
-	// IconMedium is the standard-control glyph size.
-	IconMedium = 16
-	// IconLarge is the prominent-control glyph size.
-	IconLarge = 20
-
-	// SidebarWidth is the default navigation pane width.
-	SidebarWidth = 256
-	// SidebarMinWidth is the minimum navigation pane width.
-	SidebarMinWidth = 208
-	// FontTiny is the minimum native badge text size.
-	FontTiny = 10
-	// FontSmall is the native metadata text size.
-	FontSmall = 11
-	// FontBody is the native macOS body size; Body selects 14 elsewhere.
-	FontBody = 13
-	// LineHeightMeta is the metadata line box height in DIPs.
-	LineHeightMeta = 16
-	// LineHeightBadge is the badge line box height in DIPs.
-	LineHeightBadge = 14
+	Space2    = 2
+	Space4    = 4
+	Space6    = 6
+	Space8    = 8
+	Space10   = 10
+	Space12   = 12
+	Space14   = 14
+	Space16   = 16
+	Space20   = 20
+	Space24   = 24
+	Space32   = 32
+	Space40   = 40
+	Space48   = 48
+	Space64   = 64
 )
 
-// Space returns n units of the four-DIP spacing rhythm, including half units.
+// Space returns n HeroUI spacing units.
 func Space(n float32) float32 { return n * SpaceUnit }
 
-// TextStyle holds native text metrics; it is deliberately separate from ui.Theme.
-// Apply LineHeight with Element.LineHeight, or LineHeightPixels with
-// Element.FixedLineHeight, not both. Scale Size and LineHeightPixels together
-// for accessibility; the multiplier does not change.
+// Text weights map to Element.FontWeight.
+const (
+	WeightNormal   = 400
+	WeightMedium   = 500
+	WeightSemibold = 600
+	WeightBold     = 700
+)
+
+// TextStyle describes an unscaled HeroUI type role.
 type TextStyle struct {
-	// Size is the font size in unscaled DIPs.
-	Size float32
-	// LineHeight is a dimensionless multiplier of Size.
+	Size       float32
 	LineHeight float32
-	// LineHeightPixels is the corresponding unscaled line height in DIPs.
-	LineHeightPixels float32
-	// Weight is the numeric font weight for Element.FontWeight.
-	// MyGo's FontWeight accepts 100–900; CoreText's nsWeight
-	// interpolates those CSS weights rather than collapsing to regular/bold.
-	Weight int
-	// Font is the comma-joined family list for Element.Font.
-	Font string
-	// Mono requests the system monospace family rather than the system UI font.
-	Mono bool
+	Weight     int
+	Mono       bool
 }
 
-// Meta uses 11-DIP text with a 16-DIP line box.
-func Meta() TextStyle {
-	return TextStyle{Size: FontSmall, LineHeight: float32(LineHeightMeta) / FontSmall,
-		LineHeightPixels: LineHeightMeta, Weight: 400, Font: Sans}
-}
+// XS is text-xs: 12/16.
+func XS() TextStyle { return TextStyle{Size: 12, LineHeight: 16, Weight: WeightNormal} }
 
-// Small uses 12-DIP text with a 16-DIP line box.
-func Small() TextStyle {
-	return TextStyle{Size: 12, LineHeight: 16.0 / 12, LineHeightPixels: 16, Weight: 400, Font: Sans}
-}
+// SM is text-sm: 14/20.
+func SM() TextStyle { return TextStyle{Size: 14, LineHeight: 20, Weight: WeightNormal} }
 
-// Badge uses 10-DIP text with a 14-DIP line box.
-func Badge() TextStyle {
-	return TextStyle{Size: FontTiny, LineHeight: float32(LineHeightBadge) / FontTiny,
-		LineHeightPixels: LineHeightBadge, Weight: 400, Font: Sans}
-}
+// Base is text-base: 16/24.
+func Base() TextStyle { return TextStyle{Size: 16, LineHeight: 24, Weight: WeightNormal} }
 
-// Body keeps MyGo's platform body size (13 on macOS, 14 elsewhere).
-// Its relaxed line-height multiplier is 1.625.
-func Body() TextStyle {
-	size := float32(FontBody)
-	if runtime.GOOS != "darwin" {
-		size = 14
+// LG is text-lg: 18/28.
+func LG() TextStyle { return TextStyle{Size: 18, LineHeight: 28, Weight: WeightNormal} }
+
+// XL is text-xl: 20/28.
+func XL() TextStyle { return TextStyle{Size: 20, LineHeight: 28, Weight: WeightNormal} }
+
+// H1 is the HeroUI heading level 1 role.
+func H1() TextStyle { return TextStyle{Size: 36, LineHeight: 40, Weight: WeightSemibold} }
+
+// H2 is the HeroUI heading level 2 role.
+func H2() TextStyle { return TextStyle{Size: 30, LineHeight: 36, Weight: WeightSemibold} }
+
+// H3 is the HeroUI heading level 3 role.
+func H3() TextStyle { return TextStyle{Size: 24, LineHeight: 32, Weight: WeightSemibold} }
+
+// H4 is the HeroUI heading level 4 role.
+func H4() TextStyle { return TextStyle{Size: 20, LineHeight: 28, Weight: WeightSemibold} }
+
+// H5 is the HeroUI heading level 5 role.
+func H5() TextStyle { return TextStyle{Size: 18, LineHeight: 28, Weight: WeightSemibold} }
+
+// H6 is the HeroUI heading level 6 role.
+func H6() TextStyle { return TextStyle{Size: 16, LineHeight: 24, Weight: WeightSemibold} }
+
+// Code is the inline code role.
+func Code() TextStyle { return TextStyle{Size: 14, LineHeight: 20, Weight: WeightNormal, Mono: true} }
+
+// Label is the form label role.
+func Label() TextStyle { return TextStyle{Size: 14, LineHeight: 20, Weight: WeightMedium} }
+
+// HelpText is the form description role.
+func HelpText() TextStyle { return TextStyle{Size: 12, LineHeight: 16, Weight: WeightNormal} }
+
+// SemanticType is a HeroUI Typography type.
+type SemanticType uint8
+
+const (
+	TypeBody SemanticType = iota
+	TypeBodySM
+	TypeBodyXS
+	TypeH1
+	TypeH2
+	TypeH3
+	TypeH4
+	TypeH5
+	TypeH6
+	TypeCode
+)
+
+// Style resolves a semantic Typography type.
+func (t SemanticType) Style() TextStyle {
+	switch t {
+	case TypeBodySM:
+		s := SM()
+		s.LineHeight = 24
+		return s
+	case TypeBodyXS:
+		s := XS()
+		s.LineHeight = 20
+		return s
+	case TypeH1:
+		return H1()
+	case TypeH2:
+		return H2()
+	case TypeH3:
+		return H3()
+	case TypeH4:
+		return H4()
+	case TypeH5:
+		return H5()
+	case TypeH6:
+		return H6()
+	case TypeCode:
+		return Code()
 	}
-	return TextStyle{Size: size, LineHeight: 1.625, LineHeightPixels: size * 1.625, Weight: 400, Font: Sans}
-}
-
-// Prose uses 14-DIP text with a relaxed 1.625 line-height multiplier.
-func Prose() TextStyle {
-	return TextStyle{Size: 14, LineHeight: 1.625, LineHeightPixels: 22.75, Weight: 400, Font: Sans}
-}
-
-// Title uses 14-DIP text with a 1.3 line-height multiplier and semibold weight.
-func Title() TextStyle {
-	return TextStyle{Size: 14, LineHeight: 1.3, LineHeightPixels: 18.2, Weight: 600, Font: Sans}
-}
-
-// Code uses the native body size with a snug 1.375 line-height multiplier.
-func Code() TextStyle {
-	s := Body()
-	s.LineHeight = 1.375
-	s.LineHeightPixels = s.Size * s.LineHeight
-	s.Mono = true
-	s.Font = Mono
+	s := Base()
+	s.LineHeight = 28
 	return s
 }
 
-// RadiusTokens follows shadcn's multiplicative radius scale at a 10-DIP base.
-// App-specific chrome geometry remains owned by its view, independent of this.
-type RadiusTokens struct{ SM, MD, LG, XL, XXL, XXXL, XXXXL float32 }
+// RadiusBase returns the configured HeroUI radius base.
+func RadiusBase() float32 { return PreferencesSnapshot().Radius }
 
-// Radii returns value metrics; no CSS length calculation occurs in a view.
-func Radii() RadiusTokens {
-	return RadiusTokens{SM: RadiusChip, MD: RadiusControl, LG: RadiusCard,
-		XL: RadiusPanel, XXL: RadiusBubble, XXXL: RadiusCard * 22 / 10, XXXXL: RadiusCard * 26 / 10}
+// Radii is HeroUI's radius scale derived from the configured base.
+type Radii struct{ XS, SM, MD, LG, XL, XXL, XXXL, XXXXL, Field float32 }
+
+// RadiusScale returns the current scale. Upstream values at the 8 DIP base:
+// 2, 4, 6, 8, 12, 16, 24, 32, field 12.
+func RadiusScale() Radii {
+	r := RadiusBase()
+	return Radii{
+		XS: r * 0.25, SM: r * 0.5, MD: r * 0.75, LG: r,
+		XL: r * 1.5, XXL: r * 2, XXXL: r * 3, XXXXL: r * 4,
+		Field: r * 1.5,
+	}
 }
 
-// MetricTokens measures text-bearing library controls in native DIPs.
-// Fixed application tab/titlebar geometry does not use these metrics.
-type MetricTokens struct{ ControlHeight, CompactHeight, InputHeight, IconSize, LineHeight float32 }
+// Component metrics in desktop DIPs. HeroUI's mobile button heights are 4 DIPs
+// taller; this library targets desktop windows.
+const (
+	HeightButtonSM = 32
+	HeightButtonMD = 36
+	HeightButtonLG = 40
 
-// Metrics grows control minimums to fit scaled text and ordinary fixed padding;
-// spacing and corner radii themselves do not grow with the interface font.
-func Metrics(c *ui.Context) MetricTokens {
-	line := Scale(c, Small().LineHeightPixels)
-	return MetricTokens{ControlHeight: max(HeightInput, line+Space16),
-		CompactHeight: max(HeightButton, line+Space12), InputHeight: max(HeightInput, line+Space16),
-		IconSize: Scale(c, IconMedium), LineHeight: line}
+	HeightInput    = 36
+	HeightTextarea = 38
+	HeightChipSM   = 20
+	HeightChipMD   = 24
+	HeightChipLG   = 32
+	HeightBadgeSM  = 16
+	HeightBadgeMD  = 28
+	HeightBadgeLG  = 32
+	HeightAvatarSM = 32
+	HeightAvatarMD = 40
+	HeightAvatarLG = 48
+	HeightKbd      = 24
+	HeightRow      = 40
+	Hairline       = 1
+
+	IconXS = 12
+	IconSM = 14
+	IconMD = 16
+	IconLG = 20
+)
+
+// ButtonSize is HeroUI's button size scale.
+type ButtonSize uint8
+
+const (
+	ButtonMedium ButtonSize = iota
+	ButtonSmall
+	ButtonLarge
+)
+
+// ButtonHeight resolves a button size.
+func ButtonHeight(size ButtonSize) float32 {
+	switch size {
+	case ButtonSmall:
+		return HeightButtonSM
+	case ButtonLarge:
+		return HeightButtonLG
+	}
+	return HeightButtonMD
 }
+
+// Shadow is one native drop-shadow layer.
+type Shadow struct {
+	X, Y, Blur, Spread float32
+	Color              ui.Color
+	Inset              bool
+}
+
+// SurfaceShadows returns the light card shadow. Dark surfaces separate by
+// contrast; upstream disables the shadow.
+func SurfaceShadows(dark bool) []Shadow {
+	if dark {
+		return nil
+	}
+	return []Shadow{
+		{X: 0, Y: 2, Blur: 4, Color: ui.RGBA(0, 0, 0, 0.04)},
+		{X: 0, Y: 1, Blur: 2, Color: ui.RGBA(0, 0, 0, 0.06)},
+		{X: 0, Y: 0, Blur: 1, Color: ui.RGBA(0, 0, 0, 0.06)},
+	}
+}
+
+// OverlayShadows returns the floating-panel shadow. Dark overlays use
+// HeroUI's inset white hairline instead.
+func OverlayShadows(dark bool) []Shadow {
+	if dark {
+		return []Shadow{{X: 0, Y: 0, Blur: 1, Color: ui.RGBA(255, 255, 255, 0.3), Inset: true}}
+	}
+	return []Shadow{
+		{X: 0, Y: 2, Blur: 8, Color: ui.RGBA(0, 0, 0, 0.06)},
+		{X: 0, Y: -6, Blur: 12, Color: ui.RGBA(0, 0, 0, 0.03)},
+		{X: 0, Y: 14, Blur: 28, Color: ui.RGBA(0, 0, 0, 0.08)},
+	}
+}
+
+// FieldShadows returns the form-field elevation.
+func FieldShadows(dark bool) []Shadow { return SurfaceShadows(dark) }

@@ -1,139 +1,143 @@
 package form
 
 import (
-	"strings"
-
-	locales "github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
 
-// ControlOptions configures the actual input, including its accessible name.
-// Use Field to show and connect a visible label, description and error.
-type ControlOptions struct {
-	Label, Description, Error            string
-	Disabled, ReadOnly, Invalid, Loading bool
-	Handle                               *ui.Handle
-}
-
+// InputOptions configures a single-line HeroUI input. Label, Description and
+// Error compose the field around it; without them the control is bare so it can
+// sit inside a caller's own Field.
 type InputOptions struct {
-	ControlOptions
+	Label, Description, Error string
+	Placeholder               string
+	AriaLabel                 string
+	Variant                   ControlVariant
+	Required, Disabled        bool
+	ReadOnly, Invalid         bool
+	FullWidth, Password       bool
+	OnChange, OnSubmit        func()
+}
+
+// inputCoreOptions is the shared bare-editor configuration used by Input,
+// TextField, InputGroup and SearchField.
+type inputCoreOptions struct {
 	Placeholder string
+	Name        string
+	Variant     ControlVariant
+	Disabled    bool
+	ReadOnly    bool
+	Invalid     bool
 	Password    bool
-	OnChange    func(string)
-	OnSubmit    func(string)
+	FullWidth   bool
+	OnChange    func()
+	OnSubmit    func()
 }
 
-type TextareaOptions struct {
-	InputOptions
-	MinLines, MaxLines int
+// inputDefaultWidth is the intrinsic width of a field that is not full width,
+// close to the width a browser gives an input.
+const inputDefaultWidth = 200
+
+// inputTextAnchor returns the value an editor edits, tolerating a nil pointer
+// by binding a throwaway empty string.
+func inputTextAnchor(value *string) *string {
+	if value != nil {
+		return value
+	}
+	var empty string
+	return &empty
 }
 
-func Input(c *ui.Context, value *string, o InputOptions) ui.Element {
-	e := ui.TextInput(c, value)
-	configureInput(c, e, o, false)
+// inputAccessibleName is the name assistive technology reads for a control
+// without a visible field label. The placeholder is a last resort.
+func inputAccessibleName(label, ariaLabel, placeholder string) string {
+	switch {
+	case ariaLabel != "":
+		return ariaLabel
+	case label != "":
+		return label
+	}
+	return placeholder
+}
+
+// inputEditor builds the HeroUI input surface around one native single-line
+// editor. Hover, focus and invalid paint stay live through fieldSurface.
+func inputEditor(c *ui.Context, value *string, o inputCoreOptions) ui.Element {
+	e := ui.TextInputBase(c, value)
+	e = fieldText(e, c)
+	if o.Placeholder != "" {
+		e.Placeholder(o.Placeholder)
+	}
+	if o.Name != "" {
+		e.Label(o.Name)
+	}
 	if o.Password {
 		e.Password()
 	}
-	inputActions(e, value, o)
-	return e
-}
-
-func Textarea(c *ui.Context, value *string, o TextareaOptions) ui.Element {
-	e := ui.TextArea(c, value)
-	configureInput(c, e, o.InputOptions, true)
-	if o.MinLines > 0 {
-		e.Lines(o.MinLines, max(o.MinLines, o.MaxLines))
-	}
-	inputActions(e, value, o.InputOptions)
-	return e
-}
-
-func inputActions(e ui.Element, value *string, o InputOptions) {
 	if o.ReadOnly {
-		return
+		e.ReadOnly(true)
 	}
+	if o.FullWidth {
+		e.FillWidth()
+	} else {
+		e.MinWidth(theme.Scale(c, inputDefaultWidth))
+	}
+	e = e.PaddingX(theme.Space12).PaddingY(theme.Space8).
+		MinHeight(theme.Scale(c, theme.HeightInput)).Shrink(0)
+	e = fieldSurface(e, c, o.Variant, o.Invalid, o.Disabled)
+	e.FocusRing(true)
 	if o.OnChange != nil {
-		e.OnChange(func() { o.OnChange(*value) })
+		e.OnChange(o.OnChange)
 	}
 	if o.OnSubmit != nil {
-		e.OnSubmit(func() { o.OnSubmit(*value) })
+		e.OnSubmit(o.OnSubmit)
 	}
+	return e
 }
 
-func configureInput(c *ui.Context, e ui.Element, o InputOptions, multiline bool) {
-	colors := theme.Colors(c)
-	e.FontSize(theme.Scale(c, 14)).TextColor(colors.Foreground).
-		Placeholder(o.Placeholder).ReadOnly(o.ReadOnly).
-		Padding(4, theme.Space10).MinHeight(theme.Metrics(c).InputHeight).
-		MinWidth(0).FillWidth().Radius(theme.Radii().XXL).Background(colors.Input.Alpha(0.5))
-	if multiline {
-		e.PaddingY(8).MinHeight(max(float32(64), theme.Scale(c, 40)+16))
+// inputField composes label, description and error around an input. The
+// description is hidden while invalid, as HeroUI's field roots do.
+func inputField(c *ui.Context, o InputOptions, hideDescriptionOnInvalid bool, body func()) ui.Element {
+	description := o.Description
+	if hideDescriptionOnInvalid && (o.Invalid || o.Error != "") {
+		description = ""
 	}
-	configureControl(c, e, o.ControlOptions)
-	inputBorder(c, e, o.ControlOptions)
+	return Field(c, FieldOptions{
+		Label:       o.Label,
+		Description: description,
+		Error:       o.Error,
+		Required:    o.Required,
+		Disabled:    o.Disabled,
+		Invalid:     o.Invalid,
+		FullWidth:   o.FullWidth,
+	}, body)
 }
 
-func configureControl(c *ui.Context, e ui.Element, o ControlOptions) {
-	e.Disabled(o.Disabled || o.Loading)
-	if o.Label != "" {
-		e.Label(o.Label)
-	}
-	if o.Description != "" {
-		e.Description(o.Description)
-	}
-	if o.Error != "" {
-		e.Error(o.Error)
-	} else if o.Invalid {
-		e.Error(locales.ComponentInvalidValue())
-	}
-	if o.Loading {
-		e.Description(locales.ComponentLoading())
-	}
-	if o.ReadOnly {
-		e.Description(locales.ComponentReadOnly())
-	}
-	if o.Handle != nil {
-		e.Bind(o.Handle)
-	}
+// inputNeedsField reports whether options ask for the field composition.
+func inputNeedsField(o InputOptions) bool {
+	return o.Label != "" || o.Description != "" || o.Error != "" || o.Invalid
 }
 
-func inputBorder(c *ui.Context, e ui.Element, o ControlOptions) {
-	colors := theme.Colors(c)
-	border := colors.Input.Alpha(0)
-	invalid := o.Invalid || o.Error != ""
-	if e.FocusVisible() || e.FocusWithin() {
-		border = colors.Ring
+// Input renders HeroUI's single-line input on a native editor: typing commits
+// to value, and Enter submits without a fabricated action.
+func Input(c *ui.Context, value *string, o InputOptions) ui.Element {
+	value = inputTextAnchor(value)
+	build := func() ui.Element {
+		return inputEditor(c, value, inputCoreOptions{
+			Placeholder: o.Placeholder,
+			Name:        inputAccessibleName(o.Label, o.AriaLabel, o.Placeholder),
+			Variant:     o.Variant,
+			Disabled:    o.Disabled,
+			ReadOnly:    o.ReadOnly,
+			Invalid:     o.Invalid,
+			Password:    o.Password,
+			FullWidth:   o.FullWidth,
+			OnChange:    o.OnChange,
+			OnSubmit:    o.OnSubmit,
+		})
 	}
-	if invalid {
-		border = colors.Destructive
+	if !inputNeedsField(o) {
+		return build()
 	}
-	e.Border(1, border)
-	if invalid {
-		e.Shadow(0, 0, 0, 3, colors.Destructive.Alpha(0.2))
-	}
-}
-
-func errorText(messages []string) string {
-	var text strings.Builder
-	for i, message := range messages {
-		if message == "" {
-			continue
-		}
-		duplicate := false
-		for _, prior := range messages[:i] {
-			if message == prior {
-				duplicate = true
-				break
-			}
-		}
-		if duplicate {
-			continue
-		}
-		if text.Len() > 0 {
-			text.WriteByte('\n')
-		}
-		text.WriteString(message)
-	}
-	return text.String()
+	return inputField(c, o, true, func() { build() })
 }

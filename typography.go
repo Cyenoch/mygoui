@@ -1,71 +1,85 @@
 package mygoui
 
 import (
+	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
-	myui "github.com/egoist/mygo/ui"
+	"github.com/egoist/mygo/ui"
 )
 
-type TypographyKind uint8
+// TypographyOptions selects a HeroUI semantic role and emphasis.
+type TypographyOptions struct {
+	Type       theme.SemanticType
+	Muted      bool
+	Truncate   bool
+	Align      ui.Align
+	Weight     int
+	Selectable bool
+	Level      int
+}
 
-const (
-	Paragraph TypographyKind = iota
-	Heading1
-	Heading2
-	Heading3
-	Heading4
-	Lead
-	Large
-	Small
-	Muted
-	InlineCode
-	Blockquote
-)
-
-// Typography applies native text metrics and heading roles. Layout owns measure
-// and flow; text remains selectable and wraps at the available native width.
-// Current official typography documentation redirects to /docs/typeset, whose
-// rhythm follows surrounding text rather than a CSS class inventory.
-func Typography(c *myui.Context, text string, kind TypographyKind) myui.Element {
-	t := theme.Colors(c)
-	style := theme.Body()
-	ink := t.Foreground
-	level := 0
-	switch kind {
-	case Heading1:
-		style.Size, style.Weight, style.LineHeight = 36, 700, 1.2
-		level = 1
-	case Heading2:
-		style.Size, style.Weight, style.LineHeight = 30, 600, 1.25
-		level = 2
-	case Heading3:
-		style.Size, style.Weight, style.LineHeight = 24, 600, 1.3
-		level = 3
-	case Heading4:
-		style.Size, style.Weight, style.LineHeight = 16, 500, 1.4
-		level = 4
-	case Lead:
-		style.Size, ink = 20, t.MutedForeground
-	case Large:
-		style.Size, style.Weight = 18, 600
-	case Small:
-		style = theme.Small()
-	case Muted:
-		ink = t.MutedForeground
-	case InlineCode:
-		style = theme.Code()
-	case Blockquote:
-		ink = t.MutedForeground
+// Typography renders a semantic HeroUI type role. Headings expose a heading
+// role and level to assistive technology; body and code remain ordinary text.
+func Typography(c *ui.Context, text string, o TypographyOptions) ui.Element {
+	ts := o.Type.Style()
+	if o.Weight != 0 {
+		ts.Weight = o.Weight
 	}
-	e := myui.Text(c, text).Font(theme.FontFamily(c)).FontSize(theme.Scale(c, style.Size)).
-		LineHeight(style.LineHeight).FontWeight(style.Weight).TextColor(ink).Selectable()
-	if level > 0 {
-		e.Role(myui.RoleHeading).Level(level)
+	e := ui.Text(c, text)
+	e = style.Text(e, c, ts)
+	if o.Muted {
+		e.TextColor(theme.Colors(c).Muted)
+	} else {
+		e.TextColor(theme.Colors(c).Foreground)
 	}
-	if kind == InlineCode {
-		e.Font(theme.Mono).Background(t.Muted).Padding(2, theme.Space4).Radius(theme.Radii().SM)
+	if o.Truncate {
+		e.SingleLine()
 	}
-	if kind == Blockquote {
-		e.BorderWidth(0, 0, 0, 2).BorderColor(t.Border).PaddingX(theme.Space16).Italic()
+	if o.Selectable {
+		e.Selectable()
+	}
+	e.TextAlign(o.Align)
+	if o.Type >= theme.TypeH1 && o.Type <= theme.TypeH6 {
+		level := o.Level
+		if level == 0 {
+			level = int(o.Type-theme.TypeH1) + 1
+		}
+		e.Role(ui.RoleHeading).Level(level)
+	} else if o.Type == theme.TypeCode {
+		e.Font(theme.Mono)
 	}
 	return e
+}
+
+// Heading renders a HeroUI heading level 1–6.
+func Heading(c *ui.Context, level int, text string) ui.Element {
+	if level < 1 {
+		level = 1
+	}
+	if level > 6 {
+		level = 6
+	}
+	return Typography(c, text, TypographyOptions{
+		Type:  theme.SemanticType(int(theme.TypeH1) + level - 1),
+		Level: level,
+	})
+}
+
+// Paragraph renders HeroUI body copy at base, small or extra-small size.
+func Paragraph(c *ui.Context, text string, small bool) ui.Element {
+	t := theme.TypeBody
+	if small {
+		t = theme.TypeBodySM
+	}
+	return Typography(c, text, TypographyOptions{Type: t, Selectable: true})
+}
+
+// Code renders inline code with the HeroUI code role.
+func Code(c *ui.Context, text string) ui.Element {
+	return Typography(c, text, TypographyOptions{Type: theme.TypeCode, Selectable: true})
+}
+
+// Prose arranges caller-composed typography with HeroUI's prose rhythm.
+func Prose(c *ui.Context, body func()) ui.Element {
+	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8).
+		TextColor(theme.Colors(c).Foreground).Children(body)
 }

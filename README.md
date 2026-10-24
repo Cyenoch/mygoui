@@ -1,112 +1,96 @@
-# mygoui
+# MyGo UI
 
-Native [MyGo](https://github.com/egoist/mygo) components with a [shadcn/ui](https://ui.shadcn.com) inspired visual style. Typed Go options, caller-owned state, semantic themes and native keyboard, editing and accessibility behavior.
+Native [HeroUI v3](https://heroui.com/docs/react/components) components for
+[MyGo](https://github.com/egoist/mygo), written in Go.
 
-The gallery contains **66 component specimens**, from buttons and forms to dialogs, tables, charts, dates, code blocks and conversation surfaces. Shadcn informs the appearance; the APIs and implementation follow Go and MyGo.
+Typed Go options, caller-owned state, HeroUI's semantic color system and
+desktop metrics, and native MyGo keyboard, editing, selection, scrolling and
+accessibility behavior. No JavaScript, WebView, CSS runtime or browser
+compatibility layer is involved.
 
-Requires **Go 1.27.1+** and **MyGo v0.6.0+**. Icons use the published `github.com/Cyenoch/mygoicons v0.1.0` module. Builds need no JavaScript, asset server or sibling checkout.
+The library unifies the HeroUI component catalogs into one native Go component
+set; shared components are implemented once, and native-only components are
+included where they fit. It is not a React port: components compose through
+body callbacks and explicit state, not providers, contexts or slots.
+
+Requires **Go 1.27.1+** and **MyGo v0.6.3+**. Icons use the published
+`github.com/Cyenoch/mygoicons` module.
 
 ## Try it
 
-From this checkout:
-
 ```sh
-go run ./examples/gallery
 go run ./examples/basic
+go run ./examples/gallery
+
+# Live-reload workbench through the MyGo CLI (uses mygo.json at the root,
+# and runs go run github.com/egoist/mygo/cmd/mygo@latest dev)
+make dev
+
+# Production app bundle of the gallery
+make app
 ```
 
-The gallery provides search, independent interactive specimens, actual compiled Go source, Neutral/Blue presets, light/dark appearance, high contrast and 200% text previews. Its sample state stays in memory.
+The MyGo UI gallery follows the HeroUI docs layout: a main column with a
+sticky "On this page" rail (hidden below 1000 DIP), a page title and
+description with Copy Markdown and Copy import actions, and a compact Usage
+import bar whose block is derived from the packages the page's snippet names
+(one line, or a parenthesized block for several). Each component page has an
+Examples section of 2-5 named examples with live previews and no page-level
+fallback; the page's full Go snippet renders once below them in a code area
+with line numbers, syntax highlighting, copy, and 6-line collapse/expand with
+a surface fade. Pages end with a wrapping API Reference table and theme-token
+cards. The sidebar groups every component and uses ScrollShadow for overflow;
+light/dark appearance and accent/radius customization stay live, and data
+stays in memory.
 
-The source repository is [github.com/Cyenoch/mygoui](https://github.com/Cyenoch/mygoui). **No version has been released yet.** Once a maintainer publishes a release, consumers can install it with `go get github.com/Cyenoch/mygoui@<version>`. For local development, use a Go workspace:
+## Use
 
-```sh
-# In a directory containing your application's module:
-go work init . ../mygoui
-```
-
-If you already have a workspace, use `go work use ../mygoui` instead. A workspace is a consumer development choice; the library itself has no replacements or workspace requirements.
-
-## Use components
-
-Apply the theme once at the root of your MyGo view, then build native controls:
+Apply the theme once at the view root:
 
 ```go
 import (
-    "github.com/egoist/mygo/ui"
     "github.com/Cyenoch/mygoui"
-    "github.com/Cyenoch/mygoui/form"
     "github.com/Cyenoch/mygoui/theme"
+    "github.com/egoist/mygo/ui"
 )
-
-type state struct {
-    Name string
-    Saved string
-}
 
 func (s *state) View(c *ui.Context) {
     theme.Apply(c)
-    colors := theme.Colors(c)
-    ui.Column(c).Fill().Padding(24).Gap(12).
-        Background(colors.Background).TextColor(colors.Foreground).Children(func() {
-        form.Input(c.Key("name"), &s.Name, form.InputOptions{
-            ControlOptions: form.ControlOptions{Label: "Display name"},
-            Placeholder: "Your name",
+    mygoui.Card(c, mygoui.CardOptions{}, func() {
+        mygoui.CardHeader(c, func() {
+            mygoui.CardTitle(c, "Deploy")
+            mygoui.CardDescription(c, "Ship the current commit to production.")
         })
-        mygoui.Button(c, mygoui.ButtonOptions{
-            Label: "Save", OnClick: func() { s.Saved = s.Name },
+        mygoui.CardFooter(c, func() {
+            mygoui.Button(c, mygoui.ButtonOptions{
+                Label: "Deploy", OnClick: func() { s.deploy() },
+            })
+            mygoui.Button(c, mygoui.ButtonOptions{
+                Label: "Cancel", Variant: mygoui.ButtonGhost,
+                OnClick: func() { s.cancelled = true },
+            })
         })
-        ui.Text(c, s.Saved)
     })
 }
 ```
 
-Keep model data, widget state and `ui.Handle` across builds, separately for each window. Elements returned by constructors last for one build pass. Run slow work outside the view and publish its results with `Window.Update`.
+Customize the design system process-wide before views are built:
 
-## Packages
-
-| Import suffix | Components |
-| --- | --- |
-| root `mygoui` | Button, Badge, Card, Alert, Avatar, Toggle, Progress, Spinner, Skeleton, typography and basic layout surfaces |
-| `form` | Inputs, fields, labels, input groups, OTP, checkbox, switch, radio group, sliders and native select |
-| `navigation` | Accordion, collapsible, breadcrumb, tabs, select, combobox, command palette, pagination, navigation menu and sidebar |
-| `overlay` | Dialog, alert dialog, sheet, drawer, popover, tooltip, hover card, menus and toast |
-| `data` | Virtualized Table and DataTable with local filtering, sorting, pagination and column visibility |
-| `calendar` | Gregorian civil dates, single/multiple/range calendar and date picker |
-| `chart` | Native bar, line, area, pie, radar and radial charts |
-| `conversation` | Message, bubble, marker, attachment, message scroller and questionnaire |
-| `codeblock`, `trace` | Exact source presentation/copy, syntax highlighting, line treatments and retained disclosures |
-| `theme`, `locale` | Semantic colors, metrics, typography, accessibility preferences and namespaced translations |
-
-See [the component catalog and limitations](docs/components.md) and [the design contract](docs/design.md).
-
-## Theme and language
-
-`theme.Apply(c)` installs Neutral using the window's current appearance and OS accessibility preferences. `theme.ApplyPreset(c, theme.Blue)` selects Blue. The theme honors OS accent, high contrast, text scale and reduced motion. Set application-wide font policy with `theme.SetPreferences`, then invalidate affected windows; retain widget state per window.
-
-Library messages include English and Simplified Chinese and use MyGo's native library catalog. The host chooses and registers application languages. Override component strings in the host catalog with keys such as `mygoui.componentClose`. Importing the library does not register application languages or initialize an application.
-
-Install `overlay.Toaster(c)` once per window when using notifications. Emit toasts from actions and job completions, with the caller retaining `overlay.ToastState`; rendering a view repeatedly must not enqueue notifications repeatedly.
-
-## MyGo 0.6
-
-Spinner uses the maintained `plugins/loading` arc, including visibility-aware paint scheduling and reduced-motion poses. Tables expose native cell selection through `state.List.CellSelect`, row dragging through `state.List.DragSelect`, and row headers through `Column.RowHeader`. The gallery's table examples exercise selection modes. Native keyed controls retain MyGo's incremental layout, partial redraw, wheel scrolling and platform menu behavior.
-
-The [upgrade notes](docs/mygo-0.6.md) record the reviewed release changes, integration choices and checks.
-
-## Development
-
-```sh
-make check
-make race
-golangci-lint run ./...
-make wasm
-make workflows # requires actionlint
+```go
+theme.Configure(theme.Preferences{
+    Accent:   ui.Oklch(0.62, 0.20, 300),
+    Radius:   10,
+    FontSize: 16,
+})
 ```
 
-Ordinary tests use MyGo's headless renderer and native event routing. They do not open windows. Linux needs Pango (`libpangocairo-1.0-0`) plus `fonts-noto-cjk` and `fonts-noto-color-emoji` for the Unicode rendering fixtures. Race tests require a C toolchain. CI configures these prerequisites and checks Linux, macOS and Windows, plus WebAssembly builds, MyGo lifetime analysis, lint and vulnerability scanning.
+See `docs/components.md` for the inventory and native limits,
+`docs/design.md` for ownership, `docs/mygo-vs-css.md` for the layout and paint
+differences from CSS/Tailwind, and `docs/references.md` for the pinned
+upstream sources used to translate each component.
 
-See [CONTRIBUTING.md](CONTRIBUTING.md) for validation, public API changes, dependency updates and release steps. Headless evidence and outstanding platform checks are recorded in [VALIDATION.md](VALIDATION.md).
+## Status
 
-## License
-
-Code is [MIT](LICENSE). Shadcn is a visual reference; this project is independently maintained. Dependency and reference notices are retained in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+This checkout is a complete HeroUI-oriented rewrite; the previous
+shadcn-inspired implementation is not part of the API. No version has been
+released yet.
