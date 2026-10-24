@@ -309,8 +309,12 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 	pal := theme.Colors(c)
 	variant := variantOf(t.Type)
 	titleInk, iconInk := toastInk(pal, variant)
+	label := t.Title
+	if label == "" {
+		label = t.Description
+	}
 	parts := ui.ToastBase(c, t)
-	root := parts.Root.Absolute().Left(0).Width(layout.width).Label(t.ID).
+	root := parts.Root.Absolute().Left(0).Width(layout.width).Label(label).
 		Radius(overlayRadius()).
 		Background(pal.Surface).TextColor(pal.OverlayForeground)
 	root = panelElevation(c, root)

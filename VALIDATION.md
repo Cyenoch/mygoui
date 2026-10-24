@@ -14,18 +14,17 @@ v0.2.1. Module metadata targets Go 1.27.1. The public repository is
   internal helpers have no tests. Fixed test counts are not retained here;
   they become stale as behavior regressions are added or removed.
 - `golangci-lint run ./...` reported zero issues and `make wasm` passed after
-  the final modal identity and AlertDialog focus fixes. The additional checks
-  below record the earlier rewrite validation, not reruns for this update.
-- `make race` passed with `CGO_ENABLED=1`, with no data races; the slowest
-  package, `internal/gallery`, took 65.2 s under the race detector.
-- `golangci-lint run ./...` reported zero issues.
-- `make wasm` built every package for `GOOS=js GOARCH=wasm`.
+  the final modal identity and AlertDialog focus fixes.
+- Toast's follow-up semantic-name smoke verified title and description-only
+  notifications, native announcements, same-ID renaming and removal on close;
+  internal IDs did not appear in the native tester's semantic labels.
+- The additional checks below record the earlier rewrite validation, not reruns
+  for the overlay-motion or semantic-name update.
+- The last recorded `make race` run predates the overlay-motion update. It
+  passed with `CGO_ENABLED=1` and no data races; `internal/gallery` took 65.2 s.
 - `make workflows` (actionlint) accepted `.github/workflows/ci.yml`.
 - `govulncheck v1.9.0 ./...` found no reachable vulnerabilities.
 - `gofmt -l .` was empty; `go mod tidy` left `go.mod`/`go.sum` unchanged.
-- Gate exit codes on this checkout were all 0: `make check`, `make race`,
-  `golangci-lint run ./...`, `make wasm`, `make workflows` and
-  `govulncheck v1.9.0 ./...`.
 - The MyGo CLI build and dev paths were exercised from the repository root:
   `go run github.com/egoist/mygo/cmd/mygo@v0.6.3 build` produced a signed
   development-era `.app` and `.dmg`, and `dev -skip-dev-command` built the

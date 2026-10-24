@@ -91,6 +91,8 @@ shims are provided.
 - Toast: the close button floats across the upper-right corner without
   reserving message or action width. Undo keeps the normal right padding;
   the centered lucide X reveals on hover or focus and remains keyboard-accessible.
+- Toast status controls expose the message title (or description without a
+  title), not an internal notification ID, as their accessible name.
 - Gallery Toast triggers create a fresh notification on every press; only
   the explicit Update example reuses its ID.
 - Modal, AlertDialog, Dialog, Drawer, BottomSheet, Popover and Tooltip now

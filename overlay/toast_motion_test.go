@@ -11,9 +11,9 @@ import (
 	ui "github.com/egoist/mygo/ui"
 )
 
-// These tests drive the native viewport with keyboard and pointer events. They
-// keep no build value: the card labels are the toast IDs the consumer passed,
-// and the native toast collection owns callbacks, lifetime and exit snapshots.
+// These tests drive the native viewport with keyboard and pointer events.
+// Cards are found by their accessible notification title, not their internal
+// identity; MyGo owns callbacks, lifetime and exit snapshots.
 
 type toastMotionFixture struct {
 	tt      *ui.Tester
@@ -49,11 +49,11 @@ func (f *toastMotionFixture) dismiss(id string) {
 	f.tt.Frame()
 }
 
-func toastMotionRect(t *testing.T, tt *ui.Tester, id string) ui.Rect {
+func toastMotionRect(t *testing.T, tt *ui.Tester, label string) ui.Rect {
 	t.Helper()
-	r, ok := tt.Find(id)
+	r, ok := tt.Find(label)
 	if !ok {
-		t.Fatalf("missing toast %q; labels=%q", id, tt.Texts())
+		t.Fatalf("missing toast %q; labels=%q", label, tt.Texts())
 	}
 	return r
 }
@@ -114,14 +114,14 @@ func TestToastEntryTravelsAndFadesFromWindowEdge(t *testing.T) {
 			f := newToastMotionFixture(t, 640, 700)
 			blank := toastMotionImage(f.tt)
 			f.add(ToastOptions{ID: "arrival", Title: "New notification", Placement: tc.place, Timeout: -1})
-			first := toastMotionRect(t, f.tt, "arrival")
+			first := toastMotionRect(t, f.tt, "New notification")
 			firstImage := toastMotionImage(f.tt)
 			f.tt.Advance(80 * time.Millisecond)
 			f.tt.Frame()
-			mid := toastMotionRect(t, f.tt, "arrival")
+			mid := toastMotionRect(t, f.tt, "New notification")
 			midImage := toastMotionImage(f.tt)
 			f.tt.Advance(2 * time.Second)
-			end := toastMotionRect(t, f.tt, "arrival")
+			end := toastMotionRect(t, f.tt, "New notification")
 			if (first.Y-mid.Y)*tc.direction <= 0 || (mid.Y-end.Y)*tc.direction <= 0 {
 				t.Fatalf("entry does not travel from the window edge: first=%+v mid=%+v end=%+v", first, mid, end)
 			}
@@ -160,9 +160,9 @@ func TestToastDeckPlacementAndIdleStack(t *testing.T) {
 			f.tt.Advance(2 * time.Second)
 			f.tt.Frame()
 
-			newest := toastMotionRect(t, f.tt, "stack-new")
-			middle := toastMotionRect(t, f.tt, "stack-mid")
-			oldest := toastMotionRect(t, f.tt, "stack-old")
+			newest := toastMotionRect(t, f.tt, "Newest")
+			middle := toastMotionRect(t, f.tt, "Middle")
+			oldest := toastMotionRect(t, f.tt, "Oldest")
 			if !toastMotionNear(newest.X+newest.W/2, winW/2) ||
 				!toastMotionNear(middle.X+middle.W/2, winW/2) ||
 				!toastMotionNear(oldest.X+oldest.W/2, winW/2) {
@@ -212,43 +212,43 @@ func TestToastDeckInsertionAndRemovalKeepTheOldCardMoving(t *testing.T) {
 	f.add(ToastOptions{ID: "insert-old", Title: "Existing card", Timeout: -1})
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	before := toastMotionRect(t, f.tt, "insert-old")
+	before := toastMotionRect(t, f.tt, "Existing card")
 
 	f.add(ToastOptions{ID: "insert-new", Title: "Unequal height card",
 		Description: "A much longer message wraps onto several lines so the deck cannot place its cards from a fixed nominal height. The complete description remains readable while the older card slides to its new slot.",
 		Timeout:     -1})
-	first := toastMotionRect(t, f.tt, "insert-old")
+	first := toastMotionRect(t, f.tt, "Existing card")
 	if !toastMotionSameRect(before, first) {
 		t.Fatalf("insertion jumped the existing card on its first frame: before=%+v first=%+v", before, first)
 	}
 	f.tt.Advance(80 * time.Millisecond)
 	f.tt.Frame()
-	mid := toastMotionRect(t, f.tt, "insert-old")
+	mid := toastMotionRect(t, f.tt, "Existing card")
 	if toastMotionSameRect(mid, first) || !(mid.Y < first.Y) {
 		t.Fatalf("existing card did not move continuously up on insertion: first=%+v mid=%+v", first, mid)
 	}
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	end := toastMotionRect(t, f.tt, "insert-old")
-	tall := toastMotionRect(t, f.tt, "insert-new")
+	end := toastMotionRect(t, f.tt, "Existing card")
+	tall := toastMotionRect(t, f.tt, "Unequal height card")
 	if !(end.Y < mid.Y) || tall.H <= before.H+10 {
 		t.Fatalf("insertion did not settle with unequal heights: before=%+v end=%+v mid=%+v tall=%+v", before, end, mid, tall)
 	}
 
 	f.dismiss("insert-new")
-	removeFirst := toastMotionRect(t, f.tt, "insert-old")
+	removeFirst := toastMotionRect(t, f.tt, "Existing card")
 	if !toastMotionSameRect(end, removeFirst) {
 		t.Fatalf("removal jumped the existing card on its first frame: before=%+v first=%+v", end, removeFirst)
 	}
 	f.tt.Advance(80 * time.Millisecond)
 	f.tt.Frame()
-	removeMid := toastMotionRect(t, f.tt, "insert-old")
+	removeMid := toastMotionRect(t, f.tt, "Existing card")
 	if toastMotionSameRect(removeMid, removeFirst) || !(removeMid.Y > removeFirst.Y) {
 		t.Fatalf("existing card did not move continuously back on removal: first=%+v mid=%+v", removeFirst, removeMid)
 	}
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	if got := toastMotionRect(t, f.tt, "insert-old"); !toastMotionSameRect(before, got) {
+	if got := toastMotionRect(t, f.tt, "Existing card"); !toastMotionSameRect(before, got) {
 		t.Fatalf("existing card did not return to its resting slot: before=%+v after=%+v", before, got)
 	}
 	if f.tt.HasText("Unequal height card") || f.tt.FramePending() {
@@ -276,13 +276,13 @@ func TestToastDeckHoverExpandsUnequalCardsAndHoldsGapHover(t *testing.T) {
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
 
-	newest := toastMotionRect(t, f.tt, "hover-new")
+	newest := toastMotionRect(t, f.tt, "Hover newest")
 	f.tt.Move(newest.X+newest.W/2, newest.Y+newest.H/2)
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	newest = toastMotionRect(t, f.tt, "hover-new")
-	middle := toastMotionRect(t, f.tt, "hover-mid")
-	oldest := toastMotionRect(t, f.tt, "hover-old")
+	newest = toastMotionRect(t, f.tt, "Hover newest")
+	middle := toastMotionRect(t, f.tt, "Hover middle")
+	oldest := toastMotionRect(t, f.tt, "Hover oldest")
 	for _, card := range []ui.Rect{newest, middle, oldest} {
 		if !toastMotionNear(card.W, 460) {
 			t.Fatalf("expanded card width=%v, want 460: newest=%+v middle=%+v oldest=%+v", card.W, newest, middle, oldest)
@@ -309,8 +309,8 @@ func TestToastDeckHoverExpandsUnequalCardsAndHoldsGapHover(t *testing.T) {
 	f.tt.Advance(20 * time.Second)
 	for range 5 {
 		f.tt.Frame()
-		if !toastMotionSameRect(middle, toastMotionRect(t, f.tt, "hover-mid")) ||
-			!toastMotionSameRect(oldest, toastMotionRect(t, f.tt, "hover-old")) {
+		if !toastMotionSameRect(middle, toastMotionRect(t, f.tt, "Hover middle")) ||
+			!toastMotionSameRect(oldest, toastMotionRect(t, f.tt, "Hover oldest")) {
 			t.Fatal("stationary pointer in the inter-card gap oscillated the expanded deck")
 		}
 	}
@@ -341,26 +341,26 @@ func TestToastDeckRapidHoverReversalStartsAtCurrentPose(t *testing.T) {
 	}
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	collapsed := toastMotionRect(t, f.tt, "reverse-0")
-	newest := toastMotionRect(t, f.tt, "reverse-2")
+	collapsed := toastMotionRect(t, f.tt, "Reversal card 0")
+	newest := toastMotionRect(t, f.tt, "Reversal card 2")
 
 	f.tt.Move(newest.X+newest.W/2, newest.Y+newest.H/2)
 	f.tt.Advance(80 * time.Millisecond)
 	f.tt.Frame()
-	part := toastMotionRect(t, f.tt, "reverse-0")
+	part := toastMotionRect(t, f.tt, "Reversal card 0")
 	if toastMotionSameRect(collapsed, part) {
 		t.Fatalf("hover expansion never entered an intermediate pose: collapsed=%+v part=%+v", collapsed, part)
 	}
 	f.tt.Move(0, 0)
-	if got := toastMotionRect(t, f.tt, "reverse-0"); !toastMotionSameRect(part, got) {
+	if got := toastMotionRect(t, f.tt, "Reversal card 0"); !toastMotionSameRect(part, got) {
 		t.Fatalf("leaving hover jumped instead of starting at the current pose: part=%+v got=%+v", part, got)
 	}
 	f.tt.Advance(40 * time.Millisecond)
 	f.tt.Frame()
-	part = toastMotionRect(t, f.tt, "reverse-0")
-	newest = toastMotionRect(t, f.tt, "reverse-2")
+	part = toastMotionRect(t, f.tt, "Reversal card 0")
+	newest = toastMotionRect(t, f.tt, "Reversal card 2")
 	f.tt.Move(newest.X+newest.W/2, newest.Y+newest.H/2)
-	if got := toastMotionRect(t, f.tt, "reverse-0"); !toastMotionSameRect(part, got) {
+	if got := toastMotionRect(t, f.tt, "Reversal card 0"); !toastMotionSameRect(part, got) {
 		t.Fatalf("re-entering hover jumped instead of starting at the current pose: part=%+v got=%+v", part, got)
 	}
 	f.tt.Advance(2 * time.Second)
@@ -368,7 +368,7 @@ func TestToastDeckRapidHoverReversalStartsAtCurrentPose(t *testing.T) {
 	f.tt.Move(0, 0)
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	if got := toastMotionRect(t, f.tt, "reverse-0"); !toastMotionSameRect(collapsed, got) {
+	if got := toastMotionRect(t, f.tt, "Reversal card 0"); !toastMotionSameRect(collapsed, got) {
 		t.Fatalf("rapid reversal did not settle back to the collapsed deck: collapsed=%+v got=%+v", collapsed, got)
 	}
 	if f.tt.FramePending() {
@@ -398,8 +398,8 @@ func TestToastDeckFocusExpansionAndSameIDUpdate(t *testing.T) {
 	toastMotionFocus(t, f.tt, "Inspect oldest")
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	oldest := toastMotionRect(t, f.tt, "focus-old")
-	middle := toastMotionRect(t, f.tt, "focus-mid")
+	oldest := toastMotionRect(t, f.tt, "Focused oldest")
+	middle := toastMotionRect(t, f.tt, "Focused middle")
 	if !toastMotionNear(oldest.W, 460) || oldest.H <= middle.H+10 {
 		t.Fatalf("focus did not expand unequal measured cards: oldest=%+v middle=%+v", oldest, middle)
 	}
@@ -411,7 +411,7 @@ func TestToastDeckFocusExpansionAndSameIDUpdate(t *testing.T) {
 		Description: "The focused card keeps its identity and pause while the new message replaces the old one.",
 		Action:      "Inspect oldest", Timeout: time.Second,
 		OnAction: func() { actions++ }, OnClose: func() { closed++ }})
-	if got := toastMotionRect(t, f.tt, "focus-old"); !toastMotionSameRect(oldest, got) {
+	if got := toastMotionRect(t, f.tt, "Updated oldest"); !toastMotionSameRect(oldest, got) {
 		t.Fatalf("same-ID update replayed the entrance: before=%+v after=%+v", oldest, got)
 	}
 	if !f.tt.Focused("Inspect oldest") || f.tt.HasText("Focused oldest") || !f.tt.HasText("Updated oldest") {
@@ -439,27 +439,27 @@ func TestToastSameIDUpdateKeepsActiveDragPose(t *testing.T) {
 		OnClose: func() { closed++ }})
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	rest := toastMotionRect(t, f.tt, "drag-update")
+	rest := toastMotionRect(t, f.tt, "Dragging card")
 
 	x, y := rest.X+rest.W/2, rest.Y+3
 	f.tt.Press(x, y)
 	f.tt.Advance(100 * time.Millisecond)
 	f.tt.Move(x+24, y)
 	f.tt.Advance(200 * time.Millisecond)
-	dragged := toastMotionRect(t, f.tt, "drag-update")
+	dragged := toastMotionRect(t, f.tt, "Dragging card")
 	if dragged.X <= rest.X+5 {
 		t.Fatalf("background drag did not follow the pointer: rest=%+v dragged=%+v", rest, dragged)
 	}
 
 	f.add(ToastOptions{ID: "drag-update", Title: "Dragging updated", Action: "Inspect drag", Timeout: -1,
 		OnClose: func() { closed++ }})
-	if got := toastMotionRect(t, f.tt, "drag-update"); !toastMotionSameRect(dragged, got) {
+	if got := toastMotionRect(t, f.tt, "Dragging updated"); !toastMotionSameRect(dragged, got) {
 		t.Fatalf("same-ID update reset the active drag pose: before=%+v after=%+v", dragged, got)
 	}
 	f.tt.Release(x+24, y)
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	if got := toastMotionRect(t, f.tt, "drag-update"); !toastMotionSameRect(rest, got) || closed != 0 {
+	if got := toastMotionRect(t, f.tt, "Dragging updated"); !toastMotionSameRect(rest, got) || closed != 0 {
 		t.Fatalf("cancelled drag did not return with the new payload: rest=%+v got=%+v closed=%d", rest, got, closed)
 	}
 }
@@ -476,20 +476,20 @@ func TestToastDragCancelsCommitsAndControlsOwnTheGesture(t *testing.T) {
 		OnClose: func() { closed++ }})
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	rest := toastMotionRect(t, f.tt, "swipe")
+	rest := toastMotionRect(t, f.tt, "Swipe card")
 
 	x, y := rest.X+rest.W/2, rest.Y+3
 	f.tt.Press(x, y)
 	f.tt.Advance(100 * time.Millisecond)
 	f.tt.Move(x+24, y)
 	f.tt.Advance(200 * time.Millisecond)
-	if dragged := toastMotionRect(t, f.tt, "swipe"); dragged.X <= rest.X+5 {
+	if dragged := toastMotionRect(t, f.tt, "Swipe card"); dragged.X <= rest.X+5 {
 		t.Fatalf("short drag did not follow the pointer: rest=%+v dragged=%+v", rest, dragged)
 	}
 	f.tt.Release(x+24, y)
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	if got := toastMotionRect(t, f.tt, "swipe"); !toastMotionSameRect(rest, got) || closed != 0 {
+	if got := toastMotionRect(t, f.tt, "Swipe card"); !toastMotionSameRect(rest, got) || closed != 0 {
 		t.Fatalf("short drag did not cancel: rest=%+v got=%+v closed=%d", rest, got, closed)
 	}
 
@@ -509,14 +509,14 @@ func TestToastDragCancelsCommitsAndControlsOwnTheGesture(t *testing.T) {
 		OnAction: func() { actions++ }, OnClose: func() { closed++ }})
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	card := toastMotionRect(t, f.tt, "controls")
+	card := toastMotionRect(t, f.tt, "Controls own gestures")
 	action := toastMotionRect(t, f.tt, "Undo sample")
 	f.tt.Press(action.X+action.W/2, action.Y+action.H/2)
 	f.tt.Move(action.X+action.W/2-180, action.Y+action.H/2)
 	f.tt.Release(action.X+action.W/2-180, action.Y+action.H/2)
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	if actions != 0 || closed != 0 || !toastMotionSameRect(card, toastMotionRect(t, f.tt, "controls")) {
+	if actions != 0 || closed != 0 || !toastMotionSameRect(card, toastMotionRect(t, f.tt, "Controls own gestures")) {
 		t.Fatalf("action drag activated or moved the card: actions=%d closed=%d labels=%q", actions, closed, f.tt.Texts())
 	}
 	closeButton := toastMotionRect(t, f.tt, "Close")
@@ -525,7 +525,7 @@ func TestToastDragCancelsCommitsAndControlsOwnTheGesture(t *testing.T) {
 	f.tt.Release(closeButton.X+closeButton.W/2-180, closeButton.Y+closeButton.H/2)
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
-	if actions != 0 || closed != 0 || !toastMotionSameRect(card, toastMotionRect(t, f.tt, "controls")) {
+	if actions != 0 || closed != 0 || !toastMotionSameRect(card, toastMotionRect(t, f.tt, "Controls own gestures")) {
 		t.Fatalf("close drag activated or moved the card: actions=%d closed=%d labels=%q", actions, closed, f.tt.Texts())
 	}
 	if err := f.tt.Click("Undo sample"); err != nil {
@@ -548,7 +548,7 @@ func TestToastReducedMotionAndRetainedExit(t *testing.T) {
 		f.tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
 		closed := 0
 		f.add(ToastOptions{ID: "reduced", Title: "Reduced card", Timeout: -1, OnClose: func() { closed++ }})
-		card := toastMotionRect(t, f.tt, "reduced")
+		card := toastMotionRect(t, f.tt, "Reduced card")
 		if !toastMotionNear(card.Y+card.H, winH-16) || !toastMotionNear(card.W, 460) {
 			t.Fatalf("reduced-motion card not at its resting edge: %+v", card)
 		}
@@ -587,7 +587,7 @@ func TestToastReducedMotionAndRetainedExit(t *testing.T) {
 		tt.Frame()
 		tt.Advance(2 * time.Second)
 		tt.Frame()
-		card := toastMotionRect(t, tt, "exit")
+		card := toastMotionRect(t, tt, "Exit card")
 		action := toastMotionRect(t, tt, "Exit action")
 		region := toastMotionRegion(card)
 		shown := toastMotionImage(tt)

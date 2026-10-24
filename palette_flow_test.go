@@ -123,7 +123,7 @@ func TestInjectedPaletteReachesComponentPaint(t *testing.T) {
 		t.Fatalf("toasts = %d, want 1", len(toasts.Items()))
 	}
 	saved := findRect(t, tt3, "Saved")
-	if got := pixel(tt3.Image(), saved.X-8, saved.Y+saved.H/2); !same(got, sheet) {
+	if got := pixel(tt3.Image(), saved.X+theme.Space16, saved.Y+saved.H/2); !same(got, sheet) {
 		t.Errorf("toast card = %v, want the injected surface %v", got, sheet)
 	}
 }

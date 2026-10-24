@@ -93,6 +93,10 @@ authoritative usage reference for prototypes and state wiring.
 | `Tooltip` | Native hover/focus description with placement and Escape dismissal. |
 | `Toast` | Spring-animated deck with hover/focus expansion, swipe dismissal, variants, action, timeout and MyGo's three-visible cap. The close button floats across the top-right corner without reserving content width. `ToastState` holds caller-owned identities and installs the region with `View`; reusing an ID updates in place without replaying entry. |
 
+Toast status controls use the notification title as their accessible name,
+falling back to the description for a title-less notification. IDs remain
+update/dismiss identities, not user-facing labels.
+
 Modal, AlertDialog, Dialog, Drawer, BottomSheet, Popover and Tooltip fade in/out
 without shifting their layout, anchor or backdrop hit area. Every installed
 constructor keeps the overlay layer alive while

@@ -48,7 +48,7 @@ func TestToastCloseGlyphIsOneCenteredX(t *testing.T) {
 			if !ok {
 				t.Fatal("toast shows no action")
 			}
-			card, ok := tt.Find(state.Items()[0].ID)
+			card, ok := tt.Find("File saved")
 			if !ok {
 				t.Fatal("toast shows no card")
 			}
