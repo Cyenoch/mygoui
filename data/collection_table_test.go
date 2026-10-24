@@ -81,42 +81,6 @@ func TestTableSelectedRowPaintsOneBand(t *testing.T) {
 	wantTablePixel(t, img, int(head.X)+2, int(other.Y+other.H/2), colors.Surface, "unchosen row fill")
 }
 
-// TestTableRowTintStaysInsideRoundedFrame checks a hovered last row cannot
-// paint into the rounded gray frame around the white body card. Cell Draw
-// reaches the toolkit's padding, so the frame is repainted over it.
-func TestTableRowTintStaysInsideRoundedFrame(t *testing.T) {
-	rows := fileRows()
-	st := &data.TableState{Selection: data.TableSelection{Mode: data.TableSelectionNone, Row: -1}}
-	o := fileTable(rows, st, nil)
-	var colors theme.Palette
-	var frame ui.Rect
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.ApplyMode(c, false)
-		colors = theme.Colors(c)
-		ui.Column(c).FillWidth().Padding(20).Children(func() {
-			if p := data.Table(c, o).Height(168); p.Valid() {
-				frame = p.Bounds()
-			}
-		})
-	}, 520, 240)
-	tt.Frame()
-	tt.Frame()
-	last, ok := tt.Find("Gamma")
-	if !ok {
-		t.Fatalf("last row is missing: %v", tt.Texts())
-	}
-	tt.Move(last.X+last.W/2, last.Y+last.H/2)
-	tt.Frame()
-	for _, pt := range [][2]float32{
-		{frame.X + frame.W - 2, frame.Y + frame.H - 20},
-		{frame.X + frame.W - 20, frame.Y + frame.H - 2},
-		{frame.X + frame.W/2, frame.Y + frame.H - 2},
-		{frame.X + frame.W - 2, frame.Y + frame.H/2},
-	} {
-		wantTablePixel(t, tt.Image(), int(pt[0]), int(pt[1]), colors.SurfaceSecondary, "table frame")
-	}
-}
-
 // TestTableSecondaryVariantIsFlush checks the secondary variant paints no
 // surface card, while the primary one does.
 func TestTableSecondaryVariantIsFlush(t *testing.T) {

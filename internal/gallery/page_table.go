@@ -169,8 +169,16 @@ func (st *tableState) tableExampleOptions(c *ui.Context, state *data.TableState,
 }
 
 // tableExampleFrame sizes one table and its caption inside an example panel.
+// Six whole rows: HeroUI's 32 DIP header, six 44 DIP rows, and the 4 DIP
+// bottom frame. A fixed 320 DIP frame left part of a seventh row visible,
+// which cut the next status chip at the viewport edge.
 func tableExampleFrame(c *ui.Context, options data.TableOptions, caption func() string) {
-	tableExampleFrameHeight(c, options, 320, caption)
+	tableExampleFrameHeight(c, options, tableRowsHeight(6), caption)
+}
+
+// tableRowsHeight is the unscaled height of a primary table showing rows.
+func tableRowsHeight(rows int) float32 {
+	return theme.Space8 + theme.Space4 + float32(rows)*44
 }
 
 // tableExampleFrameHeight sizes a table of a given height above its caption.
