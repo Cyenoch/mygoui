@@ -154,17 +154,38 @@ func TestButtonGroupFillStaysInsideRoundedBox(t *testing.T) {
 	}
 }
 
-// textSpan returns the horizontal extent of near-white glyph pixels in r,
-// the button labels on an accent face.
-func textSpan(img *image.RGBA, r ui.Rect) (int, int, bool) {
+// textSpan returns the horizontal extent of the label ink in r, the glyphs
+// on the button's face. Ink is what differs from the face color; the page
+// background before the rounded corners antialiases differently per
+// platform and is not ink, so the scan stays between the row's face
+// pixels.
+func textSpan(img *image.RGBA, r ui.Rect, face ui.Color) (int, int, bool) {
+	painted := func(x, y int) bool {
+		c := img.RGBAAt(x, y)
+		return near(c.R, face.R) && near(c.G, face.G) && near(c.B, face.B)
+	}
 	x0, x1 := -1, -1
 	for y := int(r.Y) + int(r.H)/4; y < int(r.Y+r.H)-int(r.H)/4; y++ {
+		left, right := -1, -1
 		for x := int(r.X) + 1; x < int(r.X+r.W)-1; x++ {
-			c := img.RGBAAt(x, y)
-			if c.R > 230 && c.G > 230 && c.B > 230 {
-				if x0 < 0 {
-					x0 = x
+			if painted(x, y) {
+				if left < 0 {
+					left = x
 				}
+				right = x
+			}
+		}
+		if left < 0 {
+			continue
+		}
+		for x := left; x <= right; x++ {
+			if painted(x, y) {
+				continue
+			}
+			if x0 < 0 || x < x0 {
+				x0 = x
+			}
+			if x > x1 {
 				x1 = x
 			}
 		}
@@ -268,7 +289,7 @@ func TestFullWidthButtonGroupAlignsLabels(t *testing.T) {
 			t.Fatalf("%q missing", label)
 		}
 		rects = append(rects, rect)
-		x0, x1, ok := textSpan(img, rect)
+		x0, x1, ok := textSpan(img, rect, colors.Accent)
 		if !ok {
 			t.Fatalf("%q has no label pixels in %+v", label, rect)
 		}
