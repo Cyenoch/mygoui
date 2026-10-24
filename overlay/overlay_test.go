@@ -136,32 +136,57 @@ func TestAlertDialogIgnoresBackdropAndEscape(t *testing.T) {
 }
 
 func TestDrawerEdgesAndBottomSheet(t *testing.T) {
-	var open = true
-	var right ui.Rect
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.Apply(c)
-		if p := Drawer(c, &open, DrawerOptions{Side: DrawerRight, Title: "Filters"}); p.Valid() {
-			right = p.Bounds()
-		}
-	}, 640, 480)
-	tt.Frame()
-	if right.W != 384 || right.H != 480 {
-		t.Fatalf("right drawer size = %vx%v, want 384x480", right.W, right.H)
-	}
-	if right.X+right.W != 640 {
-		t.Fatalf("right drawer missed the window edge: %+v", right)
+	const margin, winW, winH = 16, 640, 480
+	for _, tc := range []struct {
+		name string
+		side DrawerSide
+	}{
+		{"left", DrawerLeft},
+		{"right", DrawerRight},
+		{"top", DrawerTop},
+		{"bottom", DrawerBottom},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			open := true
+			var panel ui.Rect
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.Apply(c)
+				if p := Drawer(c, &open, DrawerOptions{Side: tc.side, Title: "Filters"}); p.Valid() {
+					panel = p.Bounds()
+				}
+			}, winW, winH)
+			tt.Frame()
+			switch tc.side {
+			case DrawerLeft:
+				if panel.X != margin || panel.Y != margin || panel.W != 384 || panel.H != winH-2*margin {
+					t.Fatalf("left drawer geometry = %+v", panel)
+				}
+			case DrawerRight:
+				if panel.X+panel.W != winW-margin || panel.Y != margin || panel.W != 384 || panel.H != winH-2*margin {
+					t.Fatalf("right drawer geometry = %+v", panel)
+				}
+			case DrawerTop:
+				if panel.X != margin || panel.Y != margin || panel.W != winW-2*margin {
+					t.Fatalf("top drawer geometry = %+v", panel)
+				}
+			case DrawerBottom:
+				if panel.X != margin || panel.Y+panel.H != winH-margin || panel.W != winW-2*margin {
+					t.Fatalf("bottom drawer geometry = %+v", panel)
+				}
+			}
+		})
 	}
 
-	open = true
+	open := true
 	var sheet ui.Rect
 	st := ui.NewTester(func(c *ui.Context) {
 		theme.Apply(c)
 		if p := BottomSheet(c, &open, BottomSheetOptions{Title: "Actions"}); p.Valid() {
 			sheet = p.Bounds()
 		}
-	}, 640, 480)
+	}, winW, winH)
 	st.Frame()
-	if sheet.W != 640 || sheet.Y+sheet.H != 480 {
+	if sheet.W != winW || sheet.Y+sheet.H != winH {
 		t.Fatalf("bottom sheet geometry = %+v, want full width at the bottom edge", sheet)
 	}
 }
@@ -353,86 +378,6 @@ func toastTestView(state *ToastState, ctx **ui.Context) func(c *ui.Context) {
 			})
 			state.View(c)
 		})
-	}
-}
-
-// whiteBounds returns the bounds of the pure-white pixels of a frame, the
-// toast card's surface in the light palette.
-func whiteBounds(img *image.RGBA) (minX, minY, maxX, maxY int, ok bool) {
-	b := img.Bounds()
-	minX, minY, maxX, maxY = b.Max.X, b.Max.Y, -1, -1
-	for y := b.Min.Y; y < b.Max.Y; y++ {
-		for x := b.Min.X; x < b.Max.X; x++ {
-			r, g, bl, a := img.At(x, y).RGBA()
-			if a != 0xffff || r != 0xffff || g != 0xffff || bl != 0xffff {
-				continue
-			}
-			minX, minY = min(minX, x), min(minY, y)
-			maxX, maxY = max(maxX, x), max(maxY, y)
-		}
-	}
-	return minX, minY, maxX, maxY, maxX >= 0
-}
-
-func TestToastCloseButtonStaysInsideCard(t *testing.T) {
-	const winW, winH = 640, 480
-	var state ToastState
-	var ctx *ui.Context
-	tt := ui.NewTester(toastTestView(&state, &ctx), winW, winH)
-	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
-	if err := tt.Click("Show"); err != nil {
-		t.Fatal(err)
-	}
-	closeRect, ok := tt.Find("Close")
-	if !ok {
-		t.Fatal("toast shows no close button")
-	}
-	if closeRect.W <= 0 || closeRect.H <= 0 {
-		t.Fatalf("close button has no size: %+v", closeRect)
-	}
-	// The region centers a card min(460, window-32) wide, with its lower
-	// edge 16 DIP above the bottom.
-	cardW := float32(min(460, winW-32))
-	cardX := (winW - cardW) / 2
-	cardBottom := float32(winH - theme.Space16)
-	if closeRect.X < cardX || closeRect.X+closeRect.W > cardX+cardW {
-		t.Fatalf("close button %+v is not within the card column [%v, %v]", closeRect, cardX, cardX+cardW)
-	}
-	if closeRect.Y < 0 || closeRect.Y+closeRect.H > cardBottom {
-		t.Fatalf("close button %+v is not above the card's bottom edge %v", closeRect, cardBottom)
-	}
-	if closeRect.X < 0 || closeRect.Y < 0 || closeRect.X+closeRect.W > winW || closeRect.Y+closeRect.H > winH {
-		t.Fatalf("close button %+v is outside the window", closeRect)
-	}
-	// No stray box at the page origin.
-	if closeRect.X <= 0 || closeRect.Y <= 0 {
-		t.Fatalf("close button %+v sits at the page origin", closeRect)
-	}
-	// The white card surface is painted, nonzero, and holds the button:
-	// the absolute box of the old layout perched on the rounded corner
-	// outside this surface.
-	minX, minY, maxX, maxY, ok := whiteBounds(tt.Image())
-	if !ok {
-		t.Fatal("toast card surface was not painted")
-	}
-	card := ui.Rect{X: float32(minX), Y: float32(minY), W: float32(maxX - minX + 1), H: float32(maxY - minY + 1)}
-	if card.W < 100 {
-		t.Fatalf("toast card collapsed to %+v", card)
-	}
-	if minX <= 0 || minY <= 0 {
-		t.Fatalf("toast card %+v sits at the page origin", card)
-	}
-	const antialias = 1
-	if closeRect.X < card.X-antialias || closeRect.Y < card.Y-antialias ||
-		closeRect.X+closeRect.W > card.X+card.W+antialias ||
-		closeRect.Y+closeRect.H > card.Y+card.H+antialias {
-		t.Fatalf("close button %+v paints outside the card surface %+v", closeRect, card)
-	}
-	if err := tt.Click("Close"); err != nil {
-		t.Fatal(err)
-	}
-	if tt.HasText("File saved") || len(state.Items()) != 0 {
-		t.Fatal("close button did not dismiss the toast")
 	}
 }
 

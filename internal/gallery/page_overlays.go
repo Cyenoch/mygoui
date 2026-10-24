@@ -304,7 +304,7 @@ func drawerEdgesExample(c *ui.Context, st *overlaysState) {
 		Handle:      side == overlay.DrawerTop || side == overlay.DrawerBottom,
 		OnDismiss:   func() { st.drawerNote = drawerSideName(side) + " drawer dismissed" },
 		Body: func() {
-			mygoui.Paragraph(c, "The drawer slides from "+drawerSideName(side)+". Backdrop presses and Escape dismiss it.", true)
+			mygoui.Paragraph(c, "Backdrop presses and Escape dismiss the drawer.", true)
 		},
 	})
 }
@@ -546,7 +546,7 @@ func toastVariantsExample(c *ui.Context, st *overlaysState) {
 				Label: "Default toast", Variant: mygoui.ButtonSecondary, Size: theme.ButtonSmall,
 				OnClick: func() {
 					show(overlay.ToastOptions{
-						ID: "demo-default", Title: "Draft saved",
+						Title:       "Draft saved",
 						Description: "Your changes are available offline.",
 					})
 				},
@@ -555,7 +555,7 @@ func toastVariantsExample(c *ui.Context, st *overlaysState) {
 				Label: "Accent toast", Variant: mygoui.ButtonSecondary, Size: theme.ButtonSmall,
 				OnClick: func() {
 					show(overlay.ToastOptions{
-						ID: "demo-accent", Title: "New version available",
+						Title:       "New version available",
 						Description: "Reload to pick up mygoui 0.5.", Variant: overlay.ToastAccent,
 					})
 				},
@@ -564,7 +564,7 @@ func toastVariantsExample(c *ui.Context, st *overlaysState) {
 				Label: "Success toast", Variant: mygoui.ButtonSecondary, Size: theme.ButtonSmall,
 				OnClick: func() {
 					show(overlay.ToastOptions{
-						ID: "demo-success", Title: "Invite sent",
+						Title:       "Invite sent",
 						Description: "Ada will receive an email shortly.", Variant: overlay.ToastSuccess,
 					})
 				},
@@ -573,7 +573,7 @@ func toastVariantsExample(c *ui.Context, st *overlaysState) {
 				Label: "Warning toast", Variant: mygoui.ButtonSecondary, Size: theme.ButtonSmall,
 				OnClick: func() {
 					show(overlay.ToastOptions{
-						ID: "demo-warning", Title: "Storage almost full",
+						Title:       "Storage almost full",
 						Description: "92% of the workspace quota is used.", Variant: overlay.ToastWarning,
 					})
 				},
@@ -582,7 +582,7 @@ func toastVariantsExample(c *ui.Context, st *overlaysState) {
 				Label: "Danger toast", Variant: mygoui.ButtonSecondary, Size: theme.ButtonSmall,
 				OnClick: func() {
 					show(overlay.ToastOptions{
-						ID: "demo-danger", Title: "Deploy failed",
+						Title:       "Deploy failed",
 						Description: "The build exited with status 1.", Variant: overlay.ToastDanger,
 					})
 				},
@@ -608,13 +608,13 @@ func toastActionsExample(c *ui.Context, st *overlaysState) {
 				Label: "Action toast", Variant: mygoui.ButtonSecondary, Size: theme.ButtonSmall,
 				OnClick: func() {
 					show(overlay.ToastOptions{
-						ID: "demo-action", Title: "Invite sent",
+						Title:       "Invite sent",
 						Description: "Undo the invitation within 30 seconds.",
 						Action:      "Undo",
 						OnAction: func() {
 							st.toastNote = "undo pressed; invitation revoked"
 							show(overlay.ToastOptions{
-								ID: "demo-action-done", Title: "Invitation revoked",
+								Title:       "Invitation revoked",
 								Description: "Ada no longer has pending access.",
 								Variant:     overlay.ToastSuccess,
 							})

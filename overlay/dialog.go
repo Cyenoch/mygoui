@@ -30,6 +30,7 @@ func Dialog(c *ui.Context, open *bool, o DialogOptions) ui.Element {
 	if open == nil {
 		return ui.Element{}
 	}
+	warmOverlay(c)
 	wasOpen := *open
 	close := func() {
 		*open = false
@@ -47,8 +48,12 @@ func Dialog(c *ui.Context, open *bool, o DialogOptions) ui.Element {
 		width = 448
 	}
 	side := resolveSide(o.Placement, mygoui.SideAuto)
+	if *open {
+		c.Key(dialogKey{open})
+	}
 	p := ui.DialogBase(c, open, func(back, panel ui.Element) {
 		back = paintBackdrop(c, back, o.Backdrop)
+		back = dialogMotion(c, back)
 		t := theme.Colors(c)
 		radius := overlayRadius()
 		panel.Background(t.Overlay).TextColor(t.OverlayForeground).MinHeight(0)

@@ -38,6 +38,7 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 	if open == nil {
 		return ui.Element{}
 	}
+	warmOverlay(c)
 	wasOpen := *open
 	cancel := func() {
 		*open = false
@@ -59,6 +60,10 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 		cancelLabel = locale.M().Close
 	}
 	showAction := o.ActionLabel != "" && o.OnAction != nil
+	var cancelButton ui.Element
+	if *open {
+		c.Key(dialogKey{open})
+	}
 	p := ui.DialogBase(c, open, func(back, panel ui.Element) {
 		w, h := c.Size()
 		pad := float32(theme.Space40)
@@ -66,6 +71,7 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 			pad = theme.Space16
 		}
 		back = paintBackdrop(c, back, o.Backdrop)
+		back = dialogMotion(c, back)
 		back.Padding(pad).Row().Center()
 
 		t := theme.Colors(c)
@@ -104,11 +110,11 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 			padding:          theme.Space24,
 			headerGap:        theme.Space12,
 			footer: func() {
-				mygoui.Button(c, mygoui.ButtonOptions{
+				cancelButton = mygoui.Button(c, mygoui.ButtonOptions{
 					Label:   cancelLabel,
 					Variant: mygoui.ButtonTertiary,
 					OnClick: cancel,
-				}).AutoFocus()
+				})
 				if showAction {
 					variant := mygoui.ButtonPrimary
 					if o.Destructive {
@@ -124,6 +130,9 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 			},
 		})
 	})
+	// DialogBase records the opener after its callback. Focus Cancel only
+	// after that capture, or the dialog would try to restore its own button.
+	cancelButton.AutoFocus()
 	if wasOpen && !*open && p.Valid() && p.Dismissed() {
 		// Alert dialogs require an explicit choice: restore the caller's
 		// state instead of accepting a backdrop press or Escape.

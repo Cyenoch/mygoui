@@ -24,9 +24,10 @@ type DrawerOptions struct {
 	Description          string
 	Header, Body, Footer func()
 	BodyLabel            string
-	// Width overrides the panel width of left/right drawers (default 384,
-	// capped at 85% of the window). Height overrides the panel extent of
-	// top/bottom drawers (default content height, capped at 85%).
+	// Width overrides the panel width of left/right drawers (default 384).
+	// Height overrides the panel extent of top/bottom drawers (default
+	// content height). Both stay within 85% of the window and its 16 DIP
+	// margin.
 	Width, Height float32
 	// Handle shows the drag-handle bar on top/bottom drawers. It is
 	// visual; pointer swipe dismissal is not implemented.
@@ -36,14 +37,16 @@ type DrawerOptions struct {
 	OnDismiss      func()
 }
 
-// Drawer shows a modal panel from one window edge. The native dialog base
-// traps and restores the focus and dismisses on backdrop press or Escape.
+// Drawer shows a modal panel from one window edge, inset 16 DIPs from every
+// edge with HeroUI's overlay radius. The native dialog base traps and
+// restores the focus and dismisses on backdrop press or Escape.
 // Swipe-to-dismiss is not provided: MyGo has no maintained drawer gesture
 // arbitration with its scroll containers.
 func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 	if open == nil {
 		return ui.Element{}
 	}
+	warmOverlay(c)
 	wasOpen := *open
 	close := func() {
 		*open = false
@@ -52,13 +55,24 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 		}
 	}
 	w, h := c.Size()
+	const margin = theme.Space16
+	availW := max(float32(0), w-2*margin)
+	availH := max(float32(0), h-2*margin)
+	// The panel keeps the window margin and HeroUI's 85% cap, whichever is
+	// the tighter.
+	capW := min(w*0.85, availW)
+	capH := min(h*0.85, availH)
 	side := o.Side
+	if *open {
+		c.Key(dialogKey{open})
+	}
 	p := ui.DialogBase(c, open, func(back, panel ui.Element) {
 		back = paintBackdrop(c, back, o.Backdrop)
+		back = dialogMotion(c, back)
 		layoutEdge(back, side)
 		t := theme.Colors(c)
-		radius := min(theme.Space32, theme.RadiusScale().XXL)
-		panel.Column().Clip().Background(t.Overlay).TextColor(t.OverlayForeground).MinHeight(0)
+		panel.Column().Clip().Background(t.Overlay).TextColor(t.OverlayForeground).
+			MinHeight(0).Radius(overlayRadius())
 		panel = panelElevation(c, panel)
 		switch side {
 		case DrawerLeft, DrawerRight:
@@ -66,16 +80,11 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 			if width <= 0 {
 				width = 384
 			}
-			panel.Width(min(width, w*0.85)).Height(h).MaxWidth(w)
+			panel.Width(min(width, capW)).Height(availH).MaxWidth(availW)
 		default:
-			panel.FillWidth().MaxHeight(h * 0.85)
+			panel.FillWidth().MaxHeight(capH)
 			if o.Height > 0 {
-				panel.Height(min(o.Height, h*0.85))
-			}
-			if side == DrawerTop {
-				panel.Radius(0, 0, radius, radius)
-			} else {
-				panel.Radius(radius, radius, 0, 0)
+				panel.Height(min(o.Height, capH))
 			}
 		}
 		panel.Label(o.Title)
@@ -139,6 +148,7 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 	if open == nil {
 		return ui.Element{}
 	}
+	warmOverlay(c)
 	wasOpen := *open
 	close := func() {
 		*open = false
@@ -147,8 +157,12 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 		}
 	}
 	_, h := c.Size()
+	if *open {
+		c.Key(dialogKey{open})
+	}
 	p := ui.DialogBase(c, open, func(back, panel ui.Element) {
 		back = paintBackdrop(c, back, o.Backdrop)
+		back = dialogMotion(c, back)
 		back.Column().Justify(ui.End).AlignItems(ui.Stretch).Padding(0)
 		t := theme.Colors(c)
 		radius := min(theme.Space32, theme.RadiusScale().XXXXL)
@@ -191,17 +205,18 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 	return p
 }
 
-// layoutEdge overrides DialogBase's centered backdrop for an edge panel.
+// layoutEdge overrides DialogBase's centered backdrop for an edge panel and
+// keeps its 16 DIP margin from every window edge.
 func layoutEdge(back ui.Element, side DrawerSide) {
 	switch side {
 	case DrawerLeft:
-		back.Row().Justify(ui.Start).AlignItems(ui.Stretch).Padding(0)
+		back.Row().Justify(ui.Start).AlignItems(ui.Stretch).Padding(theme.Space16)
 	case DrawerRight:
-		back.Row().Justify(ui.End).AlignItems(ui.Stretch).Padding(0)
+		back.Row().Justify(ui.End).AlignItems(ui.Stretch).Padding(theme.Space16)
 	case DrawerTop:
-		back.Column().Justify(ui.Start).AlignItems(ui.Stretch).Padding(0)
+		back.Column().Justify(ui.Start).AlignItems(ui.Stretch).Padding(theme.Space16)
 	default:
-		back.Column().Justify(ui.End).AlignItems(ui.Stretch).Padding(0)
+		back.Column().Justify(ui.End).AlignItems(ui.Stretch).Padding(theme.Space16)
 	}
 }
 

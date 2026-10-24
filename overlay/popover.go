@@ -29,7 +29,11 @@ type PopoverOptions struct {
 // non-modal: the press that dismisses it reaches what is under the pointer,
 // and Escape or an outside press sets *open to false.
 func Popover(c *ui.Context, anchor ui.Element, open *bool, o PopoverOptions) ui.Element {
-	if open == nil || !anchor.Valid() {
+	if open == nil {
+		return ui.Element{}
+	}
+	warmOverlay(c)
+	if !anchor.Valid() {
 		return ui.Element{}
 	}
 	t := theme.Colors(c)
@@ -40,6 +44,7 @@ func Popover(c *ui.Context, anchor ui.Element, open *bool, o PopoverOptions) ui.
 		label = o.Title
 	}
 	p := ui.PopoverBase(c, anchor, open, func(panel ui.Element) {
+		panel = popupMotion(c, panel, popoverKey{open})
 		panel.Radius(radius).Background(t.Overlay).TextColor(t.OverlayForeground).
 			Padding(theme.Space16).MinWidth(o.MinWidth)
 		if o.Width > 0 {

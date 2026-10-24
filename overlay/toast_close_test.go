@@ -4,7 +4,6 @@ import (
 	"image"
 	"image/color"
 	"testing"
-	"time"
 
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -45,22 +44,23 @@ func TestToastCloseGlyphIsOneCenteredX(t *testing.T) {
 			if !ok {
 				t.Fatal("toast shows no title")
 			}
-			// The close button sits in flow at the card's top-end, aligned
-			// with the title's line box, and inside the card column.
-			if close.Y != title.Y || close.H != title.H {
-				t.Fatalf("close %+v is not aligned with the title row %+v", close, title)
+			action, ok := tt.Find("Undo")
+			if !ok {
+				t.Fatal("toast shows no action")
 			}
-			cardW := float32(min(460, winW-32))
-			cardX := (winW - cardW) / 2
-			if close.X < cardX || close.X+close.W > cardX+cardW || close.Y+close.H > winH-theme.Space16 {
-				t.Fatalf("close %+v is not within the card column [%v, %v]", close, cardX, cardX+cardW)
+			card, ok := tt.Find(state.Items()[0].ID)
+			if !ok {
+				t.Fatal("toast shows no card")
 			}
-
-			// At rest the button paints nothing: no face, no border, no bar.
-			img := tt.Image()
-			assertCloseSurface(t, img, close, pal.Surface, "at rest")
-			if c := img.RGBAAt(int(close.X)-2, int(close.Y+close.H/2)); !sameColor(c, pal.Surface, 2) {
-				t.Fatalf("close paints a ring at rest: %v at %v", c, close.X-2)
+			if gap := card.X + card.W - action.X - action.W; abs32(gap-theme.Space16) > 1 {
+				t.Fatalf("action reserves space for the close button: right gap=%v", gap)
+			}
+			if close.Y >= card.Y || close.X+close.W <= card.X+card.W {
+				t.Fatalf("close does not float across the upper-right corner: close=%+v card=%+v", close, card)
+			}
+			if close.X < action.X+action.W && close.X+close.W > action.X &&
+				close.Y < action.Y+action.H && close.Y+close.H > action.Y {
+				t.Fatalf("floating close overlaps the action: close=%+v action=%+v", close, action)
 			}
 
 			// Hover reveals one centered X on a pale face.
@@ -72,10 +72,7 @@ func TestToastCloseGlyphIsOneCenteredX(t *testing.T) {
 				t.Fatalf("revealing the close button shifted the layout: close %+v -> %+v, title %+v -> %+v",
 					close, revealedClose, title, revealedTitle)
 			}
-			img = tt.Image()
-			if c := img.RGBAAt(int(close.X)-2, int(close.Y+close.H/2)); !sameColor(c, pal.Surface, 2) {
-				t.Fatalf("hover paints outside the close button: %v at %v", c, close.X-2)
-			}
+			img := tt.Image()
 			bg := img.RGBAAt(int(close.X+close.W/2), int(close.Y+2))
 			if sameColor(bg, pal.Surface, 2) {
 				t.Fatalf("hover did not reveal the close face: %v", bg)
@@ -112,18 +109,6 @@ func TestToastCloseGlyphIsOneCenteredX(t *testing.T) {
 				t.Fatalf("close left %d toasts", len(state.Items()))
 			}
 		})
-	}
-}
-
-// assertCloseSurface fails when any pixel of r paints over the card surface.
-func assertCloseSurface(t *testing.T, img *image.RGBA, r ui.Rect, surface ui.Color, when string) {
-	t.Helper()
-	for y := int(r.Y); y < int(r.Y+r.H); y++ {
-		for x := int(r.X); x < int(r.X+r.W); x++ {
-			if c := img.RGBAAt(x, y); !sameColor(c, surface, 2) {
-				t.Fatalf("%s: close button paints %v at %d,%d", when, c, x, y)
-			}
-		}
 	}
 }
 
@@ -220,92 +205,4 @@ func abs32(v float32) float32 {
 		return -v
 	}
 	return v
-}
-
-// TestToastMotionSettlesIn250ms checks the toast card's own motion: MyGo's
-// ElementTransition runs the entry and the exit for 250 ms, and reduced
-// motion removes it (TestToastReducedMotionTimeoutAndClose checks that).
-//
-// The transition asks the card to slide 16 DIP, scale from 0.96 and fade
-// from transparent. MyGo 0.6.3 lays an absolute overlay out again after its
-// transitions (layoutTree's layoutAbsolute), which puts the cards back at
-// their final boxes: the card's scale and fade show, but its lift is re-laid
-// away and the stack position snaps when a toast appears or goes, rather
-// than sliding. The test asserts the settle time, the scale it does show and
-// the fade: the first frame is the page background and the settled card is
-// its surface.
-func TestToastMotionSettlesIn250ms(t *testing.T) {
-	var state ToastState
-	var ctx *ui.Context
-	tt := ui.NewTester(toastTestView(&state, &ctx), 640, 480)
-	tt.SetPreferences(ui.Preferences{TextScale: 1})
-	tt.Frame()
-
-	if err := tt.Click("Show"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
-	if !tt.FramePending() {
-		t.Fatal("the toast entry is not animated")
-	}
-	entering, ok := tt.Find("File saved")
-	if !ok {
-		t.Fatal("the entering toast shows no title")
-	}
-	// Sample the card's right padding, inside the 0.96 scale but clear of
-	// the title, action and revealed close face. At the first frame the
-	// entering card is fully transparent, so the page background shows.
-	pal := theme.ColorsForMode(false)
-	cardRight := float32((640 + min(460, 640-32)) / 2)
-	sample := image.Pt(int(cardRight)-20, int(entering.Y+entering.H/2))
-	if c := tt.Image().RGBAAt(sample.X, sample.Y); !sameColor(c, pal.Background, 2) {
-		t.Fatalf("the entering toast paints %v at %v, want the transparent page background %v", c, sample, pal.Background)
-	}
-	tt.Advance(125 * time.Millisecond)
-	tt.Frame()
-	middle, _ := tt.Find("File saved")
-	tt.Advance(200 * time.Millisecond)
-	tt.Frame()
-	settled, _ := tt.Find("File saved")
-	if tt.FramePending() {
-		t.Fatal("the toast entry still animates after 250 ms")
-	}
-	if !(entering.W < middle.W && middle.W <= settled.W) {
-		t.Fatalf("entry does not scale into place: %v -> %v -> %v", entering.W, middle.W, settled.W)
-	}
-	if c := tt.Image().RGBAAt(sample.X, sample.Y); !sameColor(c, pal.Surface, 2) {
-		t.Fatalf("the settled toast paints %v at %v, want its surface %v", c, sample, pal.Surface)
-	}
-
-	// Exit: dismissing runs the card's exit transition, which fades and
-	// scales the retained copy for 250 ms.
-	closeRect, ok := tt.Find("Close")
-	if !ok {
-		t.Fatal("no close button")
-	}
-	tt.Move(closeRect.X+closeRect.W/2, closeRect.Y+closeRect.H/2)
-	tt.Frame()
-	if err := tt.Click("Close"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Frame()
-	if !tt.FramePending() {
-		t.Fatal("the toast exit is not animated")
-	}
-	// The exit copy is painted, not an Element that already expired: the
-	// card's surface is still visible on its first exit frame.
-	if c := tt.Image().RGBAAt(sample.X, sample.Y); sameColor(c, pal.Background, 2) {
-		t.Fatalf("the leaving toast paints only the background at %v: its retained copy is missing", sample)
-	}
-	tt.Advance(300 * time.Millisecond)
-	tt.Frame()
-	if tt.FramePending() {
-		t.Fatal("the toast exit still animates after 250 ms")
-	}
-	if len(state.Items()) != 0 {
-		t.Fatalf("exit left %d retained toasts", len(state.Items()))
-	}
-	if c := tt.Image().RGBAAt(sample.X, sample.Y); !sameColor(c, pal.Background, 2) {
-		t.Fatalf("the dismissed toast still paints %v at %v", c, sample)
-	}
 }

@@ -86,12 +86,19 @@ authoritative usage reference for prototypes and state wiring.
 | --- | --- |
 | `Modal` | Focus-contained dialog in five sizes, opaque/blur/transparent backdrop, scrollable body, footer and close button. |
 | `AlertDialog` | Explicit action/cancel dialog; backdrop and Escape do not accept. |
-| `Drawer` | Edge panel in four directions with the native dialog focus contract. |
+| `Drawer` | Floating edge panel in four directions with 16 DIP screen gutters, rounded corners and the native dialog focus contract. |
 | `BottomSheet` | Bottom panel with handle, backdrop, Escape and close behavior. |
 | `Dialog` | Native center or edge modal with header/body/footer. |
 | `Popover` | Anchored rich panel with HeroUI placement, arrow and dismissal. |
 | `Tooltip` | Native hover/focus description with placement and Escape dismissal. |
-| `Toast` | Update-in-place toast manager with variants, action, timeout and MyGo's three-visible cap. `ToastState` holds the caller-owned identities and installs the region with `View`. |
+| `Toast` | Spring-animated deck with hover/focus expansion, swipe dismissal, variants, action, timeout and MyGo's three-visible cap. The close button floats across the top-right corner without reserving content width. `ToastState` holds caller-owned identities and installs the region with `View`; reusing an ID updates in place without replaying entry. |
+
+Modal, AlertDialog, Dialog, Drawer, BottomSheet, Popover and Tooltip fade in/out
+without shifting their layout, anchor or backdrop hit area. Every installed
+constructor keeps the overlay layer alive while
+closed, so the first arrival and final exit animate even without a Toast region.
+Closed content is an inert native snapshot, not a second live build. Reduced
+motion settles all surfaces immediately.
 
 ## `date`
 

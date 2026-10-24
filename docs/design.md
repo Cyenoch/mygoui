@@ -19,6 +19,20 @@ for freely composed content or a typed slice for coordinated collections
 propagation, ambient build scope or slot registry. Collection components use
 stable keys and native virtualized state rather than rebuilding every row.
 
+Toast deck geometry uses MyGo's native springs for entry, stacking and
+hover/focus expansion. Only geometry and gesture state survive builds; native
+toast state owns lifetimes and keyed updates, and native transition snapshots
+paint inert exits. Absolute overlay positions animate their declared geometry
+so MyGo's overlay relayout cannot replace an intermediate frame with its target.
+Overlay constructors keep the native overlay layer present while closed;
+entry has an existing parent and the last exit has somewhere to paint.
+Modal backdrops retain the last built panel as an inert native snapshot after
+close, without rebuilding caller content or delaying native focus restoration.
+Modal identities are assigned before calling `DialogBase`, which reads input
+before its styling callback; animation styling never rekeys that backdrop.
+AlertDialog requests initial Cancel focus after `DialogBase` records its opener,
+so an explicit choice restores focus to the trigger rather than a closed button.
+
 The package layout follows component families:
 
 | Package | Responsibility |

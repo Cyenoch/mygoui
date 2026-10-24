@@ -23,6 +23,7 @@ type TooltipOptions struct {
 // base owns the show timing (0.6 s rest, warm reuse within 0.4 s); HeroUI's
 // 1.5 s delay and 0.5 s close delay are not exposed by MyGo.
 func Tooltip(c *ui.Context, anchor ui.Element, o TooltipOptions) ui.Element {
+	warmOverlay(c)
 	if !anchor.Valid() {
 		return ui.Element{}
 	}
@@ -30,6 +31,7 @@ func Tooltip(c *ui.Context, anchor ui.Element, o TooltipOptions) ui.Element {
 	radius := min(theme.Space32, theme.RadiusScale().XL)
 	side := resolveSide(o.Placement, mygoui.SideTop)
 	tip := ui.TooltipBase(c, anchor, func(tip ui.Element) {
+		tip = popupMotion(c, tip, tooltipKey{anchor.ID()})
 		tip.MaxWidth(320).Padding(theme.Space8).Radius(radius).
 			Background(t.Overlay).TextColor(t.OverlayForeground)
 		tip = panelElevation(c, tip)

@@ -168,11 +168,51 @@ func TestToastPageDismissesWithoutExpiredPaint(t *testing.T) {
 	}
 }
 
-// TestModalWithButtonClosesWithoutExpiredPaint covers the audit question: a
-// normal mygoui Button inside a modal. Overlays build through MyGo's
-// DialogBase/PopoverBase, which return nil the frame the overlay closes, so
-// no retained copy with the Button's Draw callback is painted and the close
-// is safe.
+func TestToastExamplesRepeatedArrivalAndExplicitUpdate(t *testing.T) {
+	st := &overlaysState{}
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		ui.Column(c).Children(func() {
+			toastVariantsExample(c, st)
+			toastActionsExample(c, st)
+		})
+	}, 900, 600)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
+	for _, label := range []string{"Default toast", "Default toast", "Action toast", "Action toast"} {
+		if err := tt.Click(label); err != nil {
+			t.Fatal(err)
+		}
+	}
+	items := st.toasts.Items()
+	if len(items) != 4 || items[0].ID == items[1].ID || items[2].ID == items[3].ID {
+		t.Fatalf("repeated triggers replaced earlier notifications: %+v", items)
+	}
+	if err := tt.Click("Update toast"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("Update toast"); err != nil {
+		t.Fatal(err)
+	}
+	items = st.toasts.Items()
+	if len(items) != 5 || items[4].Title != "Uploading… 50%" {
+		t.Fatalf("explicit update did not replace its own notification: %+v", items)
+	}
+	if err := tt.Click("Dismiss update"); err != nil {
+		t.Fatal(err)
+	}
+	if len(st.toasts.Items()) != 4 || tt.HasText("Uploading… 50%") {
+		t.Fatal("dismissing the update affected independent arrivals")
+	}
+	if err := tt.Click("Dismiss all toasts"); err != nil {
+		t.Fatal(err)
+	}
+	if len(st.toasts.Items()) != 0 || tt.HasText("Draft saved") || tt.HasText("Invite sent") {
+		t.Fatal("dismiss all left a repeated arrival alive")
+	}
+}
+
+// The modal's retained exit paints the last built body after its native
+// dialog closes, without keeping its controls live or reading expired elements.
 func TestModalWithButtonClosesWithoutExpiredPaint(t *testing.T) {
 	var open bool
 	clicks := 0

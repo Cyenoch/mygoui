@@ -83,19 +83,25 @@ shims are provided.
 
 ### Fixed
 
-- Toast: the close button now sits inside the card's top-end corner instead
-  of painting on the page behind the rounded corner; it still reveals on
-  hover or keyboard focus and dismisses the toast.
-- Toast: the revealed close button is one centered 12 DIP X on a 20 DIP
-  button. It used to paint a pale disc with two `Painter.Line` calls for the
-  X, but `Painter.Line` draws only horizontal and vertical strokes, so both
-  diagonals collapsed into a dark bar near the disc's top; the disc and its
-  border also showed a ring this button does not have. It paints nothing at
-  rest and rings only on keyboard focus.
-- Toast: entering and exiting cards now fade from `Opacity: 0` as well as
-  scaling 0.96 over the same 250 ms, so the toast appears and disappears
-  instead of popping in at full opacity. Reduced motion still skips the
-  transition.
+- Toast: restored spring entry/exit, stacked cards, hover/focus expansion,
+  continuous insertion/removal and horizontal swipe dismissal. Animated
+  declared geometry survives MyGo's absolute-overlay relayout. Reduced motion
+  settles immediately; native timers, focus pause and inert exit snapshots
+  remain authoritative.
+- Toast: the close button floats across the upper-right corner without
+  reserving message or action width. Undo keeps the normal right padding;
+  the centered lucide X reveals on hover or focus and remains keyboard-accessible.
+- Gallery Toast triggers create a fresh notification on every press; only
+  the explicit Update example reuses its ID.
+- Modal, AlertDialog, Dialog, Drawer, BottomSheet, Popover and Tooltip now
+  animate entry and exit with native inert snapshots. Their constructors
+  keep the overlay layer alive while closed, so animation works without a
+  Toast viewport. Reduced motion skips the transitions.
+- Modal identity is assigned before native input is read, preserving backdrop
+  dismissal on immediate reopen. AlertDialog focuses Cancel only after the
+  native base records its opener, so closing restores focus to the trigger.
+- Drawer panels keep 16 DIP screen gutters on every side and rounded corners
+  instead of touching the window edges.
 - Navigation and color indicators: the menu's check mark and submenu
   chevron, the disclosure and accordion chevrons, and the selected color
   swatch tick used `Painter.Line` too, so their diagonals collapsed into

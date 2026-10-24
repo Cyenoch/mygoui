@@ -8,8 +8,9 @@
 //
 // Toasts are managed rather than drawn by the caller: Toast adds or updates
 // one toast in a window, and ToastState.View installs the native toast region
-// once per view with HeroUI's look. MyGo owns the toast timers, pause on hover
-// and focus, keyed updates and the three-toast visible cap.
+// once per view with HeroUI's look. Cards form a spring-animated deck that
+// expands on hover or focus and supports horizontal swipe dismissal. MyGo
+// owns timers, pause on hover and focus, keyed updates and the three-toast cap.
 //
 //	toasts := new(overlay.ToastState)
 //	// in the view, once:

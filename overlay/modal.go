@@ -50,12 +50,16 @@ func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
 	if open == nil {
 		return ui.Element{}
 	}
+	warmOverlay(c)
 	wasOpen := *open
 	close := func() {
 		*open = false
 		if o.OnDismiss != nil {
 			o.OnDismiss()
 		}
+	}
+	if *open {
+		c.Key(dialogKey{open})
 	}
 	p := ui.DialogBase(c, open, func(back, panel ui.Element) {
 		w, h := c.Size()
@@ -68,6 +72,7 @@ func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
 			pad = 0
 		}
 		back = paintBackdrop(c, back, o.Backdrop)
+		back = dialogMotion(c, back)
 		back.Padding(pad).Row().Center()
 
 		t := theme.Colors(c)

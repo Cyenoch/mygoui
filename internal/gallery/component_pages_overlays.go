@@ -83,7 +83,7 @@ overlay.AlertDialog(c, &open, overlay.AlertDialogOptions{
 
 	RegisterComponent(ComponentPage{
 		ID: "drawer", Title: "Drawer", Group: "Overlays", Order: 30,
-		Description: "A modal edge panel from any side, with an optional visual drag handle.",
+		Description: "A floating modal edge panel with screen gutters and an optional visual drag handle.",
 		Examples: []ComponentExample{
 			{Title: "Edge placement", Description: "Open the panel from the left, right, top or bottom edge.",
 				Demo: func(c *ui.Context, s *State) { drawerEdgesExample(c, overlaysStateOf(s)) }},
@@ -98,7 +98,7 @@ overlay.Drawer(c, &open, overlay.DrawerOptions{
     Handle:   false,
     OnDismiss: func() { note = "drawer dismissed" },
     Body: func() {
-        mygoui.Paragraph(c, "The panel slides in from the selected edge.", true)
+        mygoui.Paragraph(c, "The panel leaves a 16 DIP gutter around the window.", true)
     },
 })`,
 		Params: []ComponentParam{
@@ -243,7 +243,7 @@ overlay.Tooltip(c, anchor, overlay.TooltipOptions{
 
 	RegisterComponent(ComponentPage{
 		ID: "toast", Title: "Toast", Group: "Overlays", Order: 80,
-		Description: "A caller-owned toast manager with variants, actions, in-place updates and dismissal.",
+		Description: "A caller-owned toast deck with spring motion, actions, in-place updates and dismissal.",
 		Examples: []ComponentExample{
 			{Title: "Variants", Description: "Default, accent, success, warning and danger surfaces.",
 				Demo: func(c *ui.Context, s *State) { toastVariantsExample(c, overlaysStateOf(s)) }},
