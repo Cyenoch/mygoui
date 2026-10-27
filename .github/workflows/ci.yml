@@ -62,7 +62,8 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y --no-install-recommends \
             libpangocairo-1.0-0 fonts-noto-cjk fonts-noto-color-emoji
-      - run: go test -race -shuffle=on ./... -count=1 -timeout=300s
+      # Each headless rasterizer uses several cores; avoid competing test binaries.
+      - run: go test -race -p 1 -shuffle=on ./... -count=1 -timeout=300s
 
   analysis:
     runs-on: ubuntu-latest

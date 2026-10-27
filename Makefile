@@ -15,7 +15,7 @@ test:
 	CGO_ENABLED=0 go test ./... -count=1 -timeout=180s
 
 race:
-	CGO_ENABLED=1 go test -race ./... -count=1 -timeout=300s
+	CGO_ENABLED=1 go test -race -p 1 ./... -count=1 -timeout=300s
 
 build:
 	CGO_ENABLED=0 go build ./...

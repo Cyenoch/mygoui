@@ -130,7 +130,6 @@ func TestEveryPageRendersAtDesktopAndCompactWidths(t *testing.T) {
 			state.Selected = page.ID
 			state.Dark = mode.dark
 			tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, mode.width, mode.height)
-			tt.Frame()
 			if !tt.HasText(page.Title) {
 				t.Fatalf("%s/%s: page title missing", mode.name, page.ID)
 			}
@@ -174,7 +173,6 @@ func TestPagesRenderWithEnlargedText(t *testing.T) {
 		state.Selected = page.ID
 		tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1000, 900)
 		tt.SetPreferences(ui.Preferences{TextScale: 1.75})
-		tt.Frame()
 		if !tt.HasText(page.Title) {
 			t.Fatalf("%s: title missing at enlarged text", page.ID)
 		}

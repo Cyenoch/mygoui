@@ -1,5 +1,47 @@
 # Validation
 
+## PR #3 race scheduling follow-up
+
+2026-10-27, follow-up to `4502b4e`. Run `40523761606` passed analysis and
+all three OS test jobs, including Windows job `122257584865`. Race job
+`122257584206` hit the 300-second package timeout in Gallery and overlay;
+its log contains no data-race report. The stacks show CPU shader evaluation
+and backdrop blur, not a deadlock.
+
+Race test binaries now run serially (`-p 1`) in CI and `make race`, avoiding
+competition between internally parallel software rasterizers. Package-local
+goroutines, race instrumentation, CI shuffle and the 300-second package
+timeout remain enabled. The 15-minute job limit is unchanged. Gallery's
+bulk tests no longer force an extra frame after `NewTester`, `Click` or
+`SetPreferences`, which already settle frames in pinned MyGo v0.7.1.
+Explicit frames after direct state mutations and all existing assertions
+remain. Production component behavior is unchanged.
+
+- In Linux Docker capped at two CPUs, old overlay code passes its failing
+  shuffle seed `1793112409978699930` in 230.577 s in isolation. CPU profiles
+  identify glass blur and software effect rasterization as hot paths.
+- In the same two-CPU-capped setup, Gallery's full race suite with seed
+  `1793112401198632472` passes before and after removing duplicate frames:
+  284.118 s and 178.718 s respectively. These are shared-host observations,
+  not a controlled performance benchmark. Logs:
+  `/tmp/mygoui-pr3-race-gallery-full-baseline.jsonl` and
+  `/tmp/mygoui-pr3-race-gallery-no-duplicate-frames.jsonl`.
+- `make check`: pass; `/tmp/mygoui-pr3-race-check.log`.
+- Full Linux Docker race suite capped at two CPUs: pass using
+  `CGO_ENABLED=1 go test -race -p 1 -shuffle=1793112401198632472 ./... -count=1 -timeout=300s`.
+  Gallery 177.329 s, overlay 228.003 s; from the first package start to the
+  final result is about 7 min 42 s. Log:
+  `/tmp/mygoui-pr3-race-serial-linux.jsonl`.
+- Full lint: zero issues; `/tmp/mygoui-pr3-race-lint.log`.
+- `make workflows`, `make wasm` and Windows/amd64 Gallery test-binary
+  cross-compilation: pass.
+- Independent read-only review found no blocking issue in frame removal or
+  race scheduling; it did not run tests. It noted that serial execution
+  changes scheduling and must still fit the overall job limit.
+
+Remote CI on this follow-up remains pending; the local container run does not
+establish hosted-runner wall time or native desktop behavior.
+
 ## PR #3 Windows marker follow-up
 
 2026-10-27, follow-up to `215767b`. Windows job `122248524857` in
@@ -25,8 +67,9 @@ motion/focus assertions and CI configuration are unchanged; no test is skipped.
 - Full lint: zero issues; `/tmp/mygoui-pr3-marker-lint.log`.
 - Windows/amd64 overlay test-binary cross-compilation and WASM build: pass.
 
-Actual Windows execution remains pending remote CI; cross-compilation is not
-a Windows runtime result.
+Windows execution subsequently passed on `4502b4e` in job `122257584865`, run
+`40523761606`. This is a hosted headless Windows test result, not native GPU
+or desktop input verification.
 
 ## MyGo 0.7.1 follow-up
 

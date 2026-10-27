@@ -60,7 +60,9 @@ make workflows
 
 `make check` runs headless tests, ordinary build, Go vet, MyGo lifetime vet,
 formatting and module verification. Race checks matter for shared-state
-changes. Inspect module integrity when changing dependencies; run
+changes. `make race` runs test binaries serially because each headless
+rasterizer already uses multiple cores; package-local concurrency stays
+enabled. Inspect module integrity when changing dependencies; run
 `go mod tidy` only as part of intentional module work.
 
 Exercise changed controls with `ui.NewTester`: keyboard/pointer activation,

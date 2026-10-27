@@ -166,7 +166,6 @@ func TestEveryPageRoutesThroughNativeNavigation(t *testing.T) {
 				s := New()
 				s.Search = page.Title
 				tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, width, 900)
-				tt.Frame()
 				if width < docsCompactBelow {
 					if err := tt.Click("Toggle navigation"); err != nil {
 						t.Fatal(err)
@@ -185,7 +184,6 @@ func TestEveryPageRoutesThroughNativeNavigation(t *testing.T) {
 				if err := tt.Click(page.Title); err != nil {
 					t.Fatal(err)
 				}
-				tt.Frame()
 				if s.Selected != page.ID || s.NavOpen {
 					t.Fatalf("route = %q open=%v, want %q", s.Selected, s.NavOpen, page.ID)
 				}
