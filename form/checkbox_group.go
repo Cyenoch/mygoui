@@ -55,12 +55,12 @@ func (s *CheckboxGroupState) Set(checked bool) {
 }
 
 // CheckboxGroupOptions configures a group of related check boxes. State and
-// SelectAllLabel together add HeroUI's mixed-state select-all row; leave
+// SelectAllLabel together add a mixed-state select-all row; leave
 // either empty for a plain group whose items keep their own state.
 //
 // Disabled disables the whole group, including body-built items, and paints
-// it at half opacity. Invalid marks the group's error; each item must also be
-// given Invalid for its danger control outline, since item state is explicit.
+// it with the native disabled appearance. Invalid marks the group's error;
+// each item must also be given Invalid for its control outline.
 type CheckboxGroupOptions struct {
 	Label          string
 	Description    string
@@ -75,7 +75,7 @@ type CheckboxGroupOptions struct {
 }
 
 // CheckboxGroup renders a labelled group of check boxes built by body, in a
-// vertical or horizontal layout with HeroUI's 16 DIP rhythm.
+// vertical or horizontal layout.
 func CheckboxGroup(c *ui.Context, o CheckboxGroupOptions, body func()) ui.Element {
 	errText := choiceErrorText(o.Invalid, o.Error)
 	disabled := o.Disabled
@@ -97,12 +97,7 @@ func CheckboxGroup(c *ui.Context, o CheckboxGroupOptions, body func()) ui.Elemen
 		if o.Description != "" {
 			Description(c, o.Description)
 		}
-		// HeroUI's first choice sits 16 DIP under the label block: the
-		// group's 4 DIP line gap plus 12 DIP before the item column.
 		items := choiceItems(c, o.Orientation)
-		if o.Orientation == GroupVertical {
-			items.Padding(theme.Space12, 0, 0, 0)
-		}
 		items.Children(func() {
 			if o.State != nil && o.SelectAllLabel != "" {
 				st := o.State
@@ -130,7 +125,7 @@ func CheckboxGroup(c *ui.Context, o CheckboxGroupOptions, body func()) ui.Elemen
 // choiceItems builds the container a choice group's options flow in.
 func choiceItems(c *ui.Context, orientation GroupOrientation) ui.Element {
 	if orientation == GroupHorizontal {
-		return ui.Row(c).MinWidth(0).FillWidth().Wrap().AlignItems(ui.Start).Gap(theme.Space16)
+		return ui.Row(c).MinWidth(0).FillWidth().Wrap().AlignItems(ui.Start).Gap(theme.Space12)
 	}
-	return ui.Column(c).MinWidth(0).FillWidth().Gap(theme.Space16)
+	return ui.Column(c).MinWidth(0).FillWidth().Gap(theme.Space12)
 }

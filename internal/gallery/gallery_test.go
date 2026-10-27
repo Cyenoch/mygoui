@@ -1,15 +1,26 @@
 package gallery
 
 import (
+	"fmt"
 	"image"
 	"image/color"
+	"os"
 	"strconv"
 	"strings"
 	"testing"
 
+	"github.com/Cyenoch/mygoui/fonts"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
+
+func TestMain(m *testing.M) {
+	if err := fonts.Register(); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+	os.Exit(m.Run())
+}
 
 func TestCatalogIsUniqueAndComplete(t *testing.T) {
 	pages := Pages()
@@ -19,11 +30,11 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 	want := map[string][]string{
 		"Overview": {"overview"},
 		"Foundations": {
-			"typography", "surface", "separator", "kbd", "card", "link",
-			"linkbutton", "listgroup", "emptystate", "scrollshadow", "header",
+			"theming", "typography", "surface", "separator", "kbd", "card", "frame", "link",
+			"linkbutton", "listgroup", "emptystate", "scrollshadow", "scrollarea", "scrollfade", "header",
 		},
 		"Actions": {
-			"button", "buttongroup", "closebutton", "togglebutton",
+			"button", "buttongroup", "group", "closebutton", "togglebutton",
 			"togglebuttongroup", "pressablefeedback",
 		},
 		"Display": {
@@ -32,7 +43,7 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 			"progresscircle", "meter",
 		},
 		"Forms": {
-			"form", "fieldset", "label", "description", "fielderror", "errormessage",
+			"form", "field", "composer", "fieldset", "label", "description", "fielderror", "errormessage",
 			"input", "textarea", "textfield", "inputgroup", "inputotp", "searchfield",
 			"numberfield", "checkbox", "checkboxgroup", "radio", "radiogroup",
 			"switch", "switchgroup", "controlfield", "slider", "select", "combobox",
@@ -40,12 +51,12 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 		},
 		"Collections": {"listbox"},
 		"Navigation": {
-			"accordion", "disclosure", "disclosuregroup", "tabs", "breadcrumbs",
+			"accordion", "command", "contextmenu", "segmentedcontrol", "sidebar", "disclosure", "disclosuregroup", "tabs", "breadcrumbs",
 			"pagination", "toolbar", "menu", "dropdown", "submenu",
 		},
 		"Overlays": {
 			"modal", "alertdialog", "drawer", "bottomsheet", "dialog", "popover",
-			"tooltip", "toast",
+			"tooltip", "toast", "previewcard", "sheet",
 		},
 		"Dates": {
 			"calendar", "rangecalendar", "datefield", "timefield", "datepicker",
@@ -111,6 +122,7 @@ func TestEveryPageRendersAtDesktopAndCompactWidths(t *testing.T) {
 			dark   bool
 		}{
 			{"compact-light", 640, 900, false},
+			{"compact-dark", 640, 900, true},
 			{"wide-light", 1100, 900, false},
 			{"wide-dark", 1100, 900, true},
 		} {
@@ -135,31 +147,23 @@ func TestEveryPageRendersAtDesktopAndCompactWidths(t *testing.T) {
 	}
 }
 
-// TestComponentPageAnatomy pins the docs shape: the Usage, Examples, API
-// Reference and Theme tokens sections appear in that order and carry the
-// snippet, the API columns and the token names.
+// Each workbench view exposes the selected component's own content.
 func TestComponentPageAnatomy(t *testing.T) {
 	state := New()
 	state.Selected = "button"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)
 	tt.Frame()
-	last := float32(-1)
-	for _, heading := range []string{"Usage", "Examples", "API Reference", "Theme tokens"} {
-		r, ok := tt.Find(heading)
-		if !ok {
-			t.Fatalf("section %q is missing", heading)
-		}
-		if r.Y <= last {
-			t.Fatalf("section %q is out of order (y %v after %v)", heading, r.Y, last)
-		}
-		last = r.Y
-	}
-	for _, want := range []string{
-		"package main", "mygoui", "Variant", "Loading", "AccentForeground",
-		"mygoui.Button(c, mygoui.ButtonOptions{",
+	for _, view := range []struct{ label, content string }{
+		{"Preview", "Example panel: Variants"},
+		{"Code", "Go code"},
+		{"API", "Variant"},
+		{"Tokens", "token card PrimaryForeground"},
 	} {
-		if !tt.HasText(want) {
-			t.Fatalf("button page does not show %q", want)
+		if err := tt.Click(view.label); err != nil {
+			t.Fatal(err)
+		}
+		if !tt.HasText(view.content) {
+			t.Fatalf("%s view does not show %q", view.label, view.content)
 		}
 	}
 }
@@ -188,8 +192,11 @@ func TestCompactNavigationOpensAndSelects(t *testing.T) {
 	if !state.NavOpen {
 		t.Fatal("compact navigation did not open")
 	}
+	if err := tt.Click("Foundations"); err != nil {
+		t.Fatal(err)
+	}
 	if !tt.HasText("Typography") {
-		t.Fatal("compact navigation did not list component pages")
+		t.Fatal("expanded category did not list component pages")
 	}
 	if err := tt.Click("Typography"); err != nil {
 		t.Fatal(err)
@@ -199,7 +206,7 @@ func TestCompactNavigationOpensAndSelects(t *testing.T) {
 	}
 }
 
-func TestCompactDrawerUsesScrollShadow(t *testing.T) {
+func TestCompactDrawerUsesScrollArea(t *testing.T) {
 	state := New()
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 600, 900)
 	tt.Frame()
@@ -210,8 +217,8 @@ func TestCompactDrawerUsesScrollShadow(t *testing.T) {
 	if !ok {
 		t.Fatal("compact drawer has no Components scroll area")
 	}
-	if r.W < 400 || r.H < 300 || r.H > 421 {
-		t.Fatalf("compact drawer scroll area = %+v, want a 420 DIP ScrollShadow", r)
+	if r.W < 400 || r.H < 200 || r.H > 301 {
+		t.Fatalf("compact navigation scroll area = %+v, want a constrained ScrollArea", r)
 	}
 	if state.NavScroll.MaxY <= 0 {
 		t.Fatal("compact drawer does not scroll")
@@ -222,6 +229,9 @@ func TestShellSearchFiltersAndSelects(t *testing.T) {
 	state := New()
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 860)
 	tt.Frame()
+	if err := tt.Click("Actions"); err != nil {
+		t.Fatal(err)
+	}
 	if err := tt.Click("Button"); err != nil {
 		t.Fatal(err)
 	}
@@ -238,8 +248,14 @@ func TestShellSearchFiltersAndSelects(t *testing.T) {
 	}
 	state.Search = ""
 	tt.Frame()
-	if !navHas(tt, "Button") || !navHas(tt, "Chip") {
-		t.Fatal("clearing the search did not restore the catalog")
+	if !navHas(tt, "Button") || !navHas(tt, "Display") {
+		t.Fatal("clearing the search did not restore category navigation")
+	}
+	if err := tt.Click("Display"); err != nil {
+		t.Fatal(err)
+	}
+	if !navHas(tt, "Chip") || navHas(tt, "Button") {
+		t.Fatal("opening a category did not show its pages and close the previous category")
 	}
 }
 
@@ -285,22 +301,25 @@ func TestSidebarShowsEveryComponentPage(t *testing.T) {
 	state := New()
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, width, height)
 	tt.Frame()
-	if state.Sidebar.MaxY <= 0 {
-		t.Fatal("sidebar does not scroll, want every component page reachable")
-	}
-	for _, page := range Pages() {
-		revealSidebarEntry(t, tt, state, page.Title, width, height)
-	}
-	state.Sidebar.Y = state.Sidebar.MaxY
-	tt.Frame()
-	ordered := navPages()
-	last := ordered[len(ordered)-1]
-	if r, ok := tt.Find(last.Title); !ok || !contentVisible(r, width, height) {
-		t.Fatalf("the last page %q is not at the end of the scroll (rect %+v)", last.Title, r)
+	for _, group := range pageGroups(filterPagesInOrder(Pages())) {
+		if group.name == "Overview" {
+			revealSidebarEntry(t, tt, state, group.pages[0].Title, width, height)
+			continue
+		}
+		revealSidebarEntry(t, tt, state, group.name, width, height)
+		if err := tt.Click(group.name); err != nil {
+			t.Fatal(err)
+		}
+		if state.OpenGroup != group.name {
+			t.Fatalf("opening %q selected category %q", group.name, state.OpenGroup)
+		}
+		for _, page := range group.pages {
+			revealSidebarEntry(t, tt, state, page.Title, width, height)
+		}
 	}
 }
 
-func TestSidebarUsesScrollShadow(t *testing.T) {
+func TestSidebarUsesScrollArea(t *testing.T) {
 	state := New()
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 860)
 	tt.Frame()
@@ -309,44 +328,44 @@ func TestSidebarUsesScrollShadow(t *testing.T) {
 		t.Fatal("sidebar has no Components scroll area")
 	}
 	if r.X >= 270 || r.W < 200 || r.H < 400 {
-		t.Fatalf("sidebar scroll area = %+v, want a labeled ScrollShadow viewport", r)
+		t.Fatalf("sidebar scroll area = %+v, want a labeled ScrollArea viewport", r)
 	}
 }
 
-// TestSidebarRowGeometryAndSelectedPaint pins the HeroUI nav look: 32 DIP
-// rows with a 2 DIP gap, compact group headings, and an accent-soft row with
-// accent-soft ink for the selected page.
+// TestSidebarRowGeometryAndSelectedPaint pins the Coss nav look: compact rows with a 2 DIP gap, group headings, and the sidebar
+// accent roles for the selected page.
 func TestSidebarRowGeometryAndSelectedPaint(t *testing.T) {
 	state := New()
 	state.Selected = "card"
+	state.OpenGroup = "Foundations"
 	var pal theme.Palette
 	tt := ui.NewTester(func(c *ui.Context) { pal = theme.Colors(c); View(c, state) }, 1180, 860)
 	tt.Frame()
 
-	first := sidebarRect(t, tt, "Button")
-	if first.H < 30 || first.H > 34 {
-		t.Fatalf("first row height = %v, want ~32", first.H)
+	first := sidebarRect(t, tt, "Typography")
+	if first.H < 26 || first.H > 30 {
+		t.Fatalf("first row height = %v, want ~28", first.H)
 	}
 	typography := sidebarRect(t, tt, "Typography")
 	surface := sidebarRect(t, tt, "Surface")
 	if gap := surface.Y - (typography.Y + typography.H); gap < 0 || gap > 4 {
 		t.Fatalf("row gap = %v, want <= 4", gap)
 	}
-	if heading := sidebarRect(t, tt, "Actions"); heading.H > 28 {
-		t.Fatalf("group heading height = %v, want <= 28", heading.H)
+	if heading := sidebarRect(t, tt, "Actions"); heading.H < 32 || heading.H > 40 {
+		t.Fatalf("category height = %v, want 32-40", heading.H)
 	}
 
 	card := sidebarRect(t, tt, "Card")
 	img := tt.Image()
 	selected := sampleRow(img, card)
-	if want := over(pal.Background, pal.AccentSoft); dist8(selected, want) > 2 {
-		t.Fatalf("selected row fill = %v, want AccentSoft over Background %v", selected, want)
+	if want := over(pal.Sidebar, pal.SidebarAccent); dist8(selected, want) > 2 {
+		t.Fatalf("selected row fill = %v, want SidebarAccent over Sidebar %v", selected, want)
 	}
-	if got := sampleRow(img, typography); dist8(got, opaque(pal.Background)) > 2 {
-		t.Fatalf("unselected row fill = %v, want Background %v", got, pal.Background)
+	if got := sampleRow(img, typography); dist8(got, opaque(pal.Sidebar)) > 2 {
+		t.Fatalf("unselected row fill = %v, want Sidebar %v", got, pal.Sidebar)
 	}
-	if got, d := closestInk(img, card, pal.AccentSoftForeground); d > 2 {
-		t.Fatalf("selected row ink = %v, want AccentSoftForeground %v (distance %d)", got, pal.AccentSoftForeground, d)
+	if got, d := closestInk(img, card, pal.SidebarAccentForeground); d > 2 {
+		t.Fatalf("selected row ink = %v, want SidebarAccentForeground %v (distance %d)", got, pal.SidebarAccentForeground, d)
 	}
 }
 
@@ -447,6 +466,7 @@ func TestCodeBlockLineNumbersAndHighlighting(t *testing.T) {
 	for _, size := range []struct{ width, height int }{{1100, 900}, {640, 900}} {
 		state := New()
 		state.Selected = "button"
+		state.Panel = 1
 		width, height := float32(size.width), float32(size.height)
 		tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, size.width, size.height)
 		tt.Frame()
@@ -481,31 +501,26 @@ func TestCodeBlockLineNumbersAndHighlighting(t *testing.T) {
 				previous = r.Y
 			}
 		}
+		cp, _ := componentPage("button")
+		lines := len(strings.Split(strings.TrimRight(cp.Code, "\n"), "\n"))
+		checkLines(1, lines)
+		if _, ok := tt.Find("line " + strconv.Itoa(lines+1)); ok {
+			t.Fatalf("%dx%d: more line numbers than code lines", size.width, size.height)
+		}
+		revealContent(t, tt, state, "Collapse code", width, height)
+		if err := tt.Click("Collapse code"); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
 		checkLines(1, codeCollapseLines)
 		if _, ok := tt.Find("line " + strconv.Itoa(codeCollapseLines+1)); ok {
-			t.Fatalf("%dx%d: collapsed code shows past its fold", size.width, size.height)
-		}
-		if _, ok := tt.Find("Expand code"); !ok {
-			t.Fatalf("%dx%d: long code has no Expand code control", size.width, size.height)
+			t.Fatalf("%dx%d: Collapse code did not fold the snippet", size.width, size.height)
 		}
 		if err := tt.Click("Expand code"); err != nil {
 			t.Fatal(err)
 		}
 		tt.Frame()
-		checkLines(1, 10)
-		if _, ok := tt.Find("line 11"); ok {
-			t.Fatalf("%dx%d: more line numbers than code lines", size.width, size.height)
-		}
-		if _, ok := tt.Find("Collapse code"); !ok {
-			t.Fatalf("%dx%d: expanded code has no Collapse code control", size.width, size.height)
-		}
-		if err := tt.Click("Collapse code"); err != nil {
-			t.Fatal(err)
-		}
-		tt.Frame()
-		if _, ok := tt.Find("line " + strconv.Itoa(codeCollapseLines+1)); ok {
-			t.Fatalf("%dx%d: Collapse code did not fold the snippet", size.width, size.height)
-		}
+		checkLines(1, lines)
 	}
 }
 
@@ -513,18 +528,12 @@ func TestComponentPageHeaderAndAPIPills(t *testing.T) {
 	state := New()
 	state.Selected = "button"
 	state.Search = "no such page"
+	state.Panel = 2
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)
 	tt.Frame()
-	group, ok := tt.Find("Actions")
-	if !ok || group.X < 270 {
-		t.Fatalf("page header is missing the group label (rect %+v)", group)
-	}
 	title, ok := tt.Find("Button")
 	if !ok || title.X < 270 {
 		t.Fatalf("page header is missing the title (rect %+v)", title)
-	}
-	if !tt.HasText("The primary native action, with seven variants, sizes and states.") {
-		t.Fatal("page header is missing the description")
 	}
 	for _, want := range []string{"Name", "Type", "Default", "Description"} {
 		if !tt.HasText(want) {
@@ -539,7 +548,7 @@ func TestComponentPageHeaderAndAPIPills(t *testing.T) {
 }
 
 // TestCodeBlockHighlightMatchesThemeTokens proves the syntax colors come from
-// the palette: keyword ink is Accent and string ink is Success.
+// the palette: keyword ink is Primary and string ink is Success.
 func TestCodeBlockHighlightMatchesThemeTokens(t *testing.T) {
 	// The Usage bar repeats the module import, so give this page a distinct
 	// import line and let the code area own the strings the test samples.
@@ -549,6 +558,7 @@ func TestCodeBlockHighlightMatchesThemeTokens(t *testing.T) {
 		Code:   "package main\n\nimport \"github.com/Cyenoch/mygoui\"\n",
 	}
 	state := New()
+	state.Panel = 1
 	var pal theme.Palette
 	tt := ui.NewTester(func(c *ui.Context) {
 		pal = theme.Colors(c)
@@ -560,7 +570,7 @@ func TestCodeBlockHighlightMatchesThemeTokens(t *testing.T) {
 		text  string
 		color ui.Color
 	}{
-		{"package main", pal.Accent},
+		{"package main", pal.Primary},
 		{`import "github.com/Cyenoch/mygoui"`, pal.Success},
 	} {
 		r, ok := tt.Find(want.text)
@@ -577,6 +587,7 @@ func TestAPIShowsFullTypeValues(t *testing.T) {
 	for _, size := range []struct{ width, height int }{{1100, 900}, {640, 900}} {
 		state := New()
 		state.Selected = "avatargroup"
+		state.Panel = 2
 		tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, size.width, size.height)
 		tt.Frame()
 		if !tt.HasText("[]mygoui.AvatarOptions") {
@@ -601,6 +612,7 @@ func TestCodeBlockScrollsLongLines(t *testing.T) {
 		Code: "package main\n\n" + long + "\n",
 	}
 	state := New()
+	state.Panel = 1
 	tt := ui.NewTester(func(c *ui.Context) { buildComponentPage(c, state, p) }, 640, 900)
 	tt.Frame()
 	scroll := StateOf[codeScrollState](state, "code:longcode")

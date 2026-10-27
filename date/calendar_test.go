@@ -39,7 +39,7 @@ func yearLabels(tt *ui.Tester) map[int]bool {
 func TestCalendarYearPickerDefaultPage(t *testing.T) {
 	st := &date.CalendarState{}
 	tt := start(t, func(c *ui.Context) {
-		date.Calendar(c, date.CalendarOptions{Today: march, DayLabel: label}, st)
+		date.Calendar(c, date.CalendarOptions{Today: march, DayLabel: label, ShowYearPicker: true}, st)
 	}, 360, 420)
 
 	if err := tt.Click("March 2026, Choose year"); err != nil {
@@ -81,10 +81,11 @@ func TestCalendarYearPickerBounds(t *testing.T) {
 	st := &date.CalendarState{}
 	tt := start(t, func(c *ui.Context) {
 		date.Calendar(c, date.CalendarOptions{
-			Today:    time.Date(2021, time.June, 15, 12, 0, 0, 0, time.UTC),
-			Min:      time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC),
-			Max:      time.Date(2023, time.December, 31, 0, 0, 0, 0, time.UTC),
-			DayLabel: label,
+			Today:          time.Date(2021, time.June, 15, 12, 0, 0, 0, time.UTC),
+			Min:            time.Date(2020, time.January, 1, 0, 0, 0, 0, time.UTC),
+			Max:            time.Date(2023, time.December, 31, 0, 0, 0, 0, time.UTC),
+			DayLabel:       label,
+			ShowYearPicker: true,
 		}, st)
 	}, 360, 420)
 
@@ -255,7 +256,7 @@ func TestRangeCalendarStartOnlyPaintsNoBand(t *testing.T) {
 	}
 	tt.Frame()
 	r, g, b := sampleDay(t, tt, "2026-11-09", 0.2, 0.5)
-	assertColor(t, "start 9 fill", r, g, b, pal.Accent)
+	assertColor(t, "start 9 fill", r, g, b, pal.Primary)
 	assertNoFill(t, tt, "2026-11-11", pal.Background)
 
 	// Completing the range paints the days between the endpoints soft.
@@ -263,13 +264,13 @@ func TestRangeCalendarStartOnlyPaintsNoBand(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Frame()
-	soft := pal.AccentSoft.Over(pal.Background)
+	soft := pal.Accent.Over(pal.Background)
 	r, g, b = sampleDay(t, tt, "2026-11-11", 0.2, 0.5)
 	assertColor(t, "middle 11 fill", r, g, b, soft)
 	r, g, b = sampleDay(t, tt, "2026-11-09", 0.2, 0.5)
-	assertColor(t, "start 9 fill", r, g, b, pal.Accent)
+	assertColor(t, "start 9 fill", r, g, b, pal.Primary)
 	r, g, b = sampleDay(t, tt, "2026-11-13", 0.2, 0.5)
-	assertColor(t, "end 13 fill", r, g, b, pal.Accent)
+	assertColor(t, "end 13 fill", r, g, b, pal.Primary)
 }
 
 func TestDatePickerOpensAndCommits(t *testing.T) {
@@ -354,6 +355,30 @@ func TestTimeFieldCommits(t *testing.T) {
 	}
 }
 
+func TestTimeFieldUpdatesWhenHourCycleChanges(t *testing.T) {
+	st := &date.TimeFieldState{Value: time.Date(2026, time.March, 15, 14, 30, 0, 0, time.UTC)}
+	hour12 := false
+	tt := start(t, func(c *ui.Context) {
+		date.TimeField(c, date.TimeFieldOptions{Label: "Alarm", Hour12: hour12}, st)
+	}, 320, 260)
+	if err := tt.Click("Alarm"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(ui.Cmd, ui.KeyA)
+	tt.Key(ui.Cmd, ui.KeyC)
+	if got := tt.Clipboard(); got != "14:30" {
+		t.Fatalf("24-hour editor copied %q", got)
+	}
+
+	hour12 = true
+	tt.Frame()
+	tt.Key(ui.Cmd, ui.KeyA)
+	tt.Key(ui.Cmd, ui.KeyC)
+	if got := tt.Clipboard(); got != "02:30 PM" {
+		t.Fatalf("12-hour editor copied %q after changing the option", got)
+	}
+}
+
 // sampleDay reads the pixel at a fraction of a day cell's box.
 func sampleDay(t *testing.T, tt *ui.Tester, day string, fx, fy float32) (uint8, uint8, uint8) {
 	t.Helper()
@@ -410,16 +435,18 @@ func assertNoFill(t *testing.T, tt *ui.Tester, day string, bg ui.Color) {
 	}
 }
 
-func TestRangeCalendarLeavesDisabledDaysPlain(t *testing.T) {
-	// 31 is disabled and today while the range ends the day before: the cell
-	// stays plain rather than gaining a today or range fill.
+func TestRangeCalendarDisabledTodayKeepsMarker(t *testing.T) {
+	// A disabled today has a muted marker, but no range or hover fill.
 	day31 := func(d time.Time) bool { return d.Day() == 31 && d.Month() == time.March }
 	tt, pal := newRangeCalendar(t,
 		time.Date(2026, 3, 27, 0, 0, 0, 0, time.UTC),
 		time.Date(2026, 3, 30, 0, 0, 0, 0, time.UTC),
 		time.Date(2026, 3, 31, 0, 0, 0, 0, time.UTC),
 		day31)
-	assertNoFill(t, tt, "2026-03-31", pal.Background)
+	r, g, b := sampleDay(t, tt, "2026-03-31", 0.2, 0.5)
+	assertColor(t, "disabled today fill", r, g, b, pal.Background)
+	r, g, b = sampleDay(t, tt, "2026-03-31", 0.5, 0.825)
+	assertColor(t, "disabled today marker", r, g, b, pal.Foreground.Alpha(0.3).Over(pal.Background))
 }
 
 func TestRangeCalendarDisabledDayStopsBand(t *testing.T) {
@@ -430,7 +457,7 @@ func TestRangeCalendarDisabledDayStopsBand(t *testing.T) {
 		time.Date(2026, 3, 22, 0, 0, 0, 0, time.UTC),
 		time.Date(2026, 3, 27, 0, 0, 0, 0, time.UTC),
 		march, day24)
-	soft := pal.AccentSoft.Over(pal.Background)
+	soft := pal.Accent.Over(pal.Background)
 	assertNoFill(t, tt, "2026-03-24", pal.Background)
 
 	r, g, b := sampleDay(t, tt, "2026-03-23", 0.98, 0.09)
@@ -453,13 +480,13 @@ func TestRangeCalendarBandRoundsAtWeekEdges(t *testing.T) {
 		pal = theme.Colors(c)
 		date.RangeCalendar(c, date.RangeCalendarOptions{Today: march, DayLabel: label}, st)
 	}, 360, 480)
-	soft := pal.AccentSoft.Over(pal.Background)
+	soft := pal.Accent.Over(pal.Background)
 
 	// 27 is Friday and 28 Saturday ends the week, so the band wraps: square
 	// where 28 continues into Saturday, rounded at the row's end and the next
 	// row's start.
 	r, g, b := sampleDay(t, tt, "2026-03-27", 0.98, 0.09)
-	assertColor(t, "27 seam with 28", r, g, b, soft)
+	assertColor(t, "27 seam with 28", r, g, b, pal.Primary)
 	r, g, b = sampleDay(t, tt, "2026-03-28", 0.02, 0.09)
 	assertColor(t, "28 seam with 27", r, g, b, soft)
 	r, g, b = sampleDay(t, tt, "2026-03-28", 0.98, 0.09)
@@ -469,9 +496,104 @@ func TestRangeCalendarBandRoundsAtWeekEdges(t *testing.T) {
 	r, g, b = sampleDay(t, tt, "2026-03-29", 0.98, 0.09)
 	assertColor(t, "29 seam with 30", r, g, b, soft)
 	r, g, b = sampleDay(t, tt, "2026-03-30", 0.02, 0.09)
-	assertColor(t, "30 seam with 29", r, g, b, soft)
+	assertColor(t, "30 seam with 29", r, g, b, pal.Primary)
 	r, g, b = sampleDay(t, tt, "2026-03-30", 0.98, 0.09)
 	assertColor(t, "30 rounded cap", r, g, b, pal.Background)
+}
+
+func TestRangeCalendarSameDayHasRoundedEnds(t *testing.T) {
+	day := time.Date(2026, time.March, 18, 0, 0, 0, 0, time.UTC)
+	tt, pal := newRangeCalendar(t, day, day, march, nil)
+	r, g, b := sampleDay(t, tt, "2026-03-18", 0.2, 0.5)
+	assertColor(t, "single-day range", r, g, b, pal.Primary)
+	for _, fx := range []float32{0.02, 0.98} {
+		r, g, b = sampleDay(t, tt, "2026-03-18", fx, 0.09)
+		assertColor(t, "single-day rounded edge", r, g, b, pal.Background)
+	}
+}
+
+func TestCalendarDisabledSelectionDoesNotPaintPrimary(t *testing.T) {
+	selected := time.Date(2026, time.March, 18, 0, 0, 0, 0, time.UTC)
+	st := &date.CalendarState{Value: selected}
+	var pal theme.Palette
+	tt := start(t, func(c *ui.Context) {
+		pal = theme.Colors(c)
+		date.Calendar(c, date.CalendarOptions{
+			Today: march, DayLabel: label,
+			DisabledDates: func(d time.Time) bool { return d.Equal(selected) },
+		}, st)
+	}, 360, 480)
+	r, g, b := sampleDay(t, tt, "2026-03-18", 0.2, 0.5)
+	assertColor(t, "disabled selected day", r, g, b, pal.Background)
+	if err := tt.Click("2026-03-18"); err != nil {
+		t.Fatal(err)
+	}
+	if !st.Value.Equal(selected) {
+		t.Fatalf("disabled day changed selection: %v", st.Value)
+	}
+}
+
+func TestDisabledCalendarMarksTodayAndCannotActivate(t *testing.T) {
+	st := &date.CalendarState{}
+	var pal theme.Palette
+	tt := start(t, func(c *ui.Context) {
+		pal = theme.Colors(c)
+		date.Calendar(c, date.CalendarOptions{
+			Today: march, DayLabel: label, Disabled: true,
+		}, st)
+	}, 360, 480)
+	r, g, b := sampleDay(t, tt, "2026-03-15", 0.5, 0.85)
+	assertColor(t, "disabled calendar today marker", r, g, b,
+		pal.Foreground.Alpha(0.3).Over(pal.Background))
+	if err := tt.Click("2026-03-15"); err != nil {
+		t.Fatal(err)
+	}
+	if !st.Value.IsZero() {
+		t.Fatalf("disabled calendar chose %v", st.Value)
+	}
+}
+
+func TestRangeCalendarShowsOutsideDaysInRange(t *testing.T) {
+	from := time.Date(2026, time.February, 27, 0, 0, 0, 0, time.UTC)
+	to := time.Date(2026, time.March, 3, 0, 0, 0, 0, time.UTC)
+	st := &date.RangeCalendarState{
+		Value:             date.DateRange{Start: from, End: to},
+		CalendarViewState: date.CalendarViewState{Month: from},
+	}
+	var pal theme.Palette
+	tt := start(t, func(c *ui.Context) {
+		pal = theme.Colors(c)
+		date.RangeCalendar(c, date.RangeCalendarOptions{
+			Today: from, DayLabel: label, FirstWeekday: time.Monday,
+		}, st)
+	}, 360, 480)
+	r, g, b := sampleDay(t, tt, "2026-03-01", 0.2, 0.5)
+	assertColor(t, "outside range day", r, g, b, pal.Accent.Alpha(0.5).Over(pal.Background))
+	if err := tt.Click("2026-03-01"); err != nil {
+		t.Fatal(err)
+	}
+	if st.Value.Start.Day() != 1 || st.Value.Start.Month() != time.March {
+		t.Fatalf("outside day did not start a new range: %+v", st.Value)
+	}
+}
+
+func TestCalendarHeaderPlacesArrowsAroundCaption(t *testing.T) {
+	st := &date.CalendarState{}
+	tt := start(t, func(c *ui.Context) {
+		date.Calendar(c, date.CalendarOptions{Today: march}, st)
+	}, 360, 480)
+	previous, ok := tt.Find("Previous")
+	if !ok {
+		t.Fatal("previous button missing")
+	}
+	heading, ok := tt.Find("March 2026")
+	if !ok {
+		t.Fatal("month heading missing")
+	}
+	next, ok := tt.Find("Next")
+	if !ok || previous.X >= heading.X || heading.X >= next.X {
+		t.Fatalf("calendar header order: previous=%v heading=%v next=%v", previous, heading, next)
+	}
 }
 
 func diff(a, b uint8) int {

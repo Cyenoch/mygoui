@@ -1,6 +1,7 @@
 package form
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/egoist/mygo/ui"
@@ -50,6 +51,31 @@ func TestInputOTPFiltersASCIIAndCompletesOnce(t *testing.T) {
 	}
 }
 
+func TestInputOTPReportsAcceptedChanges(t *testing.T) {
+	var state OTPState
+	var changes, completed []string
+	tester := formTextTester(t, func(c *ui.Context) {
+		InputOTP(c, &state, OTPOptions{
+			Length:     2,
+			Label:      "Verification code",
+			OnChange:   func(value string) { changes = append(changes, value) },
+			OnComplete: func(value string) { completed = append(completed, value) },
+		})
+	})
+	formTextClick(t, tester, "Verification code")
+	tester.Type("1")
+	tester.Type("2")
+	tester.Type("3") // The code is already full.
+	tester.Key(0, ui.KeyBackspace)
+	tester.Type("é") // The filter rejects the character.
+	if !slices.Equal(changes, []string{"1", "12", "1"}) {
+		t.Fatalf("accepted changes = %q", changes)
+	}
+	if !slices.Equal(completed, []string{"12"}) || state.Value != "1" || state.Complete {
+		t.Fatalf("value %q, complete %v, completions %q", state.Value, state.Complete, completed)
+	}
+}
+
 func TestInputOTPCountsRunesWithCustomFilter(t *testing.T) {
 	var state OTPState
 	var completed []string
@@ -70,5 +96,22 @@ func TestInputOTPCountsRunesWithCustomFilter(t *testing.T) {
 	}
 	if len(completed) != 1 || completed[0] != "好a" {
 		t.Fatalf("completion: %v", completed)
+	}
+}
+
+func TestInputOTPReadOnlyPreservesCode(t *testing.T) {
+	state := OTPState{Value: "12"}
+	var changes, completed int
+	tester := formTextTester(t, func(c *ui.Context) {
+		InputOTP(c, &state, OTPOptions{
+			Length: 4, Label: "Verification code", ReadOnly: true,
+			OnChange: func(string) { changes++ }, OnComplete: func(string) { completed++ },
+		})
+	})
+	formTextClick(t, tester, "Verification code")
+	tester.Type("34")
+	tester.Key(0, ui.KeyBackspace)
+	if state.Value != "12" || changes != 0 || completed != 0 {
+		t.Fatalf("read-only: value %q changes %d completions %d", state.Value, changes, completed)
 	}
 }

@@ -1,176 +1,152 @@
-# Components
+# Component capability matrix
 
-The library implements the union of HeroUI v3's catalogs as one native library.
-The sections below are functional families, not web/native targets. Every
-component below is constructible from Go with typed options; none requires
-JavaScript, CSS, a WebView or generated assets.
+This maps the coss ui catalog to the native Go APIs observed in this checkout.
+The reference is commit `3d8ca28e7d90123e9e0f44665944dc240b026ccb`;
+see [sources and licensing](references.md).
 
-Run `go run ./examples/gallery` for live specimens. The gallery is the
-authoritative usage reference for prototypes and state wiring.
+The downloaded site links and component metadata list 56 component pages.
+`llms.txt` lists 55: it adds Sidebar and omits Composer and Segmented Control.
+Their union is **57 component subjects**. The two documented hooks below make
+59 upstream subjects, not 59 fully implemented or pixel-perfect components.
+ScrollFade is an additional native capability.
 
-## Root package (`mygoui`)
+Every row states a Go mapping and its current scope. An existing API has not
+thereby passed behavioral, visual or platform validation. Explicit partial or
+pending rows remain gaps; [VALIDATION.md](../VALIDATION.md) records evidence.
+Names link to upstream documentation. Source paths after each API are relative
+to this repository; upstream implementations normally live at
+`apps/ui/registry/default/ui/<slug>.tsx`, with MDX at
+`apps/ui/content/docs/components/<slug>.mdx`. Date Picker is a documented
+composition rather than a standalone registry UI file. Sidebar has a registry
+file even though its page is missing from the downloaded link list. On
+2026-10-27 the live Sidebar component URL returned 404; visual review uses the
+actual docs sidebar and that registry source instead. See the per-component
+[visual review](visual-review.md) for inspected appearances and limitations.
 
-| Component | Behavior |
+## Components
+
+| coss reference | Go mapping and source | Native capability and limits |
+| --- | --- | --- |
+| [Accordion](https://coss.com/ui/docs/components/accordion) | `navigation.Accordion` - `navigation/accordion.go` | Typed sections, single/multiple expansion and keyboard movement. Native layout/motion replaces CSS state selectors. |
+| [Alert](https://coss.com/ui/docs/components/alert) | `mygoui.Alert` - `alert.go` | Callout with icon/title/description/action and status colors. Compose additional content with native controls. |
+| [Alert Dialog](https://coss.com/ui/docs/components/alert-dialog) | `overlay.AlertDialog` - `overlay/alert_dialog.go` | Explicit action/cancel modal with native focus ownership. Backdrop/Escape do not choose the action. |
+| [Autocomplete](https://coss.com/ui/docs/components/autocomplete) | `form.Autocomplete / AutocompleteState` - `form/autocomplete.go` | Inline native editable input with filtered virtualized suggestions; editor keeps focus during arrows/Enter selection. Single/multiple keyed selection, clear/loading and query callbacks; the application owns async requests. SearchLabel/SearchPlaceholder are editor fallbacks, not a second input. |
+| [Avatar](https://coss.com/ui/docs/components/avatar) | `mygoui.Avatar` - `avatar.go` | Caller-provided bitmap or initials, sizes and optional badge. Image fetching/loading policy belongs to the application. |
+| [Badge](https://coss.com/ui/docs/components/badge) | `mygoui.Badge` - `chip.go` | Independent BadgeVariant: BadgePrimary (default), BadgeSecondary, BadgeOutline, BadgeDestructive, BadgeError, BadgeInfo, BadgeSuccess, BadgeWarning. Options: Label, Variant, Size, Icon. |
+| [Breadcrumb](https://coss.com/ui/docs/components/breadcrumb) | `navigation.Breadcrumbs / Breadcrumb` - `navigation/breadcrumbs.go` | Typed path actions, current item and overflow. URL navigation is an application/native service action. |
+| [Button](https://coss.com/ui/docs/components/button) | `mygoui.Button` - `button.go` | Primary/default, secondary, outline, ghost, link, destructive and destructive-outline mappings; loading, disabled, icons and xs through xl. Native disabled opacity is 50%, coss reference 64%; no pressed scale. |
+| [Calendar](https://coss.com/ui/docs/components/calendar) | `date.Calendar / RangeCalendar` - `date/calendar.go, date/range_calendar.go` | Single day or start/end range, Gregorian month navigation, bounds and disabled days. Calendar's month heading is static by default; ShowYearPicker enables the year selector and HideYearPicker overrides it. No arbitrary multiple-date selection, RTL date ordering or alternate calendar system. |
+| [Card](https://coss.com/ui/docs/components/card) | `mygoui.Card and CardHeader/Title/Description/Content/Footer; CardFrame and CardFrameHeader/Title/Description/Footer` - `card.go` | Composable bordered card and muted card-frame helpers. Sections own their padding. Additional Surface variants are library extensions, not additional coss contracts. |
+| [Checkbox](https://coss.com/ui/docs/components/checkbox) | `form.Checkbox` - `form/checkbox.go` | Native checkbox with labels, disabled/invalid and mixed state. MyGo owns activation, focus and semantics. |
+| [Checkbox Group](https://coss.com/ui/docs/components/checkbox-group) | `form.CheckboxGroup / CheckboxGroupState` - `form/checkbox_group.go` | Caller-owned grouped selection and native checkboxes in a body callback; explicit group validation. |
+| [Collapsible](https://coss.com/ui/docs/components/collapsible) | `navigation.Disclosure` - `navigation/disclosure.go` | DisclosureOptions supplies caller-owned expansion and body; DisclosureGroup coordinates sections. No React Collapsible parts/provider API. |
+| [Combobox](https://coss.com/ui/docs/components/combobox) | `form.ComboBox / ComboBoxState` - `form/combo_box.go` | Editable filtering, single/multiple selection, removable selected items, custom values and custom filter. Async queries are callbacks; application owns requests/results. |
+| [Composer](https://coss.com/ui/docs/components/composer) | `form.Composer` - `form/composer.go` | Plain-text multiline draft with persistent actions, Enter submit/Shift+Enter newline and caller-controlled clearing. No rich structured draft, mention/token/slash popup or adaptive inline action layout. |
+| [Command](https://coss.com/ui/docs/components/command) | `navigation.Command / CommandState` - `navigation/command.go` | Inline searchable action list with label/keyword matching, named groups, disabled items, shared pointer/keyboard highlight, arrows/Enter and callbacks. Compose inside Dialog for a palette. Shortcut strings are display only; global shortcut registration belongs to the application. |
+| [Context Menu](https://coss.com/ui/docs/components/context-menu) | `navigation.ContextMenu(anchor, MenuOptions)` - `navigation/context_menu.go` | Adapted to the OS/native context menu, including secondary click and platform keyboard invocation. Actions/checks/submenus are supported; native presentation does not use coss CSS, item icons, descriptions or shortcut styling. |
+| [Date Picker](https://coss.com/ui/docs/components/date-picker) | `date.DatePicker / DateRangePicker` - `date/picker.go, date/range_picker.go` | Native ISO date editors plus anchored single/range calendar. Strict Gregorian date validation; no localized free-form parsing or timezone policy. |
+| [Dialog](https://coss.com/ui/docs/components/dialog) | `overlay.Dialog` - `overlay/dialog.go` | Caller-owned open flag with native modal focus, header/body/footer and dismissal. The default backdrop dims black at 32% and blurs with 4 DIP sigma; explicit dim-only and transparent modes are available. Keep constructor installed for retained exit paint. |
+| [Drawer](https://coss.com/ui/docs/components/drawer) | `overlay.Drawer` - `overlay/drawer.go` | Four-edge attached modal with 450 ms native slide, separately fading scrim and optional wider-window Inset. Drag the middle of the inward-facing edge outward to dismiss; native body scrolling remains independent. Handle is optional, ShowClose adds an explicit close button, and PreventDismiss blocks swipe/backdrop/Escape dismissal. No snap points or nested drawer gesture coordination. BottomSheet is a separate floating handle-swipe extension. |
+| [Empty](https://coss.com/ui/docs/components/empty) | `mygoui.EmptyState` - `empty_state.go` | Empty result with icon, title/description and explicit recovery action; compose richer content in native containers. |
+| [Field](https://coss.com/ui/docs/components/field) | `form.Field / Description / FieldError` - `form/field.go` | Native label/help/error association around exactly one primary control. Application supplies validation and control disabled state; no HTML constraint-validation engine. |
+| [Fieldset](https://coss.com/ui/docs/components/fieldset) | `form.Fieldset` - `form/field.go` | Legend, description, disabled group and native body layout. No DOM legend/fieldset tree is created. |
+| [Form](https://coss.com/ui/docs/components/form) | `form.Form` - `form/field.go` | Adapted: vertical grouping and top-level error only. Submit actions, validation, reset, field collection and persistence belong to the caller; no FormData or automatic validation/submission. |
+| [Frame](https://coss.com/ui/docs/components/frame) | `mygoui.Frame and FramePanel/Header/Title/Description/Footer` - `frame.go` | Muted outer frame with independently composable bordered panels. Options expose padding, gap and label; no compound provider is needed. |
+| [Group](https://coss.com/ui/docs/components/group) | `mygoui.Group / GroupItem` - `frame.go` | Mixed joined controls receive explicit outer corner arrays through Build. Caller applies corners. No automatic descendant border merging, GroupText or GroupSeparator API; ButtonGroup provides specialized joined button behavior. |
+| [Input](https://coss.com/ui/docs/components/input) | `form.Input` - `form/input.go` | Native bound editor, labels/help/errors, read-only, disabled and invalid state. Browser input-type/autofill contracts are not implied. |
+| [Input Group](https://coss.com/ui/docs/components/input-group) | `form.InputGroup` - `form/input_group.go` | One native editor plus Prefix/Suffix and BlockPrefix/BlockSuffix callbacks; actions inside addons keep independent activation. |
+| [Kbd](https://coss.com/ui/docs/components/kbd) | `mygoui.Kbd` - `kbd.go` | Visual key chord/keycap with accessible text. It displays a shortcut; it does not register the command. |
+| [Label](https://coss.com/ui/docs/components/label) | `form.Label` - `form/field.go` | Standalone label can focus a ui.Handle target. Prefer Field for native control/help/error association. |
+| [Menu](https://coss.com/ui/docs/components/menu) | `navigation.Menu / Dropdown / SubMenu` - `navigation/menu.go` | Typed sections and item actions, checked single/multiple selection, disabled items, nested submenus and keyboard traversal. Dropdown supplies the trigger; context-menu chrome is separately platform-owned. |
+| [Meter](https://coss.com/ui/docs/components/meter) | `mygoui.Meter` - `progress.go` | Determinate quantity with explicit range, label/output and indicator color. Not a form value or task lifecycle manager. |
+| [Number Field](https://coss.com/ui/docs/components/number-field) | `form.NumberField / NumberFieldState` - `form/number_field.go` | Native numeric editor and steppers with bounds/step and display formatting. Parsing uses strconv.ParseFloat, independent of locale; no upstream scrub-area interaction. |
+| [OTP Field](https://coss.com/ui/docs/components/otp-field) | `form.InputOTP / OTPState` - `form/input_otp.go` | One native editor with painted slots, filtering, completion and selection. Length defaults to 6 and is capped at 12; sanitizing input may move the caret. No platform OTP delivery/autofill guarantee. |
+| [Pagination](https://coss.com/ui/docs/components/pagination) | `navigation.Pagination` - `navigation/pagination.go` | One-based page control, previous/next, boundaries, siblings and ellipsis. Siblings zero means no adjacent pages, not a default of one. Application owns fetching and result/page state. |
+| [Popover](https://coss.com/ui/docs/components/popover) | `overlay.Popover` - `overlay/popover.go` | Same-build anchor plus caller-owned open flag, placement, optional arrow, body and native dismissal. No DOM portal or detached React handle API. |
+| [Preview Card](https://coss.com/ui/docs/components/preview-card) | `overlay.PreviewCard / PreviewCardState` - `overlay/preview_card.go` | Rich anchored body opens on hover/focus and stays open over the panel. Current leave grace is 150 ms; no configurable shared delay/provider or fetched link metadata. |
+| [Progress](https://coss.com/ui/docs/components/progress) | `mygoui.ProgressBar` - `progress.go` | Determinate or indeterminate task indicator with caller value/range and optional output. ProgressCircle is an extra native family. |
+| [Radio Group](https://coss.com/ui/docs/components/radio-group) | `form.RadioGroup / Radio` - `form/radio_group.go, form/radio.go` | Typed mutually exclusive values with native roving focus and explicit group state. Compose choices in the body. |
+| [Scroll Area](https://coss.com/ui/docs/components/scroll-area) | `mygoui.ScrollArea / ScrollAreaOptions` - `scroll_fade.go` | Axis: ScrollVertical (default), ScrollHorizontal or ScrollBoth; caller-owned ui.ScrollState. Height, Label and optional Fade. Native scrollbars replace web scrollbar parts. |
+| [Select](https://coss.com/ui/docs/components/select) | `form.Select / SelectState` - `form/select.go` | Single/multiple keyed selection with sections, disabled items and clear. Native popup/list semantics and placement replace browser select/form integration. |
+| [Segmented Control](https://coss.com/ui/docs/components/segmented-control) | `navigation.SegmentedControl` - `navigation/segmented_control.go` | Independent native SegmentedBase radio group with Selected, []TabOptions and OnChange. Disabled choices and arrow selection use native semantics; the selected surface moves/resizes over 200 ms and settles for reduced motion. Item Content is ignored; panels belong to Tabs. |
+| [Separator](https://coss.com/ui/docs/components/separator) | `mygoui.Separator` - `separator.go` | Horizontal/vertical native rule, with additional library emphasis levels. |
+| [Sheet](https://coss.com/ui/docs/components/sheet) | `overlay.Sheet` - `overlay/sheet.go` | Edge modal, right by default or left/top/bottom, with 200 ms native slide and separate scrim fade. Backdrop and optional wider-window Inset join header/body/footer, focus restoration and explicit dismissal policy. |
+| [Sidebar](https://coss.com/ui/docs/components/sidebar) | `mygoui.Sidebar / SidebarOptions` - `sidebar.go` | Required caller-owned Selected and Collapsed, typed keyed groups/items, native collapse toggle, scrolling content and header/footer. Default expanded/collapsed widths are 256/48 DIP. No automatic mobile sheet, resize rail, nested menu parts or persisted collapse policy. |
+| [Skeleton](https://coss.com/ui/docs/components/skeleton) | `mygoui.Skeleton / SkeletonGroup` - `skeleton.go` | Native shimmer/pulse/static placeholders with reduced-motion handling; composed dimensions replace CSS utilities. |
+| [Slider](https://coss.com/ui/docs/components/slider) | `form.Slider / SliderState` - `form/slider.go` | Single-thumb or horizontal two-thumb range, bounds, steps, ticks/output and keyboard input. Vertical is single-thumb only; no arbitrary multi-thumb set. |
+| [Spinner](https://coss.com/ui/docs/components/spinner) | `mygoui.Spinner` - `spinner.go` | MyGo loading plugin animation with native size/status options. Geometry is a native adaptation, not the same web SVG animation asset. |
+| [Switch](https://coss.com/ui/docs/components/switch) | `form.Switch` - `form/switch.go` | Native binary switch with explicit value, label, disabled/invalid and change callback. |
+| [Table](https://coss.com/ui/docs/components/table) | `data.Table / TableState` - `data/table.go` | Native virtualized data table with sort/selection/actions, column resize/hide and Footer callback. Upstream Table is a composable HTML table; native header metrics, row tinting and resize grips differ. No colspan/rowspan or expandable rows. |
+| [Tabs](https://coss.com/ui/docs/components/tabs) | `navigation.Tabs` - `navigation/tabs.go` | Typed items and selected index, panels, disabled entries, horizontal/vertical layout, roving focus and selected-indicator motion. No arbitrary React tab part tree. |
+| [Textarea](https://coss.com/ui/docs/components/textarea) | `form.TextArea` - `form/textarea.go` | Native multiline editor with line bounds, selection, read-only/disabled/invalid and field metadata. |
+| [Toast](https://coss.com/ui/docs/components/toast) | `overlay.Toast / ToastState.View` - `overlay/toast.go` | Window-owned notification identities, action, timeout, updates, native queue and animated deck. Call Toast from an action, install View in the build. MyGo caps visible cards at three; no promise helper or arbitrary browser portal. |
+| [Toggle](https://coss.com/ui/docs/components/toggle) | `mygoui.ToggleButton` - `toggle.go` | Native pressed boolean with typed options and explicit change callback. Additional button appearances are library extensions. |
+| [Toggle Group](https://coss.com/ui/docs/components/toggle-group) | `mygoui.ToggleButtonGroup` - `toggle.go` | Typed button options with single/multiple selection. Default items keep individual rounded corners and 2 DIP gaps; outline-only groups join, while Detached uses 4 DIP gaps. State is explicit rather than provided through React context. |
+| [Toolbar](https://coss.com/ui/docs/components/toolbar) | `navigation.Toolbar / ToolbarSeparator` - `navigation/toolbar.go` | Body-based native focus group with horizontal/vertical arrows and explicit separator orientation. |
+| [Tooltip](https://coss.com/ui/docs/components/tooltip) | `overlay.Tooltip` - `overlay/tooltip.go` | Native pointer-rest/keyboard-focus tooltip with placement and optional arrow. MyGo owns 600 ms rest and 400 ms warm reuse; public options do not expose upstream provider timing or shared viewport transitions. |
+
+## Hooks and application services
+
+| coss reference | Native mapping | Boundary |
+| --- | --- | --- |
+| [useMediaQuery](https://coss.com/ui/docs/hooks/use-media-query) | `c.Size()`, `c.Preferences()` and explicit native layout branches | No CSS media-query parser or React hook. Use window DIP size and available native preferences; pointer/CSS feature queries have no blanket equivalent. |
+| [useCopyToClipboard](https://coss.com/ui/docs/hooks/use-copy-to-clipboard) | Capture `services := c.Services()`, call `services.WriteClipboard(text)` in an action | Native clipboard has no browser permission promise. The application owns copied-feedback state and its expiry. Do not retain a build context or perform clipboard writes during unconditional rendering. |
+
+Persistent services also expose native URL opening. Network requests, image
+loading, filesystem access, async search and persistence stay with the host.
+Publish worker results through `Window.Update`.
+
+## ScrollFade and customization
+
+`ScrollFade(c, viewport, state, options)` decorates an existing native scroll
+viewport. `MaskFade` uses a native shader effect to fade the subtree to
+transparency; `ShadowFade` paints shadow ink and `SurfaceFade` blends into the
+supplied opaque surface. Flags select physical edges and fades follow actual
+remaining scroll distance. Native effect layers cap each side at 8192 pixels
+and omit embedded webviews. GPU/platform proof remains pending.
+See [scrollfade.md](scrollfade.md) for signatures, errors and examples.
+
+Use [theme.md](theme.md) for canonical coss roles, per-appearance palette
+patches, radius offsets and type metrics. Body/heading/mono families are
+independent, but native system fonts are the default. The optional `fonts`
+package embeds independently sourced Cal Sans and registers it only when
+`fonts.Register()` is called. Paper Mono is not bundled. [fonts.md](fonts.md)
+records OFL sources, browser limits and unresolved rendering equivalence.
+
+## Additional library families
+
+These remain useful native components outside the 57-component coss catalog
+mapping; their presence is not an upstream fidelity guarantee:
+
+| Family | Public surface |
 | --- | --- |
-| `Alert` | Surface callout with default/accent/info/success/warning/danger status, icon, title, description and an optional real action. |
-| `Avatar` | Caller-loaded image or initials, sm/md/lg, soft fallback colors, optional badge. |
-| `AvatarGroup` | Overlapping stack or grid with 8 DIP overlap, optional background ring and overflow count. |
-| `Badge` | Standalone badge with color/variant/size and a background-colored ring. |
-| `BadgeAnchor` | Places a badge at a content corner through the native overlay layer. |
-| `Button` | primary/secondary/tertiary/outline/ghost/danger/danger-soft, sm/md/lg, icon-only, full width, pending and disabled states. |
-| `ButtonGroup` | Joined buttons with outer-only corners, horizontal/vertical orientation and optional separators. |
-| `Card` + `CardHeader`/`CardTitle`/`CardDescription`/`CardContent`/`CardFooter` | HeroUI's 16 DIP padded, 24 DIP rounded, 12 DIP gapped surfaces in default/secondary/tertiary/transparent variants. Native HeroUI's `Card.Body` is `CardContent`. |
-| `Chip` | Compact capsule in default/accent/success/warning/danger colors and primary/secondary/soft/tertiary variants. |
-| `CloseButton` | 24 DIP dismiss control with native focus and hover. |
-| `EmptyState` | Low-emphasis empty result with optional icon and recovery action. |
-| `Header` | Small muted section heading. |
-| `Kbd` | One keycap holding a key chord with concatenated accessible text. |
-| `Link` | Inline keyboard action with hover underline; URL opening stays application work. |
-| `LinkButton` | Native ghost/link-style text action without a hover surface. |
-| `ListGroup` + `ListGroupItem` | Native surface list with prefix/suffix content and real row activation. |
-| `Meter` | Determinate quantity with label, output and size; `IndicatorColor` defaults to accent. |
-| `PressableFeedback` | Native press-highlight container. |
-| `ProgressBar` | Determinate or indeterminate bar with label/output and sizes; `IndicatorColor` defaults to accent. |
-| `ProgressCircle` | Determinate segmented ring or indeterminate native spinner with optional output; `IndicatorColor` defaults to accent. |
-| `ScrollShadow` | Native scroll viewport with surface-colored edge fades driven by actual scroll position. |
-| `Separator` | Horizontal/vertical rule with default/secondary/tertiary levels. |
-| `Skeleton`/`SkeletonGroup` | Shimmer, pulse or static placeholders; motion respects reduced motion. |
-| `Spinner` | Native loading arc in four sizes and status colors. |
-| `Surface` | default/secondary/tertiary/transparent container surface. |
-| `Tag`/`TagGroup` | Selectable, removable tags with single/multiple selection and group layout. |
-| `ToggleButton`/`ToggleButtonGroup` | Persistent pressed state, default/ghost, attached or detached groups. |
-| `Typography` | HeroUI h1–h6, body, body-sm, body-xs and code roles; `Heading`, `Paragraph`, `Code`, `Prose` helpers. |
+| Root composition and text | `Surface`, `Typography`, `Heading`, `Paragraph`, `Code`, `Prose`, `Header`, `Link`, `LinkButton` |
+| Root actions and feedback | `ButtonGroup`, `CloseButton`, `PressableFeedback`, `Chip`, `BadgeAnchor`, `AvatarGroup`, `ProgressCircle`, `ScrollShadow`, `StatusColors` |
+| Root collections | `ListGroup`/`ListGroupItem`, `Tag`/`TagGroup`, `SkeletonGroup` |
+| Form helpers | `TextField`, `SearchField`, `ControlField`, `SwitchGroup`, `FieldGroup`, `FieldActions`, `ErrorMessage` |
+| List | `list.ListBox` with typed `ListBoxItem`/`ListBoxSection` and caller-owned `ListBoxState` |
+| Overlays | `overlay.Modal`, `overlay.BottomSheet`; the latter has handle-only swipe dismissal, without coss Drawer snap points |
+| Dates | `date.DateField`, `date.TimeField`, `DateRange` and calendar view state |
+| Color | `ColorArea`, `ColorSlider`, `ColorField`, `ColorSwatch`, `ColorSwatchPicker`, `ColorPicker`, `ColorState`, hex parse/format helpers |
 
-## `form`
+## Shared limits
 
-| Component | Behavior |
-| --- | --- |
-| `Field`, `Label`, `Description`, `FieldError`, `ErrorMessage`, `Fieldset`, `FieldGroup`, `FieldActions`, `Form` | Native field association, grouping, help and error text. |
-| `Input`, `TextArea`, `TextField` | Native single/multiline editing, primary/secondary variants, labels, descriptions, validation, disabled states, and values that stay selectable without changing. |
-| `InputGroup` | One native editor with inline or block prefix/suffix regions. |
-| `InputOTP` | Slot-guided one-time code entry over one native editor, committed ASCII filtering and completion callback. |
-| `SearchField` | Native search input with icon, clear action, Escape and Enter behavior. |
-| `NumberField` | Locale-independent numeric input with min/max/step, increment/decrement and formatted output. |
-| `Checkbox`, `CheckboxGroup` | Native checked/mixed states with labels, descriptions, errors and orientation. |
-| `Radio`, `RadioGroup` | Native single choice with roving focus and disabled options. |
-| `Switch`, `SwitchGroup` | Native boolean control in sm/md/lg sizes with label placement and group orientation. |
-| `ControlField` | Label/description plus Switch or Checkbox as one pressable row. |
-| `Slider` | Single value or two-thumb range with min/max/step, marks, output, horizontal/vertical single-thumb support. |
-| `Select` | Field trigger with virtualized single/multiple list, sections, typeahead, clear and keyboard commit. |
-| `ComboBox` | Filtering text input with a virtualized list, single/multiple choice and optional custom value. |
-| `Autocomplete` | Field trigger opening a search field above a filtered virtualized list, with a caller-owned loading indicator. |
-
-## `list`
-
-| Component | Behavior |
-| --- | --- |
-| `ListBox` | Native virtualized list with stable keys, hover/highlight paint, single/multiple selection, sections, disabled rows, typeahead and an empty state. `ListBoxItem` and `ListBoxSection` are typed data literals passed through options, not constructors. |
-
-## `navigation`
-
-| Component | Behavior |
-| --- | --- |
-| `Accordion` | Single or multiple disclosure over a slice of `AccordionItemOptions`, with keyboard focus movement, surface variant and separators. |
-| `Disclosure`, `DisclosureGroup` | Caller-owned collapsible panels; the group takes a slice of `DisclosureOptions` and coordinates single/multiple expansion. |
-| `Tabs` | Primary pill or secondary underline tabs over `TabOptions`, horizontal/vertical, disabled tabs and native roving focus. |
-| `Breadcrumbs`/`Breadcrumb` | Native path actions, current-page semantics and overflow menu. |
-| `Pagination` | One-based pages with previous/next, boundaries, siblings and ellipsis. |
-| `Toolbar`, `ToolbarSeparator` | Native toolbar focus group with horizontal/vertical arrows and attached surface; separators take an explicit orientation. |
-| `Menu` | Action menu over `MenuSectionOptions` and `MenuItemOptions`, with selection, disabled items, nested submenus and keyboard traversal. |
-| `Dropdown` | Button trigger for a `Menu`, with placement and outside-dismissal. |
-| `SubMenu` | Nested anchored submenu. |
-
-## `overlay`
-
-| Component | Behavior |
-| --- | --- |
-| `Modal` | Focus-contained dialog in seven sizes, including cover and extra small; opaque/blur/transparent backdrop, scrollable body, footer and close button. |
-| `AlertDialog` | Explicit action/cancel dialog; backdrop and Escape do not accept. |
-| `Drawer` | Floating edge panel in four directions with 16 DIP screen gutters, rounded corners and the native dialog focus contract. |
-| `BottomSheet` | Floating bottom panel with 16 DIP gutters, a 250 ms slide-in, handle swipe dismissal (short drags ease back, long drags slide out) and a scrim that clears with the sheet. The close button runs the same slide-out; backdrop and Escape use the native fade. |
-| `Dialog` | Native center or edge modal with header/body/footer. |
-| `Popover` | Anchored rich panel with HeroUI placement, arrow, zoom entry and dismissal. |
-| `Tooltip` | Native hover/focus description with placement, zoom entry and Escape dismissal. |
-| `Toast` | Spring-animated deck with hover/focus expansion, swipe dismissal, variants, action, timeout and MyGo's three-visible cap. Covered cards hide their content. The close button floats across the top-right corner without reserving content width. `ToastState` holds caller-owned identities and installs the region with `View`; reusing an ID updates in place without replaying entry. |
-
-Toast status controls use the notification title as their accessible name,
-falling back to the description for a title-less notification. IDs remain
-update/dismiss identities, not user-facing labels.
-
-Modal, AlertDialog and Dialog fade in/out. Drawer fades; BottomSheet slides up
-and down. Popover and Tooltip fade and zoom from the anchor-facing edge. Every
-installed constructor keeps the overlay layer alive while closed, so the first
-arrival and final exit animate even without a Toast region. Closed content is an
-inert native snapshot, not a second live build. Reduced motion settles all
-surfaces immediately.
-
-## `date`
-
-| Component | Behavior |
-| --- | --- |
-| `Calendar` | Month grid, month/year navigation, year picker, bounds, disabled dates, today marker and keyboard movement. |
-| `RangeCalendar` | Start/end range selection with ordered endpoints and range paint. |
-| `DateField` | ISO `YYYY-MM-DD` native editor with bounds, disabled dates, label, description and error. |
-| `DatePicker` | Date field plus anchored calendar popup. |
-| `DateRangePicker` | Two endpoint editors plus anchored range calendar. |
-| `TimeField` | `HH:MM` or 12-hour time editor with validation. |
-
-## `color`
-
-| Component | Behavior |
-| --- | --- |
-| `ColorArea` | 2D saturation/value surface with draggable, keyboard-adjustable thumb. |
-| `ColorSlider` | Hue, alpha or arbitrary channel slider with gradient track. |
-| `ColorField` | Hex color input with validation. |
-| `ColorSwatch` | Color preview with accessible name and optional selected mark. |
-| `ColorSwatchPicker` | Keyboard-roving palette selection. |
-| `ColorPicker` | Trigger and popover combining area, sliders, field and swatches over one `ColorState`. |
-
-## `data`
-
-| Component | Behavior |
-| --- | --- |
-| `Table` | Virtualized native table with HeroUI's primary/secondary chrome, 44 DIP rows, header band, column separators, sortable columns, single/multiple selection, disabled rows, row actions, column resizing/hiding, an empty slot and an in-frame `Footer` slot for pagination. |
-
-## Deliberate limits
-
-These boundaries are native platform decisions, not missing glue:
-
-- **Pointer feedback:** Button, ToggleButton, CloseButton, PressableFeedback and
-  NumberField steppers animate HeroUI's pressed scale. MyGo does not expose a
-  live layout transform, so there is no ripple.
-- **Gestures:** BottomSheet dismisses from its handle swipe; the scrollable body
-  keeps its own pointer handling. Drawer does not implement swipe-to-dismiss or
-  velocity arbitration; backdrop press, Escape and explicit close actions work.
-- **ScrollShadow:** MyGo has no alpha mask, so the fade is painted in the
-  caller-supplied opaque surface color rather than masking the content.
-- **Dates:** arithmetic is Gregorian. Date fields use strict ISO; alternate
-  calendars, locale-specific month-name parsing and Calendar week/day views
-  are not implemented. The month grid, year picker, range selection and
-  keyboard movement are.
-- **Color:** values are sRGB hex; wide-gamut round-tripping and arbitrary color
-  spaces beyond MyGo's `ui.Color` are not exposed.
-- **Table:** no expandable/colspan rows. Column resize and hide are native;
-  saved width/order must be restored through `TableState.List.Columns`.
-  Selected rows paint a full-bleed tint while native selection semantics and
-  keyboard behavior remain intact. The toolkit owns the header row's exact 32
-  DIP height, 10/6 padding and 600 weight; the library sets the 12 DIP muted
-  type and 16 DIP column insets around that chrome. Column separators are the
-  native resize grip: a column shows one only when `Resizable`, and the last
-  column never does.
-- **Menus:** native popup placement and OS menu appearance remain
-  platform-owned.
-- **Tooltips:** timing follows MyGo's native hover/focus policy rather than
-  CSS delays.
-- **Toast:** MyGo displays at most three toasts; additional identities remain in
-  `ToastState` and appear as earlier ones close.
-- **OTP:** rejected characters rewrite the native editor text, which may move
-  the caret to the end for that edit.
-- **NumberField:** parsing is locale-independent (`strconv.ParseFloat`); the
-  `Format` hook changes display only.
-- **Slider:** range sliders are horizontal; vertical supports one thumb.
-- **Typography/Prose:** semantic roles and inline code are native; arbitrary
-  CSS prose (nested lists, blockquotes, images) is composed by the caller.
-- **Web-only API shape:** render props, `asChild`, DOM polymorphism, Tailwind
-  classes and React context are intentionally absent. Extend components with
-  typed Go options and composition instead.
+- **Toolkit/platform:** OS context-menu chrome, tooltip timing, scrollbars,
+  clipboard, IME and actual accessibility integration remain native. The
+  presence of accessible metadata in a Tester is not screen-reader evidence.
+- **Paint:** disabled nodes use native 50% opacity instead of the coss button's
+  64%. Focus rings and joined-group clipping follow native paint order;
+  CSS z-index and descendant selectors have no direct equivalent.
+- **Dates/color:** Gregorian/ISO date behavior and sRGB color editing are the
+  current contracts. Locale labels can be supplied; arbitrary calendar systems,
+  locale date parsing and wide-gamut round-tripping are not supplied.
+- **Motion/gestures:** reduced-motion preferences must be respected. Drawer
+  snap points, nested gesture arbitration and unrestricted body swipe are
+  absent. Existing slide/fade/zoom/spring transitions do not certify every coss
+  interaction curve.
+- **API shape:** HTML form submission, DOM refs, React providers/render props,
+  arbitrary Tailwind classes and browser portals do not become native APIs.
+  Native options, handles, services and composition carry the supported intent.
+- **Evidence:** headless paint and native event tests must be recorded separately
+  from real OS/GPU/gesture/IME/screen-reader checks. A gallery page or this
+  catalog is not an acceptance result.

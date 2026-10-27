@@ -63,3 +63,18 @@ func TestInputGroupBlockPrefixKeepsEditorAsFieldControl(t *testing.T) {
 		t.Fatalf("block prefix is not above the editor: block %v, caret %v", block, caret)
 	}
 }
+
+func TestInputGroupAddonFocusesEditor(t *testing.T) {
+	var value string
+	tester := formTextTester(t, func(c *ui.Context) {
+		InputGroup(c, &value, InputGroupOptions{
+			Label:  "Amount",
+			Prefix: func() { ui.Text(c, "$") },
+		})
+	})
+	formTextClick(t, tester, "$")
+	tester.Type("42")
+	if value != "42" {
+		t.Fatalf("typing after addon click = %q", value)
+	}
+}

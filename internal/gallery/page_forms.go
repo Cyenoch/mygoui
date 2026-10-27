@@ -64,9 +64,9 @@ func (st *formsState) initState() {
 	st.password = "correct-horse-battery"
 	st.accountID = "acct_1042"
 	st.disabledSearch = "archived query"
-	st.bio = "Building native interfaces with MyGo and HeroUI."
+	st.bio = "Building native interfaces with MyGo and Coss."
 	st.price = "499.00"
-	st.website = "heroui.com"
+	st.website = "coss.com"
 	st.lastEdit = "Nothing changed yet"
 
 	st.otp.Value = "1234"
@@ -562,7 +562,7 @@ func formsSearchFieldExampleDisabled(c *ui.Context, st *formsState) {
 }
 
 // formsNumberFieldExampleBounded shows stepper buttons between bounds. The
-// field keeps HeroUI's intrinsic 200 DIP group instead of stretching.
+// field keeps the native library's intrinsic 200 DIP group instead of stretching.
 func formsNumberFieldExampleBounded(c *ui.Context, st *formsState) {
 	ui.Column(c).Width(theme.Scale(c, 200)).Children(func() {
 		form.NumberField(c, &st.quantity, form.NumberFieldOptions{

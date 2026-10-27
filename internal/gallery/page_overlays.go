@@ -306,10 +306,11 @@ func drawerEdgesExample(c *ui.Context, st *overlaysState) {
 		Description: "Edge panel with a focus trap and a caller-owned open flag.",
 		Width:       theme.Scale(c, 360),
 		Height:      theme.Scale(c, 320),
-		Handle:      side == overlay.DrawerTop || side == overlay.DrawerBottom,
+		Handle:      true,
+		ShowClose:   true,
 		OnDismiss:   func() { st.drawerNote = drawerSideName(side) + " drawer dismissed" },
 		Body: func() {
-			mygoui.Paragraph(c, "Backdrop presses and Escape dismiss the drawer.", true)
+			mygoui.Paragraph(c, "Drag the edge, press Escape or use Close.", true)
 		},
 	})
 }
@@ -323,11 +324,12 @@ func drawerDetailExample(c *ui.Context, st *overlaysState) {
 	overlay.Drawer(c, &st.drawerDetailOpen, overlay.DrawerOptions{
 		Side:        overlay.DrawerBottom,
 		Title:       "Filters",
-		Description: "A bottom drawer with the visual drag handle.",
+		Description: "A bottom drawer with a drag handle.",
 		Height:      theme.Scale(c, 280),
 		Handle:      true,
+		ShowClose:   true,
 		Body: func() {
-			mygoui.Paragraph(c, "The handle is visual only; the backdrop, Escape and the footer button dismiss the drawer.", true)
+			mygoui.Paragraph(c, "Drag the edge, press Escape or apply filters.", true)
 		},
 		Footer: func() {
 			ui.Row(c).Justify(ui.End).Children(func() {
@@ -354,7 +356,7 @@ func sheetFooterExample(c *ui.Context, st *overlaysState) {
 	})
 	overlay.BottomSheet(c, &st.sheetOpen, overlay.BottomSheetOptions{
 		Title:       "Quick actions",
-		Description: "Native HeroUI's bottom sheet surface.",
+		Description: "The native bottom sheet surface.",
 		Body: func() {
 			mygoui.Paragraph(c, "The sheet floats 16 DIPs from the window edges, caps at 85% of its height and follows the handle as you drag it.", true)
 			ui.Row(c).Wrap().Gap(theme.Space8).Children(func() {

@@ -170,8 +170,8 @@ func TestToastDeckPlacementAndIdleStack(t *testing.T) {
 				!toastMotionNear(oldest.X+oldest.W/2, winW/2) {
 				t.Fatalf("deck is not centered: newest=%+v middle=%+v oldest=%+v", newest, middle, oldest)
 			}
-			if !toastMotionNear(newest.W, 460) {
-				t.Fatalf("newest width=%v, want 460", newest.W)
+			if !toastMotionNear(newest.W, 360) {
+				t.Fatalf("newest width=%v, want 360", newest.W)
 			}
 			for i, card := range []ui.Rect{middle, oldest} {
 				want := float32(1 - float64(i+1)*0.04)
@@ -286,8 +286,8 @@ func TestToastDeckHoverExpandsUnequalCardsAndHoldsGapHover(t *testing.T) {
 	middle := toastMotionRect(t, f.tt, "Hover middle")
 	oldest := toastMotionRect(t, f.tt, "Hover oldest")
 	for _, card := range []ui.Rect{newest, middle, oldest} {
-		if !toastMotionNear(card.W, 460) {
-			t.Fatalf("expanded card width=%v, want 460: newest=%+v middle=%+v oldest=%+v", card.W, newest, middle, oldest)
+		if !toastMotionNear(card.W, 360) {
+			t.Fatalf("expanded card width=%v, want 360: newest=%+v middle=%+v oldest=%+v", card.W, newest, middle, oldest)
 		}
 	}
 	if oldest.H <= middle.H+10 {
@@ -388,9 +388,9 @@ func TestToastDeckFocusExpansionAndSameIDUpdate(t *testing.T) {
 	for _, o := range []ToastOptions{
 		{ID: "focus-old", Title: "Focused oldest",
 			Description: "A longer focused message that wraps so the expanded deck must use its measured height while the keyboard stays in the action.",
-			Action:      "Inspect oldest", Timeout: -1},
-		{ID: "focus-mid", Title: "Focused middle", Action: "Inspect middle", Timeout: -1},
-		{ID: "focus-new", Title: "Focused newest", Action: "Inspect newest", Timeout: -1},
+			Action:      "Inspect oldest", OnAction: func() {}, Timeout: -1},
+		{ID: "focus-mid", Title: "Focused middle", Action: "Inspect middle", OnAction: func() {}, Timeout: -1},
+		{ID: "focus-new", Title: "Focused newest", Action: "Inspect newest", OnAction: func() {}, Timeout: -1},
 	} {
 		f.add(o)
 	}
@@ -402,7 +402,7 @@ func TestToastDeckFocusExpansionAndSameIDUpdate(t *testing.T) {
 	f.tt.Frame()
 	oldest := toastMotionRect(t, f.tt, "Focused oldest")
 	middle := toastMotionRect(t, f.tt, "Focused middle")
-	if !toastMotionNear(oldest.W, 460) || oldest.H <= middle.H+10 {
+	if !toastMotionNear(oldest.W, 360) || oldest.H <= middle.H+10 {
 		t.Fatalf("focus did not expand unequal measured cards: oldest=%+v middle=%+v", oldest, middle)
 	}
 
@@ -434,7 +434,7 @@ func TestToastSameIDUpdateKeepsActiveDragPose(t *testing.T) {
 	const winW, winH = 640, 700
 	f := newToastMotionFixture(t, winW, winH)
 	closed := 0
-	f.add(ToastOptions{ID: "drag-update", Title: "Dragging card", Action: "Inspect drag", Timeout: -1,
+	f.add(ToastOptions{ID: "drag-update", Title: "Dragging card", Action: "Inspect drag", OnAction: func() {}, Timeout: -1,
 		OnClose: func() { closed++ }})
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
@@ -450,7 +450,7 @@ func TestToastSameIDUpdateKeepsActiveDragPose(t *testing.T) {
 		t.Fatalf("background drag did not follow the pointer: rest=%+v dragged=%+v", rest, dragged)
 	}
 
-	f.add(ToastOptions{ID: "drag-update", Title: "Dragging updated", Action: "Inspect drag", Timeout: -1,
+	f.add(ToastOptions{ID: "drag-update", Title: "Dragging updated", Action: "Inspect drag", OnAction: func() {}, Timeout: -1,
 		OnClose: func() { closed++ }})
 	if got := toastMotionRect(t, f.tt, "Dragging updated"); !toastMotionSameRect(dragged, got) {
 		t.Fatalf("same-ID update reset the active drag pose: before=%+v after=%+v", dragged, got)
@@ -471,7 +471,7 @@ func TestToastDragCancelsCommitsAndControlsOwnTheGesture(t *testing.T) {
 	const winW, winH = 640, 700
 	f := newToastMotionFixture(t, winW, winH)
 	closed := 0
-	f.add(ToastOptions{ID: "swipe", Title: "Swipe card", Action: "Inspect swipe", Timeout: -1,
+	f.add(ToastOptions{ID: "swipe", Title: "Swipe card", Action: "Inspect swipe", OnAction: func() {}, Timeout: -1,
 		OnClose: func() { closed++ }})
 	f.tt.Advance(2 * time.Second)
 	f.tt.Frame()
@@ -548,7 +548,7 @@ func TestToastReducedMotionAndRetainedExit(t *testing.T) {
 		closed := 0
 		f.add(ToastOptions{ID: "reduced", Title: "Reduced card", Timeout: -1, OnClose: func() { closed++ }})
 		card := toastMotionRect(t, f.tt, "Reduced card")
-		if !toastMotionNear(card.Y+card.H, winH-16) || !toastMotionNear(card.W, 460) {
+		if !toastMotionNear(card.Y+card.H, winH-16) || !toastMotionNear(card.W, 360) {
 			t.Fatalf("reduced-motion card not at its resting edge: %+v", card)
 		}
 		if f.tt.FramePending() {

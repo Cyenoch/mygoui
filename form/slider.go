@@ -28,7 +28,7 @@ type SliderState struct {
 // IsRange reports whether Low and High are both present.
 func (s SliderState) IsRange() bool { return s.Low != nil && s.High != nil }
 
-// SliderOptions configures HeroUI's slider. A zero Min and Max give the
+// SliderOptions configures a slider. A zero Min and Max give the
 // upstream 0..100 range; any other empty range becomes Min..Min+1. Step snaps
 // drags and keyboard moves; a non-positive Step leaves the native
 // hundredth-of-the-range keyboard step.
@@ -54,7 +54,7 @@ type SliderOptions struct {
 	OnChange    func()
 }
 
-// Slider is a native slider with HeroUI's track, accent fill and pill thumb.
+// Slider is a native slider with a primary-color track and round thumb.
 // Drags and the arrows, Home and End change the caller's value; a two-thumb
 // state is ordered by the native range slider, so the thumbs never cross.
 func Slider(c *ui.Context, o SliderOptions) ui.Element {
@@ -141,10 +141,10 @@ func Slider(c *ui.Context, o SliderOptions) ui.Element {
 func sliderSingle(c *ui.Context, o SliderOptions, state SliderState, min, max, step float64, disabled bool, errText string, t theme.Palette, rtl bool) {
 	pad := sliderEdgePad(c, false)
 	trackH := theme.Scale(c, 20)
-	knobW := theme.Scale(c, 28)
-	innerW, innerH := theme.Scale(c, 24), theme.Scale(c, 16)
-	radius := theme.RadiusScale().XL
-	innerRadius := theme.RadiusScale().LG
+	knobW := theme.Scale(c, 16)
+	innerW, innerH := knobW, knobW
+	radius := knobW / 2
+	innerRadius := radius
 
 	el := ui.SliderBase(c, state.Value, min, max).Height(trackH).PaddingX(pad).
 		FocusRing(false).Label(o.Label)
@@ -171,7 +171,7 @@ func sliderSingle(c *ui.Context, o SliderOptions, state SliderState, min, max, s
 			x = r.X + r.W - pad - (r.W-2*pad)*f
 		}
 		sliderPaintTrack(p, r, t, x, rtl, radius, trackH)
-		thumb := ui.Rect{X: x - knobW/2, Y: r.Y + (r.H-trackH)/2, W: knobW, H: trackH}
+		thumb := ui.Rect{X: x - knobW/2, Y: r.Y + (r.H-knobW)/2, W: knobW, H: knobW}
 		sliderPaintThumb(p, t, thumb, innerW, innerH, innerRadius, scale, focused, radius)
 	})
 }
@@ -181,10 +181,10 @@ func sliderSingle(c *ui.Context, o SliderOptions, state SliderState, min, max, s
 func sliderRange(c *ui.Context, o SliderOptions, state SliderState, min, max, step float64, disabled bool, errText string, t theme.Palette, rtl bool) {
 	pad := sliderEdgePad(c, true)
 	trackH := theme.Scale(c, 20)
-	knobW := theme.Scale(c, 28)
-	innerW, innerH := theme.Scale(c, 24), theme.Scale(c, 16)
-	radius := theme.RadiusScale().XL
-	innerRadius := theme.RadiusScale().LG
+	knobW := theme.Scale(c, 16)
+	innerW, innerH := knobW, knobW
+	radius := knobW / 2
+	innerRadius := radius
 
 	el := ui.RangeSlider(c, state.Low, state.High, min, max, step).Label(o.Label)
 	if o.Description != "" {
@@ -203,34 +203,34 @@ func sliderRange(c *ui.Context, o SliderOptions, state SliderState, min, max, st
 		x0 := r.X + pad + (r.W-2*pad)*f0
 		x1 := r.X + pad + (r.W-2*pad)*f1
 		if rtl {
-			x0, x1 = r.X+r.W-x0, r.X+r.W-x1
+			x0, x1 = 2*r.X+r.W-x0, 2*r.X+r.W-x1
 		}
 		if x1 < x0 {
 			x0, x1 = x1, x0
 		}
-		track := ui.Rect{X: r.X, Y: r.Y, W: r.W, H: trackH}
-		p.Fill(track, t.Default, radius)
-		p.Fill(ui.Rect{X: x0, Y: track.Y, W: x1 - x0, H: trackH}, t.Accent, radius)
+		track := ui.Rect{X: r.X, Y: r.Y + (trackH-theme.Scale(c, 4))/2, W: r.W, H: theme.Scale(c, 4)}
+		p.Fill(track, t.Input, track.H/2)
+		p.Fill(ui.Rect{X: x0, Y: track.Y, W: x1 - x0, H: track.H}, t.Primary, track.H/2)
 		for _, x := range [2]float32{x0, x1} {
-			thumb := ui.Rect{X: x - knobW/2, Y: track.Y, W: knobW, H: trackH}
+			thumb := ui.Rect{X: x - knobW/2, Y: r.Y + (trackH-knobW)/2, W: knobW, H: knobW}
 			sliderPaintThumb(p, t, thumb, innerW, innerH, innerRadius, scale, focusWithin, radius)
 		}
 	})
 }
 
-// sliderVertical builds HeroUI's vertical single-thumb slider: output above,
+// sliderVertical builds the vertical single-thumb slider: output above,
 // a 20 DIP track, and the label below.
 func sliderVertical(c *ui.Context, o SliderOptions, state SliderState, min, max, step float64, disabled bool, errText string, t theme.Palette) {
 	pad := theme.Scale(c, 14)
 	trackW := theme.Scale(c, 20)
-	knobH := theme.Scale(c, 28)
-	innerW, innerH := theme.Scale(c, 16), theme.Scale(c, 24)
+	knobH := theme.Scale(c, 16)
+	innerW, innerH := knobH, knobH
 	height := o.Height
 	if height <= 0 {
 		height = theme.Scale(c, 160)
 	}
-	radius := theme.RadiusScale().XL
-	innerRadius := theme.RadiusScale().LG
+	radius := knobH / 2
+	innerRadius := radius
 
 	if !o.HideOutput {
 		ui.Row(c).FillWidth().Center().Children(func() {
@@ -259,10 +259,10 @@ func sliderVertical(c *ui.Context, o SliderOptions, state SliderState, min, max,
 			f := sliderFraction(*state.Value, min, max)
 			x := r.X + r.W/2
 			cy := r.Y + r.H - pad - (r.H-2*pad)*f
-			track := ui.Rect{X: x - trackW/2, Y: r.Y, W: trackW, H: r.H}
-			p.Fill(track, t.Default, radius)
-			p.Fill(ui.Rect{X: track.X, Y: cy, W: trackW, H: track.Y + track.H - cy}, t.Accent, radius)
-			thumb := ui.Rect{X: track.X, Y: cy - knobH/2, W: trackW, H: knobH}
+			track := ui.Rect{X: x - theme.Scale(c, 2), Y: r.Y, W: theme.Scale(c, 4), H: r.H}
+			p.Fill(track, t.Input, track.W/2)
+			p.Fill(ui.Rect{X: track.X, Y: cy, W: track.W, H: track.Y + track.H - cy}, t.Primary, track.W/2)
+			thumb := ui.Rect{X: x - knobH/2, Y: cy - knobH/2, W: knobH, H: knobH}
 			sliderPaintThumb(p, t, thumb, innerW, innerH, innerRadius, scale, focused, radius)
 		})
 		ui.Spacer(c)
@@ -291,44 +291,37 @@ func sliderEdgePad(c *ui.Context, twoThumbs bool) float32 {
 	return theme.Scale(c, 14)
 }
 
-// sliderPaintTrack paints HeroUI's rounded track and the accent fill up to x.
+// sliderPaintTrack paints Coss's four-DIP rail and selected interval.
 func sliderPaintTrack(p *ui.Painter, r ui.Rect, t theme.Palette, x float32, rtl bool, radius, trackH float32) {
-	track := ui.Rect{X: r.X, Y: r.Y + (r.H-trackH)/2, W: r.W, H: trackH}
-	p.Fill(track, t.Default, radius)
-	fill := ui.Rect{X: track.X, Y: track.Y, H: trackH}
+	track := ui.Rect{X: r.X, Y: r.Y + (r.H-4)/2, W: r.W, H: 4}
+	p.Fill(track, t.Input, 2)
+	fill := ui.Rect{X: track.X, Y: track.Y, H: track.H}
 	if rtl {
 		fill.W = track.X + track.W - x
 		fill.X = x
 	} else {
 		fill.W = x - track.X
 	}
-	p.Fill(fill, t.Accent, radius)
+	p.Fill(fill, t.Primary, 2)
 }
 
-// sliderThumbScale animates HeroUI's pressed thumb down to 90% and back.
 func sliderThumbScale(el ui.Element, pressed bool) float32 {
 	scale := float32(1)
 	if pressed {
-		scale = 0.9
+		scale = 1.2
 	}
-	return el.Animate("slider-thumb-press", scale, 250*time.Millisecond)
+	return el.Animate("slider-thumb-press", scale, 150*time.Millisecond)
 }
 
-// sliderPaintThumb paints HeroUI's accent pill with its inner knob, ringed
-// while focused.
 func sliderPaintThumb(p *ui.Painter, t theme.Palette, thumb ui.Rect, innerW, innerH, innerRadius, scale float32, focused bool, radius float32) {
-	p.Fill(thumb, t.Accent, radius)
 	w, h := innerW*scale, innerH*scale
-	inner := ui.Rect{
-		X: thumb.X + (thumb.W-w)/2,
-		Y: thumb.Y + (thumb.H-h)/2,
-		W: w, H: h,
-	}
-	innerR := innerRadius * scale
-	p.Shadow(inner, innerR, 0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.12))
-	p.Fill(inner, t.AccentForeground, innerR)
+	inner := ui.Rect{X: thumb.X + (thumb.W-w)/2, Y: thumb.Y + (thumb.H-h)/2, W: w, H: h}
+	r := min(w, h) / 2
+	p.Shadow(inner, r, 0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.05))
+	p.Fill(inner, ui.RGB(255, 255, 255), r)
+	p.Stroke(inner, t.Input, r, theme.Hairline)
 	if focused {
-		p.FocusRing(thumb, choiceRadii(radius))
+		p.Stroke(choiceExpand(inner, 3), t.Ring.Alpha(0.24), r+3, 3)
 	}
 }
 

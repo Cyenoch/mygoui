@@ -11,23 +11,24 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// ModalBackdrop is HeroUI's modal backdrop treatment.
+// ModalBackdrop selects how a modal shades the content behind it. The zero
+// value dims and blurs the background.
 type ModalBackdrop uint8
 
 const (
-	// ModalBackdropOpaque dims what is behind the overlay.
-	ModalBackdropOpaque ModalBackdrop = iota
-	// ModalBackdropBlur dims and blurs what is behind the overlay, as
-	// Tailwind's backdrop-blur-md (12 DIPs sigma).
-	ModalBackdropBlur
+	// ModalBackdropBlur dims and blurs what is behind the overlay with a
+	// 4 DIP Gaussian standard deviation.
+	ModalBackdropBlur ModalBackdrop = iota
+	// ModalBackdropOpaque dims what is behind the overlay without blur.
+	ModalBackdropOpaque
 	// ModalBackdropTransparent leaves what is behind visible and undimmed.
 	ModalBackdropTransparent
 )
 
-// backdropBlur is Tailwind backdrop-blur-md, in DIPs of Gaussian sigma.
-const backdropBlur = 12
+// backdropBlur is COSS's backdrop-blur-sm, in DIPs of Gaussian sigma.
+const backdropBlur = 4
 
-// paintBackdrop applies a HeroUI backdrop variant to back. The caller keeps
+// paintBackdrop applies a backdrop variant to back. The caller keeps
 // the layout (centering, padding, orientation) so Modal, Drawer, Dialog and
 // BottomSheet share one paint contract.
 func paintBackdrop(c *ui.Context, back ui.Element, variant ModalBackdrop) ui.Element {
@@ -35,21 +36,21 @@ func paintBackdrop(c *ui.Context, back ui.Element, variant ModalBackdrop) ui.Ele
 	switch variant {
 	case ModalBackdropTransparent:
 		return back
-	case ModalBackdropBlur:
+	case ModalBackdropOpaque:
+		return back.Background(t.Backdrop)
+	default:
 		// Material replaces the background, so the dim is painted over the
 		// blur with the element's paint callback.
 		back = back.Material(glass.Blur{Radius: backdropBlur})
 		return back.Draw(func(p *ui.Painter, r ui.Rect) {
 			p.Fill(r, t.Backdrop, 0)
 		})
-	default:
-		return back.Background(t.Backdrop)
 	}
 }
 
-// overlayRadius is min(32px, --radius-3xl): HeroUI's floating surface radius.
+// overlayRadius is the COSS dialog radius.
 func overlayRadius() float32 {
-	return min(theme.Space32, theme.RadiusScale().XXXL)
+	return theme.RadiusScale().XXL
 }
 
 // panelElevation adds the overlay shadow, or the hairline inset ring dark
@@ -67,10 +68,11 @@ type chrome struct {
 	icon                 func()
 	hideClose            bool
 	onClose              func()
+	fullBleedFooter      bool
+	centerHeader         bool
 
 	titleStyle       theme.TextStyle
 	descriptionStyle theme.TextStyle
-	bodyInk          ui.Color
 	padding          float32
 	headerGap        float32
 	headerBody       float32
@@ -81,7 +83,7 @@ type chrome struct {
 
 // fillPanel builds p's sections inside the already styled panel element.
 // Header and body exist only when they have content, so the CSS sibling
-// spacing (header + body 8, body + footer 20) applies without empty gaps.
+// spacing applies without empty gaps.
 func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 	t := theme.Colors(c)
 	padding := p.padding
@@ -99,10 +101,13 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 	bodyFooter := p.bodyFooter
 	if bodyFooter == 0 {
 		bodyFooter = theme.Space20
+		if p.fullBleedFooter {
+			bodyFooter = padding
+		}
 	}
 	closeInset := p.closeInset
 	if closeInset == 0 {
-		closeInset = theme.Space16
+		closeInset = theme.Space8
 	}
 	level := p.headingLevel
 	if level == 0 {
@@ -117,16 +122,20 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 	e.Children(func() {
 		if hasHeader {
 			h := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Gap(headerGap)
+			if p.centerHeader {
+				h.TextAlign(ui.Center)
+			}
 			if hasBody {
 				h.Margin(0, 0, headerBody, 0)
 			} else if hasFooter {
-				h.Margin(0, 0, bodyFooter, 0)
+				gap := bodyFooter
+				if w, _ := c.Size(); p.fullBleedFooter && w < 640 {
+					gap = theme.Space16
+				}
+				h.Margin(0, 0, gap, 0)
 			}
 			if hasClose {
-				// HeroUI floats the close trigger 16 DIPs inside the panel
-				// edge, over the padding, and reserves nothing. Native text
-				// cannot run under a button, so reserve exactly the part of
-				// the button that reaches past the padding.
+				// Reserve the part of the close button that reaches the header.
 				if overlap := closeInset + theme.Scale(c, closeButtonSize) - padding; overlap > 0 {
 					h.PaddingEnd(overlap)
 				}
@@ -136,27 +145,21 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 					p.header()
 					return
 				}
-				// HeroUI's modal, alert-dialog and drawer headers are one
-				// column with gap-3: the icon, heading and description are
-				// all 12 DIPs apart.
 				if p.icon != nil {
 					p.icon()
 				}
 				if p.title != "" {
 					title := style.Text(ui.Text(c, p.title), c, p.titleStyle)
-					title.FontWeight(theme.WeightMedium).TextColor(t.OverlayForeground).
+					title.FontWeight(theme.WeightBold).TextColor(t.PopoverForeground).
 						Role(ui.RoleHeading).Level(level)
 				}
 				if p.description != "" {
-					style.Text(ui.Text(c, p.description), c, p.descriptionStyle).TextColor(t.Muted)
+					style.Text(ui.Text(c, p.description), c, p.descriptionStyle).TextColor(t.MutedForeground)
 				}
 			})
 		}
 		if hasBody {
-			// HeroUI bleeds the body by -3 DIPs and pads it by 3, so a
-			// child's 2 DIP focus ring, 1 DIP outside its box, still paints
-			// inside the scroll viewport's clip. The content stays where the
-			// panel's padding puts it.
+			// Leave room for a child's focus ring inside the scroll clip.
 			b := ui.Scroll(c).FillWidth().Grow(1).MinHeight(0).Padding(bodyBleed).
 				Margin(0, -bodyBleed, 0, -bodyBleed)
 			if hasFooter {
@@ -165,13 +168,21 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 			if p.bodyLabel != "" {
 				b.Label(p.bodyLabel)
 			}
-			if p.bodyInk.A != 0 {
-				b.TextColor(p.bodyInk)
-			}
 			b.Children(p.body)
 		}
 		if hasFooter {
-			f := ui.Row(c).FillWidth().Justify(ui.End).AlignItems(ui.Center).Gap(theme.Space8).Shrink(0)
+			f := ui.Row(c).Justify(ui.End).AlignItems(ui.Center).Gap(theme.Space8).Shrink(0)
+			if p.fullBleedFooter {
+				f.AlignSelf(ui.Stretch).Margin(ui.Auto, -padding, -padding, -padding).
+					Padding(theme.Space16, theme.Space24).
+					Background(t.MutedBackground.Alpha(0.72)).
+					BorderWidth(theme.Hairline, 0, 0, 0).BorderColor(t.Border)
+				if w, _ := c.Size(); w < 640 {
+					f.Column().Reverse().AlignItems(ui.Stretch)
+				}
+			} else {
+				f.FillWidth().Background(t.MutedBackground).Radius(theme.RadiusScale().MD).Padding(theme.Space8)
+			}
 			f.Children(p.footer)
 		}
 		if hasClose {
@@ -184,7 +195,20 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 	})
 }
 
-// softPair returns the HeroUI soft surface and its foreground for a status.
+// dialogViewport positions the default dialogs in a three-row desktop grid,
+// or against the bottom on narrow windows.
+func dialogViewport(back, panel ui.Element, w, h float32) (float32, float32) {
+	back.Grid().JustifyItems(ui.Center).AlignItems(ui.Stretch)
+	panel.RowStart(2)
+	if w < 640 {
+		back.RowTracks(ui.Fr(1), ui.FitContent()).Padding(theme.Space48, 0, 0, 0)
+		return max(w, 0), max(h-theme.Space48, 0)
+	}
+	back.RowTracks(ui.Fr(1), ui.FitContent(), ui.Fr(3)).Padding(theme.Space16)
+	return max(w-2*theme.Space16, 0), max(h-2*theme.Space16, 0)
+}
+
+// softPair returns a soft surface and its foreground for a status.
 func softPair(c *ui.Context, status mygoui.StatusColor) (bg, fg ui.Color) {
 	t := theme.Colors(c)
 	if status == mygoui.ColorDefault {
@@ -194,8 +218,7 @@ func softPair(c *ui.Context, status mygoui.StatusColor) (bg, fg ui.Color) {
 	return p.Soft, p.SoftForeground
 }
 
-// statusIcon is HeroUI's default 40 DIP status medallion (size-10,
-// rounded-3xl) with a 20 DIP glyph.
+// statusIcon builds a 40 DIP status medallion with a 20 DIP glyph.
 func statusIcon(c *ui.Context, status mygoui.StatusColor, glyph *ui.SVG) func() {
 	return func() {
 
@@ -216,7 +239,7 @@ func resolveSide(p mygoui.Placement, fallback mygoui.Side) mygoui.Side {
 	return p.Side
 }
 
-// HeroUI's overlay arrow: 12 DIPs wide and 6 DIPs tall, its base on the
+// The optional overlay arrow is 12 DIPs wide and 6 DIPs tall, its base on the
 // panel's edge facing the anchor, as OverlayArrow places the 12×12 art whose
 // filled bezier (M0 0C5.48 8 6.5 8 12 0Z) is 12 wide and 6 tall.
 const (
@@ -227,11 +250,11 @@ const (
 	// room for.
 	closeButtonSize = theme.Space24
 
-	// bodyBleed is HeroUI's 3 DIP body margin and padding pair.
+	// bodyBleed keeps focus rings inside the scroll viewport.
 	bodyBleed = 3
 )
 
-// paintArrow draws HeroUI's overlay arrow outside the panel's edge facing the
+// paintArrow draws the arrow outside the panel's edge facing the
 // anchor, along the edge at along of its length, where arrowAlong puts the
 // anchor's center. The panel must not Clip, or the protruding part disappears.
 //

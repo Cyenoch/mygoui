@@ -4,6 +4,7 @@ import (
 	"image"
 	"testing"
 
+	"github.com/Cyenoch/mygoui/list"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -12,6 +13,45 @@ import (
 func formHoverPixel(img *image.RGBA, x, y int) (uint8, uint8, uint8) {
 	c := img.RGBAAt(x, y)
 	return c.R, c.G, c.B
+}
+
+func TestEditablePopupHighlightsOnlyWithEditorFocus(t *testing.T) {
+	items := []list.ListBoxItem{{Key: "a", Label: "Alpha"}, {Key: "b", Label: "Beta"}}
+	for _, kind := range []string{"autocomplete", "combobox"} {
+		t.Run(kind, func(t *testing.T) {
+			auto := AutocompleteState{Open: true}
+			combo := ComboBoxState{Open: true}
+			var colors theme.Palette
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, false)
+				colors = theme.Colors(c)
+				ui.Column(c).Fill().Padding(16).Background(colors.Background).Children(func() {
+					if kind == "autocomplete" {
+						Autocomplete(c, AutocompleteOptions{Label: "Fruit", Items: items, State: &auto})
+					} else {
+						ComboBox(c, ComboBoxOptions{Label: "Fruit", Items: items, State: &combo})
+					}
+				})
+			}, 360, 480)
+			tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
+			alpha, ok := tt.Find("Alpha")
+			if !ok {
+				t.Fatal("popup has no first option")
+			}
+			x, y := int(alpha.X+4), int(alpha.Y+alpha.H/2)
+			wantFormHoverPixel(t, tt.Image(), x, y, colors.Popover, "unfocused option")
+			if err := tt.Click("Fruit"); err != nil {
+				t.Fatal(err)
+			}
+			tt.Key(0, ui.KeyDown)
+			beta, ok := tt.Find("Beta")
+			if !ok {
+				t.Fatal("popup has no second option")
+			}
+			wantFormHoverPixel(t, tt.Image(), int(beta.X+4), int(beta.Y+beta.H/2),
+				colors.Accent.Over(colors.Popover), "keyboard highlight")
+		})
+	}
 }
 
 // formHoverNear reports whether got is within the 3-level antialias tolerance
@@ -53,15 +93,15 @@ func TestCheckboxHoverAndPressedPaint(t *testing.T) {
 	// check mark's path.
 	x := int(row.X) + 8
 	y := int(row.Y+(row.H-float32(theme.Space16))/2) + 13
-	wantFormHoverPixel(t, tt.Image(), x, y, colors.Accent, "checkbox normal fill")
+	wantFormHoverPixel(t, tt.Image(), x, y, colors.Primary, "checkbox normal fill")
 
 	tt.Move(row.X+row.W/2, row.Y+row.H/2)
 	tt.Frame()
-	wantFormHoverPixel(t, tt.Image(), x, y, colors.AccentHover, "checkbox hover fill")
+	wantFormHoverPixel(t, tt.Image(), x, y, colors.Primary, "checkbox hover fill")
 
 	tt.Press(row.X+row.W/2, row.Y+row.H/2)
 	tt.Frame()
-	wantFormHoverPixel(t, tt.Image(), x, y, colors.AccentHover, "checkbox pressed fill")
+	wantFormHoverPixel(t, tt.Image(), x, y, colors.Primary, "checkbox pressed fill")
 	tt.Release(row.X+row.W/2, row.Y+row.H/2)
 	// Releasing activates the box and clears the caller's value; restore it
 	// so leaving still checks the checked face.
@@ -70,7 +110,7 @@ func TestCheckboxHoverAndPressedPaint(t *testing.T) {
 
 	tt.Move(2, 2)
 	tt.Frame()
-	wantFormHoverPixel(t, tt.Image(), x, y, colors.Accent, "checkbox fill after leaving")
+	wantFormHoverPixel(t, tt.Image(), x, y, colors.Primary, "checkbox fill after leaving")
 }
 
 // TestRadioHoverAndPressedPaint checks an unselected radio takes the field
@@ -101,7 +141,7 @@ func TestRadioHoverAndPressedPaint(t *testing.T) {
 
 		tt.Move(row.X+row.W/2, row.Y+row.H/2)
 		tt.Frame()
-		wantFormHoverPixel(t, tt.Image(), x, y, colors.FieldHover, "radio hover fill")
+		wantFormHoverPixel(t, tt.Image(), x, y, colors.Background, "radio hover fill")
 
 		tt.Move(2, 2)
 		tt.Frame()
@@ -131,14 +171,14 @@ func TestRadioHoverAndPressedPaint(t *testing.T) {
 		// The selected face is an accent ring around the white dot; sample
 		// the ring, clear of the dot's pressed growth.
 		x, y := int(row.X)+2, int(row.Y+row.H/2)
-		wantFormHoverPixel(t, tt.Image(), x, y, colors.Accent, "radio selected fill")
+		wantFormHoverPixel(t, tt.Image(), x, y, colors.Primary, "radio selected fill")
 
 		tt.Press(row.X+row.W/2, row.Y+row.H/2)
 		tt.Frame()
-		wantFormHoverPixel(t, tt.Image(), x, y, colors.AccentHover, "radio pressed fill")
+		wantFormHoverPixel(t, tt.Image(), x, y, colors.Primary, "radio pressed fill")
 		tt.Release(row.X+row.W/2, row.Y+row.H/2)
 		tt.Frame()
-		wantFormHoverPixel(t, tt.Image(), x, y, colors.Accent, "radio fill after release")
+		wantFormHoverPixel(t, tt.Image(), x, y, colors.Primary, "radio fill after release")
 	})
 }
 
@@ -153,13 +193,13 @@ func TestSwitchHoverPaint(t *testing.T) {
 	}{
 		{
 			name: "on", on: true, xOffset: 5,
-			normal: func(p theme.Palette) ui.Color { return p.Accent },
-			hover:  func(p theme.Palette) ui.Color { return p.AccentHover },
+			normal: func(p theme.Palette) ui.Color { return p.Primary },
+			hover:  func(p theme.Palette) ui.Color { return p.Primary },
 		},
 		{
-			name: "off", on: false, xOffset: 35,
-			normal: func(p theme.Palette) ui.Color { return p.Default },
-			hover:  func(p theme.Palette) ui.Color { return p.DefaultHover },
+			name: "off", on: false, xOffset: 24,
+			normal: func(p theme.Palette) ui.Color { return p.Input.Over(p.Background) },
+			hover:  func(p theme.Palette) ui.Color { return p.Input.Over(p.Background) },
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -194,46 +234,22 @@ func TestSwitchHoverPaint(t *testing.T) {
 	}
 }
 
-// TestSliderPressedShrinksKnob checks the slider's pressed snapshot: HeroUI
-// gives the thumb no hover face, so a press is the visible pointer state. The
-// inner cap shrinks, exposing the accent pill just inside its resting edge.
-func TestSliderPressedShrinksKnob(t *testing.T) {
-	var colors theme.Palette
+// TestSliderThumbUsesWhiteFace checks the Coss circular thumb over the primary track.
+func TestSliderThumbUsesWhiteFace(t *testing.T) {
 	value := 50.0
+	var colors theme.Palette
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.ApplyMode(c, false)
 		colors = theme.Colors(c)
-		ui.Column(c).FillWidth().FillHeight().Padding(24).
-			Background(colors.Background).Children(func() {
-			Slider(c, SliderOptions{
-				State: SliderState{Value: &value}, Label: "Volume",
-				Min: 0, Max: 100, HideOutput: true,
-			})
+		ui.Column(c).Fill().Padding(24).Background(colors.Background).Children(func() {
+			Slider(c, SliderOptions{State: SliderState{Value: &value}, Label: "Volume", HideOutput: true})
 		})
 	}, 400, 200)
-	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
-
-	header, ok := tt.Find("Volume")
-	if !ok {
-		t.Fatal("slider label missing")
-	}
-	const pad = float32(14)
-	trackY := header.Y + header.H + theme.Space4
-	width := float32(400) - 2*header.X
-	cx := header.X + pad + (width-2*pad)*0.5
-	cy := trackY + 10
-	// The pill's inner cap spans 24×16 DIP, so (11, -3) from the centre is
-	// inside its resting edge and outside the pressed 21.6×14.4 cap.
-	x, y := int(cx)+11, int(cy)-3
-
-	tt.Move(cx, cy)
-	tt.Frame()
-	wantFormHoverPixel(t, tt.Image(), int(cx)+10, int(cy), colors.AccentForeground, "thumb cap at rest")
-
-	tt.Press(cx, cy)
-	tt.Frame()
-	wantFormHoverPixel(t, tt.Image(), x, y, colors.Accent, "thumb pressed cap edge")
-	tt.Release(cx, cy)
+	header, _ := tt.Find("Volume")
+	cx := header.X + (400-2*header.X)/2
+	cy := header.Y + header.H + theme.Space4 + 10
+	wantFormHoverPixel(t, tt.Image(), int(cx), int(cy), ui.RGB(255, 255, 255), "thumb face")
+	wantFormHoverPixel(t, tt.Image(), int(cx)-25, int(cy), colors.Primary, "slider active track")
 }
 
 // TestInputGroupHoverPaint checks the native input group's field surface
@@ -260,7 +276,7 @@ func TestInputGroupHoverPaint(t *testing.T) {
 
 	tt.Move(row.X+row.W/2, row.Y+row.H/2)
 	tt.Frame()
-	wantFormHoverPixel(t, tt.Image(), x, y, colors.FieldHover, "input group hover fill")
+	wantFormHoverPixel(t, tt.Image(), x, y, colors.Background, "input group hover fill")
 
 	tt.Move(2, 2)
 	tt.Frame()

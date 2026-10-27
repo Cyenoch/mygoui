@@ -111,20 +111,24 @@ func chipIconsBody(c *ui.Context) {
 	})
 }
 
-// badgeVariantsBody renders the four badge surface treatments.
+// badgeVariantsBody renders the eight Coss badge variants.
 func badgeVariantsBody(c *ui.Context) {
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(theme.Space8).Children(func() {
 		for _, item := range []struct {
 			label   string
 			variant mygoui.BadgeVariant
 		}{
-			{"Secondary", mygoui.ChipSecondary},
-			{"Primary", mygoui.ChipPrimary},
-			{"Soft", mygoui.ChipSoft},
-			{"Tertiary", mygoui.ChipTertiary},
+			{"Default", mygoui.BadgePrimary},
+			{"Secondary", mygoui.BadgeSecondary},
+			{"Outline", mygoui.BadgeOutline},
+			{"Destructive", mygoui.BadgeDestructive},
+			{"Error", mygoui.BadgeError},
+			{"Info", mygoui.BadgeInfo},
+			{"Success", mygoui.BadgeSuccess},
+			{"Warning", mygoui.BadgeWarning},
 		} {
 			mygoui.Badge(c, mygoui.BadgeOptions{
-				Label: item.label, Color: mygoui.ColorAccent, Variant: item.variant,
+				Label: item.label, Variant: item.variant,
 			})
 		}
 	})
@@ -133,9 +137,15 @@ func badgeVariantsBody(c *ui.Context) {
 // badgeColorsBody renders the status colors in the soft variant.
 func badgeColorsBody(c *ui.Context) {
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(theme.Space8).Children(func() {
-		for _, color := range displayColors {
+		for _, item := range []struct {
+			label   string
+			variant mygoui.BadgeVariant
+		}{
+			{"Failed", mygoui.BadgeError}, {"Queued", mygoui.BadgeInfo},
+			{"Deployed", mygoui.BadgeSuccess}, {"Pending", mygoui.BadgeWarning},
+		} {
 			mygoui.Badge(c, mygoui.BadgeOptions{
-				Label: color.label, Color: color.color, Variant: mygoui.ChipSoft,
+				Label: item.label, Variant: item.variant,
 			})
 		}
 	})
@@ -154,39 +164,26 @@ func badgeSizesBody(c *ui.Context) {
 		} {
 			mygoui.Badge(c, mygoui.BadgeOptions{
 				Label: item.label, Size: item.size,
-				Color: mygoui.ColorAccent, Variant: mygoui.ChipSoft,
+				Variant: mygoui.BadgeSecondary,
 			})
 		}
 	})
 }
 
-// badgeAnchorsBody renders badges over real content at two placements.
 func badgeAnchorsBody(c *ui.Context) {
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(theme.Space24).Children(func() {
 		mygoui.BadgeAnchor(c, mygoui.BadgeAnchorOptions{
 			Placement: mygoui.BadgeTopRight,
-			Badge: mygoui.BadgeOptions{
-				Label: "4", Color: mygoui.ColorDanger, Variant: mygoui.ChipPrimary,
-			},
+			Badge:     mygoui.BadgeOptions{Label: "4", Variant: mygoui.BadgeDestructive},
 		}, func() {
-			mygoui.Surface(c, mygoui.SurfaceOptions{
-				Variant: mygoui.SurfaceDefault, Padding: theme.Space8,
-				Radius: theme.RadiusScale().XL,
-			}, func() {
-				ui.Row(c).AlignItems(ui.Center).Gap(theme.Space8).Children(func() {
-					ui.Icon(c, lucide.Bell()).Size(theme.Scale(c, theme.IconMD),
-						theme.Scale(c, theme.IconMD)).TextColor(theme.Colors(c).Muted)
-					mygoui.Typography(c, "Inbox", mygoui.TypographyOptions{
-						Type: theme.TypeBodySM,
-					})
-				})
+			mygoui.Button(c, mygoui.ButtonOptions{
+				Label: "Inbox", Icon: lucide.Bell(), Variant: mygoui.ButtonOutline,
 			})
 		})
 		mygoui.BadgeAnchor(c, mygoui.BadgeAnchorOptions{
 			Placement: mygoui.BadgeBottomRight,
 			Badge: mygoui.BadgeOptions{
-				Label: "New", Color: mygoui.ColorSuccess, Variant: mygoui.ChipPrimary,
-				Size: mygoui.BadgeSmall,
+				Label: "New", Variant: mygoui.BadgeSuccess, Size: mygoui.BadgeSmall,
 			},
 		}, func() {
 			mygoui.Avatar(c, mygoui.AvatarOptions{Name: "Ada Lovelace"})
@@ -403,11 +400,21 @@ func alertActionBody(c *ui.Context, st *displayState) {
 	})
 }
 
-// alertIconBody renders a callout with an icon overriding the status glyph.
+// alertStatusIconBody renders a callout with its status glyph.
+func alertStatusIconBody(c *ui.Context) {
+	mygoui.Alert(c, mygoui.AlertOptions{
+		Title:       "Build complete",
+		Description: "Artifacts are ready to review.",
+		Status:      mygoui.ColorSuccess,
+		ShowIcon:    true,
+	})
+}
+
+// alertIconBody renders a callout with a custom icon.
 func alertIconBody(c *ui.Context) {
 	mygoui.Alert(c, mygoui.AlertOptions{
 		Title:       "Release is live",
-		Description: "Rocket icon replaces the default accent glyph.",
+		Description: "A custom icon appears without enabling the status glyph.",
 		Status:      mygoui.ColorAccent,
 		Icon:        lucide.Rocket(),
 	})

@@ -149,10 +149,47 @@ func TestAlertDialogKeepsItsChoiceAndIgnoresDismissal(t *testing.T) {
 	}
 }
 
-// TestDrawerEdgeGeometry pins the floating edge geometry of a drawer: 16 DIP
-// gutters on every side, a left or right panel keeping w-96 at the sm
-// breakpoint, and a top or bottom one spanning the inset width. The bottom
-// sheet shares the floating box and is covered by its own geometry test.
+func TestAlertDialogActionRequiresCallbackAndHonorsDisabled(t *testing.T) {
+	var open bool
+	disabled, callback := true, false
+	actions := 0
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		ui.Button(c, "Open").OnClick(func() { open = true })
+		o := AlertDialogOptions{
+			Title: "Confirm?", ActionLabel: "Accept", ActionDisabled: disabled,
+		}
+		if callback {
+			o.OnAction = func() { actions++ }
+		}
+		AlertDialog(c, &open, o)
+	}, 640, 480)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
+	if err := tt.Click("Open"); err != nil {
+		t.Fatal(err)
+	}
+	if tt.HasText("Accept") {
+		t.Fatal("action without callback is visible")
+	}
+	callback = true
+	tt.Frame()
+	if err := tt.Click("Accept"); err != nil {
+		t.Fatal(err)
+	}
+	if !open || actions != 0 {
+		t.Fatalf("disabled action: open=%v actions=%d", open, actions)
+	}
+	disabled = false
+	tt.Frame()
+	if err := tt.Click("Accept"); err != nil {
+		t.Fatal(err)
+	}
+	if open || actions != 1 || !tt.Focused("Open") {
+		t.Fatalf("accept: open=%v actions=%d focused=%v", open, actions, tt.Focused("Open"))
+	}
+}
+
+// TestDrawerEdgeGeometry checks all four edge-attached drawer placements.
 func TestDrawerEdgeGeometry(t *testing.T) {
 	const winW, winH = 640, 480
 	for _, tc := range []struct {
@@ -173,23 +210,22 @@ func TestDrawerEdgeGeometry(t *testing.T) {
 					panel = p.Bounds()
 				}
 			}, winW, winH)
-			tt.Frame()
-			tt.Frame()
+			motionSettle(tt, 2*drawerMotionDuration)
 			switch tc.side {
 			case DrawerLeft:
-				if panel.X != 16 || panel.Y != 16 || panel.W != 384 || panel.H != winH-32 {
+				if panel.X != 0 || panel.Y != 0 || panel.W != 448 || panel.H != winH {
 					t.Fatalf("left drawer geometry = %+v", panel)
 				}
 			case DrawerRight:
-				if panel.X+panel.W != winW-16 || panel.Y != 16 || panel.W != 384 || panel.H != winH-32 {
+				if panel.X+panel.W != winW || panel.Y != 0 || panel.W != 448 || panel.H != winH {
 					t.Fatalf("right drawer geometry = %+v", panel)
 				}
 			case DrawerTop:
-				if panel.X != 16 || panel.Y != 16 || panel.W != winW-32 || panel.H > (winH-32)*0.85+1 {
+				if panel.X != 0 || panel.Y != 0 || panel.W != winW || panel.H > winH-48 {
 					t.Fatalf("top drawer geometry = %+v", panel)
 				}
 			case DrawerBottom:
-				if panel.X != 16 || panel.Y+panel.H != winH-16 || panel.W != winW-32 || panel.H > (winH-32)*0.85+1 {
+				if panel.X != 0 || panel.Y+panel.H != winH || panel.W != winW || panel.H > winH-48 {
 					t.Fatalf("bottom drawer geometry = %+v", panel)
 				}
 			}
@@ -240,6 +276,47 @@ func TestPopoverAnchorsAndDismisses(t *testing.T) {
 	tt.ClickAt(600, 300)
 	if open || tt.HasText("Details") {
 		t.Fatal("outside press did not dismiss the popover")
+	}
+}
+
+func TestPopoverKeepsTallContentScrollable(t *testing.T) {
+	var open bool
+	var panel ui.Rect
+	actions := 0
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		ui.Column(c).Fill().Padding(16).Children(func() {
+			anchor := ui.Button(c, "Open popover").OnClick(func() { open = true })
+			if p := Popover(c, anchor, &open, PopoverOptions{
+				Title: "Details", Width: 600,
+				Body: func() {
+					ui.Column(c).Gap(8).Children(func() {
+						for i := range 12 {
+							ui.Text(c, fmt.Sprintf("Row %d", i))
+						}
+						ui.Button(c, "Last action").OnClick(func() { actions++ })
+					})
+				},
+			}); p.Valid() {
+				panel = p.Bounds()
+			}
+		})
+	}, 300, 240)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
+	if err := tt.Click("Open popover"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if panel.W > 284 || panel.H > 224 {
+		t.Fatalf("popup exceeds the viewport: %+v", panel)
+	}
+	tt.Scroll(panel.X+panel.W/2, panel.Y+panel.H/2, 0, 1000)
+	tt.Frame()
+	if err := tt.Click("Last action"); err != nil {
+		t.Fatal(err)
+	}
+	if actions != 1 {
+		t.Fatalf("scrolled action ran %d times", actions)
 	}
 }
 
@@ -300,6 +377,81 @@ func TestToastUpdatesCapsAndDismisses(t *testing.T) {
 	}
 }
 
+func TestToastActionRequiresCallback(t *testing.T) {
+	var state ToastState
+	actions, closed := 0, 0
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		ui.Column(c).Children(func() {
+			ui.Button(c, "Show unavailable").OnClick(func() {
+				Toast(c, &state, ToastOptions{ID: "notice", Title: "Notice", Action: "Undo", Timeout: -1})
+			})
+			ui.Button(c, "Show available").OnClick(func() {
+				Toast(c, &state, ToastOptions{
+					ID: "notice", Title: "Notice", Action: "Undo", Timeout: -1,
+					OnAction: func() { actions++ }, OnClose: func() { closed++ },
+				})
+			})
+			state.View(c)
+		})
+	}, 640, 480)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
+	if err := tt.Click("Show unavailable"); err != nil {
+		t.Fatal(err)
+	}
+	if tt.HasText("Undo") || state.Items()[0].Action != "" {
+		t.Fatal("toast advertised an action without a callback")
+	}
+	if err := tt.Click("Show available"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("Undo"); err != nil {
+		t.Fatal(err)
+	}
+	if actions != 1 || closed != 1 || len(state.Items()) != 0 {
+		t.Fatalf("action=%d close=%d items=%+v", actions, closed, state.Items())
+	}
+}
+
+func TestToastActionUsesPrimaryOnHover(t *testing.T) {
+	previous := theme.PreferencesSnapshot()
+	t.Cleanup(func() { theme.Configure(previous) })
+	primary := ui.RGBA(40, 80, 120, 0.5)
+	popover := ui.RGB(240, 240, 240)
+	theme.Configure(theme.Preferences{Palette: theme.PaletteOverrides{
+		Light: &theme.PalettePatch{Primary: &primary, Popover: &popover},
+	}})
+	var state ToastState
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		ui.Button(c, "Show").OnClick(func() {
+			Toast(c, &state, ToastOptions{
+				Title: "Notice", Action: "Undo", OnAction: func() {}, Timeout: -1,
+			})
+		})
+		state.View(c)
+	}, 640, 480)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
+	if err := tt.Click("Show"); err != nil {
+		t.Fatal(err)
+	}
+	action, ok := tt.Find("Undo")
+	if !ok {
+		t.Fatal("toast action is missing")
+	}
+	x, y := int(action.X+4), int(action.Y+action.H/2)
+	normal := tt.Image().RGBAAt(x, y)
+	if !sameColor(normal, primary.Over(popover), 4) {
+		t.Fatalf("action color=%v, want primary over popover", normal)
+	}
+	tt.Move(float32(x), float32(y))
+	tt.Frame()
+	hover := tt.Image().RGBAAt(x, y)
+	if !sameColor(hover, primary.Alpha(0.9).Over(popover), 4) {
+		t.Fatalf("hover color=%v, want primary at 90%% opacity", hover)
+	}
+}
+
 // toastTestView builds the toast harness used by the close-button tests: a
 // page background distinct from the white toast surface, one trigger and the
 // toast region.
@@ -312,7 +464,7 @@ func toastTestView(state *ToastState, ctx **ui.Context) func(c *ui.Context) {
 			ui.Button(c, "Show").OnClick(func() {
 				Toast(*ctx, state, ToastOptions{
 					Title: "File saved", Description: "All changes are on disk.",
-					Action: "Undo", Timeout: -1,
+					Action: "Undo", OnAction: func() {}, Timeout: -1,
 				})
 			})
 			state.View(c)

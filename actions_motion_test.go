@@ -34,94 +34,67 @@ func matchesPixel(img *image.RGBA, x, y int, c ui.Color) bool {
 	return absDiff(r, c.R) <= 6 && absDiff(g, c.G) <= 6 && absDiff(b, c.B) <= 6
 }
 
-// TestButtonPressScaleAnimatesAndReturns checks HeroUI's pressed scale: the
-// button shrinks over the transition, settles at 0.97 and eases back to its
-// resting size. A full-width button gives the left edge room to move.
-func TestButtonPressScaleAnimatesAndReturns(t *testing.T) {
-	var colors theme.Palette
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.ApplyMode(c, false)
-		colors = theme.Colors(c)
-		ui.Column(c).FillWidth().FillHeight().Padding(24).
-			Background(colors.Background).Children(func() {
-			mygoui.Button(c, mygoui.ButtonOptions{Label: "Scale", FullWidth: true, OnClick: func() {}})
+// TestButtonPressKeepsGeometryAndActivatesOnRelease checks the native press
+// contract with and without reduced motion: the face changes, the target stays
+// put, and only a release inside the target activates it.
+func TestButtonPressKeepsGeometryAndActivatesOnRelease(t *testing.T) {
+	for _, reduced := range []bool{false, true} {
+		name := "normal motion"
+		if reduced {
+			name = "reduced motion"
+		}
+		t.Run(name, func(t *testing.T) {
+			var colors theme.Palette
+			calls := 0
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, false)
+				colors = theme.Colors(c)
+				ui.Column(c).Fill().Padding(24).Background(colors.Background).Children(func() {
+					mygoui.Button(c, mygoui.ButtonOptions{
+						Label: "Save", FullWidth: true, OnClick: func() { calls++ },
+					})
+				})
+			}, 480, 160)
+			tt.SetPreferences(ui.Preferences{ReduceMotion: reduced, TextScale: 1})
+			rect := findRect(t, tt, "Save")
+			if rect.H != 32 {
+				t.Fatalf("medium button height = %v, want 32 DIP", rect.H)
+			}
+			x, y := int(rect.X)+4, int(rect.Y+rect.H/2)
+			wantPixel(t, tt.Image(), x, y, colors.Primary, "resting face")
+			cx, cy := rect.X+rect.W/2, rect.Y+rect.H/2
+			tt.Press(cx, cy)
+			tt.Advance(300 * time.Millisecond)
+			if got := findRect(t, tt, "Save"); got != rect {
+				t.Fatalf("pressed geometry = %+v, want %+v", got, rect)
+			}
+			wantPixel(t, tt.Image(), x, y, colors.Primary.Alpha(0.9).Over(colors.Background), "pressed face")
+			if calls != 0 {
+				t.Fatal("button activated before release")
+			}
+			tt.Release(cx, cy)
+			if calls != 1 || !tt.Focused("Save") {
+				t.Fatalf("released button calls=%d focus=%v", calls, tt.Focused("Save"))
+			}
+			tt.Press(cx, cy)
+			tt.Move(2, 2)
+			tt.Release(2, 2)
+			if calls != 1 {
+				t.Fatalf("release outside activated button: calls=%d", calls)
+			}
+			wantPixel(t, tt.Image(), x, y, colors.Primary, "restored face")
+			if got := findRect(t, tt, "Save"); got != rect {
+				t.Fatalf("released geometry = %+v, want %+v", got, rect)
+			}
+			if tt.FramePending() {
+				t.Fatal("settled button asks for animation frames")
+			}
 		})
-	}, 480, 160)
-	tt.Frame()
-	rect, ok := tt.Find("Scale")
-	if !ok {
-		t.Fatal("button missing")
 	}
-	y := int(rect.Y + rect.H/2)
-	left := func(dx int) int { return int(rect.X) + dx }
-
-	wantPixel(t, tt.Image(), left(1), y, colors.Accent, "resting face")
-	if tt.FramePending() {
-		t.Fatal("a resting button asks for frames")
-	}
-
-	tt.Press(rect.X+rect.W/2, rect.Y+rect.H/2)
-	if !tt.FramePending() {
-		t.Fatal("a press did not animate the scale")
-	}
-	// 50 ms into a 250 ms EaseOut: 3.1 DIP of a 6.5 DIP inset, so x+4 is
-	// still on the face while the pressed size is not reached yet.
-	tt.Advance(60 * time.Millisecond)
-	wantPixel(t, tt.Image(), left(4), y, colors.AccentHover, "half-pressed face")
-	tt.Advance(400 * time.Millisecond)
-	if tt.FramePending() {
-		t.Fatal("the press scale did not settle")
-	}
-	wantPixel(t, tt.Image(), left(4), y, colors.Background, "settled pressed inset")
-	wantPixel(t, tt.Image(), left(1), y, colors.Background, "pressed left edge")
-
-	tt.Release(rect.X+rect.W/2, rect.Y+rect.H/2)
-	if !tt.FramePending() {
-		t.Fatal("the release did not animate back")
-	}
-	tt.Advance(400 * time.Millisecond)
-	if tt.FramePending() {
-		t.Fatal("the release scale did not settle")
-	}
-	wantPixel(t, tt.Image(), left(1), y, colors.AccentHover, "face after release")
-	wantPixel(t, tt.Image(), left(4), y, colors.AccentHover, "restored left edge")
 }
 
-// TestButtonPressScaleHonorsReducedMotion checks the pressed size snaps when
-// the desktop asks for less motion, without animation frames.
-func TestButtonPressScaleHonorsReducedMotion(t *testing.T) {
-	var colors theme.Palette
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.ApplyMode(c, false)
-		colors = theme.Colors(c)
-		ui.Column(c).FillWidth().FillHeight().Padding(24).
-			Background(colors.Background).Children(func() {
-			mygoui.Button(c, mygoui.ButtonOptions{Label: "Scale", FullWidth: true})
-		})
-	}, 480, 160)
-	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
-	tt.Frame()
-	rect, ok := tt.Find("Scale")
-	if !ok {
-		t.Fatal("button missing")
-	}
-	y := int(rect.Y + rect.H/2)
-	left := func(dx int) int { return int(rect.X) + dx }
-
-	tt.Press(rect.X+rect.W/2, rect.Y+rect.H/2)
-	if tt.FramePending() {
-		t.Fatal("reduced motion still animates the press scale")
-	}
-	wantPixel(t, tt.Image(), left(4), y, colors.Background, "reduced-motion pressed inset")
-	tt.Release(rect.X+rect.W/2, rect.Y+rect.H/2)
-	if tt.FramePending() {
-		t.Fatal("reduced motion still animates the release")
-	}
-	wantPixel(t, tt.Image(), left(1), y, colors.AccentHover, "reduced-motion restored face")
-}
-
-// TestButtonPendingKeepsFaceAndBlocksActivation checks HeroUI's pending
-// contract: full face, no hover or press paint, no scale, no activation.
+// TestButtonPendingKeepsFaceAndBlocksActivation checks the native pending
+// contract: 50% disabled dimming, no pointer face changes or activation.
 func TestButtonPendingKeepsFaceAndBlocksActivation(t *testing.T) {
 	var colors theme.Palette
 	calls := 0
@@ -146,11 +119,11 @@ func TestButtonPendingKeepsFaceAndBlocksActivation(t *testing.T) {
 
 	tt.Move(rect.X+rect.W/2, rect.Y+rect.H/2)
 	tt.Frame()
-	wantPixel(t, tt.Image(), left(1), y, colors.Accent, "pending hover face")
+	wantPixel(t, tt.Image(), left(1), y, colors.Primary.Alpha(0.5).Over(colors.Background), "pending hover face")
 	tt.Press(rect.X+rect.W/2, rect.Y+rect.H/2)
 	tt.Advance(300 * time.Millisecond)
-	wantPixel(t, tt.Image(), left(1), y, colors.Accent, "pending pressed face")
-	wantPixel(t, tt.Image(), left(4), y, colors.Accent, "pending does not scale")
+	wantPixel(t, tt.Image(), left(1), y, colors.Primary.Alpha(0.5).Over(colors.Background), "pending pressed face")
+	wantPixel(t, tt.Image(), left(4), y, colors.Primary.Alpha(0.5).Over(colors.Background), "pending edge remains filled")
 	tt.Release(rect.X+rect.W/2, rect.Y+rect.H/2)
 	if calls != 0 {
 		t.Fatalf("pending button activated %d times", calls)
@@ -159,7 +132,7 @@ func TestButtonPendingKeepsFaceAndBlocksActivation(t *testing.T) {
 
 // TestDisabledTogglePaintsRestFace checks a disabled control reads its rest
 // face while hovered: the disabled flag is set before the face samples the
-// pointer, matching HeroUI's pointer-events:none.
+// pointer, matching Coss's pointer-events:none.
 func TestDisabledTogglePaintsRestFace(t *testing.T) {
 	var colors theme.Palette
 	off := false
@@ -178,17 +151,24 @@ func TestDisabledTogglePaintsRestFace(t *testing.T) {
 	if !ok {
 		t.Fatal("disabled toggle missing")
 	}
-	x, y := int(rect.X)+8, int(rect.Y+rect.H/2)
+	x, y := int(rect.X)+4, int(rect.Y+rect.H/2)
 	wantPixelWith(t, tt.Image(), x, y,
-		colors.Default.Alpha(0.5).Over(colors.Background), "disabled rest face")
+		colors.Background, "disabled rest face")
 	tt.Move(rect.X+rect.W/2, rect.Y+rect.H/2)
 	tt.Frame()
 	wantPixelWith(t, tt.Image(), x, y,
-		colors.Default.Alpha(0.5).Over(colors.Background), "disabled hover face")
+		colors.Background, "disabled hover face")
+	if err := tt.Click("Locked"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(0, ui.KeySpace)
+	if off || tt.Focused("Locked") {
+		t.Fatalf("disabled toggle selected=%v focus=%v", off, tt.Focused("Locked"))
+	}
 }
 
 // TestButtonGroupSeparatorsKeepLayoutAndPaintSeams checks the shared-edge
-// divider takes no layout width and paints HeroUI's 15% current-color line,
+// divider takes no layout width and paints Coss's current-color line,
 // and that joined buttons keep their size while pressed.
 func TestButtonGroupSeparatorsKeepLayoutAndPaintSeams(t *testing.T) {
 	var colors theme.Palette
@@ -220,12 +200,13 @@ func TestButtonGroupSeparatorsKeepLayoutAndPaintSeams(t *testing.T) {
 	// A pixel far from the shared edge stays on the plain face; one near
 	// it carries the seam's ink. The seam's 1 DIP box can straddle a pixel
 	// edge, so match any clear departure from the face.
-	wantPixel(t, tt.Image(), int(second.X)-12, y, colors.Default, "plain face")
+	img := tt.Image()
+	face := colors.Secondary.Over(colors.Background)
+	wantPixel(t, img, int(second.X)-12, y, face, "plain face")
 	found := false
 	for x := int(second.X) - 2; x <= int(second.X)+1; x++ {
-		r, g, b := pixelAt(tt.Image(), x, y)
-		if absDiff(r, colors.Default.R) > 8 || absDiff(g, colors.Default.G) > 8 ||
-			absDiff(b, colors.Default.B) > 8 {
+		r, g, b := pixelAt(img, x, y)
+		if absDiff(r, face.R) > 8 || absDiff(g, face.G) > 8 || absDiff(b, face.B) > 8 {
 			found = true
 			break
 		}
@@ -236,9 +217,9 @@ func TestButtonGroupSeparatorsKeepLayoutAndPaintSeams(t *testing.T) {
 
 	tt.Press(second.X+second.W/2, second.Y+second.H/2)
 	if tt.FramePending() {
-		t.Fatal("a joined button animated its press scale")
+		t.Fatal("a settled pressed group schedules animation frames")
 	}
-	wantPixel(t, tt.Image(), int(second.X)+1, y, colors.DefaultHover, "joined pressed face")
+	wantPixel(t, tt.Image(), int(second.X)+1, y, colors.Secondary.Alpha(0.8).Over(colors.Background), "joined pressed face")
 	tt.Release(second.X+second.W/2, second.Y+second.H/2)
 }
 
@@ -276,17 +257,18 @@ func TestButtonGroupRightToLeftRoundsStartAndPaintsSeam(t *testing.T) {
 		t.Fatalf("row did not lay out right to left: first=%v third=%v", first.X, third.X)
 	}
 	// The start segment is the right one: its start (right) corners round.
-	wantPixel(t, tt.Image(), int(first.X)+1, int(first.Y)+1, colors.Default, "RTL square end corner")
+	wantPixel(t, tt.Image(), int(first.X)+1, int(first.Y)+1, colors.Secondary.Over(colors.Background), "RTL square end corner")
 	wantPixel(t, tt.Image(), int(first.X+first.W)-2, int(first.Y)+1, colors.Background, "RTL rounded start corner")
 	if gap := first.X - (second.X + second.W); gap < -0.5 || gap > 0.5 {
 		t.Fatalf("RTL separator took layout width: gap %v", gap)
 	}
 	seam := false
 	x, y := int(second.X+second.W), int(second.Y+second.H/2)
+	img := tt.Image()
+	face := colors.Secondary.Over(colors.Background)
 	for sx := x - 1; sx <= x+2; sx++ {
-		r, g, b := pixelAt(tt.Image(), sx, y)
-		if absDiff(r, colors.Default.R) > 8 || absDiff(g, colors.Default.G) > 8 ||
-			absDiff(b, colors.Default.B) > 8 {
+		r, g, b := pixelAt(img, sx, y)
+		if absDiff(r, face.R) > 8 || absDiff(g, face.G) > 8 || absDiff(b, face.B) > 8 {
 			seam = true
 			break
 		}
@@ -324,13 +306,13 @@ func TestTagSelectionFadesAndRemovalExits(t *testing.T) {
 		t.Fatal("tag missing")
 	}
 	x, y := int(goRect.X)+5, int(goRect.Y+goRect.H/2)
-	wantPixel(t, tt.Image(), x, y, colors.Default, "tag rest face")
+	wantPixel(t, tt.Image(), x, y, colors.Default.Over(colors.Background), "tag rest face")
 
 	if err := tt.Click("Go"); err != nil {
 		t.Fatal(err)
 	}
 	// The selection transition starts from the face on screen.
-	wantPixel(t, tt.Image(), x, y, colors.Default, "tag face at transition start")
+	wantPixel(t, tt.Image(), x, y, colors.Default.Over(colors.Background), "tag face at transition start")
 	tt.Advance(200 * time.Millisecond)
 	wantPixelWith(t, tt.Image(), x, y,
 		colors.AccentSoftHover.Over(colors.Background), "tag selected hover face")
@@ -356,7 +338,7 @@ func TestTagSelectionFadesAndRemovalExits(t *testing.T) {
 }
 
 // TestToggleButtonGroupSeparatorsPaintSeams checks the toggle group reaches
-// HeroUI's shared-edge divider without taking layout width.
+// Coss's shared-edge divider without taking layout width.
 func TestToggleButtonGroupSeparatorsPaintSeams(t *testing.T) {
 	var colors theme.Palette
 	off := false
@@ -366,8 +348,8 @@ func TestToggleButtonGroupSeparatorsPaintSeams(t *testing.T) {
 		ui.Column(c).FillWidth().FillHeight().Padding(24).
 			Background(colors.Background).Children(func() {
 			mygoui.ToggleButtonGroup(c, mygoui.ToggleButtonGroupOptions{Separators: true},
-				mygoui.ToggleButtonOptions{Label: "Left", Selected: &off},
-				mygoui.ToggleButtonOptions{Label: "Right", Selected: &off},
+				mygoui.ToggleButtonOptions{Label: "Left", Variant: mygoui.ToggleOutline, Selected: &off},
+				mygoui.ToggleButtonOptions{Label: "Right", Variant: mygoui.ToggleOutline, Selected: &off},
 			)
 		})
 	}, 360, 140)
@@ -385,10 +367,11 @@ func TestToggleButtonGroupSeparatorsPaintSeams(t *testing.T) {
 	}
 	y := int(right.Y + right.H/2)
 	found := false
+	img := tt.Image()
 	for x := int(right.X) - 2; x <= int(right.X)+1; x++ {
-		r, g, b := pixelAt(tt.Image(), x, y)
-		if absDiff(r, colors.Default.R) > 8 || absDiff(g, colors.Default.G) > 8 ||
-			absDiff(b, colors.Default.B) > 8 {
+		r, g, b := pixelAt(img, x, y)
+		if absDiff(r, colors.Background.R) > 8 || absDiff(g, colors.Background.G) > 8 ||
+			absDiff(b, colors.Background.B) > 8 {
 			found = true
 			break
 		}
@@ -427,13 +410,14 @@ func TestTagSelectionHonorsReducedMotion(t *testing.T) {
 		colors.AccentSoftHover.Over(colors.Background), "reduced-motion selected face")
 }
 
-// TestCloseButtonFadesAndScales checks the close button's press scale runs
-// and settles independently of its hover fade.
-func TestCloseButtonFadesAndScales(t *testing.T) {
+// TestCloseButtonHoverSettles checks the close button's hover fade
+// schedules frames only until its face has settled.
+func TestCloseButtonHoverSettles(t *testing.T) {
+	calls := 0
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.ApplyMode(c, false)
 		ui.Column(c).Padding(24).Children(func() {
-			mygoui.CloseButton(c, mygoui.CloseButtonOptions{Label: "Dismiss", OnClick: func() {}})
+			mygoui.CloseButton(c, mygoui.CloseButtonOptions{Label: "Dismiss", OnClick: func() { calls++ }})
 		})
 	}, 200, 120)
 	tt.Frame()
@@ -449,10 +433,16 @@ func TestCloseButtonFadesAndScales(t *testing.T) {
 	if tt.FramePending() {
 		t.Fatal("the close-button motion did not settle")
 	}
+	if got := findRect(t, tt, "Dismiss"); got != rect || calls != 0 {
+		t.Fatalf("pressed close button bounds=%+v calls=%d, want %+v and 0", got, calls, rect)
+	}
 	tt.Release(rect.X+rect.W/2, rect.Y+rect.H/2)
 	tt.Advance(400 * time.Millisecond)
 	if tt.FramePending() {
 		t.Fatal("the close-button release did not settle")
+	}
+	if calls != 1 {
+		t.Fatalf("close-button release activations = %d, want 1", calls)
 	}
 }
 

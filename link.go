@@ -16,12 +16,11 @@ type CloseButtonOptions struct {
 	OnClick  func()
 }
 
-// closeButtonHoverDuration is HeroUI's background-color transition.
+// closeButtonHoverDuration is the dismiss button's background transition.
 const closeButtonHoverDuration = 100 * time.Millisecond
 
-// CloseButton is a 24 DIP HeroUI dismiss button with a native focus ring. It
-// fades between its hover face and scales to 0.93 while pressed, as HeroUI's
-// close button does.
+// CloseButton is a 24 DIP dismiss button with a native focus ring and an
+// animated hover face.
 func CloseButton(c *ui.Context, o CloseButtonOptions) ui.Element {
 	t := theme.Colors(c)
 	label := o.Label
@@ -32,12 +31,11 @@ func CloseButton(c *ui.Context, o CloseButtonOptions) ui.Element {
 	e := ui.ButtonBase(c).Size(theme.Scale(c, theme.Space24), theme.Scale(c, theme.Space24)).
 		Center().Shrink(0).Padding(theme.Space4).Radius(radius).
 		FocusRing(true).Label(label)
-	// Disable before the face reads the pointer: HeroUI's disabled close
-	// button has no hover face.
+	// Disable before the face reads the pointer so it cannot hover.
 	e = style.Disabled(e, o.Disabled)
-	fill := t.Default
+	fill := ui.Transparent
 	if e.Pressed() || e.Hovered() {
-		fill = t.DefaultHover
+		fill = t.Accent
 	}
 	e.Background(fill)
 	// Keep the transition declared in every build: omitting it reads as the
@@ -56,10 +54,10 @@ func CloseButton(c *ui.Context, o CloseButtonOptions) ui.Element {
 	e.Children(func() {
 		ui.Icon(c, lucide.X()).Size(theme.Scale(c, theme.IconMD), theme.Scale(c, theme.IconMD)).Shrink(0)
 	})
-	return pressedPose(e, e.Pressed(), 0.93)
+	return e
 }
 
-// LinkOptions configures a native action styled as a HeroUI link.
+// LinkOptions configures an inline native action.
 type LinkOptions struct {
 	Label    string
 	Icon     *ui.SVG
@@ -68,12 +66,12 @@ type LinkOptions struct {
 	Tooltip  string
 }
 
-// linkIconDuration is HeroUI's opacity transition for the link icon.
+// linkIconDuration is the opacity transition for the link icon.
 const linkIconDuration = 150 * time.Millisecond
 
 // Link is an inline, keyboard-focusable action. Hover, press and keyboard
 // focus underline the label, and the trailing icon fades from 60% to full
-// opacity, as HeroUI does. The underline is painted over the native text so
+// opacity. The underline is painted over the native text so
 // the static layout does not shift. URL opening remains application work;
 // the library performs no I/O.
 func Link(c *ui.Context, o LinkOptions) ui.Element {
@@ -91,8 +89,8 @@ func Link(c *ui.Context, o LinkOptions) ui.Element {
 	}
 	// Snapshot the decoration and icon fade for this build: a retained copy
 	// of a leaving element paints in later passes, where these elements have
-	// expired. The ink follows HeroUI's decoration colors: muted on press,
-	// muted at half alpha on hover, and the tertiary separator for focus.
+	// expired. The ink is muted on press, muted at half alpha on hover, and
+	// uses the tertiary separator color for focus.
 	var underline ui.Color
 	active := false
 	if !o.Disabled {
@@ -133,7 +131,7 @@ func Link(c *ui.Context, o LinkOptions) ui.Element {
 	return e
 }
 
-// LinkButtonOptions configures native HeroUI's link-style button.
+// LinkButtonOptions configures a link-style native button.
 type LinkButtonOptions struct {
 	Label    string
 	Icon     *ui.SVG
@@ -141,10 +139,8 @@ type LinkButtonOptions struct {
 	OnClick  func()
 }
 
-// LinkButton is a ghost text action with no hover background, matching the
-// native HeroUI variant used for inline navigation. Native HeroUI gives it
-// no padding, no minimum height and no rounding, while keeping the button's
-// press scale.
+// LinkButton is a text action with no hover background, padding or minimum
+// height. It uses native button activation and focus.
 func LinkButton(c *ui.Context, o LinkButtonOptions) ui.Element {
 	t := theme.Colors(c)
 	e := ui.ButtonBase(c).Gap(theme.Space8).Padding(0).
@@ -163,5 +159,5 @@ func LinkButton(c *ui.Context, o LinkButtonOptions) ui.Element {
 			ui.Icon(c, o.Icon).Size(iconSize, iconSize).Shrink(0).Margin(0, -2)
 		}
 	})
-	return pressedPose(e, e.Pressed(), buttonPressScale(theme.ButtonMedium))
+	return e
 }

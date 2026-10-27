@@ -35,8 +35,8 @@ func listBoxIndicatorInk(img *image.RGBA, row ui.Rect, bg ui.Color) int {
 	return n
 }
 
-// TestListBoxChosenRowKeepsSurfaceAndShowsIndicator checks HeroUI's chosen row
-// has no fill of its own: the checklist at the row's end is the only change.
+// TestListBoxChosenRowKeepsSurfaceAndShowsIndicator checks that a chosen row
+// keeps the background and shows its check at the end.
 func TestListBoxChosenRowKeepsSurfaceAndShowsIndicator(t *testing.T) {
 	var state list.ListBoxState
 	var colors theme.Palette
@@ -77,6 +77,42 @@ func TestListBoxChosenRowKeepsSurfaceAndShowsIndicator(t *testing.T) {
 	}
 	if ink := listBoxIndicatorInk(img, other, colors.Background); ink != 0 {
 		t.Fatalf("unchosen row paints %d indicator pixels", ink)
+	}
+}
+
+func TestListBoxLeadingIndicatorReservesSpaceAndMarksChoice(t *testing.T) {
+	state := list.ListBoxState{SelectedKey: "pear"}
+	var colors theme.Palette
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		colors = theme.Colors(c)
+		ui.Column(c).Fill().Padding(20).Background(colors.Background).Children(func() {
+			list.ListBox(c, list.ListBoxOptions{
+				State: &state, Selection: list.SelectionSingle, IndicatorStart: true,
+				Items: []list.ListBoxItem{{Key: "pear", Label: "Pear"}},
+			})
+		})
+	}, 320, 140)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
+	tt.Move(2, 2)
+	row, ok := tt.Find("Pear")
+	if !ok {
+		t.Fatal("selected row not found")
+	}
+	img := tt.Image()
+	ink := 0
+	for y := int(row.Y); y < int(row.Y+row.H); y++ {
+		for x := int(row.X + 8); x < int(row.X+24); x++ {
+			if !listBoxPixelNear(img, x, y, colors.Background, 2) {
+				ink++
+			}
+		}
+	}
+	if ink == 0 {
+		t.Fatal("selected row has no leading check")
+	}
+	if end := listBoxIndicatorInk(img, row, colors.Background); end != 0 {
+		t.Fatalf("leading check also painted %d trailing pixels", end)
 	}
 }
 
@@ -123,7 +159,7 @@ func TestListBoxSectionHeaderKeyboardNavigation(t *testing.T) {
 	}
 }
 
-// TestListBoxSectionRowsSitFlush checks HeroUI's gap-0 section: a header and
+// TestListBoxSectionRowsSitFlush checks that a header and
 // the items under it touch, while the blocks between sections are spaced.
 func TestListBoxSectionRowsSitFlush(t *testing.T) {
 	var state list.ListBoxState
@@ -172,7 +208,7 @@ func TestListBoxSectionRowsSitFlush(t *testing.T) {
 }
 
 // TestListBoxSectionHeaderScrollsAway checks a section header scrolls with
-// its rows, as HeroUI's do, instead of pinning over them at the viewport top.
+// its rows instead of pinning over them at the viewport top.
 func TestListBoxSectionHeaderScrollsAway(t *testing.T) {
 	items := make([]list.ListBoxItem, 40)
 	for i := range items {

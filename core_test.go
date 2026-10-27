@@ -3,7 +3,9 @@ package mygoui_test
 import (
 	"testing"
 
+	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -49,6 +51,78 @@ func TestButtonActivationAndPendingState(t *testing.T) {
 	}
 }
 
+func TestButtonLoadingPreservesNaturalWidthAndSiblingPosition(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		icons     bool
+		iconOnly  bool
+		custom    bool
+		textScale float32
+	}{
+		{name: "label", textScale: 1},
+		{name: "icons and label", icons: true, textScale: 1},
+		{name: "icon only", icons: true, iconOnly: true, textScale: 1},
+		{name: "custom content", custom: true, textScale: 1},
+		{name: "enlarged text", icons: true, textScale: 1.5},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			pending := false
+			calls := 0
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, false)
+				ui.Row(c).Padding(20).Gap(12).Children(func() {
+					options := mygoui.ButtonOptions{
+						Label: "Export selected records", Loading: pending, IconOnly: tc.iconOnly,
+						OnClick: func() { calls++ },
+					}
+					if tc.icons {
+						options.Icon, options.EndIcon = lucide.Download(), lucide.ChevronDown()
+					}
+					if tc.custom {
+						options.Content = func() { ui.Text(c, "Selection: 123 records") }
+					}
+					mygoui.Button(c, options)
+					ui.Text(c, "After")
+				})
+			}, 600, 160)
+			tt.SetPreferences(ui.Preferences{TextScale: tc.textScale})
+			rest := findRect(t, tt, "Export selected records")
+			sibling := findRect(t, tt, "After")
+			pending = true
+			tt.Frame()
+			if got := findRect(t, tt, "Export selected records"); got != rest {
+				t.Fatalf("pending geometry = %+v, want %+v", got, rest)
+			}
+			if got := findRect(t, tt, "After"); got != sibling {
+				t.Fatalf("pending shifted sibling from %+v to %+v", sibling, got)
+			}
+			spinner := findRect(t, tt, locale.M().Loading)
+			if spinner.X+spinner.W/2 != rest.X+rest.W/2 ||
+				spinner.Y+spinner.H/2 != rest.Y+rest.H/2 {
+				t.Fatalf("pending spinner is not centered: spinner=%+v button=%+v", spinner, rest)
+			}
+			if err := tt.Click("Export selected records"); err != nil {
+				t.Fatal(err)
+			}
+			tt.Key(0, ui.KeyEnter)
+			if calls != 0 {
+				t.Fatalf("pending button activated %d times", calls)
+			}
+			pending = false
+			tt.Frame()
+			if got := findRect(t, tt, "Export selected records"); got != rest {
+				t.Fatalf("restored geometry = %+v, want %+v", got, rest)
+			}
+			if err := tt.Click("Export selected records"); err != nil {
+				t.Fatal(err)
+			}
+			if calls != 1 {
+				t.Fatalf("restored button activations = %d, want 1", calls)
+			}
+		})
+	}
+}
+
 func TestCardCompositionKeepsActionsIndependent(t *testing.T) {
 	calls := 0
 	tt := ui.NewTester(func(c *ui.Context) {
@@ -88,7 +162,7 @@ func TestChipAndBadgeKeepAccessibleText(t *testing.T) {
 		theme.Apply(c)
 		ui.Row(c).Children(func() {
 			mygoui.Chip(c, mygoui.ChipOptions{Label: "Beta", Color: mygoui.ColorAccent, Variant: mygoui.ChipSoft})
-			mygoui.Badge(c, mygoui.BadgeOptions{Label: "9", Color: mygoui.ColorDanger, Variant: mygoui.ChipPrimary})
+			mygoui.Badge(c, mygoui.BadgeOptions{Label: "9", Variant: mygoui.BadgeDestructive})
 		})
 	}, 320, 120)
 	if !tt.HasText("Beta") || !tt.HasText("9") {

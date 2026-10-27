@@ -1,41 +1,39 @@
-// Package date implements HeroUI v3's Gregorian date and time controls:
+// Package date provides COSS-inspired Gregorian date and time controls:
 // Calendar, RangeCalendar, DateField, DatePicker, DateRangePicker and
-// TimeField.
+// TimeField. The COSS registry's calendar and input/popover compositions are
+// visual references; these controls use MyGo input, focus and popup behavior.
 //
-// Every control is caller-owned. Dates are plain time.Time values; only the
-// calendar date (year, month, day) matters for Calendar, RangeCalendar,
-// DateField and the pickers, and only the time of day matters for TimeField.
-// The view state a Calendar keeps between frames — visible month, keyboard
-// cursor and year-picker visibility — is a CalendarViewState the caller passes
-// in, or nil for a component-local copy. Values are written to the pointer in
-// the options, and OnChange reports the same value without taking ownership of
-// it.
+// Values and calendar view state are caller-owned when supplied. Nil state or
+// value pointers use component-local state. Dates are time.Time values, and
+// comparisons use only the calendar date; TimeField uses the time of day.
+// A completed range is reported with its endpoints ordered.
 //
-// The controls follow HeroUI's desktop metrics: a 252 DIP calendar, 36 DIP
-// days, a 36 DIP field with the 12 DIP field radius, 14 DIP control text and a
-// 2 DIP focus ring. Hover, pressed and focus paint is read from live pointer
-// and focus state while drawing. Disabled days use 50% opacity, a line-through
-// and never activate.
+// Calendars show four to six weeks, with outside days completing each week,
+// at 36 DIP per day at the default text scale. The month heading is static by
+// default; ShowYearPicker enables year selection. Selected days use Primary,
+// range interiors and hover use Accent, and a dot marks today. A visible
+// keyboard cursor receives the native focus ring. The year/day grid swap and
+// popup fade respect reduced motion.
 //
 // # Limits
 //
-//   - Only the Gregorian calendar is implemented. There is no alternate
-//     calendar arithmetic, era display or non-Gregorian month grid; FirstWeekday
-//     controls the week's first column only.
-//   - RangeCalendar paints start, end and in-between days. HeroUI's hover
-//     preview across a pending range is not implemented, because a single cell
-//     cannot know the whole grid's pointer position without an extra frame of
-//     state; selection still updates on click as upstream does.
-//   - The calendar-year-picker crossfade and blur transition is not animated;
-//     the platform's reduced-motion preference therefore has nothing to
-//     suppress. The year grid keeps its 3-column, 32 DIP cell layout.
-//   - Calendar keyboard navigation assumes left-to-right layout. RTL day
-//     order (arrows and week columns mirrored) is not implemented.
-//   - Date and time fields edit ISO 8601 text (YYYY-MM-DD, HH:MM, or hh:mm AM
-//     when Hour12 is set) rather than per-segment spinners. Parsing, bounds and
-//     disabled-date checks are applied as the text becomes complete.
-//   - The year grid shows one page of twelve years centred on the visible
-//     year, or exactly the caller's Min/Max years when both are set. Bounds
-//     wider than the picker's height scroll; keep custom bounds within a few
-//     centuries so the grid stays small.
+//   - Only Gregorian arithmetic and one visible month are supported. There is
+//     no multiple-date selection, alternate calendar, week-number column,
+//     multi-month view, or separate month/year dropdown as in COSS examples.
+//   - RangeCalendar starts a pending range on the first activation and commits
+//     on the second. It does not preview a range on hover or exclude disabled
+//     dates from a committed range; disabled days cannot be chosen as endpoints
+//     and interrupt the painted band.
+//   - The calendar uses left-to-right day and keyboard order. FirstWeekday
+//     changes the first column, but RTL mirroring is not implemented.
+//   - The year picker is a native three-column grid, not a COSS dropdown. With
+//     no bounds it offers twelve years around the visible year; with both
+//     bounds it lists their years and scrolls when needed. Large bounded spans
+//     build many cells. Grid fades are animated, but blur is not.
+//   - Date fields edit ISO YYYY-MM-DD text; TimeField edits HH:MM or hh:mm AM/PM.
+//     They do not provide locale-specific date parsing or native segmented
+//     spinners. Pickers use editable fields with an icon trigger, rather than
+//     every button-based composition in the COSS examples.
+//   - MyGo dims disabled elements by 50%; COSS uses different opacity values.
+//     Custom labels can localize calendar text and accessible day names.
 package date

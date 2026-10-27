@@ -93,7 +93,7 @@ func (st *tableState) columns(c *ui.Context, narrow bool) []data.TableColumnOpti
 }
 
 // tableColumns declares the four demo columns plus the controls the examples
-// add. Widths leave room for HeroUI's header type and a soft chip at every
+// add. Widths leave room for the native library's header type and a soft chip at every
 // text scale; the sum of MinWidth is the table's minimum width, so a narrower
 // panel scrolls the table sideways instead of squeezing the headers. Below the
 // gallery's compact breakpoint the optional columns are dropped instead.
@@ -169,7 +169,7 @@ func (st *tableState) tableExampleOptions(c *ui.Context, state *data.TableState,
 }
 
 // tableExampleFrame sizes one table and its caption inside an example panel.
-// Six whole rows: HeroUI's 32 DIP header, six 44 DIP rows, and the 4 DIP
+// Six whole rows: the native library's 32 DIP header, six 44 DIP rows, and the 4 DIP
 // bottom frame. A fixed 320 DIP frame left part of a seventh row visible,
 // which cut the next status chip at the viewport edge.
 func tableExampleFrame(c *ui.Context, options data.TableOptions, caption func() string) {
@@ -193,7 +193,7 @@ func tableExampleFrameHeight(c *ui.Context, options data.TableOptions, height fl
 	})
 }
 
-// tablePageSize mirrors HeroUI's four-row demo pages.
+// tablePageSize mirrors the native library's four-row demo pages.
 const tablePageSize = 4
 
 // tableDeploymentLess orders deployments for one sort column.
@@ -217,7 +217,7 @@ func tableDeploymentLess(sort data.TableSort) func(a, b tableDeployment) int {
 	}
 }
 
-// tablePaginatedExample mirrors HeroUI's paginated table: four columns, four
+// tablePaginatedExample mirrors the native library's paginated table: four columns, four
 // rows a page, and the footer summary with previous, page and next controls.
 func tablePaginatedExample(c *ui.Context, st *tableState) {
 	all := st.Rows[:8]

@@ -25,7 +25,7 @@ func inkCount(img *image.RGBA, c ui.Color) int {
 	return n
 }
 
-// TestProgressValueChangeEasesTheFill pins the 300 ms width transition: a
+// TestProgressValueChangeEasesTheFill pins the 500 ms width transition: a
 // settled determinate bar asks for no frames, a new value starts the fill
 // from where it was instead of jumping, and it stops on the new value.
 func TestProgressValueChangeEasesTheFill(t *testing.T) {
@@ -41,8 +41,8 @@ func TestProgressValueChangeEasesTheFill(t *testing.T) {
 	if tt.FramePending() {
 		t.Fatal("a determinate bar at rest asks for frames")
 	}
-	low := inkCount(tt.Image(), pal.Accent)
-	want := width * 8 / 5 // a fifth of the 8 DIP track
+	low := inkCount(tt.Image(), pal.Primary)
+	want := width * 6 / 5 // a fifth of the 6 DIP track
 	if d := low - want; d < -want/8 || d > want/8 {
 		t.Fatalf("fill at 20%% = %d px, want about %d", low, want)
 	}
@@ -51,17 +51,61 @@ func TestProgressValueChangeEasesTheFill(t *testing.T) {
 	if !tt.FramePending() {
 		t.Fatal("a value change asks for no frames")
 	}
-	if mid := inkCount(tt.Image(), pal.Accent); mid > low+low/4 {
+	if mid := inkCount(tt.Image(), pal.Primary); mid > low+low/4 {
 		t.Fatalf("fill jumped from %d px to %d px instead of easing", low, mid)
 	}
 	tt.Advance(400 * time.Millisecond)
+	if !tt.FramePending() {
+		t.Fatal("the 500 ms fill transition settled before 400 ms")
+	}
+	tt.Advance(200 * time.Millisecond)
 	if tt.FramePending() {
 		t.Fatal("the fill transition never settles")
 	}
-	high := inkCount(tt.Image(), pal.Accent)
-	want = width * 8 * 4 / 5
+	high := inkCount(tt.Image(), pal.Primary)
+	want = width * 6 * 4 / 5
 	if d := high - want; d < -want/8 || d > want/8 {
 		t.Fatalf("fill at 80%% = %d px, want about %d", high, want)
+	}
+}
+
+func TestProgressAndMeterUseDistinctTrackGeometry(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		meter  bool
+		height float32
+	}{
+		{name: "progress", height: 6},
+		{name: "meter", meter: true, height: 8},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var palette theme.Palette
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, false)
+				palette = theme.Colors(c)
+				ui.Column(c).Fill().Padding(20).Background(palette.Background).Children(func() {
+					if tc.meter {
+						mygoui.Meter(c, mygoui.MeterOptions{Value: 50}).Label("Indicator")
+					} else {
+						mygoui.ProgressBar(c, mygoui.ProgressOptions{Value: 50}).Label("Indicator")
+					}
+				})
+			}, 160, 80)
+			track := findRect(t, tt, "Indicator")
+			if track.H != tc.height {
+				t.Fatalf("track height = %v, want %v DIP", track.H, tc.height)
+			}
+			img := tt.Image()
+			wantPixel(t, img, int(track.X)+10, int(track.Y+track.H/2), palette.Primary, "default indicator")
+			wantPixel(t, img, int(track.X+track.W)-10, int(track.Y+track.H/2),
+				palette.Input.Over(palette.Background), "unfilled track")
+			corner := pixel(img, track.X, track.Y)
+			if tc.meter {
+				wantPixel(t, img, int(track.X), int(track.Y), palette.Primary, "square meter corner")
+			} else if same(corner, palette.Primary) {
+				t.Fatalf("pill progress corner is filled square: %v", corner)
+			}
+		})
 	}
 }
 
@@ -83,10 +127,10 @@ func TestReducedMotionJumpsTheFill(t *testing.T) {
 	if tt.FramePending() {
 		t.Fatal("reduced motion still animates")
 	}
-	low := inkCount(tt.Image(), pal.Accent)
+	low := inkCount(tt.Image(), pal.Primary)
 	value = 80
 	tt.Frame()
-	if mid := inkCount(tt.Image(), pal.Accent); mid <= low+low/4 {
+	if mid := inkCount(tt.Image(), pal.Primary); mid <= low+low/4 {
 		t.Fatalf("fill stayed at %d px, want it at once near 80%% of the track", mid)
 	}
 	if tt.FramePending() {
@@ -166,35 +210,36 @@ func TestProgressCircleEasesAndCoversItsBounds(t *testing.T) {
 		mygoui.ProgressCircle(c, mygoui.ProgressCircleOptions{Value: value, Max: 100})
 	}, 80, 80)
 	tt.Frame()
-	if n := arcPixels(tt.Image(), pal.Accent, pal.Default); n != 0 {
-		t.Fatalf("an empty ring painted %d accent pixels", n)
+	track := pal.Default.Over(pal.Background)
+	if n := arcPixels(tt.Image(), pal.Primary, track); n != 0 {
+		t.Fatalf("an empty ring painted %d primary pixels", n)
 	}
 	value = 100
 	tt.Frame()
-	if n := arcPixels(tt.Image(), pal.Accent, pal.Default); n != 0 {
-		t.Fatalf("the ring jumped to %d accent pixels", n)
+	if n := arcPixels(tt.Image(), pal.Primary, track); n != 0 {
+		t.Fatalf("the ring jumped to %d primary pixels", n)
 	}
-	tt.Advance(400 * time.Millisecond)
-	full := arcPixels(tt.Image(), pal.Accent, pal.Default)
+	tt.Advance(600 * time.Millisecond)
+	full := arcPixels(tt.Image(), pal.Primary, track)
 	if full == 0 {
-		t.Fatal("a full ring paints no accent arc")
+		t.Fatal("a full ring paints no primary arc")
 	}
 	if tt.FramePending() {
 		t.Fatal("the ring never settles")
 	}
 	// The arc covers the ring at its maximum: a quarter of the value paints
 	// about a quarter of the arc, so the full ring measures far more.
-	if quarter := arcPixels(ringFrame(t, 25), pal.Accent, pal.Default); full <= 2*quarter {
+	if quarter := arcPixels(ringFrame(t, 25), pal.Primary, track); full <= 2*quarter {
 		t.Fatalf("full arc = %d px, quarter arc = %d px; want the full arc to cover the ring", full, quarter)
 	}
 	value = 0
 	tt.Frame()
-	if n := arcPixels(tt.Image(), pal.Accent, pal.Default); n != full {
+	if n := arcPixels(tt.Image(), pal.Primary, track); n != full {
 		t.Fatalf("the ring emptied at once (%d of %d pixels)", n, full)
 	}
-	tt.Advance(400 * time.Millisecond)
-	if n := arcPixels(tt.Image(), pal.Accent, pal.Default); n != 0 {
-		t.Fatalf("the ring kept %d accent pixels at zero", n)
+	tt.Advance(600 * time.Millisecond)
+	if n := arcPixels(tt.Image(), pal.Primary, track); n != 0 {
+		t.Fatalf("the ring kept %d primary pixels at zero", n)
 	}
 }
 

@@ -6,8 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// SwitchGroupOptions configures a set of related switches. HeroUI spaces the
-// group's rows by 16 DIP and the group from its label by 24 DIP.
+// SwitchGroupOptions configures a set of related switches.
 type SwitchGroupOptions struct {
 	Label       string
 	Description string

@@ -11,7 +11,7 @@ import (
 )
 
 // OTPState is the caller-owned value of a one-time-code field. Value holds the
-// accepted ASCII characters; Complete reports whether Value fills Length.
+// accepted characters; Complete reports whether Value fills Length.
 type OTPState struct {
 	Value    string
 	Complete bool
@@ -19,11 +19,11 @@ type OTPState struct {
 	completed string
 }
 
-// OTPOptions configures HeroUI's one-time-code field. Length defaults to 6
+// OTPOptions configures a one-time-code field. Length defaults to 6
 // and is capped at 12.
 // Filter, when set, decides which characters are accepted; the default keeps
 // printable ASCII without spaces. OnComplete runs once each time the value
-// reaches Length.
+// reaches Length. OnChange reports changes to the accepted value.
 type OTPOptions struct {
 	Label, Description, Error string
 	AriaLabel                 string
@@ -36,9 +36,10 @@ type OTPOptions struct {
 	OnComplete                func(value string)
 }
 
-// InputOTP renders one native editor over HeroUI's slot guides. The editor
+// InputOTP renders one native editor over slot guides. The editor
 // keeps native focus, caret, selection and input methods; the guides, values
-// and caret are painted from its committed text.
+// and caret are painted from its committed text. Rejecting characters can
+// reposition the caret when the native editor receives the filtered value.
 func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 	if state == nil {
 		state = &OTPState{}
@@ -66,7 +67,7 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 
 	t := theme.Colors(c)
 	radius := theme.RadiusScale().Field
-	slotHeight := theme.Scale(c, 40)
+	slotHeight := theme.Scale(c, 32)
 	gap := float32(theme.Space8)
 	reduceMotion := theme.ReduceMotion(c)
 
@@ -82,13 +83,13 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 			runes[n] = r
 			n++
 		}
-		filled := t.FieldFocus
-		base, hover := t.FieldBackground, t.FieldHover
+		filled := t.Background
+		base, hover := t.Background, t.Background
 		if o.Variant == ControlSecondary {
-			base, hover, filled = t.Default, t.DefaultHover, t.Default
+			base, hover, filled = t.Background, t.Background, t.Background
 		}
 		container := ui.Row(c).Gap(gap).Height(slotHeight).AlignItems(ui.Center).FillWidth().
-			MinWidth(theme.Scale(c, float32(length)*38+float32(length-1)*8))
+			MinWidth(theme.Scale(c, float32(length)*32+float32(length-1)*8))
 
 		var slotShadows []theme.Shadow
 		if o.Variant == ControlPrimary {
@@ -105,7 +106,7 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 				if index < n {
 					char = string(runes[index])
 				}
-				slot := ui.Box(c).Key(index).Grow(1).Basis(0).MinWidth(0).Height(slotHeight).
+				slot := ui.Box(c).Key(index).Width(slotHeight).Height(slotHeight).
 					Center().Radius(radius).Clip()
 				if o.Variant == ControlPrimary {
 					slot = style.Shadow(slot, c, slotShadows)
@@ -120,29 +121,29 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 					fill := base
 					switch {
 					case selected:
-						fill = t.AccentSoft
+						fill = t.Selection
 					case char != "" || active:
 						fill = filled
 					case slotHovered:
 						fill = hover
 					}
 					p.Fill(r, fill, radius)
-					border := t.FieldBorder
+					border := t.Input
 					switch {
 					case o.Invalid:
-						border = t.Danger
+						border = t.Destructive.Alpha(0.36)
 					case active:
-						border = t.FieldBorderFocus
+						border = t.Ring
 					case slotHovered:
-						border = t.FieldBorderHover
+						border = t.Input
 					}
 					if border.A != 0 {
 						p.Stroke(r, border, radius, theme.Hairline)
 					}
 					if active {
-						ring := t.Focus
+						ring := t.Ring.Alpha(0.24)
 						if o.Invalid {
-							ring = t.Danger
+							ring = t.Destructive.Alpha(0.16)
 						}
 						formstyle.FieldRing(p, r, radius, ring)
 						if char == "" {
@@ -171,22 +172,13 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 				})
 				if char != "" {
 					slot.Children(func() {
-						value := style.Text(ui.Text(c, char), c, theme.LG()).FontWeight(theme.WeightSemibold).
+						style.Text(ui.Text(c, char), c, theme.SM()).FontWeight(theme.WeightMedium).
 							TextColor(t.FieldForeground).LetterSpacing(theme.Scale(c, -0.27))
-						if !reduceMotion {
-							// Upstream raises each new slot value from below
-							// over 250 ms.
-							value.Transition(ui.ElementTransition{
-								Duration: 250 * time.Millisecond,
-								Ease:     ui.EaseOut,
-								Colors:   true,
-								Enter:    &ui.Motion{Y: theme.Scale(c, 8), Scale: 0.8, Opacity: 0},
-							})
-						}
 					})
 				}
 			}
 
+			previous := state.Value
 			editor = ui.TextInputBase(c, &state.Value).Absolute().
 				Left(0).Top(0).Right(0).Bottom(0).Padding(0).Opacity(0)
 			name := inputAccessibleName(o.Label, o.AriaLabel, "")
@@ -199,7 +191,6 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 			}
 			editor.OnChange(func() {
 				sanitized := otpSanitize(state.Value, length, filter)
-				changed := sanitized != state.Value
 				state.Value = sanitized
 				if utf8.RuneCountInString(sanitized) >= length {
 					state.Complete = true
@@ -213,7 +204,7 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 					state.Complete = false
 					state.completed = ""
 				}
-				if changed && o.OnChange != nil {
+				if sanitized != previous && o.OnChange != nil {
 					o.OnChange(sanitized)
 				}
 			})

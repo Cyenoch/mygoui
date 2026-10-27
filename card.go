@@ -6,7 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// SurfaceVariant is HeroUI's container elevation token.
+// SurfaceVariant selects a native container surface.
 type SurfaceVariant uint8
 
 const (
@@ -16,8 +16,8 @@ const (
 	SurfaceTransparent
 )
 
-// SurfaceOptions customizes a HeroUI Surface. Padding and Radius default to
-// zero because HeroUI's Surface is a style boundary, not a layout container.
+// SurfaceOptions customizes a native Surface. Padding and Radius default to
+// zero so callers can compose their own layout.
 type SurfaceOptions struct {
 	Variant   SurfaceVariant
 	Padding   float32
@@ -26,7 +26,7 @@ type SurfaceOptions struct {
 	Label     string
 }
 
-// Surface paints a HeroUI surface and exposes the matching foreground.
+// Surface paints a theme surface and exposes the matching foreground.
 func Surface(c *ui.Context, o SurfaceOptions, body func()) ui.Element {
 	t := theme.Colors(c)
 	e := ui.Column(c).MinWidth(0)
@@ -55,7 +55,7 @@ func Surface(c *ui.Context, o SurfaceOptions, body func()) ui.Element {
 	return e.Children(body)
 }
 
-// CardVariant is HeroUI's card surface variant.
+// CardVariant selects a card surface, including native theme extensions.
 type CardVariant uint8
 
 const (
@@ -65,7 +65,7 @@ const (
 	CardTransparent
 )
 
-// CardOptions customizes a HeroUI Card. OnClick makes the whole card a real
+// CardOptions customizes a coss ui Card. OnClick makes the whole card a real
 // native action without changing its visual variants.
 type CardOptions struct {
 	Variant CardVariant
@@ -74,12 +74,12 @@ type CardOptions struct {
 	Handle  *ui.Handle
 }
 
-// Card is a 16 DIP padded, 24 DIP rounded surface with a 12 DIP section gap.
+// Card is a bordered rounded surface. Each section owns its padding.
 func Card(c *ui.Context, o CardOptions, body func()) ui.Element {
 	t := theme.Colors(c)
-	radius := min(theme.Space32, theme.RadiusScale().XXXL)
-	e := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space12).
-		Padding(theme.Space16).Radius(radius).Clip()
+	radius := theme.RadiusScale().XXL
+	e := ui.Column(c).FillWidth().MinWidth(0).Radius(radius).Clip().
+		Border(theme.Hairline, t.Border)
 	switch o.Variant {
 	case CardSecondary:
 		e.Background(t.SurfaceSecondary).TextColor(t.SurfaceSecondaryForeground)
@@ -107,30 +107,68 @@ func Card(c *ui.Context, o CardOptions, body func()) ui.Element {
 
 // CardHeader groups a title and description.
 func CardHeader(c *ui.Context, body func()) ui.Element {
-	return ui.Column(c).FillWidth().MinWidth(0).Children(body)
+	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space6).Padding(theme.Space24).Children(body)
 }
 
-// CardTitle renders HeroUI's 14/24 medium card title.
+// CardTitle renders coss ui's 18 DIP semibold heading.
 func CardTitle(c *ui.Context, text string) ui.Element {
-	ts := theme.SM()
-	ts.LineHeight, ts.Weight = 24, theme.WeightMedium
+	ts := theme.LG()
+	ts.LineHeight, ts.Weight, ts.Heading = 20, theme.WeightSemibold, true
 	return style.Text(ui.Text(c, text), c, ts).TextColor(theme.Colors(c).Foreground)
 }
 
-// CardDescription renders HeroUI's 14/20 muted card description.
+// CardDescription renders coss ui's 14/20 muted card description.
 func CardDescription(c *ui.Context, text string) ui.Element {
 	ts := theme.SM()
 	ts.LineHeight = 20
 	return style.Text(ui.Text(c, text), c, ts).TextColor(theme.Colors(c).Muted)
 }
 
-// CardContent grows to fill the card and uses HeroUI's 4 DIP inner gap.
+// CardContent grows to fill the card, with horizontal padding and a 4 DIP gap.
+// Standalone content can set vertical padding on the returned element.
 func CardContent(c *ui.Context, body func()) ui.Element {
-	return ui.Column(c).FillWidth().MinWidth(0).Grow(1).Gap(theme.Space4).Children(body)
+	return ui.Column(c).FillWidth().MinWidth(0).Grow(1).Gap(theme.Space4).
+		Padding(0, theme.Space24).Children(body)
 }
 
 // CardFooter aligns actions in a wrapping row.
 func CardFooter(c *ui.Context, body func()) ui.Element {
 	return ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Wrap().
-		Gap(theme.Space8).Children(body)
+		Gap(theme.Space8).Padding(theme.Space24).Children(body)
+}
+
+// CardFrameOptions configures a framed group of cards and supporting content.
+type CardFrameOptions struct {
+	Label string
+}
+
+// CardFrame builds a muted, bordered container for cards and frame sections.
+func CardFrame(c *ui.Context, o CardFrameOptions, body func()) ui.Element {
+	t := theme.Colors(c)
+	e := ui.Column(c).FillWidth().MinWidth(0).Radius(theme.RadiusScale().XXL).Clip().
+		Border(theme.Hairline, t.Border).
+		Background(t.MutedBackground.Alpha(0.72).Over(t.Card)).
+		TextColor(t.CardForeground).Label(o.Label)
+	return style.Shadow(e, c, theme.SurfaceShadows(c.Theme().Dark)).Children(body)
+}
+
+// CardFrameHeader groups frame metadata above its cards.
+func CardFrameHeader(c *ui.Context, body func()) ui.Element {
+	return ui.Column(c).FillWidth().MinWidth(0).Padding(theme.Space16, theme.Space24).Children(body)
+}
+
+// CardFrameTitle renders a compact semibold frame title.
+func CardFrameTitle(c *ui.Context, title string) ui.Element {
+	return FrameTitle(c, title)
+}
+
+// CardFrameDescription renders secondary frame text.
+func CardFrameDescription(c *ui.Context, text string) ui.Element {
+	return FrameDescription(c, text)
+}
+
+// CardFrameFooter hosts frame-level content below its cards.
+func CardFrameFooter(c *ui.Context, body func()) ui.Element {
+	return ui.Row(c).FillWidth().MinWidth(0).Wrap().Gap(theme.Space8).
+		Padding(theme.Space16, theme.Space24).Children(body)
 }

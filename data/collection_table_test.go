@@ -71,42 +71,43 @@ func TestTableSelectedRowPaintsOneBand(t *testing.T) {
 		cellRight + 5,   // the next column's start padding
 		tableRight - 2,  // the table's right end padding
 	} {
-		wantTablePixel(t, img, x, y, colors.SurfaceSecondary, "chosen row fill")
-		if tablePixelNear(img, x, y, colors.Accent, 6) {
-			t.Fatalf("chosen row shows the native accent at (%d, %d)", x, y)
+		wantTablePixel(t, img, x, y, ui.RGBA(0, 0, 0, 0.04).Over(colors.Background), "chosen row fill")
+		if tablePixelNear(img, x, y, colors.Primary, 6) {
+			t.Fatalf("chosen row shows the native primary at (%d, %d)", x, y)
 		}
 	}
 	// The row below is not chosen: its fill is the table surface.
 	other, _ := tt.Find("Gamma")
-	wantTablePixel(t, img, int(head.X)+2, int(other.Y+other.H/2), colors.Surface, "unchosen row fill")
+	wantTablePixel(t, img, int(head.X)+2, int(other.Y+other.H/2), colors.Background, "unchosen row fill")
 }
 
-// TestTableSecondaryVariantIsFlush checks the secondary variant paints no
-// surface card, while the primary one does.
-func TestTableSecondaryVariantIsFlush(t *testing.T) {
+// TestTableVariants distinguishes the plain background from the card body.
+func TestTableVariants(t *testing.T) {
 	rows := fileRows()
-	for _, variant := range []data.TableVariant{data.TablePrimary, data.TableSecondary} {
-		st := &data.TableState{}
-		o := fileTable(rows, st, nil)
-		o.Variant = variant
-		var colors theme.Palette
-		tt := ui.NewTester(func(c *ui.Context) {
-			theme.ApplyMode(c, false)
-			colors = theme.Colors(c)
-			data.Table(c, o).Grow(1)
-		}, 400, 300)
-		tt.Frame()
-		row, ok := tt.Find("Beta")
-		if !ok {
-			t.Fatalf("row missing: %v", tt.Texts())
+	for _, dark := range []bool{false, true} {
+		for _, variant := range []data.TableVariant{data.TablePrimary, data.TableSecondary} {
+			st := &data.TableState{}
+			o := fileTable(rows, st, nil)
+			o.Variant = variant
+			var colors theme.Palette
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, dark)
+				colors = theme.Colors(c)
+				data.Table(c, o).Grow(1)
+			}, 400, 300)
+			tt.Frame()
+			row, ok := tt.Find("Beta")
+			if !ok {
+				t.Fatalf("row missing: %v", tt.Texts())
+			}
+			want := colors.Background
+			if variant == data.TableSecondary {
+				want = colors.Card
+			}
+			// The row's left padding is outside every cell's content box.
+			wantTablePixel(t, tt.Image(), 6, int(row.Y+row.H/2), want,
+				fmt.Sprintf("variant %d, dark=%v, row fill", variant, dark))
 		}
-		want := colors.Background
-		if variant == data.TablePrimary {
-			want = colors.Surface
-		}
-		// The row's left padding is outside every cell's content box.
-		wantTablePixel(t, tt.Image(), 6, int(row.Y+row.H/2), want,
-			fmt.Sprintf("variant %d row fill", variant))
 	}
 }
 
@@ -152,9 +153,8 @@ func TestTableCellAlignment(t *testing.T) {
 	if !ok {
 		t.Fatalf("center header missing: %v", tt.Texts())
 	}
-	// The header box is the column; the end-aligned cell text stops at the
-	// toolkit's 10 DIP cell padding plus the table's 6 DIP inset.
-	wantEnd := endHead.X + endHead.W - 16
+	// The end-aligned text stops at the toolkit's 10 DIP cell padding.
+	wantEnd := endHead.X + endHead.W - 10
 	if got := end.X + end.W; got < wantEnd-3 || got > wantEnd+3 {
 		t.Fatalf("end-aligned text right edge = %v, want %v", got, wantEnd)
 	}
@@ -168,93 +168,113 @@ func TestTableCellAlignment(t *testing.T) {
 	}
 }
 
-// TestTableHeaderChrome keeps HeroUI's header chrome: type smaller than the
-// cells, and a separator line at half strength, lighter than the toolkit's
-// divider.
+// The default Coss table has a transparent header and a border below it.
 func TestTableHeaderChrome(t *testing.T) {
 	rows := fileRows()
 	var colors theme.Palette
-	st := &data.TableState{}
-	o := data.TableOptions{
-		Label: "Files",
-		Columns: []data.TableColumnOptions{{
-			ID: "name", Header: "Name",
-			Cell: func(c *ui.Context, cell data.TableCell) ui.Element {
-				return ui.Text(c, rows[cell.Row.Index].name)
-			},
-		}},
-		Rows: len(rows), State: st,
-	}
+	o := fileTable(rows, &data.TableState{}, nil)
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.ApplyMode(c, false)
 		colors = theme.Colors(c)
 		data.Table(c, o).Grow(1)
 	}, 400, 240)
 	tt.Frame()
-	head, ok := tt.Find("Name")
-	if !ok {
-		t.Fatalf("header missing: %v", tt.Texts())
-	}
-	body, ok := tt.Find("Beta")
-	if !ok {
-		t.Fatalf("row missing: %v", tt.Texts())
-	}
-	if head.H >= body.H {
-		t.Fatalf("header type %v is not smaller than cell type %v", head.H, body.H)
-	}
-
-	img := tt.Image()
-	wantTablePixel(t, img, 200, 16, colors.SurfaceSecondary, "header band")
-	line := img.RGBAAt(200, 32)
-	if tablePixelNear(img, 200, 32, colors.Border, 3) {
-		t.Fatalf("header border uses the toolkit's divider %d,%d,%d", line.R, line.G, line.B)
-	}
-	if line.R >= colors.SurfaceSecondary.R || line.R <= colors.Border.R {
-		t.Fatalf("header border %d is not the separator at half strength", line.R)
-	}
+	wantTablePixel(t, tt.Image(), 200, 16, colors.Background, "header face")
+	wantTablePixel(t, tt.Image(), 200, 32, colors.Border.Over(colors.Background), "header divider")
 }
 
-// TestTableFooterSitsInFrame checks the footer keeps HeroUI's inset, inside
-// the frame, under the body card.
-func TestTableFooterSitsInFrame(t *testing.T) {
-	rows := fileRows()
+func TestEmptyCardWithoutColumnsStartsAtTop(t *testing.T) {
 	var colors theme.Palette
-	st := &data.TableState{}
-	o := data.TableOptions{
-		Label: "Files",
-		Columns: []data.TableColumnOptions{
-			{ID: "name", Header: "Name", Cell: func(c *ui.Context, cell data.TableCell) ui.Element {
-				return ui.Text(c, rows[cell.Row.Index].name)
-			}},
-		},
-		Rows: len(rows), State: st,
-		Footer: func(c *ui.Context) ui.Element {
-			return ui.Row(c).FillWidth().Children(func() {
-				ui.Text(c, "1 to 3 of 3 results")
-			})
-		},
-	}
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, true)
+		colors = theme.Colors(c)
+		data.Table(c, data.TableOptions{
+			Variant: data.TableSecondary,
+			Empty:   func(c *ui.Context) ui.Element { return ui.Text(c, "No rows") },
+		}).Grow(1)
+	}, 400, 240)
+	wantTablePixel(t, tt.Image(), 200, 16, colors.Card, "empty card body")
+}
+
+func TestTableKeepsNativeFocusRing(t *testing.T) {
+	rows := fileRows()
+	st := &data.TableState{Selection: data.TableSelection{Mode: data.TableSelectionSingle, Row: -1}}
+	o := fileTable(rows, st, nil)
+	var colors theme.Palette
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.ApplyMode(c, false)
 		colors = theme.Colors(c)
-		data.Table(c, o).Grow(1)
-	}, 400, 320)
-	tt.Frame()
+		ui.Column(c).Fill().Padding(20).Background(colors.Background).Children(func() {
+			data.Table(c, o).Grow(1)
+		})
+	}, 420, 260)
+	table, ok := tt.Find("Files")
+	if !ok {
+		t.Fatal("table missing")
+	}
+	x, y := int(table.X+table.W/2), int(table.Y)-2
+	wantTablePixel(t, tt.Image(), x, y, colors.Background, "unfocused table edge")
+	tt.Key(0, ui.KeyTab)
+	if !tt.Focused("Files") {
+		t.Fatal("tab did not focus the table")
+	}
+	if tablePixelNear(tt.Image(), x, y, colors.Background, 4) {
+		t.Fatal("keyboard focus ring is not visible")
+	}
+	tt.Key(0, ui.KeyDown)
+	if st.Selection.Row < 0 {
+		t.Fatal("keyboard navigation did not choose a row")
+	}
+}
+
+func TestTableNativeCellSelectionKeepsItsPaint(t *testing.T) {
+	rows := fileRows()
+	st := &data.TableState{Selection: data.TableSelection{Mode: data.TableSelectionMultiple, Row: -1}}
+	st.List.CellSelect = true
+	o := fileTable(rows, st, nil)
+	var colors theme.Palette
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		colors = theme.Colors(c)
+		ui.Column(c).Fill().Padding(20).Background(colors.Background).Children(func() {
+			data.Table(c, o).Grow(1)
+		})
+	}, 520, 260)
+	if err := tt.Click("Beta"); err != nil {
+		t.Fatal(err)
+	}
+	row, _ := tt.Find("Beta")
+	head, _ := tt.Find("Name")
+	y := int(row.Y + row.H/2)
+	img := tt.Image()
+	wantTablePixel(t, img, int(head.X)+3, y, colors.Primary, "selected cell")
+	wantTablePixel(t, img, int(head.X+head.W)+5, y, colors.Background, "unselected cell")
+	if !st.List.CellSelected(0, 0) || st.List.CellSelected(0, 1) {
+		t.Fatalf("native cell selection = %+v", st.List.Cells)
+	}
+	tt.Key(0, ui.KeyRight)
+	if st.List.Cells.Cursor != "size" || !st.List.CellSelected(0, 1) {
+		t.Fatalf("keyboard cell selection = %+v", st.List.Cells)
+	}
+}
+
+// The footer remains in the table and follows its body.
+func TestTableFooterSitsInFrame(t *testing.T) {
+	rows := fileRows()
+	o := fileTable(rows, &data.TableState{}, nil)
+	o.Footer = func(c *ui.Context) ui.Element { return ui.Text(c, "1 to 3 of 3 results") }
+	tt := ui.NewTester(tableView(&o), 400, 320)
 	foot, ok := tt.Find("1 to 3 of 3 results")
 	if !ok {
 		t.Fatalf("footer missing: %v", tt.Texts())
 	}
-	if foot.X != 20 {
-		t.Fatalf("footer text starts at %v, want the 4 DIP frame plus 16 DIP inset (20)", foot.X)
+	row, ok := tt.Find("Gamma")
+	if !ok || foot.Y <= row.Y {
+		t.Fatalf("footer=%v row=%v", foot, row)
 	}
-	img := tt.Image()
-	// The body card ends above the footer; the footer sits on the frame.
-	wantTablePixel(t, img, 200, int(foot.Y-16), colors.Surface, "body card above the footer")
-	wantTablePixel(t, img, 200, int(foot.Y+foot.H/2), colors.SurfaceSecondary, "footer frame")
-	// The frame's own 4 DIP padding runs down the sides, and the body card
-	// starts inside it.
-	wantTablePixel(t, img, 2, int(foot.Y-60), colors.SurfaceSecondary, "frame beside the card")
-	wantTablePixel(t, img, 6, int(foot.Y-60), colors.Surface, "card inside the frame")
+	if foot.X != theme.Space16 {
+		t.Fatalf("footer inset = %v, want %v", foot.X, theme.Space16)
+	}
 }
 
 // TestTableOverflowScrollsSideways checks columns keep their widths when the

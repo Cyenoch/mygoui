@@ -8,7 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// SearchFieldOptions configures HeroUI's search field. Escape and the clear
+// SearchFieldOptions configures a search field. Escape and the clear
 // button empty the value; Enter reports OnSubmit.
 type SearchFieldOptions struct {
 	Label, Description, Error string
@@ -23,13 +23,13 @@ type SearchFieldOptions struct {
 }
 
 // SearchField renders a native search input with the search icon and clear
-// action inside HeroUI's group shell.
+// action inside a group shell.
 func SearchField(c *ui.Context, value *string, o SearchFieldOptions) ui.Element {
 	value = inputTextAnchor(value)
 	t := theme.Colors(c)
 
 	build := func() ui.Element {
-		row := ui.Row(c).AlignItems(ui.Center).MinHeight(theme.Scale(c, theme.HeightInput)).Shrink(0)
+		row := ui.Row(c).AlignItems(ui.Center).MinHeight(theme.Scale(c, 32)).Shrink(0)
 		if o.FullWidth {
 			row.FillWidth()
 		} else {
@@ -42,7 +42,7 @@ func SearchField(c *ui.Context, value *string, o SearchFieldOptions) ui.Element 
 				Shrink(0).MarginStart(theme.Space12).TextColor(t.FieldPlaceholder)
 
 			editor := ui.TextInputBase(c, value).Grow(1).MinWidth(0).
-				PaddingStart(theme.Space8).PaddingEnd(theme.Space8).PaddingY(theme.Space8)
+				PaddingStart(theme.Space8).PaddingEnd(theme.Space8).PaddingY(theme.Scale(c, 5))
 			editor = fieldText(editor, c)
 			if o.Placeholder != "" {
 				editor.Placeholder(o.Placeholder)
@@ -82,7 +82,7 @@ func SearchField(c *ui.Context, value *string, o SearchFieldOptions) ui.Element 
 				Center().Shrink(0).Padding(0).MarginEnd(theme.Space8).
 				Radius(theme.RadiusScale().SM).Label(locale.M().Clear).Tooltip(locale.M().Clear)
 			clear.TextColor(t.FieldPlaceholder)
-			clear = style.Background(clear, theme.RadiusScale().SM, ui.Transparent, t.DefaultHover, t.DefaultHover)
+			clear = style.Background(clear, theme.RadiusScale().SM, ui.Transparent, t.Accent, t.Accent)
 			clear.Children(func() {
 				ui.Icon(c, lucide.X()).Size(theme.Scale(c, theme.IconXS), theme.Scale(c, theme.IconXS)).Shrink(0)
 			})

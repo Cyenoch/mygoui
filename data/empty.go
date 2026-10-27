@@ -21,9 +21,6 @@ func buildEmpty(c *ui.Context, o TableOptions, st *TableState, tl *tableLayout, 
 	if chrome != nil {
 		board.Draw(chrome)
 	}
-	if line := tableHeaderLine(tl.colors, len(tl.columns) > 0 || tl.actions >= 0); line != nil {
-		board.DrawOver(line)
-	}
 	board.Children(func() {
 		if len(tl.columns) > 0 || tl.actions >= 0 {
 			st.List.Sort = &st.nativeSort
@@ -32,7 +29,7 @@ func buildEmpty(c *ui.Context, o TableOptions, st *TableState, tl *tableLayout, 
 			ui.Table(c, &st.List, tl.nativeColumns(), 0, func(row, col int) {}).
 				Height(theme.Space(8) + theme.Hairline).
 				Shrink(0).MinWidth(0).
-				Label(o.Label)
+				Label(o.Label).FontSize(theme.Scale(c, 14))
 		}
 		body := ui.Column(c).Grow(1).MinWidth(0).
 			AlignItems(ui.Center).Justify(ui.Center).

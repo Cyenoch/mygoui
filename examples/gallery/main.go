@@ -3,23 +3,39 @@ package main
 
 import (
 	"log"
+	"runtime"
 
+	"github.com/Cyenoch/mygoui/fonts"
 	"github.com/Cyenoch/mygoui/internal/gallery"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 )
 
 func main() {
-	mygo.App.SetName("MyGo UI Gallery")
+	if err := fonts.Register(); err != nil {
+		log.Fatal(err)
+	}
+	mygo.App.SetName("Coss UI Gallery")
 	mygo.App.OnWindowAllClosed(func() { mygo.App.Quit() })
 	mygo.App.WhenReady(func() {
 		state := gallery.New()
-		mygo.NewWindow(mygo.WindowOptions{
-			Title: "MyGo UI Gallery", Width: 1180, Height: 860,
-			Content: ui.View(func(c *ui.Context) { gallery.View(c, state) }),
-		})
+		mygo.NewWindow(windowOptions(state))
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)
 	}
+}
+
+func windowOptions(state *gallery.State) mygo.WindowOptions {
+	o := mygo.WindowOptions{
+		Title: "Coss UI Gallery", Width: 1180, Height: 860,
+		TitleBarStyle:  mygo.TitleBarHiddenInset,
+		TitleBarHeight: gallery.TitleBarHeight,
+		Content:        ui.View(func(c *ui.Context) { gallery.View(c, state) }),
+	}
+	if runtime.GOOS == "darwin" {
+		// A standard 14 DIP button is centered in the 52 DIP title bar.
+		o.TrafficLightPosition = &mygo.Point{X: 16, Y: 19}
+	}
+	return o
 }

@@ -33,9 +33,9 @@ func TestToggleButtonGroupFillStaysInsideRoundedBox(t *testing.T) {
 		ui.Column(c).FillWidth().FillHeight().Padding(24).
 			Background(colors.Background).Children(func() {
 			mygoui.ToggleButtonGroup(c, mygoui.ToggleButtonGroupOptions{},
-				mygoui.ToggleButtonOptions{Label: "One", Selected: &one},
-				mygoui.ToggleButtonOptions{Label: "Two", Selected: &two},
-				mygoui.ToggleButtonOptions{Label: "Three", Selected: &three},
+				mygoui.ToggleButtonOptions{Label: "One", Variant: mygoui.ToggleOutline, Selected: &one},
+				mygoui.ToggleButtonOptions{Label: "Two", Variant: mygoui.ToggleOutline, Selected: &two},
+				mygoui.ToggleButtonOptions{Label: "Three", Variant: mygoui.ToggleOutline, Selected: &three},
 			)
 		})
 	}, 360, 160)
@@ -65,9 +65,9 @@ func TestToggleButtonGroupFillStaysInsideRoundedBox(t *testing.T) {
 		if !ok {
 			t.Fatalf("%q missing", tc.label)
 		}
-		// The state faces are translucent: each paints over the one below.
-		selected := colors.AccentSoft.Over(colors.Background)
-		hovered := colors.AccentSoftHover.Over(selected)
+		// Each translucent state face composites once against the surface.
+		selected := colors.Input.Alpha(0.64).Over(colors.Background)
+		hovered := colors.Input.Over(colors.Background)
 		tt.Frame()
 		img := tt.Image()
 		x, y := outside(rect, tc.left)
@@ -109,7 +109,7 @@ func TestToggleButtonGroupFillStaysInsideRoundedBox(t *testing.T) {
 }
 
 // TestButtonGroupFillStaysInsideRoundedBox checks the same contract on the
-// accent ButtonGroup path.
+// primary ButtonGroup path.
 func TestButtonGroupFillStaysInsideRoundedBox(t *testing.T) {
 	var colors theme.Palette
 	tt := ui.NewTester(func(c *ui.Context) {
@@ -144,12 +144,12 @@ func TestButtonGroupFillStaysInsideRoundedBox(t *testing.T) {
 		tt.Move(rect.X+rect.W/2, rect.Y+rect.H/2)
 		tt.Frame()
 		wantPixel(t, tt.Image(), x, y, colors.Background, tc.label+" hover corner")
-		wantPixel(t, tt.Image(), ix, iy, colors.AccentHover, tc.label+" hover fill")
+		wantPixel(t, tt.Image(), ix, iy, colors.Primary.Alpha(0.9).Over(colors.Background), tc.label+" hover fill")
 
 		tt.Press(rect.X+rect.W/2, rect.Y+rect.H/2)
 		tt.Frame()
 		wantPixel(t, tt.Image(), x, y, colors.Background, tc.label+" pressed corner")
-		wantPixel(t, tt.Image(), ix, iy, colors.AccentHover, tc.label+" pressed fill")
+		wantPixel(t, tt.Image(), ix, iy, colors.Primary.Alpha(0.9).Over(colors.Background), tc.label+" pressed fill")
 		tt.Release(rect.X+rect.W/2, rect.Y+rect.H/2)
 	}
 }
@@ -225,9 +225,9 @@ func TestFullWidthToggleGroupFillsItsShare(t *testing.T) {
 		ui.Column(c).FillWidth().FillHeight().Padding(24).
 			Background(colors.Background).Children(func() {
 			mygoui.ToggleButtonGroup(c, mygoui.ToggleButtonGroupOptions{FullWidth: true},
-				mygoui.ToggleButtonOptions{Label: "One", Selected: &one},
-				mygoui.ToggleButtonOptions{Label: "Two", Selected: &two},
-				mygoui.ToggleButtonOptions{Label: "Three", Selected: &three},
+				mygoui.ToggleButtonOptions{Label: "One", Variant: mygoui.ToggleOutline, Selected: &one},
+				mygoui.ToggleButtonOptions{Label: "Two", Variant: mygoui.ToggleOutline, Selected: &two},
+				mygoui.ToggleButtonOptions{Label: "Three", Variant: mygoui.ToggleOutline, Selected: &three},
 			)
 		})
 	}, 360, 160)
@@ -259,8 +259,8 @@ func TestFullWidthToggleGroupFillsItsShare(t *testing.T) {
 	img := tt.Image()
 	mid := int(first.Y + first.H/2)
 	wantPixel(t, img, int(first.X)+1, int(first.Y)+1, colors.Background, "full-width outer corner")
-	wantPixel(t, img, int(first.X+first.W)-3, mid, colors.AccentSoftHover.Over(colors.AccentSoft.Over(colors.Background)), "fill at the segment's end")
-	wantPixel(t, img, int(first.X)+6, mid, colors.AccentSoftHover.Over(colors.AccentSoft.Over(colors.Background)), "fill at the segment's start")
+	wantPixel(t, img, int(first.X+first.W)-3, mid, colors.Input.Over(colors.Background), "fill at the segment's end")
+	wantPixel(t, img, int(first.X)+6, mid, colors.Input.Over(colors.Background), "fill at the segment's start")
 }
 
 // TestFullWidthButtonGroupAlignsLabels checks that the fill layer does not
@@ -289,7 +289,7 @@ func TestFullWidthButtonGroupAlignsLabels(t *testing.T) {
 			t.Fatalf("%q missing", label)
 		}
 		rects = append(rects, rect)
-		x0, x1, ok := textSpan(img, rect, colors.Accent)
+		x0, x1, ok := textSpan(img, rect, colors.Primary)
 		if !ok {
 			t.Fatalf("%q has no label pixels in %+v", label, rect)
 		}
@@ -300,12 +300,12 @@ func TestFullWidthButtonGroupAlignsLabels(t *testing.T) {
 				t.Fatalf("centered label at %v, want %v (span %d..%d, rect %+v)", center, rect.X+rect.W/2, x0, x1, rect)
 			}
 		case "Start":
-			if x0 < int(rect.X)+12 || x0 > int(rect.X)+22 {
-				t.Fatalf("start label begins at %d, want near %v (rect %+v)", x0, rect.X+16, rect)
+			if x0 < int(rect.X)+11 || x0 > int(rect.X)+13 {
+				t.Fatalf("start label begins at %d, want near %v (rect %+v)", x0, rect.X+11, rect)
 			}
 		case "End":
-			if x1 < int(rect.X+rect.W)-22 || x1 > int(rect.X+rect.W)-12 {
-				t.Fatalf("end label ends at %d, want near %v (rect %+v)", x1, rect.X+rect.W-16, rect)
+			if x1 < int(rect.X+rect.W)-13 || x1 > int(rect.X+rect.W)-11 {
+				t.Fatalf("end label ends at %d, want near %v (rect %+v)", x1, rect.X+rect.W-11, rect)
 			}
 		}
 	}
@@ -322,7 +322,7 @@ func TestFullWidthButtonGroupAlignsLabels(t *testing.T) {
 	img = tt.Image()
 	mid := int(first.Y + first.H/2)
 	wantPixel(t, img, int(first.X)+1, int(first.Y)+1, colors.Background, "full-width button corner")
-	wantPixel(t, img, int(first.X+first.W)-3, mid, colors.AccentHover, "full-width button fill")
+	wantPixel(t, img, int(first.X+first.W)-3, mid, colors.Primary.Alpha(0.9).Over(colors.Background), "full-width button fill")
 }
 
 // TestIconOnlyGroupedTogglesFillTheirSquare checks grouped icon-only
@@ -339,12 +339,12 @@ func TestIconOnlyGroupedTogglesFillTheirSquare(t *testing.T) {
 		ui.Column(c).FillWidth().FillHeight().Padding(24).
 			Background(colors.Background).Children(func() {
 			mygoui.ToggleButton(c, mygoui.ToggleButtonOptions{
-				Label: "Solo", Icon: icon, IconOnly: true, Selected: &solo,
+				Label: "Solo", Icon: icon, IconOnly: true, Variant: mygoui.ToggleOutline, Selected: &solo,
 			})
 			mygoui.ToggleButtonGroup(c, mygoui.ToggleButtonGroupOptions{},
-				mygoui.ToggleButtonOptions{Label: "One", Icon: icon, IconOnly: true, Selected: &one},
-				mygoui.ToggleButtonOptions{Label: "Two", Icon: icon, IconOnly: true, Selected: &two},
-				mygoui.ToggleButtonOptions{Label: "Three", Icon: icon, IconOnly: true, Selected: &three},
+				mygoui.ToggleButtonOptions{Label: "One", Icon: icon, IconOnly: true, Variant: mygoui.ToggleOutline, Selected: &one},
+				mygoui.ToggleButtonOptions{Label: "Two", Icon: icon, IconOnly: true, Variant: mygoui.ToggleOutline, Selected: &two},
+				mygoui.ToggleButtonOptions{Label: "Three", Icon: icon, IconOnly: true, Variant: mygoui.ToggleOutline, Selected: &three},
 			)
 		})
 	}, 360, 200)
@@ -355,17 +355,16 @@ func TestIconOnlyGroupedTogglesFillTheirSquare(t *testing.T) {
 		if !ok {
 			t.Fatalf("%q missing", label)
 		}
-		if rect.W < 35 || rect.W > 37 || rect.H < 35 || rect.H > 37 {
-			t.Fatalf("%q box = %+v, want a 36 DIP square", label, rect)
+		if rect.W != 32 || rect.H != 32 {
+			t.Fatalf("%q box = %+v, want a 32 DIP square", label, rect)
 		}
 		rects = append(rects, rect)
 	}
 
 	first := rects[0]
 	mid := int(first.Y + first.H/2)
-	// A standalone icon-only toggle is the reference: the layer must place
-	// the icon exactly as the unchanged uniform-radius path does. Compare
-	// before hovering, so both faces and their antialiasing match.
+	// Compare with a standalone outline toggle before hovering, so both
+	// faces and their antialiasing match.
 	x0, x1, ok := darkSpan(tt.Image(), first)
 	if !ok {
 		t.Fatal("the icon is not painted")
@@ -380,7 +379,9 @@ func TestIconOnlyGroupedTogglesFillTheirSquare(t *testing.T) {
 	}
 	groupX0, groupX1 := x0-int(first.X), x1-int(first.X)
 	soloX0, soloX1 := sx0-int(soloRect.X), sx1-int(soloRect.X)
-	if groupX0 != soloX0 || groupX1 != soloX1 {
+	// Joining removes an interior outline border; half-pixel centering can
+	// shift the rasterized glyph by one pixel without changing its alignment.
+	if groupX0-soloX0 < -1 || groupX0-soloX0 > 1 || groupX1-soloX1 < -1 || groupX1-soloX1 > 1 {
 		t.Fatalf("grouped icon span %d..%d in %+v differs from standalone %d..%d in %+v",
 			groupX0, groupX1, first, soloX0, soloX1, soloRect)
 	}
@@ -389,13 +390,13 @@ func TestIconOnlyGroupedTogglesFillTheirSquare(t *testing.T) {
 	tt.Frame()
 	img := tt.Image()
 	wantPixel(t, img, int(first.X)+1, int(first.Y)+1, colors.Background, "icon-only outer corner")
-	wantPixel(t, img, int(first.X+first.W)-3, mid, colors.AccentSoftHover.Over(colors.AccentSoft.Over(colors.Background)), "icon-only fill")
+	wantPixel(t, img, int(first.X+first.W)-3, mid, colors.Input.Over(colors.Background), "icon-only fill")
 
 	mid2 := rects[1]
 	tt.Move(mid2.X+mid2.W/2, mid2.Y+mid2.H/2)
 	tt.Frame()
 	img = tt.Image()
-	wantPixel(t, img, int(mid2.X)+1, int(mid2.Y)+1, colors.AccentSoftHover.Over(colors.AccentSoft.Over(colors.Background)), "icon-only square corner")
+	wantPixel(t, img, int(mid2.X)+1, int(mid2.Y)+1, colors.Input.Over(colors.Background), "icon-only square corner")
 }
 
 // TestGroupedFocusRingIsInset checks that joined buttons draw the focus
@@ -411,9 +412,9 @@ func TestGroupedFocusRingIsInset(t *testing.T) {
 		ui.Column(c).FillWidth().FillHeight().Padding(24).
 			Background(colors.Background).Children(func() {
 			mygoui.ToggleButtonGroup(c, mygoui.ToggleButtonGroupOptions{},
-				mygoui.ToggleButtonOptions{Label: "One", Selected: &one},
-				mygoui.ToggleButtonOptions{Label: "Two", Selected: &two},
-				mygoui.ToggleButtonOptions{Label: "Three", Selected: &three},
+				mygoui.ToggleButtonOptions{Label: "One", Variant: mygoui.ToggleOutline, Selected: &one},
+				mygoui.ToggleButtonOptions{Label: "Two", Variant: mygoui.ToggleOutline, Selected: &two},
+				mygoui.ToggleButtonOptions{Label: "Three", Variant: mygoui.ToggleOutline, Selected: &three},
 			)
 		})
 	}, 360, 160)
@@ -429,11 +430,11 @@ func TestGroupedFocusRingIsInset(t *testing.T) {
 	tt.Frame()
 	img := tt.Image()
 	mid := int(rect.Y + rect.H/2)
-	selected := colors.AccentSoft.Over(colors.Background)
+	selected := colors.Input.Alpha(0.64).Over(colors.Background)
 	wantPixel(t, img, int(rect.X)+2, mid, colors.Focus, "inset ring")
 	wantPixel(t, img, int(rect.X)-2, mid, colors.Background, "outward ring")
 	wantPixel(t, img, int(rect.X+rect.W)-2, mid, colors.Focus, "shared-edge ring")
-	wantPixel(t, img, int(rect.X)+7, mid, selected, "fill inside the ring")
+	wantPixel(t, img, int(rect.X)+6, mid, selected, "fill inside the ring")
 
 	tt.Key(0, ui.KeyTab)
 	if !tt.Focused("Two") {

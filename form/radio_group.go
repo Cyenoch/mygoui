@@ -10,7 +10,7 @@ import (
 // focus and arrow-key selection through the native radio group; each radio
 // carries its own RadioGroupState.
 //
-// Disabled disables the whole group and paints it at half opacity. Invalid
+// Disabled disables the whole group. Invalid
 // marks the group's error; each radio must also be given Invalid for its
 // danger outline, because radio state is explicit.
 type RadioGroupOptions struct {
@@ -24,7 +24,7 @@ type RadioGroupOptions struct {
 	FullWidth   bool
 }
 
-// RadioGroup is HeroUI's radio group: a labelled container of radio buttons
+// RadioGroup is a labelled container of radio buttons
 // that form one Tab stop, with the arrows, Home and End moving the choice.
 func RadioGroup(c *ui.Context, o RadioGroupOptions, body func()) ui.Element {
 	errText := choiceErrorText(o.Invalid, o.Error)
@@ -51,11 +51,9 @@ func RadioGroup(c *ui.Context, o RadioGroupOptions, body func()) ui.Element {
 			group.Error(errText)
 		}
 		if o.Orientation == GroupHorizontal {
-			group.Row().Wrap().Gap(theme.Space16)
+			group.Row().Wrap().Gap(theme.Space12)
 		} else {
-			// HeroUI's first radio sits 16 DIP under the label block: the
-			// group's 4 DIP line gap plus 12 DIP before the item column.
-			group.Column().Gap(theme.Space16).Padding(theme.Space12, 0, 0, 0)
+			group.Column().Gap(theme.Space12)
 		}
 		group.Disabled(disabled)
 		if errText != "" {

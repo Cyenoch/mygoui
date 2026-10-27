@@ -5,7 +5,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// Orientation is a HeroUI layout direction.
+// Orientation is a horizontal or vertical layout direction.
 type Orientation uint8
 
 const (
@@ -13,7 +13,7 @@ const (
 	Vertical
 )
 
-// SeparatorColor is HeroUI's separator emphasis.
+// SeparatorColor selects the divider's emphasis.
 type SeparatorColor uint8
 
 const (
@@ -28,7 +28,7 @@ type SeparatorOptions struct {
 	Color       SeparatorColor
 }
 
-// Separator draws a 1 DIP rule. Vertical rules stretch to the row height.
+// Separator draws a decorative 1 DIP rule. Vertical rules stretch to the row height.
 func Separator(c *ui.Context, o SeparatorOptions) ui.Element {
 	t := theme.Colors(c)
 	color := t.Separator

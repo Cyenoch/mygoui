@@ -1,5 +1,5 @@
-// Package list implements HeroUI v3's ListBox: a virtualized collection of
-// selectable rows grouped in labelled sections.
+// Package list provides virtualized, selectable rows with Coss-inspired
+// appearance and optional labelled sections.
 //
 // The caller owns the items, the selection and the scroll state. Rows are
 // built lazily by MyGo's List, so long collections stay cheap; keyboard
@@ -17,7 +17,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// SelectionMode is HeroUI's list-box selection behavior.
+// SelectionMode specifies how a list chooses its rows.
 type SelectionMode uint8
 
 const (
@@ -29,7 +29,7 @@ const (
 	SelectionMultiple
 )
 
-// ListBoxVariant is HeroUI's list-box color treatment.
+// ListBoxVariant selects the row color treatment.
 type ListBoxVariant uint8
 
 const (
@@ -45,7 +45,7 @@ type ListBoxItemOptions struct {
 	Indicator *bool
 	// Variant overrides the list's color for this row.
 	Variant ListBoxVariant
-	// Height overrides HeroUI's 36 DIP minimum row height.
+	// Height overrides the 28 DIP minimum row height.
 	Height float32
 }
 
@@ -98,7 +98,7 @@ type ListBoxOptions struct {
 	Items []ListBoxItem
 	// Sections are labelled groups shown in order.
 	Sections []ListBoxSection
-	// Selection selects HeroUI's selection mode. The zero value allows no
+	// Selection selects the selection mode. The zero value allows no
 	// choice, only OnAction.
 	Selection SelectionMode
 	// Variant colors the list's rows.
@@ -111,7 +111,7 @@ type ListBoxOptions struct {
 	Height float32
 	// MaxHeight caps a content-sized viewport in DIPs.
 	MaxHeight float32
-	// Padding is the content inset; zero uses HeroUI's 4 DIP base, scaled
+	// Padding is the content inset; zero uses the 4 DIP base, scaled
 	// with the host's text scale.
 	Padding float32
 	// Empty is shown when the list has no rows.
@@ -119,6 +119,12 @@ type ListBoxOptions struct {
 	// NoFocusOnClick leaves the keyboard focus where it is, as a text
 	// input's popup needs.
 	NoFocusOnClick bool
+	// KeyboardHighlight paints the highlighted row while a separate editor
+	// drives navigation. Pointer movement updates the same highlight.
+	KeyboardHighlight bool
+	// IndicatorStart places selection checks before the label, as in Coss
+	// select and combobox menus. The default keeps checks at the end.
+	IndicatorStart bool
 	// OnAction reports a row activated by a click, Enter or Space.
 	OnAction func(key string)
 	// OnSelectionChange reports the chosen keys after a user change.
@@ -140,6 +146,11 @@ type ListBoxState struct {
 	rows       []listBoxRow
 	pending    string
 	hasPending bool
+	pointerX   float32
+	pointerY   float32
+	pointerKey string
+	pointerIn  bool
+	pointerHit bool
 }
 
 // listBoxRow is a flattened row, kept between frames for keyboard handling.
@@ -189,7 +200,7 @@ func (s *ListBoxState) SetSelected(mode SelectionMode, key string, on bool) {
 }
 
 // Toggle flips the choice of key for mode. Single mode always ends with key
-// chosen; choosing the chosen row again keeps it, as HeroUI's select does.
+// chosen; choosing the chosen row again keeps it.
 func (s *ListBoxState) Toggle(mode SelectionMode, key string) {
 	switch mode {
 	case SelectionSingle:
@@ -478,7 +489,7 @@ func (s *ListBoxState) typeahead(r rune) string {
 	return ""
 }
 
-// ListBox renders a HeroUI list box. Rows are virtualized through the native
+// ListBox renders a list box. Rows are virtualized through the native
 // List, and hover, highlight and check paints read live pointer and focus
 // state.
 func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
@@ -490,7 +501,7 @@ func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
 	if s.List.Key == nil {
 		s.List.Key = s.keyAt
 		s.List.Label = s.labelAt
-		// Headers scroll with their section, as HeroUI's do. The native
+		// Headers scroll with their section. The native
 		// ListState.Header would pin them to the viewport top, where they
 		// would overlap the rows scrolling under them.
 		s.List.Header = nil
@@ -504,20 +515,20 @@ func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
 	mode := o.Selection
 	st := rowStyle{
 		palette: t,
-		radius:  theme.RadiusScale().XXL,
+		radius:  theme.RadiusScale().SM,
 		padX:    theme.Scale(c, theme.Space8),
-		padY:    theme.Scale(c, theme.Space6),
-		gap:     theme.Scale(c, theme.Space12),
-		// HeroUI reserves pe-7 for the absolutely placed indicator and puts
-		// the 16 DIP mark 8 DIP from the row's end.
+		padY:    theme.Scale(c, theme.Space4),
+		gap:     theme.Scale(c, theme.Space8),
+		// The trailing indicator reserves its own space alongside the label.
 		endPad:   theme.Scale(c, theme.Space(7)),
 		mark:     theme.Scale(c, theme.Space16),
 		check:    theme.Scale(c, theme.Space(2.5)),
-		blockGap: theme.Scale(c, theme.Space4),
+		blockGap: 0,
 	}
 	// The list's focus is the same for every row built in this pass; resolve
 	// it once, when the first row is built and the list is bound.
 	var focused, focusKnown bool
+	s.pointerHit = false
 	list := ui.List(c, &s.List, n, func(i int) {
 		if !focusKnown {
 			focused = c.Resolve(s.List.Handle).FocusVisible()
@@ -526,6 +537,7 @@ func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
 		buildRow(c, s, o, i, st, focused)
 	}).Padding(padding).Gap(0).MinWidth(0).FillWidth().
 		Focusable().FocusRing(false).Label(o.Label)
+	s.pointerIn = s.pointerHit
 	if o.Height > 0 {
 		list.Height(o.Height)
 	}
@@ -547,16 +559,14 @@ func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
 	return list
 }
 
-// rowStyle is the measured form of a list's options, shared by the rows built
-// in one pass. Spacing and icons follow HeroUI's rem metrics, so they scale
-// with the host's text scale.
+// rowStyle holds metrics shared by the rows built in one pass.
 type rowStyle struct {
 	palette             theme.Palette
 	radius              float32
 	padX, padY, gap     float32
 	endPad, mark, check float32
 	// blockGap separates a block: an ungrouped row, or a whole section. A
-	// section's own rows sit flush, as HeroUI's gap-0 section does.
+	// section's own rows sit flush.
 	blockGap float32
 }
 
@@ -593,7 +603,7 @@ func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, st rowSty
 	}
 	height := it.Options.Height
 	if height == 0 {
-		height = 36
+		height = 28
 	}
 	showIndicator := indicator(o.Selection, it)
 	selected := s.IsSelected(r.key)
@@ -602,25 +612,39 @@ func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, st rowSty
 		MinHeight(theme.Scale(c, height)).Radius(st.radius).Clip().
 		Label(it.Label).TextColor(fg)
 	if showIndicator {
-		row.PaddingEnd(st.endPad)
+		if o.IndicatorStart {
+			row.PaddingStart(st.padX + st.mark + st.gap)
+		} else {
+			row.PaddingEnd(st.endPad)
+		}
 	}
-	highlighted := s.Highlight == i
-	// Selected sets the toolkit's accent face; HeroUI's selected row changes
-	// only its indicator, so the fill is cleared while the chosen state stays
-	// for assistive technology.
+	// The selected state is exposed to assistive technology; its indicator
+	// marks the choice while hover and keyboard highlight paint the surface.
 	row.Selected(selected).TextColor(fg).Background(ui.Transparent)
 	// Snapshot the row's hover in the build: a retained copy of a leaving
 	// row paints in later passes, where row has expired.
-	hovered := row.Hovered()
+	enabled := !o.Disabled && !it.Disabled
+	hovered := enabled && row.Hovered()
+	if o.KeyboardHighlight && enabled {
+		x, y, over := row.PointerPosition()
+		if over {
+			x, y = row.LocalToWindow(x, y)
+			if !s.pointerIn || x != s.pointerX || y != s.pointerY || r.key != s.pointerKey {
+				s.Highlight = i
+				s.pointerX, s.pointerY, s.pointerKey = x, y, r.key
+			}
+			s.pointerHit = true
+		}
+	}
 	row.Draw(func(p *ui.Painter, box ui.Rect) {
-		if hovered {
-			p.Fill(box, st.palette.Default, st.radius)
+		highlighted := s.Highlight == i
+		if enabled && (hovered && !o.KeyboardHighlight || highlighted && (focused || o.KeyboardHighlight)) {
+			p.Fill(box, st.palette.Accent, st.radius)
 		}
 		if focused && highlighted {
 			p.FocusRing(box, [4]float32{st.radius, st.radius, st.radius, st.radius})
 		}
 	})
-	enabled := !o.Disabled && !it.Disabled
 	if enabled {
 		row.Cursor(ui.CursorPointer)
 	}
@@ -644,7 +668,7 @@ func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, st rowSty
 			it.End()
 		}
 		if showIndicator {
-			indicatorMark(c, st, fg, selected)
+			indicatorMark(c, st, fg, selected, o.IndicatorStart)
 		}
 	})
 	if enabled {
@@ -672,14 +696,17 @@ func (st rowStyle) blockGapAfter(s *ListBoxState, i int) float32 {
 	return st.blockGap
 }
 
-// indicatorMark is HeroUI's absolutely placed check slot: the row reserves
-// its 28 DIP end padding, so the mark never moves the label. The mark scales
-// and fades in as the selection changes, as HeroUI's check draws in.
-func indicatorMark(c *ui.Context, st rowStyle, fg ui.Color, selected bool) {
-	mark := ui.Box(c).Absolute().End(theme.Scale(c, theme.Space8)).Top(0).Bottom(0).
+// indicatorMark places a check in the reserved leading or trailing slot.
+func indicatorMark(c *ui.Context, st rowStyle, fg ui.Color, selected, start bool) {
+	mark := ui.Box(c).Absolute().Top(0).Bottom(0).
 		Width(st.mark).Height(st.mark).
 		Margin(ui.Auto, 0, ui.Auto, 0).Center().
 		Role(ui.RoleNone)
+	if start {
+		mark.Start(st.padX)
+	} else {
+		mark.End(st.padX)
+	}
 	mark.Children(func() {
 		if theme.ReduceMotion(c) {
 			if selected {
@@ -765,5 +792,5 @@ func bindKeys(c *ui.Context, s *ListBoxState, list ui.Element, o ListBoxOptions,
 	}
 }
 
-// checkIcon is HeroUI's checkmark, shared and immutable.
+// checkIcon is the shared, immutable selection mark.
 var checkIcon = lucide.Check()

@@ -12,7 +12,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// ToastVariant is HeroUI's toast color treatment.
+// ToastVariant selects a toast's status color.
 type ToastVariant uint8
 
 const (
@@ -31,7 +31,7 @@ const (
 	ToastTop
 )
 
-// ToastOptions configures one HeroUI toast. Zero Timeout uses MyGo's four
+// ToastOptions configures one toast. Zero Timeout uses MyGo's four
 // seconds; a negative Timeout keeps the toast until it is closed or updated.
 type ToastOptions struct {
 	// ID names the toast. Showing an ID that is already visible updates it
@@ -39,8 +39,9 @@ type ToastOptions struct {
 	ID          string
 	Title       string
 	Description string
-	Action      string
-	Variant     ToastVariant
+	// Action is shown only when OnAction is provided.
+	Action  string
+	Variant ToastVariant
 	// Placement moves the whole region; the last shown toast's placement
 	// wins.
 	Placement ToastPlacement
@@ -69,7 +70,7 @@ type ToastState struct {
 	seq       int
 }
 
-// Toast shows or updates a HeroUI toast. Call it from an event handler, not
+// Toast shows or updates a toast. Call it from an event handler, not
 // in the view body; install the region once with ToastState.View. It returns
 // the toast's ID for Dismiss.
 func Toast(c *ui.Context, s *ToastState, o ToastOptions) string {
@@ -79,6 +80,9 @@ func Toast(c *ui.Context, s *ToastState, o ToastOptions) string {
 	s.placement = o.Placement
 	if s.items == nil {
 		s.items = make(map[string]ToastItem, 4)
+	}
+	if o.OnAction == nil {
+		o.Action = ""
 	}
 	id := o.ID
 	if id == "" {
@@ -146,7 +150,7 @@ func (s *ToastState) remove(id string) {
 	}
 }
 
-// View installs the HeroUI toast region once per view, before modal views
+// View installs the toast region once per view, before modal views
 // when a dialog should cover notifications. The newest three form a deck
 // that expands on hover or keyboard focus; MyGo owns their lifetime.
 func (s *ToastState) View(c *ui.Context) ui.Element {
@@ -154,7 +158,7 @@ func (s *ToastState) View(c *ui.Context) ui.Element {
 		return ui.Element{}
 	}
 	w, h := c.Size()
-	width := min(float32(460), max(float32(0), w-theme.Space32))
+	width := min(float32(360), max(float32(0), w-theme.Space32))
 	room := max(float32(1), h-theme.Space32)
 	quiet := theme.ReduceMotion(c)
 	place := s.placement
@@ -246,7 +250,7 @@ type toastDragGeometry struct {
 
 var toastSpring = ui.Animation{Spring: ui.SpringOptions{Duration: 320 * time.Millisecond}}
 
-// toastContentFade is HeroUI's 200 ms fade of a card's content as the deck
+// toastContentFade fades a card's content as the deck
 // expands and collapses.
 var toastContentFade = ui.Animation{Duration: 200 * time.Millisecond}
 
@@ -278,7 +282,7 @@ func measureToast(c *ui.Context, t ui.Toast, width, line float32, withHeight boo
 		m.actionWidth, _ = c.MeasureText(0, span)
 		m.actionWidth += theme.Space32
 		m.bodyWidth -= m.actionWidth + theme.Space6
-		row = max(row, theme.Scale(c, theme.HeightButtonMD))
+		row = max(row, theme.Scale(c, 24))
 	}
 	m.bodyWidth = max(float32(1), m.bodyWidth)
 	var body float32
@@ -337,13 +341,13 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 	}
 	parts := ui.ToastBase(c, t)
 	root := parts.Root.Absolute().Label(label).
-		Radius(overlayRadius()).
-		Background(pal.Surface).TextColor(pal.OverlayForeground)
+		Radius(theme.RadiusScale().LG).
+		Background(pal.Popover).TextColor(pal.PopoverForeground).Border(theme.Hairline, pal.Border)
 	root = panelElevation(c, root)
 	top, height := layout.top, layout.height
 	left := (layout.full - layout.width) / 2
 	width := layout.width
-	// HeroUI enters and leaves the deck by the card's own height, from the
+	// The deck enters and leaves by the card's own height, from the
 	// window edge: translateY(100%) below and -100% above. The deck keeps a
 	// 16 DIP gutter, so include it or the first frame leaves a sliver of the
 	// card visible at the edge. The entrance is declared geometry, which MyGo
@@ -403,7 +407,7 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 	root.Children(func() {
 		row := ui.Row(c.Key("toast-content")).Fill().AlignItems(ui.Start).
 			Gap(theme.Space6).Padding(theme.Space12, theme.Space16).Clip()
-		// HeroUI fades a covered card's content out, leaving only the top
+		// A covered card's content fades out, leaving only the top
 		// sliver of its face; the deck's expansion reveals it again.
 		reveal := float32(1)
 		if layout.width < layout.full {
@@ -430,10 +434,10 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 			})
 			if t.Action != "" {
 				action := parts.ActionButton().Label(t.Action).Width(layout.metrics.actionWidth).
-					MinHeight(theme.Scale(c, theme.HeightButtonMD)).PaddingX(theme.Space16).
-					Center().Shrink(0).Radius(theme.RadiusScale().XXXL).FocusRing(true)
+					MinHeight(theme.Scale(c, 24)).PaddingX(theme.Space16).
+					Center().Shrink(0).Radius(theme.RadiusScale().MD).FocusRing(true)
 				bg, hover, fg := toastActionColors(pal, variant)
-				action = style.Background(action, theme.RadiusScale().XXXL, bg, hover, hover).TextColor(fg)
+				action = style.Background(action, theme.RadiusScale().MD, bg, hover, hover).TextColor(fg)
 				action.Draggable(nil, ui.DraggableOptions{Axis: ui.Horizontal, Bounds: &ui.Rect{}, Rigid: true})
 				action.Children(func() {
 					style.Text(ui.Text(c, t.Action), c, theme.SM()).
@@ -472,27 +476,20 @@ func toastGlyph(v ToastVariant) *ui.SVG {
 }
 
 func toastInk(p theme.Palette, v ToastVariant) (title, icon ui.Color) {
+	icon = p.PopoverForeground
 	switch v {
 	case ToastAccent:
-		return p.AccentSoftForeground, p.AccentSoftForeground
+		icon = p.Info
 	case ToastSuccess:
-		return p.SuccessSoftForeground, p.SuccessSoftForeground
+		icon = p.Success
 	case ToastWarning:
-		return p.WarningSoftForeground, p.WarningSoftForeground
+		icon = p.Warning
 	case ToastDanger:
-		return p.DangerSoftForeground, p.DangerSoftForeground
+		icon = p.Destructive
 	}
-	return p.OverlayForeground, p.OverlayForeground
+	return p.PopoverForeground, icon
 }
 
-func toastActionColors(p theme.Palette, v ToastVariant) (bg, hover, fg ui.Color) {
-	switch v {
-	case ToastSuccess:
-		return p.Success, p.SuccessHover, p.SuccessForeground
-	case ToastWarning:
-		return p.Warning, p.WarningHover, p.WarningForeground
-	case ToastDanger:
-		return p.Danger, p.DangerHover, p.DangerForeground
-	}
-	return p.Accent, p.AccentHover, p.AccentForeground
+func toastActionColors(p theme.Palette, _ ToastVariant) (bg, hover, fg ui.Color) {
+	return p.Primary, p.Primary.Alpha(0.9), p.PrimaryForeground
 }

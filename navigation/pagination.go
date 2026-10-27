@@ -10,7 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// PaginationSize is HeroUI's pagination scale.
+// PaginationSize chooses the height of the page controls.
 type PaginationSize uint8
 
 const (
@@ -21,7 +21,7 @@ const (
 
 // PaginationOptions configures page navigation. Page is 1-based and
 // caller-owned; nil keeps it internally. Siblings sets the pages shown around
-// the current one (default 1) and Boundaries the pages at each end (default
+// the current one (default 0) and Boundaries the pages at each end (default
 // 1). PreviousLabel and NextLabel override the locale's names. Summary builds
 // the line beside the controls, as "1-10 of 120 results".
 type PaginationOptions struct {
@@ -48,6 +48,9 @@ func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 	pages := max(o.Pages, 1)
 	root := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(scale(c, theme.Space16)).
 		Role(ui.RoleGroup).MinWidth(0)
+	if o.Summary == nil {
+		root.Justify(ui.Center)
+	}
 	if o.Label != "" {
 		root.Label(o.Label)
 	}
@@ -63,7 +66,7 @@ func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 	}
 	*page = max(1, min(*page, pages))
 
-	size, font, navPad, radius := float32(32), theme.SM(), float32(10), theme.RadiusScale().XXXL
+	size, font, navPad, radius := float32(32), theme.SM(), float32(10), theme.RadiusScale().MD
 	switch o.Size {
 	case PaginationSmall:
 		size, font, navPad = 28, theme.XS(), 8
@@ -81,10 +84,16 @@ func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 		nextLabel = locale.M().Next
 	}
 
-	nav := func(label string, icon *ui.SVG, to int, enabled bool) {
-		btn := ui.ButtonBase(c).Height(size).MinWidth(size).PaddingX(scale(c, navPad)).
+	windowWidth, _ := c.Size()
+	narrow := windowWidth < 640
+	nav := func(label string, icon *ui.SVG, to int, enabled, trailing bool) {
+		padding := navPad
+		if narrow {
+			padding = 0
+		}
+		btn := ui.ButtonBase(c).Height(size).MinWidth(size).PaddingX(scale(c, padding)).
 			Center().Gap(scale(c, theme.Space6)).Shrink(0).Radius(radius).FocusRing(true).Label(label)
-		btn = style.Background(btn, radius, ui.Transparent, t.DefaultHover, t.DefaultHover)
+		btn = style.Background(btn, radius, ui.Transparent, t.Accent, t.Accent)
 		btn.TextColor(t.DefaultForeground)
 		if enabled {
 			target := to
@@ -99,10 +108,15 @@ func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 			})
 		}
 		btn.Children(func() {
-			if icon != nil {
+			if icon != nil && !trailing {
 				ui.Icon(c, icon).Size(scale(c, theme.IconMD), scale(c, theme.IconMD)).Shrink(0)
 			}
-			style.Text(ui.Text(c, label), c, font).FontWeight(theme.WeightMedium)
+			if !narrow {
+				style.Text(ui.Text(c, label), c, font).FontWeight(theme.WeightMedium)
+			}
+			if icon != nil && trailing {
+				ui.Icon(c, icon).Size(scale(c, theme.IconMD), scale(c, theme.IconMD)).Shrink(0)
+			}
 		})
 		style.Disabled(btn, !enabled)
 	}
@@ -118,13 +132,13 @@ func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 			content.MarginStart(ui.Auto)
 		}
 		build := func() {
-			nav(previous, lucide.ChevronLeft(), *page-1, *page > 1)
+			nav(previous, lucide.ChevronLeft(), *page-1, *page > 1, false)
 			for _, n := range pageSlots(*page, pages, o.Siblings, o.Boundaries) {
 				if n == 0 {
-					ellipsis := ui.Box(c).Size(size, size).Center().Shrink(0).Role(ui.RoleNone)
-					ellipsis.TextColor(t.Muted)
+					ellipsis := ui.Box(c).Size(scale(c, 28), size).Center().Shrink(0).
+						Role(ui.RoleText).Label(locale.M().MorePages).TextColor(t.Foreground)
 					ellipsis.Children(func() {
-						style.Text(ui.Text(c, "\u2026"), c, font).TextColor(t.Muted)
+						ui.Icon(c, lucide.MoreHorizontal()).Size(scale(c, 16), scale(c, 16))
 					})
 					continue
 				}
@@ -137,10 +151,18 @@ func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 				btn := ui.ButtonBase(c).Size(size, size).Center().Shrink(0).Radius(radius).
 					FocusRing(true).Label(label)
 				bg := ui.Transparent
+				hover := t.Accent
 				if active {
-					bg = t.Default
+					bg, hover = t.Popover, t.Accent.Alpha(0.5)
+					if c.Theme().Dark {
+						bg, hover = t.Input.Alpha(0.32), t.Input.Alpha(0.64)
+					}
+					btn.Border(hairline, t.Input)
+					if !btn.Pressed() {
+						btn = style.Shadow(btn, c, theme.FieldShadows(c.Theme().Dark))
+					}
 				}
-				btn = style.Background(btn, radius, bg, t.DefaultHover, t.DefaultHover)
+				btn = style.Background(btn, radius, bg, hover, hover)
 				btn.TextColor(t.DefaultForeground)
 				if !active {
 					btn.OnClick(func() {
@@ -154,7 +176,7 @@ func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 					style.Text(ui.Text(c, strconv.Itoa(number)), c, font).FontWeight(theme.WeightMedium)
 				})
 			}
-			nav(nextLabel, lucide.ChevronRight(), *page+1, *page < pages)
+			nav(nextLabel, lucide.ChevronRight(), *page+1, *page < pages, true)
 		}
 		content.Children(build)
 	})

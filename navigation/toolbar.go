@@ -8,7 +8,7 @@ import (
 )
 
 // ToolbarOptions configures a toolbar. Items builds its controls; use
-// ToolbarSeparator between groups. Attached gives the HeroUI surface pill.
+// ToolbarSeparator between groups. Attached gives the toolbar a bordered card surface.
 type ToolbarOptions struct {
 	Orientation mygoui.Orientation
 	Attached    bool
@@ -32,8 +32,8 @@ func Toolbar(c *ui.Context, o ToolbarOptions) ui.Element {
 		root.Row().AlignItems(ui.Center)
 	}
 	if o.Attached {
-		radius := min(scale(c, theme.Space32), theme.RadiusScale().XXXL)
-		root.Background(t.Surface).TextColor(t.SurfaceForeground).Radius(radius).Clip().
+		radius := theme.RadiusScale().XL
+		root.Background(t.Card).TextColor(t.CardForeground).Border(theme.Hairline, t.Border).Radius(radius).Clip().
 			Padding(scale(c, theme.Space4))
 		// shadow-overlay is the whole rim: in dark mode it is an inset
 		// hairline, so no extra border is added.
@@ -46,7 +46,7 @@ func Toolbar(c *ui.Context, o ToolbarOptions) ui.Element {
 	return root
 }
 
-// ToolbarSeparator draws the HeroUI rule between groups of toolbar controls:
+// ToolbarSeparator draws a rule between groups of toolbar controls:
 // a short vertical rule in a horizontal toolbar and a short horizontal rule
 // in a vertical one. Orientation is explicit because Go composition has no
 // ambient toolbar context.

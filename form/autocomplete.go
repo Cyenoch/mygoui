@@ -1,10 +1,9 @@
 package form
 
 import (
-	"strings"
 	"time"
+	"unicode/utf8"
 
-	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/anchored"
 	"github.com/Cyenoch/mygoui/internal/style"
@@ -14,16 +13,18 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// AutocompleteOptions configures a HeroUI autocomplete: a field-styled trigger
-// opening a searchable, virtualized list.
+// AutocompleteOptions configures an editable input with a filtered,
+// virtualized popup list.
 //
 // Loading is the caller's async indicator; the component never performs I/O.
 // State is required and caller-owned.
 type AutocompleteOptions struct {
-	Label             string
-	Description       string
-	Error             string
-	Placeholder       string
+	Label       string
+	Description string
+	Error       string
+	Placeholder string
+	// SearchPlaceholder and SearchLabel are fallbacks for the editor when
+	// Placeholder or Label is empty. There is no separate search field.
 	SearchPlaceholder string
 	SearchLabel       string
 	Empty             string
@@ -42,10 +43,12 @@ type AutocompleteOptions struct {
 	Placement         mygoui.Placement
 
 	// Filter overrides the default case-insensitive substring match on Label.
+	// Options are scanned on popup builds; Filter must not perform side effects.
 	Filter func(query string, item *list.ListBoxItem) bool
 	// OnChange reports the chosen keys in item order.
 	OnChange func(keys []string)
-	// OnQueryChange reports each search text change for caller-owned async work.
+	// OnQueryChange reports user edits and text changes made by choosing or
+	// clearing an option, including resets after multiple selection.
 	OnQueryChange func(query string)
 }
 
@@ -56,20 +59,24 @@ type AutocompleteState struct {
 	List list.ListBoxState
 	// Open reports whether the popup shows.
 	Open bool
-	// Query is the search text in the popup.
+	// Query is the editor text. In single mode a choice replaces it with the
+	// chosen label; in multiple mode it is the current filter text.
 	Query string
-	// Trigger focuses the trigger field.
+	// Trigger identifies the editable input.
 	Trigger ui.Handle
-	// Search focuses the popup's search input.
+	// Search identifies the same input.
 	Search ui.Handle
 
-	focusSearch  bool
+	dirty        bool
+	escaped      bool
+	wasActive    bool
+	placeCaret   bool
+	displayedKey string
+	displayed    string
+	pending      pendingFilter
 	items        []list.ListBoxItem
 	sectionItems []list.ListBoxItem
 	sections     []list.ListBoxSection
-	filtered     bool
-	filterQuery  string
-	filterSource listSource
 }
 
 // SelectedKeys returns the chosen keys, single choice first.
@@ -85,19 +92,12 @@ func (s *AutocompleteState) SelectedKeys() []string {
 func (s *AutocompleteState) Clear() {
 	s.List.ClearSelection()
 	s.Query = ""
+	s.dirty = false
 }
 
-// applyFilter rebuilds the filtered items and sections in caller-owned scratch
-// capacity. An unchanged query over the same option slices reuses the last
-// result, so a rebuild for focus or a highlight does not rescan every option.
+// applyFilter rebuilds filtered options in caller-owned scratch capacity.
 func (s *AutocompleteState) applyFilter(o AutocompleteOptions, query string) {
-	src := sourceOf(o.Items, o.Sections)
-	if s.filtered && query == s.filterQuery && src == s.filterSource {
-		return
-	}
-	s.filtered, s.filterQuery, s.filterSource = true, query, src
-
-	totalSections := src.sectionItems
+	totalSections := sectionItemCount(o.Sections)
 	if cap(s.items) < len(o.Items) {
 		s.items = make([]list.ListBoxItem, 0, len(o.Items))
 	}
@@ -113,7 +113,9 @@ func (s *AutocompleteState) applyFilter(o AutocompleteOptions, query string) {
 	match := filterMatch(query, o.Filter)
 	for i := range o.Items {
 		if match(&o.Items[i]) {
-			s.items = append(s.items, o.Items[i])
+			item := o.Items[i]
+			item.Options.Indicator = &autoNoIndicator
+			s.items = append(s.items, item)
 		}
 	}
 	for si := range o.Sections {
@@ -121,7 +123,9 @@ func (s *AutocompleteState) applyFilter(o AutocompleteOptions, query string) {
 		start := len(s.sectionItems)
 		for ii := range sec.Items {
 			if match(&sec.Items[ii]) {
-				s.sectionItems = append(s.sectionItems, sec.Items[ii])
+				item := sec.Items[ii]
+				item.Options.Indicator = &autoNoIndicator
+				s.sectionItems = append(s.sectionItems, item)
 			}
 		}
 		if len(s.sectionItems) == start {
@@ -136,18 +140,36 @@ func (s *AutocompleteState) applyFilter(o AutocompleteOptions, query string) {
 	}
 }
 
-// Autocomplete renders a HeroUI autocomplete. The trigger is a field-styled
-// button; opening it moves the keyboard into a search field above a virtualized
-// list box.
+// Autocomplete renders a native editable input with an anchored list of
+// suggestions. The input retains focus while the popup is navigated. The list
+// API does not expose the highlighted row as an active descendant for
+// assistive technology.
 func Autocomplete(c *ui.Context, o AutocompleteOptions) ui.Element {
 	s := o.State
 	if s == nil {
 		panic("form: Autocomplete requires a caller-owned State")
 	}
 	mode := comboMode(o.Selection)
-	t := theme.Colors(c)
 	invalid := o.Invalid || o.Error != ""
 	errText := fieldMessage(invalid, o.Error)
+	if o.Disabled {
+		s.Open = false
+	}
+	if s.wasActive && !s.Trigger.Focused(c) && !s.List.FocusWithin(c) {
+		s.Open = false
+		s.escaped = false
+	}
+	if mode == list.SelectionSingle {
+		key := s.List.SelectedKey
+		label := ""
+		if key != "" {
+			label = labelOf(o.Items, o.Sections, key)
+		}
+		if (key != s.displayedKey || label != s.displayed) && !s.dirty && s.Query == s.displayed {
+			s.Query = label
+		}
+		s.displayedKey, s.displayed = key, label
+	}
 
 	root := ui.Column(c).MinWidth(0).Gap(theme.Space4)
 	if o.FullWidth {
@@ -157,69 +179,98 @@ func Autocomplete(c *ui.Context, o AutocompleteOptions) ui.Element {
 		if o.Label != "" {
 			fieldLabel(c, o.Label, o.Required, invalid, o.Disabled, &s.Trigger)
 		}
-		keys, labels := listChosen(o.Items, o.Sections, &s.List)
-		value := strings.Join(labels, ", ")
-		placeholder := value == ""
+		var keys, labels []string
+		if mode == list.SelectionMultiple {
+			keys, labels = listChosen(o.Items, o.Sections, &s.List)
+		}
+		placeholder := o.Placeholder
+		if placeholder == "" {
+			placeholder = o.SearchPlaceholder
+		}
 		name := o.Label
 		if name == "" {
-			name = o.Placeholder
+			name = o.SearchLabel
 		}
-
-		trigger := ui.ButtonBase(c).MinHeight(theme.Scale(c, theme.HeightInput)).
+		if name == "" {
+			name = placeholder
+		}
+		field := ui.Row(c).MinHeight(theme.Scale(c, 32)).
 			Padding(0, theme.Space12, 0, theme.Space12).Gap(theme.Space8).
-			AlignItems(ui.Center).Shrink(0).FocusRing(false).
-			Role(ui.RolePopUpButton).Expanded(s.Open).Value(value)
+			AlignItems(ui.Center).Shrink(0).FocusRing(false).Clip()
 		if o.FullWidth {
-			trigger.FillWidth()
+			field.FillWidth()
+		} else {
+			field.MinWidth(theme.Scale(c, inputDefaultWidth))
 		}
-		trigger.Label(name).Description(o.Description).Error(errText)
-		trigger = triggerSurface(trigger, c, o.Variant, invalid, o.Disabled)
-		trigger.Bind(&s.Trigger)
-
-		trigger.OnClick(func() {
+		if mode == list.SelectionMultiple {
+			field.Wrap().Gap(theme.Space4).PaddingY(theme.Space4)
+		}
+		field = fieldSurface(field, c, o.Variant, invalid, o.Disabled)
+		field.OnClick(func() {
 			if o.Disabled {
 				return
 			}
-			s.Open = !s.Open
-			if s.Open {
-				autoOpen(o, s)
-			}
+			s.escaped = false
+			s.Open = true
+			s.Trigger.Focus(c)
 		})
-		trigger.OnShortcut(0, ui.KeyDown, func() { autoOpen(o, s) })
-		trigger.OnShortcut(0, ui.KeyUp, func() { autoOpen(o, s) })
-		trigger.OnShortcut(0, ui.KeyEnter, func() { autoOpen(o, s) })
-		trigger.OnShortcut(0, ui.KeySpace, func() { autoOpen(o, s) })
-		if o.Clearable {
-			trigger.OnShortcut(0, ui.KeyBackspace, func() { autoClear(c, o, s) })
-			trigger.OnShortcut(0, ui.KeyDelete, func() { autoClear(c, o, s) })
-		}
-
-		trigger.Children(func() {
+		var input ui.Element
+		field.Children(func() {
 			if mode == list.SelectionMultiple {
 				for i, key := range keys {
 					k, label := key, labels[i]
 					comboChip(c, label, func() { autoRemove(c, o, s, k) })
 				}
-			} else if !placeholder {
-				style.Text(ui.Text(c, value), c, theme.SM()).
-					TextColor(t.FieldForeground).SingleLine().Grow(1).Shrink(1)
 			}
-			if placeholder {
-				style.Text(ui.Text(c, o.Placeholder), c, theme.SM()).
-					TextColor(t.FieldPlaceholder).SingleLine().Grow(1).Shrink(1)
+			c.Key("autocomplete-input")
+			input = ui.TextInputBase(c, &s.Query).Grow(1).MinWidth(0).Shrink(1).
+				FocusRing(false).Placeholder(placeholder).Label(name).
+				Description(o.Description).Error(errText)
+			if mode == list.SelectionMultiple {
+				input.MinWidth(theme.Scale(c, 48))
+			}
+			input = fieldText(input, c)
+			input.Role(ui.RoleComboBox).Expanded(s.Open).Bind(&s.Trigger).Bind(&s.Search)
+			input.OnTextKey(func(k ui.TextKey) bool { return autoTextKey(c, o, s, k, mode) })
+			if s.placeCaret {
+				s.placeCaret = false
+				end := utf8.RuneCountInString(s.Query)
+				input.SetTextSelection(end, end)
 			}
 			if o.Clearable {
-				if len(keys) > 0 && !o.Disabled {
+				if (s.Query != "" || s.List.SelectionCount(mode) > 0) && !o.Disabled {
 					selectClearButton(c, func() { autoClear(c, o, s) })
 				} else {
 					ui.Box(c).Width(theme.Scale(c, 20)).Height(theme.Scale(c, 20)).Shrink(0)
 				}
 			}
-			selectIndicator(c, s.Open)
 		})
-		style.Disabled(trigger, o.Disabled)
-
-		autoPopup(c, o, s, trigger, mode)
+		focused := s.Trigger.Focused(c)
+		active := focused || s.List.FocusWithin(c)
+		if focused && !s.wasActive && !s.Open && !o.Disabled && !s.escaped {
+			s.Open = true
+		}
+		s.wasActive = active
+		if input.Changed() {
+			s.dirty = true
+			s.Open = true
+			s.escaped = false
+			s.List.Highlight = 0
+			if o.OnQueryChange != nil {
+				o.OnQueryChange(s.Query)
+			}
+		}
+		if s.Open {
+			query := s.Query
+			if mode == list.SelectionSingle && !s.dirty && s.List.SelectedKey != "" {
+				query = ""
+			}
+			s.applyFilter(o, query)
+			s.pending.apply(&s.List, s.items, s.sections)
+		} else {
+			s.pending.active = false
+		}
+		autoPopup(c, o, s, field, mode)
 		if o.Description != "" && !invalid {
 			Description(c, o.Description)
 		}
@@ -230,29 +281,24 @@ func Autocomplete(c *ui.Context, o AutocompleteOptions) ui.Element {
 	return root
 }
 
-// autoOpen opens the popup and moves the keyboard to the search field.
-func autoOpen(o AutocompleteOptions, s *AutocompleteState) {
-	if o.Disabled || s.Open {
-		return
-	}
-	s.Open = true
-	s.focusSearch = true
-	s.Query = ""
-	s.List.Highlight = 0
-	if len(s.List.SelectedKey) > 0 {
-		s.List.SetHighlight(s.List.SelectedKey)
-	}
-}
-
 // autoClear clears the choice and the query.
 func autoClear(c *ui.Context, o AutocompleteOptions, s *AutocompleteState) {
 	if o.Disabled || (s.List.SelectionCount(comboMode(o.Selection)) == 0 && s.Query == "") {
 		return
 	}
+	hadSelection := s.List.SelectionCount(comboMode(o.Selection)) > 0
+	hadQuery := s.Query != ""
 	s.Clear()
+	s.dirty = false
 	s.Open = false
+	s.escaped = true
 	s.Trigger.Focus(c)
-	listNotify(o.Items, o.Sections, &s.List, o.OnChange)
+	if hadQuery && o.OnQueryChange != nil {
+		o.OnQueryChange("")
+	}
+	if hadSelection {
+		listNotify(o.Items, o.Sections, &s.List, o.OnChange)
+	}
 }
 
 // autoRemove takes one chosen key out.
@@ -268,125 +314,85 @@ func autoRemove(c *ui.Context, o AutocompleteOptions, s *AutocompleteState, key 
 	listNotify(o.Items, o.Sections, &s.List, o.OnChange)
 }
 
-// autoChoose applies a keyboard choice; the popup list has not selected it.
-func autoChoose(c *ui.Context, o AutocompleteOptions, s *AutocompleteState, key string, mode list.SelectionMode) {
+// autoSetSelection applies a keyboard choice.
+func autoSetSelection(s *AutocompleteState, key string, mode list.SelectionMode) {
 	if mode == list.SelectionSingle {
 		s.List.SelectedKey = key
 	} else {
 		s.List.Toggle(mode, key)
 	}
-	autoFinalize(c, o, s, key, mode)
 }
 
 // autoFinalize closes the popup for a choice the list already applied. It
 // must not mutate the selection again.
-func autoFinalize(c *ui.Context, o AutocompleteOptions, s *AutocompleteState, key string, mode list.SelectionMode) {
+func autoFinalize(s *AutocompleteState, o AutocompleteOptions, key string, mode list.SelectionMode) {
 	if mode == list.SelectionSingle {
 		s.Open = false
-		s.Query = ""
-		s.Trigger.Focus(c)
+		s.escaped = true
+		s.Query = labelOf(o.Items, o.Sections, key)
 	} else {
 		s.Query = ""
 		s.List.Highlight = 0
-		s.Search.Focus(c)
+	}
+	s.dirty = false
+	s.placeCaret = true
+}
+
+func autoNotify(o AutocompleteOptions, s *AutocompleteState, previous string) {
+	if s.Query != previous && o.OnQueryChange != nil {
+		o.OnQueryChange(s.Query)
 	}
 	listNotify(o.Items, o.Sections, &s.List, o.OnChange)
 }
 
-// autoPopup builds the searchable popup while it is open.
-func autoPopup(c *ui.Context, o AutocompleteOptions, s *AutocompleteState, trigger ui.Element, mode list.SelectionMode) {
-	if !s.Open {
-		return
-	}
+// autoPopup builds the suggestions without moving focus away from the editor.
+func autoPopup(c *ui.Context, o AutocompleteOptions, s *AutocompleteState, field ui.Element, mode list.SelectionMode) {
 	maxHeight := o.MaxHeight
 	if maxHeight == 0 {
 		maxHeight = 320
 	}
 	t := theme.Colors(c)
-	radius := theme.RadiusScale().XXXL
-	if radius > 32 {
-		radius = 32
-	}
+	radius := theme.RadiusScale().LG
 	empty := o.Empty
 	if empty == "" {
 		empty = locale.M().NoResults
 	}
-	searchName := o.SearchLabel
-	if searchName == "" {
-		searchName = locale.M().Search
-	}
-	searchPlaceholder := o.SearchPlaceholder
-	if searchPlaceholder == "" {
-		searchPlaceholder = searchName
-	}
-	query := s.Query
-	s.applyFilter(o, query)
-	anchor := trigger
-	ui.PopoverBase(c, trigger, &s.Open, func(panel ui.Element) {
+	anchor := field
+	ui.PopoverBase(c, field, &s.Open, func(panel ui.Element) {
 		if w := anchor.Bounds().W; w > 0 {
-			panel.MinWidth(w).MaxWidth(w)
+			panel.MinWidth(w)
 		} else {
 			panel.MinWidth(theme.Scale(c, 200))
 		}
-		panel.Padding(0).Radius(radius).Background(t.Overlay).Clip().KeepFocus()
+		panel.Padding(0).Radius(radius).Background(t.Popover).Border(theme.Hairline, t.Border).Clip().KeepFocus()
 		panel = style.Shadow(panel, c, theme.OverlayShadows(c.Theme().Dark))
-		panel = popoverMotion(c, panel, o.Placement, mygoui.SideBottom, 250*time.Millisecond)
-		anchored.Apply(panel, anchor, o.Placement, mygoui.SideBottom)
-		ui.Column(c).MinWidth(0).Padding(theme.Space8, 0, 0, 0).Children(func() {
-			searchRadius := theme.RadiusScale().Field
-			search := ui.Row(c).MinHeight(theme.Scale(c, theme.HeightInput)).
-				Margin(0, theme.Space8, 0, theme.Space8).
-				Padding(0, theme.Space8, 0, theme.Space8).Gap(theme.Space6).
-				AlignItems(ui.Center).Radius(searchRadius).Clip().
-				Border(theme.Hairline, t.FieldBorder).Background(t.Default)
-			var input ui.Element
-			search.Children(func() {
-				ui.Icon(c, autoSearchIcon).Size(theme.Scale(c, 14), theme.Scale(c, 14)).
-					Shrink(0).TextColor(t.Muted)
-				input = ui.TextInputBase(c, &s.Query).Grow(1).MinWidth(0).Shrink(1).
-					FocusRing(false).Placeholder(searchPlaceholder).
-					Label(searchName).Description(o.Description)
-				input = fieldText(input, c)
-				input.Bind(&s.Search)
-				if s.Query != "" {
-					selectClearButton(c, func() {
-						s.Query = ""
-						s.List.Highlight = 0
-						s.Search.Focus(c)
-						if o.OnQueryChange != nil {
-							o.OnQueryChange("")
-						}
-					})
-				}
-			})
-			if input.Changed() {
-				s.List.Highlight = 0
-				if o.OnQueryChange != nil {
-					o.OnQueryChange(s.Query)
-				}
-			}
-			searchShortcuts(c, o, s, search)
-			if s.focusSearch {
-				s.focusSearch = false
-				s.Search.Focus(c)
-			}
-
+		panel = popoverMotion(c, panel, o.Placement, mygoui.SideBottom, 150*time.Millisecond)
+		placement := o.Placement
+		if placement.Offset == 0 {
+			placement.Offset = 4
+		}
+		anchored.Apply(panel, anchor, placement, mygoui.SideBottom)
+		ui.Column(c).MinWidth(0).Children(func() {
 			listEmpty := empty
 			if o.Loading {
 				listEmpty = ""
 			}
 			list.ListBox(c, list.ListBoxOptions{
-				Label:          searchName,
-				Items:          s.items,
-				Sections:       s.sections,
-				Selection:      mode,
-				State:          &s.List,
-				Padding:        theme.Space6,
-				MaxHeight:      maxHeight,
-				Empty:          listEmpty,
-				NoFocusOnClick: true,
+				Label:             o.Label,
+				Items:             s.items,
+				Sections:          s.sections,
+				Selection:         mode,
+				State:             &s.List,
+				Padding:           theme.Space4,
+				MaxHeight:         maxHeight,
+				Empty:             listEmpty,
+				NoFocusOnClick:    true,
+				KeyboardHighlight: s.Trigger.Focused(c),
 				OnAction: func(key string) {
-					autoFinalize(c, o, s, key, mode)
+					previous := s.Query
+					autoFinalize(s, o, key, mode)
+					s.Trigger.Focus(c)
+					autoNotify(o, s, previous)
 				},
 			})
 			if o.Loading {
@@ -396,19 +402,62 @@ func autoPopup(c *ui.Context, o AutocompleteOptions, s *AutocompleteState, trigg
 	})
 }
 
-// searchShortcuts drives the list from the popup's search input.
-func searchShortcuts(c *ui.Context, o AutocompleteOptions, s *AutocompleteState, search ui.Element) {
-	search.OnShortcut(0, ui.KeyDown, func() { s.List.MoveHighlight(1) })
-	search.OnShortcut(0, ui.KeyUp, func() { s.List.MoveHighlight(-1) })
-	search.OnShortcut(0, ui.KeyEnter, func() {
-		if key := s.List.HighlightKey(); key != "" {
-			autoChoose(c, o, s, key, comboMode(o.Selection))
+// autoTextKey handles keys the native editor would otherwise consume.
+func autoTextKey(c *ui.Context, o AutocompleteOptions, s *AutocompleteState, k ui.TextKey, mode list.SelectionMode) bool {
+	if o.Disabled || k.Mods != 0 {
+		return false
+	}
+	switch k.Key {
+	case ui.KeyDown, ui.KeyUp, ui.KeyEnter, ui.KeyEscape:
+		if text := k.Text(); text != s.Query {
+			s.Query = text
+			s.dirty, s.Open, s.escaped = true, true, false
+			if o.OnQueryChange != nil {
+				o.OnQueryChange(text)
+			}
+			k.SetText(s.Query)
+			s.pending.reset(s.Query, o.Filter, o.Items, o.Sections)
 		}
-	})
-	search.OnShortcut(0, ui.KeyEscape, func() {
-		s.Open = false
-		s.Trigger.Focus(c)
-	})
+	}
+	switch k.Key {
+	case ui.KeyDown, ui.KeyUp:
+		if !s.Open {
+			s.Open = true
+			s.escaped = false
+		} else if s.pending.active && k.Key == ui.KeyDown {
+			s.pending.move(1)
+		} else if s.pending.active {
+			s.pending.move(-1)
+		} else if k.Key == ui.KeyDown {
+			s.List.MoveHighlight(1)
+		} else {
+			s.List.MoveHighlight(-1)
+		}
+		return true
+	case ui.KeyEnter:
+		if s.Open {
+			key := s.List.HighlightKey()
+			if s.pending.active {
+				key = s.pending.key()
+			}
+			if key != "" {
+				previous := k.Text()
+				autoSetSelection(s, key, mode)
+				autoFinalize(s, o, key, mode)
+				s.pending.active = false
+				k.SetText(s.Query)
+				autoNotify(o, s, previous)
+				return true
+			}
+		}
+	case ui.KeyEscape:
+		if s.Open {
+			s.Open = false
+			s.escaped = true
+			return true
+		}
+	}
+	return false
 }
 
 // loadingRow is the caller-owned async indicator.
@@ -421,4 +470,4 @@ func loadingRow(c *ui.Context) {
 	})
 }
 
-var autoSearchIcon = lucide.Search()
+var autoNoIndicator = false

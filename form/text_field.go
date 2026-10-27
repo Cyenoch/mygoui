@@ -4,7 +4,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// TextFieldOptions describes HeroUI's complete text field: a label,
+// TextFieldOptions describes a complete text field: a label,
 // description, error and one single-line input around the caller's value.
 type TextFieldOptions struct {
 	Value                     *string

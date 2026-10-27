@@ -13,8 +13,8 @@ import (
 
 // TestInjectedPaletteReachesComponentPaint traces one host palette through the
 // components a consuming application actually shows: an action button, an
-// outlined button (whose border is transparent), a selectable list, a dialog
-// panel and a toast card.
+// outlined button (whose border is transparent), a card, a selectable list, a
+// dialog panel and a toast card.
 func TestInjectedPaletteReachesComponentPaint(t *testing.T) {
 	theme.Configure(theme.Preferences{})
 	t.Cleanup(func() { theme.Configure(theme.Preferences{}) })
@@ -23,13 +23,13 @@ func TestInjectedPaletteReachesComponentPaint(t *testing.T) {
 	sheet := ui.RGB(40, 50, 60)
 	ink := ui.RGB(230, 240, 250)
 	muted := ui.RGB(120, 130, 140)
-	accent := ui.RGB(70, 95, 208)
+	primary := ui.RGB(70, 95, 208)
 	hover := ui.RGB(30, 40, 55)
 	overlayFace := ui.RGB(50, 60, 70)
 	theme.Configure(theme.Preferences{Palette: theme.PaletteOverrides{Light: &theme.PalettePatch{
-		Background: new(canvas), Surface: new(sheet), Foreground: new(ink), Muted: new(muted),
-		Accent: new(accent), Hover: new(hover), Overlay: new(overlayFace),
-		Border: new(ui.Transparent),
+		Background: new(canvas), Card: new(sheet), Foreground: new(ink), MutedForeground: new(muted),
+		Primary: new(primary), Accent: new(hover), Popover: new(overlayFace),
+		Border: new(ui.Transparent), Input: new(ui.Transparent),
 	}}})
 
 	var state list.ListBoxState
@@ -38,6 +38,9 @@ func TestInjectedPaletteReachesComponentPaint(t *testing.T) {
 		ui.Column(c).Padding(16).Gap(16).Children(func() {
 			mygoui.Button(c, mygoui.ButtonOptions{Label: "Launch", OnClick: func() {}})
 			mygoui.Button(c, mygoui.ButtonOptions{Label: "Outline", Variant: mygoui.ButtonOutline, OnClick: func() {}})
+			mygoui.Card(c, mygoui.CardOptions{Label: "Summary"}, func() {
+				mygoui.CardContent(c, func() { ui.Box(c).Height(24) })
+			})
 			list.ListBox(c, list.ListBoxOptions{
 				Label: "Fruit", Selection: list.SelectionSingle, State: &state,
 				Items: []list.ListBoxItem{
@@ -50,28 +53,32 @@ func TestInjectedPaletteReachesComponentPaint(t *testing.T) {
 	state.List.Selected = new(0)
 	tt.Frame()
 
-	if got := theme.ColorsForMode(false).Muted; got != muted {
+	if got := theme.ColorsForMode(false).MutedForeground; got != muted {
 		t.Fatalf("list text palette muted = %v, want the injected muted ink", got)
 	}
 
-	// The primary action paints the injected accent.
+	// The primary action paints the injected primary.
 	launch := findRect(t, tt, "Launch")
-	if got := pixel(tt.Image(), launch.X+2, launch.Y+launch.H/2); !same(got, accent) {
-		t.Errorf("primary button fill = %v, want the injected accent %v", got, accent)
+	if got := pixel(tt.Image(), launch.X+2, launch.Y+launch.H/2); !same(got, primary) {
+		t.Errorf("primary button fill = %v, want the injected primary %v", got, primary)
 	}
 
-	// A transparent border leaves the outlined button's edge unpainted, so the
-	// injected canvas shows through instead of HeroUI's border gray.
+	// An outline uses Popover for its face and Input for its border; a
+	// transparent Input must not add a second color at its edge.
 	outline := findRect(t, tt, "Outline")
-	if got := pixel(tt.Image(), outline.X+2, outline.Y+outline.H/2); !same(got, canvas) {
-		t.Errorf("outlined button edge = %v, want the canvas %v: a border was painted", got, canvas)
+	if got := pixel(tt.Image(), outline.X+2, outline.Y+outline.H/2); !same(got, overlayFace) {
+		t.Errorf("outlined button edge = %v, want the popover face %v: a border was painted", got, overlayFace)
+	}
+	card := findRect(t, tt, "Summary")
+	if got := pixel(tt.Image(), card.X+card.W/2, card.Y+card.H/2); !same(got, sheet) {
+		t.Errorf("card face = %v, want the injected card %v", got, sheet)
 	}
 
 	// A selected row keeps the native selection fill, which follows the
-	// injected accent; an idle row shows the canvas and the injected hover fill.
+	// injected primary; an idle row shows the canvas and the injected hover fill.
 	apple := findRect(t, tt, "Apple")
-	if got := pixel(tt.Image(), apple.X+2, apple.Y+apple.H/2); !same(got, accent) {
-		t.Errorf("selected row = %v, want the injected accent %v", got, accent)
+	if got := pixel(tt.Image(), apple.X+2, apple.Y+apple.H/2); !same(got, primary) {
+		t.Errorf("selected row = %v, want the injected primary %v", got, primary)
 	}
 	pear := findRect(t, tt, "Pear")
 	if got := pixel(tt.Image(), pear.X+2, pear.Y+pear.H/2); !same(got, canvas) {
@@ -99,7 +106,7 @@ func TestInjectedPaletteReachesComponentPaint(t *testing.T) {
 		t.Errorf("dialog panel = %v, want the injected overlay %v", got, overlayFace)
 	}
 
-	// The toast card paints the injected surface; its title keeps the ink.
+	// The toast card paints the injected popover face; its title keeps the ink.
 	var toasts overlay.ToastState
 	var toastCtx *ui.Context
 	tt3 := ui.NewTester(func(c *ui.Context) {
@@ -123,8 +130,8 @@ func TestInjectedPaletteReachesComponentPaint(t *testing.T) {
 		t.Fatalf("toasts = %d, want 1", len(toasts.Items()))
 	}
 	saved := findRect(t, tt3, "Saved")
-	if got := pixel(tt3.Image(), saved.X+theme.Space16, saved.Y+saved.H/2); !same(got, sheet) {
-		t.Errorf("toast card = %v, want the injected surface %v", got, sheet)
+	if got := pixel(tt3.Image(), saved.X+theme.Space16, saved.Y+saved.H/2); !same(got, overlayFace) {
+		t.Errorf("toast card = %v, want the injected popover %v", got, overlayFace)
 	}
 }
 

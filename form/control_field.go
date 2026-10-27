@@ -15,7 +15,7 @@ const (
 )
 
 // ControlFieldOptions configures a label, description and switch or check box
-// in one pressable row, as HeroUI Native's ControlField.
+// in one pressable row.
 //
 // Checked is caller-owned; a click anywhere in the row, or Space while it has
 // the focus, flips it. The indicator sits at the row's trailing edge.

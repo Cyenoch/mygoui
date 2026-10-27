@@ -28,8 +28,8 @@ func wantDateHoverPixel(t *testing.T, img *image.RGBA, x, y int, c ui.Color, wha
 	}
 }
 
-// TestCalendarDayHoverPaint checks a plain and a today cell take their hover
-// faces and revert; a selected cell takes the accent pressed face.
+// TestCalendarDayHoverPaint checks plain and today cells take their hover
+// faces and revert, while a selected cell keeps its primary face.
 func TestCalendarDayHoverPaint(t *testing.T) {
 	today := time.Date(2026, 1, 5, 0, 0, 0, 0, time.UTC)
 
@@ -54,7 +54,7 @@ func TestCalendarDayHoverPaint(t *testing.T) {
 
 		tt.Move(cell.X+cell.W/2, cell.Y+cell.H/2)
 		tt.Frame()
-		wantDateHoverPixel(t, tt.Image(), x, y, colors.Default, "day hover fill")
+		wantDateHoverPixel(t, tt.Image(), x, y, colors.Accent.Over(colors.Background), "day hover fill")
 
 		tt.Move(2, 2)
 		tt.Frame()
@@ -77,8 +77,8 @@ func TestCalendarDayHoverPaint(t *testing.T) {
 		if !ok {
 			t.Fatal("today cell missing")
 		}
-		normal := colors.AccentSoft.Over(colors.Background)
-		hover := colors.AccentSoftHover.Over(colors.Background)
+		normal := colors.Background
+		hover := colors.Accent.Over(colors.Background)
 		x, y := int(cell.X)+6, int(cell.Y)+6
 		wantDateHoverPixel(t, tt.Image(), x, y, normal, "today normal fill")
 
@@ -108,19 +108,18 @@ func TestCalendarDayHoverPaint(t *testing.T) {
 			t.Fatal("selected cell missing")
 		}
 		x, y := int(cell.X)+6, int(cell.Y)+6
-		wantDateHoverPixel(t, tt.Image(), x, y, colors.Accent, "selected day fill")
+		wantDateHoverPixel(t, tt.Image(), x, y, colors.Primary, "selected day fill")
 
 		tt.Press(cell.X+cell.W/2, cell.Y+cell.H/2)
 		tt.Frame()
-		wantDateHoverPixel(t, tt.Image(), x, y, colors.AccentHover, "selected day pressed fill")
+		wantDateHoverPixel(t, tt.Image(), x, y, colors.Primary, "selected day pressed fill")
 		tt.Release(cell.X+cell.W/2, cell.Y+cell.H/2)
 		tt.Frame()
-		wantDateHoverPixel(t, tt.Image(), x, y, colors.Accent, "selected day fill after release")
+		wantDateHoverPixel(t, tt.Image(), x, y, colors.Primary, "selected day fill after release")
 	})
 }
 
-// TestDateFieldHoverPaint checks the date input group's field surface follows
-// hover and reverts.
+// TestDateFieldHoverPaint checks the date input surface stays quiet on hover.
 func TestDateFieldHoverPaint(t *testing.T) {
 	var colors theme.Palette
 	value := time.Date(2026, 1, 5, 0, 0, 0, 0, time.UTC)
@@ -139,16 +138,42 @@ func TestDateFieldHoverPaint(t *testing.T) {
 	if !ok {
 		t.Fatal("date field label missing")
 	}
-	// The group sits one Space4 below the label and is 36 DIP high.
+	// The group sits below the label.
 	y := int(label.Y+label.H) + theme.Space4 + 18
 	x := int(label.X+label.W) - 16
-	wantDateHoverPixel(t, tt.Image(), x, y, colors.FieldBackground, "date field normal fill")
+	wantDateHoverPixel(t, tt.Image(), x, y, colors.Background, "date field normal fill")
 
 	tt.Move(label.X+label.W/2, float32(y))
 	tt.Frame()
-	wantDateHoverPixel(t, tt.Image(), x, y, colors.FieldHover, "date field hover fill")
+	wantDateHoverPixel(t, tt.Image(), x, y, colors.Background, "date field hover fill")
 
 	tt.Move(2, 2)
 	tt.Frame()
-	wantDateHoverPixel(t, tt.Image(), x, y, colors.FieldBackground, "date field fill after leaving")
+	wantDateHoverPixel(t, tt.Image(), x, y, colors.Background, "date field fill after leaving")
+}
+
+func TestCalendarUsesPrimaryAndAccentTokens(t *testing.T) {
+	previous := theme.PreferencesSnapshot()
+	defer theme.Configure(previous)
+	primary := ui.RGB(21, 92, 170)
+	accent := ui.RGBA(213, 55, 32, 0.5)
+	theme.Configure(theme.Preferences{Palette: theme.PaletteOverrides{
+		Light: &theme.PalettePatch{Primary: &primary, Accent: &accent},
+	}})
+	selected := time.Date(2026, time.March, 18, 0, 0, 0, 0, time.UTC)
+	st := &date.CalendarState{Value: selected}
+	var colors theme.Palette
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		colors = theme.Colors(c)
+		ui.Column(c).Padding(20).Background(colors.Background).Children(func() {
+			date.Calendar(c, date.CalendarOptions{Today: march, DayLabel: label}, st)
+		})
+	}, 360, 480)
+	day, _ := tt.Find("2026-03-18")
+	wantDateHoverPixel(t, tt.Image(), int(day.X+6), int(day.Y+6), primary, "selected day")
+	hover, _ := tt.Find("2026-03-19")
+	tt.Move(hover.X+hover.W/2, hover.Y+hover.H/2)
+	wantDateHoverPixel(t, tt.Image(), int(hover.X+6), int(hover.Y+6),
+		accent.Over(colors.Background), "hovered day")
 }

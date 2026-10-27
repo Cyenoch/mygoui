@@ -7,23 +7,18 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// HeroUI's navigation motion, in native terms: values that move on MyGo's
-// own animation channels, so an interrupted change continues from where it
-// is instead of restarting, and reduced motion settles them at once.
+// Navigation motion uses MyGo's animation channels so interrupted changes
+// continue from their current position.
 const (
-	// tabsIndicatorMotion is upstream's 250 ms ease-out-fluid slide of the
-	// tab selection indicator.
-	tabsIndicatorMotion = 250 * time.Millisecond
-	// menuIndicatorMotion is the dot's 250 ms reveal; a checkmark draws
-	// itself in a fifth as long, as its stroke-dashoffset does.
-	menuIndicatorMotion = 250 * time.Millisecond
+	// tabsIndicatorMotion is the tab indicator's 200 ms slide.
+	tabsIndicatorMotion = 200 * time.Millisecond
 	menuCheckMotion     = 100 * time.Millisecond
 	// panelEntryMotion is how long a floating panel fades in. Upstream has
 	// no exit on these panels: closing removes them with the popover.
 	panelEntryMotion = 150 * time.Millisecond
 )
 
-// slideMotion returns HeroUI's indicator animation over d.
+// slideMotion returns an indicator animation over d.
 func slideMotion(d time.Duration) ui.Animation {
 	return ui.Animation{Duration: d, Ease: ui.EaseOut}
 }
@@ -39,7 +34,7 @@ func fadePanel(panel ui.Element, progress float32) ui.Element {
 	return panel.Opacity(max(progress, 0))
 }
 
-// entryFade fades a floating panel in, as HeroUI's popovers arrive. Only the
+// entryFade fades a floating panel in. Only the
 // arrival fades: MyGo cannot keep an inert copy of these panels after they
 // are closed, and an overlay relayout would discard a positional entry.
 // Reduced motion shows the panel at once.

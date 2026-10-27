@@ -18,7 +18,7 @@ func TestAPILongValuesWrapInsteadOfClipping(t *testing.T) {
 	params := []ComponentParam{
 		{"LongOption", longType, longDefault, "A value longer than its column."},
 	}
-	tt := ui.NewTester(func(c *ui.Context) { apiTable(c, params) }, 1200, 900)
+	tt := ui.NewTester(func(c *ui.Context) { apiTable(c, New(), params) }, 1200, 900)
 	tt.Frame()
 	for _, value := range []string{longType, longDefault} {
 		r, ok := tt.Find(value)
@@ -44,7 +44,7 @@ func TestAPILongValuesWrapInStackedLayout(t *testing.T) {
 	params := []ComponentParam{
 		{"LongOption", longType, "nil", "A value longer than its column."},
 	}
-	tt := ui.NewTester(func(c *ui.Context) { apiTable(c, params) }, 500, 900)
+	tt := ui.NewTester(func(c *ui.Context) { apiTable(c, New(), params) }, 500, 900)
 	tt.Frame()
 	r, ok := tt.Find(longType)
 	if !ok || r.W <= 0 || r.H <= 0 || r.X < 0 || r.X+r.W > 500 {
@@ -56,15 +56,17 @@ func TestAPILongValuesWrapInStackedLayout(t *testing.T) {
 // token, each naming the token in mono, resolving its light and dark hex
 // values from the palette, labeling the L/D swatches and explaining its role.
 func TestThemeTokenCardsShowValuesAndRoles(t *testing.T) {
-	tokens := []string{"Accent", "AccentForeground", "Default", "DefaultHover", "Danger"}
+	cp, _ := componentPage("button")
+	tokens := cp.Tokens
 	light := theme.ColorsForMode(false)
 	dark := theme.ColorsForMode(true)
 	for _, size := range []struct{ width, height int }{{1100, 900}, {640, 900}} {
 		state := New()
 		state.Selected = "button"
+		state.Panel = 3
 		var page float32
 		tt := ui.NewTester(func(c *ui.Context) {
-			page = pageWidth(c)
+			page = pageWidth(c, state)
 			View(c, state)
 		}, size.width, size.height)
 		tt.Frame()
@@ -131,8 +133,8 @@ func TestThemeTokenCardsShowValuesAndRoles(t *testing.T) {
 			t.Fatalf("%dx%d: token cards do not stack in one column (first %+v, second %+v)",
 				size.width, size.height, first, second)
 		}
-		if !tt.HasText("Primary action and focus emphasis.") {
-			t.Fatalf("%dx%d: token cards lost the Accent role description", size.width, size.height)
+		if !tt.HasText("Primary action fill; neutral by default.") {
+			t.Fatalf("%dx%d: token cards lost the Primary role description", size.width, size.height)
 		}
 	}
 }
@@ -142,6 +144,7 @@ func TestThemeTokenCardsShowValuesAndRoles(t *testing.T) {
 func TestThemeTokenCardsMarkCustomTokens(t *testing.T) {
 	state := New()
 	state.Selected = "card"
+	state.Panel = 3
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1100, 900)
 	tt.Frame()
 	light := theme.ColorsForMode(false)

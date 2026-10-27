@@ -71,21 +71,27 @@ func pageFor(id string) (Page, bool) {
 // State is the window-owned gallery state. Page state is typed and stored by
 // page ID, so sibling pages do not share a struct or initialization order.
 type State struct {
-	Selected  string
-	Dark      bool
-	Search    string
-	Accent    int
-	Radius    float32
-	NavOpen   bool
-	Sidebar   ui.ScrollState
-	NavScroll ui.ScrollState
-	Content   ui.ScrollState
-	pages     map[string]any
+	Selected       string
+	Dark           bool
+	Search         string
+	OpenGroup      string
+	Primary        int
+	Radius         float32
+	NavOpen        bool
+	SidebarClosed  bool
+	AppearanceOpen bool
+	SystemFont     bool
+	Panel          int
+	SearchFocus    ui.Handle
+	Sidebar        ui.ScrollState
+	NavScroll      ui.ScrollState
+	Content        ui.ScrollState
+	pages          map[string]any
 }
 
 // New returns the default gallery state.
 func New() *State {
-	s := &State{Dark: false, Selected: "foundations", Radius: 8, pages: map[string]any{}}
+	s := &State{Dark: false, Selected: "foundations", Radius: 10, pages: map[string]any{}}
 	if list := Pages(); len(list) > 0 {
 		s.Selected = list[0].ID
 	}

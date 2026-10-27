@@ -56,7 +56,7 @@ func (s *buttonsState) hit(label string) {
 	s.LastAction = label
 }
 
-// buttonVariantsBody renders one button per HeroUI variant and the shared
+// buttonVariantsBody renders one button per Coss variant and the shared
 // activation feedback.
 func buttonVariantsBody(c *ui.Context, st *buttonsState) {
 	ui.Column(c).FillWidth().Gap(theme.Space12).Children(func() {
@@ -65,13 +65,13 @@ func buttonVariantsBody(c *ui.Context, st *buttonsState) {
 				label   string
 				variant mygoui.ButtonVariant
 			}{
-				{"Primary", mygoui.ButtonPrimary},
+				{"Default", mygoui.ButtonPrimary},
 				{"Secondary", mygoui.ButtonSecondary},
-				{"Tertiary", mygoui.ButtonTertiary},
 				{"Outline", mygoui.ButtonOutline},
 				{"Ghost", mygoui.ButtonGhost},
-				{"Danger", mygoui.ButtonDanger},
-				{"Danger Soft", mygoui.ButtonDangerSoft},
+				{"Destructive", mygoui.ButtonDanger},
+				{"Destructive outline", mygoui.ButtonDestructiveOutline},
+				{"Link", mygoui.ButtonLink},
 			}
 			for _, item := range variants {
 				label, variant := item.label, item.variant

@@ -1,4 +1,4 @@
-// Package style centralizes HeroUI's paint-time typography and state styling.
+// Package style centralizes typography and state styling shared by components.
 // It is internal so the public surface stays component-oriented.
 package style
 
@@ -7,12 +7,14 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// Text applies a HeroUI type role to an element. Sizes, line boxes and letter
+// Text applies a theme type role to an element. Sizes, line boxes and letter
 // spacing all follow the host text scale, which is read once per call.
 func Text(e ui.Element, c *ui.Context, s theme.TextStyle) ui.Element {
 	family := theme.FontFamily(c)
 	if s.Mono {
-		family = theme.Mono
+		family = theme.MonoFontFamily()
+	} else if s.Heading {
+		family = theme.HeadingFontFamily(c)
 	}
 	scale := theme.TextScale(c)
 	e = e.Font(family).
@@ -37,7 +39,7 @@ func Shadow(e ui.Element, c *ui.Context, shadows []theme.Shadow) ui.Element {
 	return e
 }
 
-// Disabled applies HeroUI's disabled contract: 50% opacity and no activation.
+// Disabled applies MyGo's disabled behavior: 50% opacity and no activation.
 func Disabled(e ui.Element, disabled bool) ui.Element {
 	if !disabled {
 		return e
@@ -79,15 +81,10 @@ func Background(e ui.Element, radius float32, normal, hover, pressed ui.Color) u
 // hugs the content, so the element's padding and Justify place it as the
 // uniform-radius path places its children.
 //
-// The focus ring is inset, as HeroUI draws it for joined controls: MyGo's
-// own ring paints outside the box, where the next segment of a joined group
-// paints over it.
+// The focus ring is inset so adjacent joined controls do not paint over it.
 func CornerFill(c *ui.Context, e ui.Element, gap float32, corners [4]float32,
-	normal, hover, pressed ui.Color, content func()) ui.Element {
+	normal, hover, pressed ui.Color, content, overlay func()) ui.Element {
 	e = e.Radius(corners[0], corners[1], corners[2], corners[3]).Clip().FocusRing(false)
-	if normal.A != 0 {
-		e = e.Background(normal)
-	}
 	var owner ui.Handle
 	e = e.Bind(&owner)
 	e.Children(func() {
@@ -100,7 +97,7 @@ func CornerFill(c *ui.Context, e ui.Element, gap float32, corners [4]float32,
 			if !el.Valid() {
 				return
 			}
-			fill := ui.Color{}
+			fill := normal
 			switch {
 			case el.Pressed() && pressed.A != 0:
 				fill = pressed
@@ -116,6 +113,9 @@ func CornerFill(c *ui.Context, e ui.Element, gap float32, corners [4]float32,
 			}
 		})
 		layer.Children(content)
+		if overlay != nil {
+			overlay()
+		}
 	})
 	return e
 }

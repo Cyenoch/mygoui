@@ -39,7 +39,7 @@ overlay.Modal(c, &open, overlay.ModalOptions{
 })`,
 		Params: []ComponentParam{
 			{"Size", "overlay.ModalSize", "ModalMedium", "Extra small (320) through full screen and cover; the body scrolls when short."},
-			{"Backdrop", "overlay.ModalBackdrop", "ModalBackdropOpaque", "Opaque dim, blur or transparent backdrop."},
+			{"Backdrop", "overlay.ModalBackdrop", "ModalBackdropBlur", "Blurred dim, unblurred dim, or transparent backdrop."},
 			{"Title", "string", "required", "Heading and accessible name of the dialog."},
 			{"Body", "func()", "required", "Scrollable content of the panel."},
 			{"Footer", "func()", "nil", "Action row below the body."},
@@ -56,12 +56,11 @@ overlay.Modal(c, &open, overlay.ModalOptions{
 		Examples: []ComponentExample{
 			{Title: "Destructive confirm", Description: "The cancel action receives focus first; the action only runs when chosen.",
 				Demo: func(c *ui.Context, s *State) { alertDestructiveExample(c, overlaysStateOf(s)) }},
-			{Title: "Informational", Description: "A non-destructive confirmation with its own status color.",
+			{Title: "Informational", Description: "A non-destructive confirmation with an explicit action.",
 				Demo: func(c *ui.Context, s *State) { alertInfoExample(c, overlaysStateOf(s)) }},
 		},
 		Code: `open := false
 overlay.AlertDialog(c, &open, overlay.AlertDialogOptions{
-    Status:      mygoui.ColorDanger,
     Title:       "Delete project?",
     Description: "This removes every deployment and cannot be undone.",
     CancelLabel: "Keep project",
@@ -70,24 +69,30 @@ overlay.AlertDialog(c, &open, overlay.AlertDialogOptions{
     OnAction:    deleteProject,
 })`,
 		Params: []ComponentParam{
-			{"Status", "mygoui.StatusColor", "ColorDefault", "Icon fill and accent of the confirmation."},
+			{"Status", "mygoui.StatusColor", "ColorDefault", "Colors the status icon and selects its default glyph when shown."},
+			{"ShowIcon", "bool", "false", "Shows the status icon unless HideIcon is set."},
+			{"Icon", "*ui.SVG", "nil", "Custom icon; also shows it unless HideIcon is set."},
+			{"HideIcon", "bool", "false", "Hides the icon, overriding ShowIcon and Icon."},
+			{"Size", "overlay.ModalSize", "ModalMedium", "Desktop width; the zero value is 512 DIPs for AlertDialog."},
+			{"Width", "float32", "0", "A positive value overrides Size on desktop; narrow alerts fill the viewport."},
 			{"Title", "string", "required", "Question shown to the user."},
 			{"CancelLabel", "string", "locale Close", "Label of the safe choice, which receives focus first."},
-			{"ActionLabel", "string", "\"\"", "Label of the confirm action; empty with no OnAction omits it."},
+			{"ActionLabel", "string", "\"\"", "The confirm action appears when both its label and OnAction are set."},
 			{"Destructive", "bool", "false", "Renders the confirm action as a danger button."},
 			{"OnAction", "func()", "nil", "Runs when the confirm action is chosen."},
-			{"HideIcon", "bool", "false", "Removes the status icon above the title."},
+			{"ShowClose", "bool", "false", "Adds a top-right cancel control unless HideClose is set."},
+			{"HideClose", "bool", "false", "Hides the top-right control, overriding ShowClose."},
 		},
 		Tokens: []string{"Overlay", "OverlayForeground", "Muted", "Danger", "Backdrop"},
 	})
 
 	RegisterComponent(ComponentPage{
 		ID: "drawer", Title: "Drawer", Group: "Overlays", Order: 30,
-		Description: "A floating modal edge panel with 16 DIP screen gutters, rounded corners and an optional visual handle.",
+		Description: "An edge-attached modal drawer with an optional inset and drag handle.",
 		Examples: []ComponentExample{
 			{Title: "Edge placement", Description: "Open the panel from the left, right, top or bottom edge.",
 				Demo: func(c *ui.Context, s *State) { drawerEdgesExample(c, overlaysStateOf(s)) }},
-			{Title: "Handle and footer", Description: "A bottom drawer with the visual drag handle and an action.",
+			{Title: "Handle and footer", Description: "A bottom drawer with a drag handle and an action.",
 				Demo: func(c *ui.Context, s *State) { drawerDetailExample(c, overlaysStateOf(s)) }},
 		},
 		Code: `open := false
@@ -95,17 +100,20 @@ overlay.Drawer(c, &open, overlay.DrawerOptions{
     Side:     overlay.DrawerRight,
     Title:    "Filters",
     Width:    theme.Scale(c, 360),
-    Handle:   false,
+    Handle:   true,
+    ShowClose: true,
     OnDismiss: func() { note = "drawer dismissed" },
     Body: func() {
-        mygoui.Paragraph(c, "The panel keeps 16 DIPs from every window edge.", true)
+        mygoui.Paragraph(c, "Drag the edge or use Close.", true)
     },
 })`,
 		Params: []ComponentParam{
 			{"Side", "overlay.DrawerSide", "DrawerBottom", "Bottom, left, right or top edge of the window."},
-			{"Width", "float32", "384", "Panel width for left and right drawers: 320 below the 640 DIP breakpoint, 384 above, within 85% of the window and its 16 DIP margin."},
-			{"Height", "float32", "content", "Panel extent for top and bottom drawers, within 85% of the window and its 16 DIP margin."},
-			{"Handle", "bool", "false", "Shows the visual drag handle on top and bottom drawers."},
+			{"Width", "float32", "448", "Side drawer width, leaving at least 48 DIPs of the window visible."},
+			{"Height", "float32", "content", "Top or bottom drawer extent, leaving at least 48 DIPs visible."},
+			{"Inset", "bool", "false", "Floats the panel 16 DIPs from the edges on wider windows."},
+			{"Handle", "bool", "false", "Shows the drag handle on any edge."},
+			{"ShowClose", "bool", "false", "Shows an explicit close button."},
 			{"PreventDismiss", "bool", "false", "Ignores backdrop presses and Escape while set."},
 			{"OnDismiss", "func()", "nil", "Runs after the drawer is dismissed."},
 		},
@@ -114,7 +122,7 @@ overlay.Drawer(c, &open, overlay.DrawerOptions{
 
 	RegisterComponent(ComponentPage{
 		ID: "bottomsheet", Title: "BottomSheet", Group: "Overlays", Order: 40,
-		Description: "HeroUI's floating bottom panel, sliding up from below the window, with a handle that drags it away.",
+		Description: "A native floating bottom panel with a swipe handle.",
 		Examples: []ComponentExample{
 			{Title: "With footer", Description: "The floating panel, its swipe handle and a footer action.",
 				Demo: func(c *ui.Context, s *State) { sheetFooterExample(c, overlaysStateOf(s)) }},
@@ -171,6 +179,7 @@ overlay.Dialog(c, &open, overlay.DialogOptions{
 })`,
 		Params: []ComponentParam{
 			{"Placement", "mygoui.Placement", "SideAuto", "SideAuto centers the panel; an edge side spans that edge like a sheet."},
+			{"Backdrop", "overlay.ModalBackdrop", "ModalBackdropBlur", "Blurred dim, unblurred dim, or transparent backdrop."},
 			{"Width", "float32", "content", "Fixed panel width for the centered form."},
 			{"Title", "string", "required", "Heading of the dialog."},
 			{"Body", "func()", "required", "Content between the header and the footer."},
@@ -205,7 +214,7 @@ overlay.Popover(c, anchor, &open, overlay.PopoverOptions{
 })`,
 		Params: []ComponentParam{
 			{"Placement", "mygoui.Placement", "SideBottom", "Preferred side and alignment; SideAuto falls back to below the anchor."},
-			{"Arrow", "bool", "false", "Draws HeroUI's 12×6 DIP arrow on the anchor-facing edge, following the panel when it flips."},
+			{"Arrow", "bool", "false", "Draws a native 12×6 DIP arrow on the anchor-facing edge, following the panel when it flips."},
 			{"Width", "float32", "content", "Fixed panel width; zero sizes it to its content."},
 			{"MinWidth", "float32", "180", "Keeps small popovers usable."},
 			{"Title", "string", "\"\"", "Heading and fallback accessible name of the popup."},
@@ -236,7 +245,7 @@ overlay.Tooltip(c, anchor, overlay.TooltipOptions{
 			{"Text", "string", "required", "Plain label of the tip."},
 			{"Content", "func()", "nil", "Rich content replacing the plain text."},
 			{"Placement", "mygoui.Placement", "SideTop", "Preferred side; SideAuto falls back above the anchor."},
-			{"Arrow", "bool", "false", "Draws HeroUI's overlay arrow."},
+			{"Arrow", "bool", "false", "Draws a native overlay arrow."},
 		},
 		Tokens: []string{"Overlay", "OverlayForeground"},
 	})

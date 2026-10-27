@@ -58,9 +58,49 @@ func TestListBoxRowHoverPaint(t *testing.T) {
 
 	tt.Move(row.X+row.W/2, row.Y+row.H/2)
 	tt.Frame()
-	wantListHoverPixel(t, tt.Image(), x, y, colors.Default, "list row hover fill")
+	wantListHoverPixel(t, tt.Image(), x, y, colors.Accent.Over(colors.Background), "list row hover fill")
 
 	tt.Move(2, 2)
 	tt.Frame()
 	wantListHoverPixel(t, tt.Image(), x, y, colors.Background, "list row fill after leaving")
+}
+
+func TestListBoxEditorHighlightPaintsOnceAndMoves(t *testing.T) {
+	var state list.ListBoxState
+	var colors theme.Palette
+	var query string
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		colors = theme.Colors(c)
+		ui.Column(c).Fill().Padding(20).Background(colors.Background).Children(func() {
+			input := ui.TextInputBase(c, &query).Label("Search").Height(32)
+			input.OnTextKey(func(k ui.TextKey) bool {
+				if k.Key != ui.KeyDown {
+					return false
+				}
+				state.MoveHighlight(1)
+				return true
+			})
+			list.ListBox(c, list.ListBoxOptions{
+				State: &state, KeyboardHighlight: input.Focused(), NoFocusOnClick: true,
+				Items: []list.ListBoxItem{{Label: "Apple"}, {Label: "Pear"}},
+			})
+		})
+	}, 320, 200)
+	if err := tt.Click("Search"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Move(2, 2)
+	tt.Key(0, ui.KeyDown)
+	tt.Frame()
+	if !tt.Focused("Search") || state.HighlightKey() != "Pear" {
+		t.Fatalf("editor focus %v, highlight %q", tt.Focused("Search"), state.HighlightKey())
+	}
+	apple, _ := tt.Find("Apple")
+	pear, _ := tt.Find("Pear")
+	img := tt.Image()
+	wantListHoverPixel(t, img, int(pear.X)+4, int(pear.Y+pear.H/2),
+		colors.Accent.Over(colors.Background), "keyboard highlight")
+	wantListHoverPixel(t, img, int(apple.X)+4, int(apple.Y+apple.H/2),
+		colors.Background, "previous highlight")
 }

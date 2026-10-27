@@ -12,6 +12,9 @@ func navigationStateOf(s *State) *navigationState {
 	if st.page == 0 {
 		st.page = 4
 	}
+	if st.pageDefault == 0 {
+		st.pageDefault = 2
+	}
 	if st.pageMedium == 0 {
 		st.pageMedium = 3
 	}
@@ -208,6 +211,8 @@ navigation.Tabs(c, navigation.TabsOptions{
 		ID: "pagination", Title: "Pagination", Group: "Navigation", Order: 60,
 		Description: "Numbered pages with ellipses, previous and next controls in three sizes and an optional summary.",
 		Examples: []ComponentExample{
+			{Title: "Default",
+				Demo: func(c *ui.Context, s *State) { paginationDefaultExample(c, navigationStateOf(s)) }},
 			{Title: "With summary", Description: "A result range beside the controls; it stacks when the page is narrow.",
 				Demo: func(c *ui.Context, s *State) { paginationSummaryExample(c, navigationStateOf(s)) }},
 			{Title: "Large range", Description: "Twelve pages with two boundaries and one sibling.",
@@ -233,7 +238,7 @@ navigation.Pagination(c, navigation.PaginationOptions{
 			{"Page", "*int", "nil", "Caller-owned 1-based page; nil keeps it internal."},
 			{"Pages", "int", "required", "Total number of pages."},
 			{"Size", "navigation.PaginationSize", "PaginationMedium", "Small, medium or large control height."},
-			{"Siblings", "int", "1", "Number of pages shown beside the current one."},
+			{"Siblings", "int", "0", "Number of pages shown beside the current one."},
 			{"Boundaries", "int", "1", "Number of pages pinned at each end."},
 			{"Summary", "func()", "nil", "Builds a muted line before the controls; the row stacks below 640 DIP."},
 			{"OnChange", "func(page int)", "nil", "Reports the newly selected page."},

@@ -31,6 +31,11 @@ type DateRangePickerOptions struct {
 	// date" and "End date".
 	StartLabel, EndLabel string
 
+	// ShowYearPicker makes the calendar's month heading open a year selector.
+	ShowYearPicker bool
+	// HideYearPicker overrides ShowYearPicker.
+	//
+	// Deprecated: leave ShowYearPicker false instead.
 	HideYearPicker                        bool
 	PrevLabel, NextLabel, YearPickerLabel string
 	MonthLabel                            func(time.Time) string
@@ -84,9 +89,9 @@ func DateRangePicker(c *ui.Context, o DateRangePickerOptions) ui.Element {
 
 	width := o.Width
 	if width == 0 {
-		width = theme.Scale(c, 264)
+		width = 264
 	}
-	var triggerHandle ui.Handle
+	width = theme.Scale(c, width)
 	spec := rangeFieldSpec{
 		field: fieldSpec{
 			label:       o.Label,
@@ -107,7 +112,6 @@ func DateRangePicker(c *ui.Context, o DateRangePickerOptions) ui.Element {
 		endLabel:         o.EndLabel,
 		loc:              locationOf(value.Start, c),
 		width:            width,
-		triggerFocus:     &triggerHandle,
 		onChange:         o.OnChange,
 	}
 	buf := newRangeBuffer(root, spec)
@@ -137,7 +141,6 @@ func DateRangePicker(c *ui.Context, o DateRangePickerOptions) ui.Element {
 					o.OnOpenChange(true)
 				}
 			})
-			trigger.Bind(&triggerHandle)
 		}
 		field, group = rangeField(c, spec, buf)
 		if *refocus && trigger.Valid() {
@@ -156,6 +159,7 @@ func DateRangePicker(c *ui.Context, o DateRangePickerOptions) ui.Element {
 						Max:             o.Max,
 						DisabledDates:   o.DisabledDates,
 						FirstWeekday:    o.FirstWeekday,
+						ShowYearPicker:  o.ShowYearPicker,
 						HideYearPicker:  o.HideYearPicker,
 						PrevLabel:       o.PrevLabel,
 						NextLabel:       o.NextLabel,
@@ -219,10 +223,7 @@ type rangeFieldSpec struct {
 	loc              *time.Location
 	width            float32
 	suffix           func()
-	// triggerFocus is the popup trigger built by suffix, when there is one:
-	// the group hides its focus face while that trigger holds the focus.
-	triggerFocus *ui.Handle
-	onChange     func(DateRange)
+	onChange         func(DateRange)
 }
 
 func rangeField(c *ui.Context, spec rangeFieldSpec, buf *rangeBuffer) (ui.Element, ui.Element) {
@@ -255,7 +256,7 @@ func rangeGroup(c *ui.Context, spec rangeFieldSpec, buf *rangeBuffer, invalid bo
 	if endLabel == "" {
 		endLabel = "End date"
 	}
-	group := fieldGroup(c, invalid, spec.field.disabled, spec.triggerFocus)
+	group := fieldGroup(c, invalid, spec.field.disabled)
 	if spec.width > 0 && !spec.field.fullWidth {
 		group = group.Width(spec.width)
 	}

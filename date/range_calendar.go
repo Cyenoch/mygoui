@@ -64,11 +64,16 @@ type RangeCalendarOptions struct {
 	Label  string
 	Handle *ui.Handle
 
-	Today          time.Time
-	Min, Max       time.Time
-	DisabledDates  func(time.Time) bool
-	FirstWeekday   time.Weekday
-	Disabled       bool
+	Today         time.Time
+	Min, Max      time.Time
+	DisabledDates func(time.Time) bool
+	FirstWeekday  time.Weekday
+	Disabled      bool
+	// ShowYearPicker makes the month heading open a year selector.
+	ShowYearPicker bool
+	// HideYearPicker overrides ShowYearPicker.
+	//
+	// Deprecated: leave ShowYearPicker false instead.
 	HideYearPicker bool
 
 	PrevLabel, NextLabel, YearPickerLabel string
@@ -83,7 +88,7 @@ type RangeCalendarOptions struct {
 	autofocus bool
 }
 
-// RangeCalendar renders HeroUI's range calendar. Choosing a day starts a
+// RangeCalendar renders a COSS-style range calendar. Choosing a day starts a
 // range; choosing another completes it, swapping the endpoints when the second
 // is earlier. A nil state uses a component-local copy.
 func RangeCalendar(c *ui.Context, o RangeCalendarOptions, st *RangeCalendarState) ui.Element {
@@ -103,7 +108,7 @@ func RangeCalendar(c *ui.Context, o RangeCalendarOptions, st *RangeCalendarState
 		disabledDates:  o.DisabledDates,
 		firstWeekday:   o.FirstWeekday,
 		disabled:       o.Disabled,
-		hideYearPicker: o.HideYearPicker,
+		showYearPicker: o.ShowYearPicker && !o.HideYearPicker,
 		autofocus:      o.autofocus,
 		prevLabel:      o.PrevLabel,
 		nextLabel:      o.NextLabel,

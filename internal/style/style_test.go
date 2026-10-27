@@ -10,7 +10,7 @@ import (
 )
 
 // TestHeadingTrackingTightensTheLine pins tracking-tight on the heading roles:
-// the same text set as an H2 measures narrower than the same 20/28 role
+// the same text set as an H2 measures narrower than the same 30/36 role
 // without the token, while body copy keeps the font's own spacing.
 func TestHeadingTrackingTightensTheLine(t *testing.T) {
 	const text = "Heading"
@@ -47,21 +47,40 @@ func TestHeadingTrackingTightensTheLine(t *testing.T) {
 // every component applies it, because Background snapshots the face for the
 // frame. The enabled row proves the sampler sees hover when it should.
 func TestDisabledControlsKeepTheirRestingFace(t *testing.T) {
+	for _, mode := range []struct {
+		name string
+		dark bool
+	}{
+		{name: "light"},
+		{name: "dark", dark: true},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			testDisabledControlsKeepTheirRestingFace(t, mode.dark)
+		})
+	}
+}
+
+func testDisabledControlsKeepTheirRestingFace(t *testing.T, dark bool) {
+	t.Helper()
 	var pal theme.Palette
+	var hover ui.Color
 	var idle, live ui.Handle
 	var idleRect, liveRect ui.Rect
 	frames := 0
 	tt := ui.NewTester(func(c *ui.Context) {
-		theme.ApplyMode(c, false)
+		theme.ApplyMode(c, dark)
 		pal = theme.Colors(c)
+		// A distinct translucent hover face makes a broken state change
+		// detectable even when the default accent is only four percent ink.
+		hover = pal.Primary.Alpha(0.25)
 		ui.Column(c).FillWidth().FillHeight().Padding(24).Gap(12).
 			Background(pal.Background).Children(func() {
 			off := ui.ButtonBase(c).FillWidth().MinHeight(40).Label("off")
 			off = style.Disabled(off, true)
-			off = style.Background(off, 8, pal.Accent, pal.AccentHover, pal.AccentHover)
+			off = style.Background(off, 8, pal.Accent, hover, hover)
 			off.Bind(&idle)
 			on := ui.ButtonBase(c).FillWidth().MinHeight(40).Label("on")
-			on = style.Background(on, 8, pal.Accent, pal.AccentHover, pal.AccentHover)
+			on = style.Background(on, 8, pal.Accent, hover, hover)
 			on.Bind(&live)
 		})
 		if frames > 0 {
@@ -81,11 +100,12 @@ func TestDisabledControlsKeepTheirRestingFace(t *testing.T) {
 	// With the pointer away, both rows rest on the accent face.
 	tt.Move(2, 2)
 	tt.Frame()
-	restOff, restOn := tt.Image().RGBAAt(offX, offY), tt.Image().RGBAAt(onX, onY)
-	if distance(restOn, pal.Accent) > 3 {
-		t.Fatalf("enabled row at rest = %v, want the accent face %v", restOn, pal.Accent)
+	img := tt.Image()
+	restOff, restOn := img.RGBAAt(offX, offY), img.RGBAAt(onX, onY)
+	if want := pal.Accent.Over(pal.Background); distance(restOn, want) > 1 {
+		t.Fatalf("enabled row at rest = %v, want the composited accent face %v", restOn, want)
 	}
-	if pixelDistance(restOff, restOn) <= 3 {
+	if pixelDistance(restOff, restOn) <= 1 {
 		t.Fatalf("disabled row = %v is not dimmed like the resting row %v", restOff, restOn)
 	}
 
@@ -100,8 +120,12 @@ func TestDisabledControlsKeepTheirRestingFace(t *testing.T) {
 	// The enabled row still takes the hover face.
 	tt.Move(liveRect.X+liveRect.W/2, liveRect.Y+liveRect.H/2)
 	tt.Frame()
-	if got := tt.Image().RGBAAt(onX, onY); distance(got, pal.AccentHover) > 3 {
-		t.Fatalf("enabled row under the pointer = %v, want the hover face %v", got, pal.AccentHover)
+	got := tt.Image().RGBAAt(onX, onY)
+	if want := hover.Over(pal.Background); distance(got, want) > 1 {
+		t.Fatalf("enabled row under the pointer = %v, want the composited hover face %v", got, want)
+	}
+	if pixelDistance(got, restOn) <= 1 {
+		t.Fatal("enabled hover did not change the rendered face")
 	}
 }
 

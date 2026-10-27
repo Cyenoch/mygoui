@@ -93,7 +93,7 @@ func assertRightChevron(t *testing.T, img *image.RGBA, box ui.Rect, where string
 	}
 }
 
-// assertCheck checks HeroUI's tick in box: a short arm down to a valley left
+// assertCheck checks the tick in box: a short arm down to a valley left
 // of center and a long arm up to the right, not a bar.
 func assertCheck(t *testing.T, img *image.RGBA, box ui.Rect, where string) {
 	t.Helper()

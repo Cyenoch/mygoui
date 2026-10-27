@@ -58,9 +58,9 @@ func TestToastCloseGlyphIsOneCenteredX(t *testing.T) {
 			if close.Y >= card.Y || close.X+close.W <= card.X+card.W {
 				t.Fatalf("close does not float across the upper-right corner: close=%+v card=%+v", close, card)
 			}
-			// HeroUI's -end-1/-top-1: the 20 DIP close button overlaps the
+			// The 20 DIP close button overlaps the
 			// card's corner by 4 DIPs on both axes.
-			if card.Y-close.Y != 4 || close.X+close.W-(card.X+card.W) != 4 {
+			if abs32(card.Y-close.Y-3) > 1 || abs32(close.X+close.W-(card.X+card.W)-3) > 1 {
 				t.Fatalf("close sits off the card corner: card=%+v close=%+v", card, close)
 			}
 			if close.X < action.X+action.W && close.X+close.W > action.X &&

@@ -1,20 +1,22 @@
 # MyGo UI
 
-Native [HeroUI v3](https://heroui.com/docs/react/components) components for
-[MyGo](https://github.com/egoist/mygo), written in Go.
+A native Go component library for [MyGo](https://github.com/egoist/mygo),
+reconstructing the component catalog and visual language of
+[coss ui](https://coss.com/ui/docs).
 
-Typed Go options, caller-owned state, HeroUI's semantic color system and
-desktop metrics, and native MyGo keyboard, editing, selection, scrolling and
-accessibility behavior. No JavaScript, WebView, CSS runtime or browser
-compatibility layer is involved.
+Typed options, explicit application state, semantic light/dark colors, and
+native editing, selection, focus and scrolling. Components compose through Go
+callbacks and typed collections. Applications run without a JavaScript runtime
+or WebView.
 
-The library unifies the HeroUI component catalogs into one native Go component
-set; shared components are implemented once, and native-only components are
-included where they fit. It is not a React port: components compose through
-body callbacks and explicit state, not providers, contexts or slots.
+The `coss` branch replaces the previous HeroUI design and tokens. The
+[capability matrix](docs/components.md) maps every component found across the
+pinned coss catalogs, plus their two documented hooks. A mapping records the
+native implementation and its limits; it does not certify visual or behavioral
+parity. Current verification belongs in [VALIDATION.md](VALIDATION.md).
 
-Requires **Go 1.27.1+** and **MyGo v0.6.3+**. Icons use the published
-`github.com/Cyenoch/mygoicons` module.
+The module targets **Go 1.27.1** and pins **MyGo v0.6.3** and
+**mygoicons v0.2.1**.
 
 ## Try it
 
@@ -22,75 +24,125 @@ Requires **Go 1.27.1+** and **MyGo v0.6.3+**. Icons use the published
 go run ./examples/basic
 go run ./examples/gallery
 
-# Live-reload workbench through the MyGo CLI (uses mygo.json at the root,
-# and runs go run github.com/egoist/mygo/cmd/mygo@latest dev)
-make dev
-
-# Production app bundle of the gallery
-make app
+make dev MYGO_VERSION=v0.6.3
+make app MYGO_VERSION=v0.6.3
 ```
 
-The MyGo UI gallery follows the HeroUI docs layout: a main column with a
-sticky "On this page" rail (hidden below 1000 DIP), a page title and
-description with Copy Markdown and Copy import actions, and a compact Usage
-import bar whose block is derived from the packages the page's snippet names
-(one line, or a parenthesized block for several). Each component page has an
-Examples section of 2-5 named examples with live previews and no page-level
-fallback; the page's full Go snippet renders once below them in a code area
-with line numbers, syntax highlighting, copy, and 6-line collapse/expand with
-a surface fade. Pages end with a wrapping API Reference table and theme-token
-cards. The sidebar groups every component and uses ScrollShadow for overflow;
-light/dark appearance and accent/radius customization stay live, and data
-stays in memory.
+The gallery is a native component workbench with a custom title bar, grouped
+sidebar, Cmd/Ctrl+K search, appearance controls, and Preview / Go / API / Tokens
+views. It reserves the platform's actual window-control insets rather than
+drawing replacement window buttons. Examples and snippets are consumers of the
+public API; the capability matrix records native adaptations and limits.
 
 ## Use
 
-Apply the theme once at the view root:
+Apply the theme at the start of each view build. Keep values and widget state
+with the window's model:
 
 ```go
 import (
     "github.com/Cyenoch/mygoui"
+    "github.com/Cyenoch/mygoui/form"
     "github.com/Cyenoch/mygoui/theme"
     "github.com/egoist/mygo/ui"
 )
 
-func (s *state) View(c *ui.Context) {
+type settings struct {
+    name  string
+    saved bool
+}
+
+func (s *settings) View(c *ui.Context) {
     theme.Apply(c)
     mygoui.Card(c, mygoui.CardOptions{}, func() {
         mygoui.CardHeader(c, func() {
-            mygoui.CardTitle(c, "Deploy")
-            mygoui.CardDescription(c, "Ship the current commit to production.")
+            mygoui.CardTitle(c, "Project")
+        })
+        mygoui.CardContent(c, func() {
+            form.Input(c, &s.name, form.InputOptions{
+                Label: "Name", FullWidth: true,
+            })
         })
         mygoui.CardFooter(c, func() {
             mygoui.Button(c, mygoui.ButtonOptions{
-                Label: "Deploy", OnClick: func() { s.deploy() },
-            })
-            mygoui.Button(c, mygoui.ButtonOptions{
-                Label: "Cancel", Variant: mygoui.ButtonGhost,
-                OnClick: func() { s.cancelled = true },
+                Label: "Save",
+                OnClick: func() { s.saved = true },
             })
         })
     })
 }
 ```
 
-Customize the design system process-wide before views are built:
+`ui.Element`, custom parts and `*ui.Context` belong to the current build.
+Retain model values, component state and `ui.Handle` instead. Use native
+services for clipboard and URL actions; publish worker results through
+`Window.Update`. See [ownership rules](docs/design.md).
+
+## Customize
+
+The canonical colors are coss roles such as `Primary`, `Secondary`,
+`MutedBackground`, `MutedForeground`, `Accent`, `Card`, `Popover`,
+`Destructive`, `Input` and `Ring`. Each has an independent override in
+`theme.PalettePatch`; light and dark appearances have separate patches.
 
 ```go
+primary := ui.RGB(30, 90, 180)
+onPrimary := ui.RGB(255, 255, 255)
 theme.Configure(theme.Preferences{
-    Accent:   ui.Oklch(0.62, 0.20, 300),
-    Radius:   10,
-    FontSize: 16,
+    Radius: 10,
+    Palette: theme.PaletteOverrides{
+        Light: &theme.PalettePatch{
+            Primary: &primary, PrimaryForeground: &onPrimary,
+        },
+    },
 })
 ```
 
-See `docs/components.md` for the inventory and native limits,
-`docs/design.md` for ownership, `docs/mygo-vs-css.md` for the layout and paint
-differences from CSS/Tailwind, and `docs/references.md` for the pinned
-upstream sources used to translate each component.
+Call `Configure` before building views, or use `UpdatePreferences` on the UI
+thread and invalidate the affected windows. Read colors live with
+`theme.Colors(c)`. See [theme tokens and provenance](docs/theme.md).
 
-## Status
+Body, heading and mono font families are independently configurable. Defaults
+use native system fonts, so text metrics differ from the coss site. Applications
+can opt into the embedded, independently OFL-licensed Cal Sans faces:
 
-This checkout is a complete HeroUI-oriented rewrite; the previous
-shadcn-inspired implementation is not part of the API. No version has been
-released yet.
+```go
+if err := fonts.Register(); err != nil {
+    return err
+}
+theme.UpdatePreferences(func(p *theme.Preferences) {
+    p.FontFamily = fonts.Family
+    p.HeadingFontFamily = fonts.Family
+})
+```
+
+Import `github.com/Cyenoch/mygoui/fonts` and call this during application
+startup in a function returning an error. Registration is explicit and
+idempotent; browser builds return an error. Mono keeps native fallbacks unless
+the host independently registers another face. See
+[font sources, registration and limits](docs/fonts.md). Configuring a family
+name alone does not load that font.
+
+## Scrolling
+
+`ScrollArea` supports `ScrollVertical`, `ScrollHorizontal` and `ScrollBoth`.
+`ScrollFade` can also decorate an existing viewport and its `ui.ScrollState`.
+`MaskFade` fades the native subtree to transparency through a shader effect.
+`ShadowFade` paints an edge shadow; `SurfaceFade` blends into the actual opaque
+surface color. Effect layers have an 8192-pixel side limit and exclude embedded
+webviews; GPU/platform checks remain separate from headless rendering.
+See [scroll examples and limits](docs/scrollfade.md).
+
+## References and license
+
+The visual reference is coss ui commit
+`3d8ca28e7d90123e9e0f44665944dc240b026ccb`.
+[Reference provenance](docs/references.md) identifies the MIT `apps/ui`
+registry and documentation. The upstream monorepo has mixed licensing;
+`packages/*` is outside that MIT scope, and its source and font assets must
+not be copied as MIT material.
+
+Project code retains its [MIT license](LICENSE). See
+[third-party notices](THIRD_PARTY_NOTICES.md) for reference attribution,
+dependencies and optional font licenses. This is an independent native
+implementation.

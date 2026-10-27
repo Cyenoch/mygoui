@@ -7,13 +7,13 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// TabsVariant is HeroUI's tab-list treatment.
+// TabsVariant chooses a segmented or underlined tab list.
 type TabsVariant uint8
 
 const (
 	// TabsPrimary uses the selected pill on a default surface.
 	TabsPrimary TabsVariant = iota
-	// TabsSecondary uses an accent underline under a flat list.
+	// TabsSecondary uses a foreground underline under a flat list.
 	TabsSecondary
 )
 
@@ -35,8 +35,11 @@ type TabOptions struct {
 }
 
 // TabsOptions configures a tab set. Selected is caller-owned; nil keeps the
-// choice internally. NoListContainer drops the pill/scroll container and
-// renders a bare tab list. MaxListHeight bounds a vertical list so it scrolls.
+// choice internally. An invalid or disabled selection falls back to the
+// nearest preceding enabled tab, or the first enabled tab, without OnChange.
+// If there are no enabled items, Selected becomes -1 until one is available.
+// NoListContainer drops the pill/scroll container and renders a bare tab
+// list. MaxListHeight bounds a vertical list so it scrolls.
 type TabsOptions struct {
 	Selected        *int
 	Items           []TabOptions
@@ -74,8 +77,7 @@ const (
 // which follows the choice.
 //
 // The selection indicator is painted under the tabs by the list itself and
-// slides between the committed tab boxes over 250 ms, as upstream's
-// SelectionIndicator translates and resizes; a choice on the way retargets
+// slides between the committed tab boxes over 200 ms; a choice on the way retargets
 // the slide from where it is, and reduced motion places it at once. A
 // horizontal list scrolls when it overflows; a vertical one scrolls up to
 // MaxListHeight.
@@ -89,12 +91,13 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 	if o.Label != "" {
 		root.Label(o.Label)
 	}
-	if len(o.Items) == 0 {
-		return root
-	}
 	selected := o.Selected
 	if selected == nil {
 		selected = ui.Local(root, "tabs-selected", func() int { return 0 })
+	}
+	if len(o.Items) == 0 {
+		*selected = -1
+		return root
 	}
 	// viewportWidth is the space the horizontal tab strip has, measured
 	// after layout.
@@ -104,19 +107,47 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 	indicator := ui.Local(root, "tabs-indicator", func() tabsIndicator {
 		return tabsIndicator{seen: -1, sel: -1}
 	})
+	nativeSelected := ui.Local(root, "tabs-enabled-selected", func() int { return 0 })
 	if len(*boxes) != len(o.Items) {
 		*boxes = make([]ui.Rect, len(o.Items))
 		*indicator = tabsIndicator{seen: -1, sel: -1}
 	}
-	radius := theme.RadiusScale().XXXL
+	radius := theme.RadiusScale().MD
 	// One pill per build at most: its shadow layers are resolved here, not
 	// per tab and not in the paint callback.
 	var shadows []theme.Shadow
 	if o.Variant == TabsPrimary {
 		shadows = theme.SurfaceShadows(c.Theme().Dark)
 	}
+	face := segmentBackground(c, t)
 	var parts ui.TabsParts
 	root.Children(func() {
+		enabled := make([]int, 0, len(o.Items))
+		chosen := -1
+		for i, item := range o.Items {
+			if !item.Disabled {
+				if i == *selected {
+					chosen = len(enabled)
+				}
+				enabled = append(enabled, i)
+			}
+		}
+		if len(enabled) == 0 {
+			*selected = -1
+			*nativeSelected = -1
+		} else {
+			if chosen < 0 {
+				chosen = 0
+				for i, index := range enabled {
+					if index > *selected {
+						break
+					}
+					chosen = i
+				}
+				*selected = enabled[chosen]
+			}
+			*nativeSelected = chosen
+		}
 		// placed is the selection this pass builds for. A click applies in
 		// the pass that builds the tabs, so *selected can change halfway
 		// through it: the indicator, its boxes and its recorded selection
@@ -128,7 +159,7 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 		// the selected tab itself.
 		target := ui.Rect{}
 		known := placed >= 0 && placed < len(*boxes) && (*boxes)[placed].W > 0
-		containerRadius := theme.RadiusBase() * 2.5
+		containerRadius := theme.RadiusScale().LG
 		var container ui.Element
 		if vertical {
 			container = ui.Column(c).Shrink(0).MinWidth(0)
@@ -145,8 +176,8 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 				container.BorderWidth(0, 0, hairline, 0).BorderColor(t.Border)
 			}
 		} else {
-			container.Background(t.Default).Radius(containerRadius).Clip().
-				Padding(scale(c, theme.Space4))
+			container.Background(t.MutedBackground).Radius(containerRadius).Clip().
+				Padding(scale(c, 2))
 		}
 
 		// buildList creates the native tab list under whatever container or
@@ -154,27 +185,50 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 		// a horizontal list at least as wide as its viewport, so grown tabs
 		// fill it, while longer labels can still overflow and scroll.
 		buildList := func(minWidth float32) {
-			parts = ui.TabsBase(c, selected, len(o.Items))
+			parts = ui.TabsBase(c, nativeSelected, len(enabled))
 			list := parts.List.MinWidth(0)
+			listBox := list.LayoutBounds()
+			var paintedList ui.Rect
 			if vertical {
 				list.Column().Gap(scale(c, theme.Space4)).AlignItems(ui.Stretch)
 			} else {
-				list.FillWidth().Gap(0)
+				list.FillWidth().Gap(scale(c, 2))
 				if minWidth > 0 {
 					list.MinWidth(minWidth)
 				}
 			}
 			list.Children(func() {
+				nextEnabled := 0
 				for i := range o.Items {
-					el := buildTab(c, parts, i, o.Items[i], selected, o.Variant, o.Orientation, o.Align, known)
+					var tab ui.Element
+					if o.Items[i].Disabled {
+						tab = ui.ButtonBase(c).Role(ui.RoleTab)
+					} else {
+						tab = parts.Tab(nextEnabled)
+						nextEnabled++
+					}
+					el := buildTab(c, tab, i, o.Items[i], selected, o.Variant, o.Orientation, o.Align, known)
 					// LayoutBounds is in the coordinates a Draw callback
 					// paints in, which is where the indicator is painted.
 					switch b := el.LayoutBounds(); {
 					case b.W > 0 && b.H > 0:
+						b.X -= listBox.X
+						b.Y -= listBox.Y
 						(*boxes)[i] = b
 					default:
 						(*boxes)[i] = ui.Rect{}
 					}
+					box := (*boxes)[i]
+					el.DrawOver(func(_ *ui.Painter, measured ui.Rect) {
+						if paintedList.W <= 0 || paintedList.H <= 0 {
+							return
+						}
+						measured.X -= paintedList.X
+						measured.Y -= paintedList.Y
+						if layoutChanged(box, measured) {
+							c.Invalidate()
+						}
+					})
 				}
 			})
 			var along, size float32
@@ -232,6 +286,7 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 				indicator.seen = *selected
 			}
 			list.Draw(func(p *ui.Painter, r ui.Rect) {
+				paintedList = r
 				if !known {
 					return
 				}
@@ -241,16 +296,18 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 				} else {
 					rect.X, rect.W = along, size
 				}
+				rect.X += r.X
+				rect.Y += r.Y
 				if o.Variant == TabsSecondary {
 					const thickness = 2 // h-0.5 / w-0.5
 					if vertical {
-						p.Fill(ui.Rect{X: rect.X, Y: rect.Y, W: thickness, H: rect.H}, t.Accent, 0)
+						p.Fill(ui.Rect{X: rect.X, Y: rect.Y, W: thickness, H: rect.H}, t.Foreground, 0)
 					} else {
-						p.Fill(ui.Rect{X: rect.X, Y: target.Y + target.H - thickness, W: rect.W, H: thickness}, t.Accent, 0)
+						p.Fill(ui.Rect{X: rect.X, Y: rect.Y + rect.H - thickness, W: rect.W, H: thickness}, t.Foreground, 0)
 					}
 					return
 				}
-				p.Fill(rect, t.Segment, radius)
+				p.Fill(rect, face, radius)
 				for _, sh := range shadows {
 					p.Shadow(rect, radius, sh.X, sh.Y, sh.Blur, sh.Spread, sh.Color)
 				}
@@ -280,10 +337,13 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 		} else {
 			container.Children(func() { buildList(0) })
 		}
-		if parts.List.Changed() && o.OnChange != nil {
-			o.OnChange(*selected)
+		if parts.List.Changed() && *nativeSelected >= 0 && *nativeSelected < len(enabled) {
+			*selected = enabled[*nativeSelected]
+			if o.OnChange != nil {
+				o.OnChange(*selected)
+			}
 		}
-		if *selected >= 0 && *selected < len(o.Items) {
+		if *selected >= 0 && *selected < len(o.Items) && o.Items[*selected].Content != nil {
 			item := o.Items[*selected]
 			panel := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).
 				Padding(scale(c, theme.Space8)).Role(ui.RoleGroup)
@@ -305,18 +365,18 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 // no ambient scope or free compound constructor is needed. known says the
 // list paints the selection indicator from the tabs' boxes; until then the
 // selected tab paints its own.
-func buildTab(c *ui.Context, parts ui.TabsParts, index int, o TabOptions, chosen *int,
+func buildTab(c *ui.Context, tab ui.Element, index int, o TabOptions, chosen *int,
 	variant TabsVariant, orientation mygoui.Orientation, align TabsAlign, known bool) ui.Element {
 	t := theme.Colors(c)
 	vertical := orientation == mygoui.Vertical
 	selected := index == *chosen
-	height := scale(c, theme.Space32)
-	radius := theme.RadiusScale().XXXL
+	height := scale(c, 30)
+	radius := theme.RadiusScale().MD
 	if variant == TabsSecondary {
 		radius = 0
 	}
-	el := parts.Tab(index).Row().AlignItems(ui.Center).Gap(scale(c, theme.Space6)).
-		Height(height).PaddingX(scale(c, theme.Space16)).MinWidth(0).Shrink(0).
+	el := tab.Row().AlignItems(ui.Center).Gap(scale(c, theme.Space6)).
+		Height(height).PaddingX(scale(c, 10)).MinWidth(0).Shrink(0).
 		Radius(radius).FocusRing(true).Label(o.Label).Cursor(ui.CursorPointer)
 	if vertical {
 		el.MinWidth(scale(c, theme.Space(20))).Justify(ui.Center)
@@ -329,54 +389,56 @@ func buildTab(c *ui.Context, parts ui.TabsParts, index int, o TabOptions, chosen
 	case TabsAlignEnd:
 		el.Justify(ui.End)
 	}
-	// Snapshot the tab's hover in the build: a retained copy of a leaving
-	// element paints in later passes, where el has expired. Upstream dims an
-	// unselected tab to 70% under the pointer; it paints no face of its own.
+	// Snapshot hover: transitions can retain paint after the element expires.
 	hovered := el.Hovered() && !o.Disabled
-	fg := t.Muted
+	fg := t.MutedForeground.Alpha(0.72)
 	switch {
 	case selected && variant == TabsSecondary:
 		fg = t.Foreground
 	case selected:
-		fg = t.SegmentForeground
+		fg = t.Foreground
 	case hovered:
-		fg = t.Muted.Alpha(0.7)
+		fg = t.MutedForeground
 	}
 	el.TextColor(fg)
-	prevSelected := index > 0 && index-1 == *chosen
 	// The pill the selected tab paints until the list knows the tab boxes;
 	// from the second frame the list paints the sliding one. Its shadow
 	// layers are resolved once here, not in the paint callback.
+	face := segmentBackground(c, t)
 	var pill []theme.Shadow
 	if selected && !known && variant != TabsSecondary {
 		pill = theme.SurfaceShadows(c.Theme().Dark)
 	}
 	el.Draw(func(p *ui.Painter, r ui.Rect) {
 		if variant == TabsSecondary {
+			if hovered {
+				p.Fill(r, t.Accent, theme.RadiusScale().MD)
+			}
 			if !known && selected {
-				p.Fill(ui.Rect{X: r.X, Y: r.Y + r.H - 2, W: r.W, H: 2}, t.Accent, 0)
+				p.Fill(ui.Rect{X: r.X, Y: r.Y + r.H - 2, W: r.W, H: 2}, t.Foreground, 0)
 			}
 			return
 		}
 		if selected {
 			if !known {
-				p.Fill(r, t.Segment, radius)
+				p.Fill(r, face, radius)
 				for _, sh := range pill {
 					p.Shadow(r, radius, sh.X, sh.Y, sh.Blur, sh.Spread, sh.Color)
 				}
 			}
 			return
 		}
-		if index > 0 && !prevSelected {
-			if vertical {
-				p.Fill(ui.Rect{X: r.X + r.W*0.05, Y: r.Y, W: r.W * 0.9, H: hairline}, t.Muted.Alpha(0.25), 0)
-			} else {
-				p.Fill(ui.Rect{X: r.X, Y: r.Y + r.H*0.25, W: hairline, H: r.H * 0.5}, t.Muted.Alpha(0.25), 0)
-			}
-		}
+
 	})
 	el.Children(func() {
 		style.Text(ui.Text(c, o.Label), c, theme.SM()).FontWeight(theme.WeightMedium).SingleLine()
 	})
 	return style.Disabled(el, o.Disabled)
+}
+
+func segmentBackground(c *ui.Context, t theme.Palette) ui.Color {
+	if c.Theme().Dark {
+		return t.Input
+	}
+	return t.Background
 }

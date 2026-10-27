@@ -8,14 +8,20 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// AlertDialogOptions configures a HeroUI alert dialog. Both choices are
-// explicit: the backdrop and Escape never accept or dismiss it, matching
-// HeroUI's isDismissable and isKeyboardDismissDisabled defaults.
+// AlertDialogOptions configures an explicit-choice alert dialog. Backdrop
+// presses and Escape do not dismiss it.
 type AlertDialogOptions struct {
-	Status      mygoui.StatusColor
-	Icon        *ui.SVG
-	HideIcon    bool
-	Size        ModalSize
+	Status mygoui.StatusColor
+	// ShowIcon displays the status icon. An explicit Icon also enables it.
+	ShowIcon bool
+	Icon     *ui.SVG
+	// HideIcon overrides ShowIcon and Icon.
+	HideIcon bool
+	// Size selects the desktop width. Its zero value (ModalMedium) uses
+	// 512 DIPs here; set Width to 448 for the standard ModalMedium width.
+	Size ModalSize
+	// Width overrides Size on desktop. Narrow alerts fill the window.
+	Width       float32
 	Backdrop    ModalBackdrop
 	Title       string
 	Description string
@@ -28,7 +34,9 @@ type AlertDialogOptions struct {
 	OnCancel, OnAction       func()
 	ActionDisabled           bool
 	Destructive              bool
-	// HideClose removes the top-right explicit dismiss control.
+	// ShowClose adds a top-right cancel control, absent by default.
+	ShowClose bool
+	// HideClose overrides ShowClose.
 	HideClose bool
 }
 
@@ -61,27 +69,28 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 	}
 	showAction := o.ActionLabel != "" && o.OnAction != nil
 	var cancelButton ui.Element
+	motionState := responsiveDialogState(c, open)
+	modalScrim(c, open, o.Backdrop, dialogMotionDuration, ui.EaseInOut)
 	if *open {
 		c.Key(dialogKey{open})
 	}
 	p := ui.DialogBase(c, open, func(back, panel ui.Element) {
 		w, h := c.Size()
-		pad := float32(theme.Space40)
-		if w < 640 {
-			pad = theme.Space16
-		}
-		back = paintBackdrop(c, back, o.Backdrop)
-		back = dialogMotion(c, back, dialogMotionDuration)
-		back.Padding(pad).Row().Center()
+		availW, availH := dialogViewport(back, panel, w, h)
 
 		t := theme.Colors(c)
-		availW := max(float32(0), w-2*pad)
-		availH := max(float32(0), h-2*pad)
-		// Alert dialogs have no full-screen size of their own: a size that
-		// fills its container, ModalCover or ModalFull, takes the space the
-		// padded container leaves.
-		width := min(modalWidth(o.Size), availW)
+		width := modalWidth(o.Size)
+		if o.Size == ModalMedium {
+			width = 512
+		}
 		if o.Size == ModalCover || o.Size == ModalFull {
+			width = availW
+		}
+		if o.Width > 0 {
+			width = o.Width
+		}
+		width = min(width, availW)
+		if w < 640 {
 			width = availW
 		}
 		radius := overlayRadius()
@@ -89,14 +98,17 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 			Width(width).MaxWidth(availW).
 			MaxHeight(availH).MinHeight(0).
 			Radius(radius).Clip().
-			Background(t.Overlay).TextColor(t.OverlayForeground)
+			Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border)
+		if w < 640 {
+			panel.Radius(0).BorderWidth(theme.Hairline, 0, 0, 0)
+		}
 		panel = panelElevation(c, panel)
 		panel.Label(o.Title)
 		if o.Description != "" {
 			panel.Description(o.Description)
 		}
 		var icon func()
-		if !o.HideIcon {
+		if !o.HideIcon && (o.ShowIcon || o.Icon != nil) {
 			glyph := o.Icon
 			if glyph == nil {
 				glyph = statusGlyph(o.Status)
@@ -109,18 +121,20 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 			body:             o.Body,
 			bodyLabel:        o.BodyLabel,
 			icon:             icon,
-			hideClose:        o.HideClose,
+			hideClose:        !o.ShowClose || o.HideClose,
 			onClose:          cancel,
-			titleStyle:       theme.Base(),
+			fullBleedFooter:  true,
+			centerHeader:     w < 640,
+			titleStyle:       theme.H4(),
 			descriptionStyle: theme.SM(),
-			bodyInk:          t.Muted,
 			padding:          theme.Space24,
-			headerGap:        theme.Space12,
+			headerGap:        theme.Space8,
 			footer: func() {
 				cancelButton = mygoui.Button(c, mygoui.ButtonOptions{
-					Label:   cancelLabel,
-					Variant: mygoui.ButtonTertiary,
-					OnClick: cancel,
+					Label:     cancelLabel,
+					Variant:   mygoui.ButtonGhost,
+					FullWidth: w < 640,
+					OnClick:   cancel,
 				})
 				if showAction {
 					variant := mygoui.ButtonPrimary
@@ -128,14 +142,16 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 						variant = mygoui.ButtonDanger
 					}
 					mygoui.Button(c, mygoui.ButtonOptions{
-						Label:    o.ActionLabel,
-						Variant:  variant,
-						Disabled: o.ActionDisabled,
-						OnClick:  accept,
+						Label:     o.ActionLabel,
+						Variant:   variant,
+						Disabled:  o.ActionDisabled,
+						FullWidth: w < 640,
+						OnClick:   accept,
 					})
 				}
 			},
 		})
+		responsiveDialogMotion(c, back, panel, motionState, w, h)
 	})
 	// DialogBase records the opener after its callback. Focus Cancel only
 	// after that capture, or the dialog would try to restore its own button.
@@ -145,6 +161,7 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 		// state instead of accepting a backdrop press or Escape.
 		*open = true
 	}
+	motionState.observe(*open, theme.ReduceMotion(c), c.Now())
 	return p
 }
 

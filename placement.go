@@ -21,7 +21,7 @@ const (
 )
 
 // Placement anchors a floating panel. Offset is the gap from the anchor; zero
-// uses 4 DIPs, matching HeroUI's default spacing.
+// uses the component's default gap, typically 4 DIPs.
 type Placement struct {
 	Side   Side
 	Align  Align

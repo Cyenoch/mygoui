@@ -6,14 +6,13 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// TableVariant is HeroUI's table surface variant.
+// TableVariant selects a Coss plain or card table.
 type TableVariant uint8
 
 const (
-	// TablePrimary puts the table on a padded secondary surface, as HeroUI's
-	// default: a white table card inside a gray rounded frame.
+	// TablePrimary is COSS's plain table on the parent background.
 	TablePrimary TableVariant = iota
-	// TableSecondary paints no frame, leaving the table flush with its parent.
+	// TableSecondary puts the table body on a rounded card surface.
 	TableSecondary
 )
 
@@ -137,7 +136,7 @@ func (s *TableState) ColumnHidden(id string) bool { return s.Hidden[id] }
 // sort and for the hidden set; Header is its title and the fallback ID. Width
 // 0 shares the room the other columns leave, MinWidth and MaxWidth bound it,
 // and Cell builds a body cell. A nil Cell falls back to TableOptions.Cell.
-// Cells inherit the table's 14 DIP size and HeroUI's 20 DIP line box; a
+// Cells inherit the table's 14 DIP size and 20 DIP line box; a
 // builder that applies its own type role keeps that role's metrics.
 type TableColumnOptions struct {
 	ID       string
@@ -197,7 +196,7 @@ type TableCell struct {
 type TableOptions struct {
 	// Label is the table's accessible name.
 	Label string
-	// Variant selects the framed (default) or flush surface.
+	// Variant selects the plain (default) or card body surface.
 	Variant TableVariant
 	// Columns declares the columns, left to right. Hidden columns are
 	// skipped. IDs must be unique.
@@ -243,13 +242,12 @@ type TableOptions struct {
 	// Empty builds the empty state shown when Rows is 0 or every column is
 	// hidden. Without it, the table shows the localized empty message.
 	Empty func(c *ui.Context) ui.Element
-	// Footer builds the row under the body, inside the table's frame, with
-	// HeroUI's footer inset and vertical centering. Use it for a result
+	// Footer builds the row under the body with vertical centering. Use it for a result
 	// summary and pagination; FillWidth or Grow its element to span the row.
 	Footer func(c *ui.Context) ui.Element
 }
 
-// Table creates a HeroUI table. Rows are virtualized and the header is fixed
+// Table creates a COSS-style table. Rows are virtualized and the header is fixed
 // while the rows scroll, through ui.Table and ui.ListState. The caller sizes
 // the table or grows it in its parent:
 //
@@ -270,12 +268,7 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 	}
 
 	t := theme.Colors(c)
-	frameRadius := min(theme.Space32, theme.RadiusBase()*2.5)
-	if o.Variant == TablePrimary {
-		root.Padding(0, theme.Space4, theme.Space4, theme.Space4).
-			Radius(frameRadius).Clip().
-			Background(t.SurfaceSecondary).TextColor(t.SurfaceSecondaryForeground)
-	}
+	root.TextColor(t.Foreground)
 
 	// The caller may have changed the sort; a header click before this frame
 	// changed the native sort. Reconcile them before the rows are built.
@@ -302,14 +295,10 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 		table = ui.Table(c, &st.List, tl.nativeColumns(), o.Rows, func(row, col int) { tl.buildCell(c, row, col) }).
 			Grow(1).MinWidth(0).
 			Label(o.Label).
-			// The toolkit draws header text at the inherited size; HeroUI's
-			// header is 12 DIP. Cells set their own 14 DIP size.
-			FontSize(theme.Scale(c, 12))
+			// The native header inherits its font size; cells set theirs too.
+			FontSize(theme.Scale(c, 14))
 		if chrome != nil {
 			table.Draw(chrome)
-		}
-		if line := tableHeaderLine(t, true); line != nil {
-			table.DrawOver(line)
 		}
 	})
 
@@ -326,36 +315,20 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 	return root
 }
 
-// tableChrome paints the surfaces the toolkit leaves transparent: the primary
-// variant's white body card, inset under the header, or the secondary
-// variant's standalone header card. The table itself paints nothing, so the
-// root's gray frame shows through the header.
+// tableChrome paints the card body under the native transparent header.
 func tableChrome(o TableOptions, t theme.Palette, hasHeader bool) func(p *ui.Painter, r ui.Rect) {
-	radius := min(theme.Space32, theme.RadiusScale().XXL)
-	if o.Variant == TablePrimary {
-		top := theme.Space(8) + theme.Hairline
-		return func(p *ui.Painter, r ui.Rect) {
-			p.Fill(ui.Rect{X: r.X, Y: r.Y + top, W: r.W, H: r.H - top}, t.Surface, radius)
-		}
-	}
-	if !hasHeader {
+	if o.Variant != TableSecondary {
 		return nil
 	}
-	return func(p *ui.Painter, r ui.Rect) {
-		p.Fill(ui.Rect{X: r.X, Y: r.Y, W: r.W, H: theme.Space(8)}, t.SurfaceSecondary, radius)
+	radius := theme.RadiusScale().XL
+	var top float32
+	if hasHeader {
+		top = theme.Space(8) + theme.Hairline
 	}
-}
-
-// tableHeaderLine paints HeroUI's header border over the toolkit's divider,
-// which is darker than the separator at half strength.
-func tableHeaderLine(t theme.Palette, hasHeader bool) func(p *ui.Painter, r ui.Rect) {
-	if !hasHeader {
-		return nil
-	}
-	// Opaque, because it covers the toolkit's own darker divider.
-	line := mixColor(t.SurfaceSecondary, t.Separator, 0.5)
 	return func(p *ui.Painter, r ui.Rect) {
-		p.Fill(ui.Rect{X: r.X, Y: r.Y + theme.Space(8), W: r.W, H: theme.Hairline}, line, 0)
+		body := ui.Rect{X: r.X, Y: r.Y + top, W: r.W, H: max(0, r.H-top)}
+		p.Fill(body, t.Card, radius)
+		p.Stroke(body, t.Border, radius, theme.Hairline)
 	}
 }
 
@@ -440,13 +413,16 @@ func newTableLayout(c *ui.Context, o TableOptions, st *TableState, t theme.Palet
 	// selected color between cells. Painting through Draw, which the cell
 	// does not clip to the content box, reaches the cell edges again.
 	padX, padY := float32(theme.Space10), float32(theme.Space6)
-	line := ui.RGBA(t.SeparatorTertiary.R, t.SeparatorTertiary.G, t.SeparatorTertiary.B, 0.5)
-	selected := t.SurfaceSecondary
+	line := t.Border
+	base := t.Background
 	if o.Variant == TableSecondary {
-		// A secondary table is transparent, so its chosen row keeps the
-		// neutral default tone rather than the primary table's gray card.
-		selected = t.Default
+		base = t.Card
 	}
+	tint := ui.RGB(0, 0, 0)
+	if c.Theme().Dark {
+		tint = ui.RGB(255, 255, 255)
+	}
+	selected := mixColor(base, tint, 0.04)
 	tl.paintRow = cellPaint(ui.Color{}, line, padX, padY)
 	tl.paintSelected = cellPaint(selected, line, padX, padY)
 	tl.paintSelectedFirst = cellPaint(selected, ui.Color{}, padX, padY)
@@ -532,18 +508,19 @@ func (tl *tableLayout) buildCell(c *ui.Context, row, col int) {
 	}
 	r := tl.rowAt(row)
 	t := tl.colors
-	ink := t.SurfaceForeground
+	ink := t.Foreground
 	if tl.o.Variant == TableSecondary {
-		ink = t.Foreground
+		ink = t.CardForeground
+	}
+	cellSelection := tl.st.List.CellSelect && tl.st.Selection.Mode == TableSelectionMultiple
+	if cellSelection && tl.st.List.CellSelected(row, col) {
+		ink = t.PrimaryForeground
 	}
 	cell := ui.Box(c).FillWidth().FillHeight().MinWidth(0).TextColor(ink).
-		// HeroUI's cells are px-4 py-3 with a text-sm line box; the
-		// toolkit's own cell padding is 10 by 6, so the remaining inline 6
-		// restores the 16 by 12 metric. A builder with its own type role
-		// keeps that role's metrics.
+		// MyGo provides the 10 DIP horizontal padding; add 4 DIP vertically.
 		FontSize(theme.Scale(c, theme.Space14)).
 		FixedLineHeight(theme.Scale(c, theme.Space20)).
-		Padding(theme.Scale(c, theme.Space6)).
+		PaddingY(theme.Scale(c, theme.Space4)).
 		// The content box fills the cell so the row paint can reach its
 		// edges; the column's alignment therefore has to place the content
 		// here rather than in the toolkit's cell, and the content stays
@@ -557,9 +534,9 @@ func (tl *tableLayout) buildCell(c *ui.Context, row, col int) {
 	}
 	first := row == 0
 	switch {
-	case r.Selected && first:
+	case r.Selected && first && !cellSelection:
 		cell.Draw(tl.paintSelectedFirst)
-	case r.Selected:
+	case r.Selected && !cellSelection:
 		cell.Draw(tl.paintSelected)
 	case !first:
 		cell.Draw(tl.paintRow)

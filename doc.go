@@ -1,22 +1,30 @@
-// Package mygoui is a native HeroUI v3 component library for MyGo.
+// Package mygoui provides native MyGo components following coss ui.
 //
-// Constructors receive a build-scoped *ui.Context and return a build-scoped
-// ui.Element. Callers own model state; the toolkit owns input, focus, editing,
-// selection, animation and accessibility. Components read the live HeroUI
-// palette from package theme and never start background work or I/O.
+// Apply theme.Apply at the start of a view. Callers own model values and widget
+// state per window; constructors consume a build-scoped *ui.Context and return
+// build-scoped ui.Element values. Retain ui.Handle for persistent focus and
+// geometry, never elements or custom parts from an earlier build.
 //
-// Composition is Go-native: roots take typed options and a body callback for
-// parts. A card, for example, composes CardHeader, CardContent and CardFooter
-// inside one body:
+// Composition uses typed options, content callbacks and keyed collections.
+// Related controls live in form, navigation, overlay, date, data and other
+// family packages. A card composes ordinary native children:
 //
 //	mygoui.Card(c, mygoui.CardOptions{}, func() {
 //		mygoui.CardHeader(c, func() {
 //			mygoui.CardTitle(c, "Project")
-//			mygoui.CardDescription(c, "Deployed 3 minutes ago")
 //		})
-//		mygoui.CardContent(c, func() { /* ... */ })
+//		mygoui.CardContent(c, func() {
+//			mygoui.Paragraph(c, "Ready to deploy", false)
+//		})
 //	})
 //
-// Reference implementations are pinned under references/; docs/references.md
-// records how to review upstream changes.
+// Colors are read live through theme.Colors. Host preferences configure
+// semantic roles, radii and body/heading/mono families; applications register
+// their own fonts explicitly. Importing this library does not initialize an
+// application or start I/O or background jobs.
+//
+// ScrollArea wraps native scrolling. ScrollFade provides subtree alpha masking,
+// shadow and opaque-surface edge treatments through native paint and effects.
+// docs/components.md maps the coss catalog and native limits, docs/theme.md
+// describes customization, and docs/references.md records source provenance.
 package mygoui

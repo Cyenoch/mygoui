@@ -103,21 +103,14 @@ func motionAssertSurface(t *testing.T, tt *ui.Tester, area image.Rectangle, dura
 // TestSurfacesPaintArrivalAndDeparture drives every fading surface through
 // the same paint contract: the arrival asks for frames and paints its way in,
 // it reaches its resting paint, the departure starts from the pose last shown,
-// paints its way out and leaves nothing behind. Every drawer edge and an edge
-// dialog share the native absolute backdrop. The bottom sheet slides instead
-// of fading and keeps its own slide test.
+// paints its way out and leaves nothing behind. The sliding drawers, sheet
+// and bottom sheet have their own motion tests.
 func TestSurfacesPaintArrivalAndDeparture(t *testing.T) {
 	clickOpener := func(label string) func(*testing.T, *ui.Tester) {
 		return func(t *testing.T, tt *ui.Tester) {
 			if err := tt.Click(label); err != nil {
 				t.Fatal(err)
 			}
-		}
-	}
-	drawer := func(side DrawerSide) func(c *ui.Context, open *bool) {
-		return func(c *ui.Context, open *bool) {
-			ui.Button(c, "Open").OnClick(func() { *open = true })
-			Drawer(c, open, DrawerOptions{Side: side, Title: "Panel"})
 		}
 	}
 	for _, tc := range []struct {
@@ -135,10 +128,6 @@ func TestSurfacesPaintArrivalAndDeparture(t *testing.T) {
 				Body:  func() { ui.Button(c, "Confirm") },
 			})
 		}, clickOpener("Open"), "Open"},
-		{"drawer left", drawerMotionDuration, "Panel", drawer(DrawerLeft), clickOpener("Open"), "Open"},
-		{"drawer right", drawerMotionDuration, "Panel", drawer(DrawerRight), clickOpener("Open"), "Open"},
-		{"drawer top", drawerMotionDuration, "Panel", drawer(DrawerTop), clickOpener("Open"), "Open"},
-		{"drawer bottom", drawerMotionDuration, "Panel", drawer(DrawerBottom), clickOpener("Open"), "Open"},
 		{"edge dialog", dialogMotionDuration, "Panel", func(c *ui.Context, open *bool) {
 			ui.Button(c, "Open").OnClick(func() { *open = true })
 			Dialog(c, open, DialogOptions{

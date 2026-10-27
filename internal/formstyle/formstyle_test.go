@@ -69,14 +69,14 @@ func pixelNear(img *image.RGBA, x, y int, c ui.Color) bool {
 func TestSecondaryFieldKeepsItsFaceWhenFocused(t *testing.T) {
 	f := newFieldFixture(t, true, false)
 	x, y := int(f.rect.X)+8, int(f.rect.Y+f.rect.H/2)
-	if !pixelNear(f.tester.Image(), x, y, f.pal.Default) {
+	if !pixelNear(f.tester.Image(), x, y, f.pal.Background) {
 		t.Fatalf("secondary field at rest = %v, want the Default face %v",
-			f.tester.Image().RGBAAt(x, y), f.pal.Default)
+			f.tester.Image().RGBAAt(x, y), f.pal.Background)
 	}
 	f.focus()
-	if !pixelNear(f.tester.Image(), x, y, f.pal.Default) {
+	if !pixelNear(f.tester.Image(), x, y, f.pal.Background) {
 		t.Fatalf("focused secondary field = %v, want the Default face %v",
-			f.tester.Image().RGBAAt(x, y), f.pal.Default)
+			f.tester.Image().RGBAAt(x, y), f.pal.Background)
 	}
 }
 
@@ -88,8 +88,8 @@ func TestFieldRingHugsTheBox(t *testing.T) {
 		invalid bool
 		want    func(theme.Palette) ui.Color
 	}{
-		{"valid", false, func(p theme.Palette) ui.Color { return p.Focus }},
-		{"invalid", true, func(p theme.Palette) ui.Color { return p.Danger }},
+		{"valid", false, func(p theme.Palette) ui.Color { return p.Ring.Alpha(0.24).Over(p.Background) }},
+		{"invalid", true, func(p theme.Palette) ui.Color { return p.Destructive.Alpha(0.16).Over(p.Background) }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			f := newFieldFixture(t, false, tc.invalid)
@@ -146,7 +146,7 @@ func TestTriggerRingWaitsForTheKeyboard(t *testing.T) {
 	ringed := func() bool {
 		img := tt.Image()
 		for dx := -3; dx <= -1; dx++ {
-			if pixelNear(img, int(rect.X)+dx, y, pal.Focus) {
+			if pixelNear(img, int(rect.X)+dx, y, pal.Ring.Alpha(0.24).Over(pal.Background)) {
 				return true
 			}
 		}
