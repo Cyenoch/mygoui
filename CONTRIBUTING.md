@@ -62,7 +62,9 @@ make workflows
 formatting and module verification. Race checks matter for shared-state
 changes. `make race` runs test binaries serially because each headless
 rasterizer already uses multiple cores; package-local concurrency stays
-enabled. Inspect module integrity when changing dependencies; run
+enabled. Race binaries have a 10-minute timeout; CI allows 25 minutes for
+the full race job, including setup and compilation. Inspect module
+integrity when changing dependencies; run
 `go mod tidy` only as part of intentional module work.
 
 Exercise changed controls with `ui.NewTester`: keyboard/pointer activation,
