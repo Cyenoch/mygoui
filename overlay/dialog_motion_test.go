@@ -14,20 +14,31 @@ func dialogMotionMarker(tt *ui.Tester) ui.Rect {
 	return redMarkerBounds(tt.Image())
 }
 
-// All motion markers have equal green and blue channels. ClearType glyph
-// edges need not, so a red-dominance test alone also finds the Open label.
+// Solid markers contain filled 5x5 patches. ClearType fringes can have the
+// same red-dominant color, including equal G/B, but are only thin glyph edges.
 func redMarkerBounds(img *image.RGBA) ui.Rect {
 	bounds := img.Bounds()
 	minX, minY := bounds.Max.X, bounds.Max.Y
 	maxX, maxY := -1, -1
-	for y := bounds.Min.Y; y < bounds.Max.Y; y++ {
-		for x := bounds.Min.X; x < bounds.Max.X; x++ {
-			pixel := img.RGBAAt(x, y)
-			if int(pixel.R)-int(pixel.G) < 20 || pixel.G != pixel.B {
+	red := func(x, y int) bool {
+		pixel := img.RGBAAt(x, y)
+		return int(pixel.R)-int(pixel.G) >= 20 && pixel.G == pixel.B
+	}
+	for y := bounds.Min.Y; y+4 < bounds.Max.Y; y++ {
+	patches:
+		for x := bounds.Min.X; x+4 < bounds.Max.X; x++ {
+			if !red(x, y) {
 				continue
 			}
+			for dy := range 5 {
+				for dx := range 5 {
+					if !red(x+dx, y+dy) {
+						continue patches
+					}
+				}
+			}
 			minX, minY = min(minX, x), min(minY, y)
-			maxX, maxY = max(maxX, x), max(maxY, y)
+			maxX, maxY = max(maxX, x+4), max(maxY, y+4)
 		}
 	}
 	if maxX < 0 {
@@ -42,6 +53,9 @@ func TestRedMarkerBoundsRejectsSubpixelGlyphs(t *testing.T) {
 		img.SetRGBA(2, y, color.RGBA{R: 210, G: 140, B: 80, A: 255})
 		img.SetRGBA(3, y, color.RGBA{R: 220, G: 180, B: 160, A: 255})
 		img.SetRGBA(4, y, color.RGBA{R: 210, G: 160, B: 161, A: 255})
+		// Equal G/B can occur in a ClearType fringe too. Color alone
+		// cannot distinguish it from a partly faded solid marker.
+		img.SetRGBA(5, y, color.RGBA{R: 220, G: 160, B: 160, A: 255})
 	}
 	if got := redMarkerBounds(img); got != (ui.Rect{}) {
 		t.Fatalf("colored glyph edges detected as marker: %+v", got)

@@ -1,5 +1,33 @@
 # Validation
 
+## PR #3 Windows marker follow-up
+
+2026-10-27, follow-up to `215767b`. Windows job `122248524857` in
+run `40521219792` failed overlay motion tests: the detected residual bounds
+matched the Open label rather than the solid motion marker. The old
+equal-green/blue color filter still accepts some red ClearType fringes.
+A synthetic equal-G/B fringe regression fails with that filter.
+
+The shared test sampler now requires filled 5x5 red patches and unions their
+full extents, rejecting thin glyph fringes while retaining the bounds of the
+larger solid markers, including their faded exits. Production components,
+motion/focus assertions and CI configuration are unchanged; no test is skipped.
+
+- The fringe regression passes, as do the responsive dialog, edge surface
+  and drawer exit tests with the failed job's shuffle seed
+  `1793111328520692000`;
+  `/tmp/mygoui-pr3-windows-marker-regression.log`.
+- `make check`: pass; `/tmp/mygoui-pr3-marker-check.log`.
+- Linux Docker full overlay suite with the same shuffle seed: pass;
+  `/tmp/mygoui-pr3-marker-linux.log`.
+- Targeted overlay race tests with the same shuffle seed: pass;
+  `/tmp/mygoui-pr3-marker-race.log` (111.204 s).
+- Full lint: zero issues; `/tmp/mygoui-pr3-marker-lint.log`.
+- Windows/amd64 overlay test-binary cross-compilation and WASM build: pass.
+
+Actual Windows execution remains pending remote CI; cross-compilation is not
+a Windows runtime result.
+
 ## MyGo 0.7.1 follow-up
 
 2026-10-27, `coss`, based on `a8cd38e99fa564e4b162620d6313085e5476de3a`.
