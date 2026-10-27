@@ -1,5 +1,40 @@
 # Validation
 
+## Race timeout budget follow-up
+
+2026-10-27, uncommitted follow-up to `cfb0515`. CI run `40529194388`
+passed analysis and all three OS test jobs. Its serial race job still
+timed out in overlay at 300.026 s; Gallery passed in 283.182 s. The active
+AlertDialog test was only one second old when the package timer expired,
+and raster workers were evaluating effect coverage. No data-race report
+appears in the failed log, `/tmp/mygoui-ci-cfb0515-race.log`.
+
+The race package timeout is now 600 seconds in both CI and `make race`.
+The CI race job allows 25 minutes for serial packages, setup and compilation.
+Race instrumentation, package-local concurrency, CI shuffle and all tests
+remain enabled. No production code or test assertions change.
+
+- The active `TestAlertDialogOptionalIconAndClose` passes alone with race
+  detection and the failed shuffle seed `1793114605814973555` in 2.793 s
+  on macOS/arm64; `/tmp/mygoui-ci-alert-race.log`.
+- `GOWORK=off make check`: pass; `/tmp/mygoui-ci-budget-check.log`.
+- `GOWORK=off golangci-lint run ./...`: zero issues;
+  `/tmp/mygoui-ci-budget-lint.log`.
+- `GOWORK=off make wasm workflows` and `git diff --check`: pass;
+  `/tmp/mygoui-ci-budget-builds.log`.
+- Full Linux/arm64 Docker race suite capped at two CPUs: pass with
+  `GOWORK=off CGO_ENABLED=1 GOMAXPROCS=2 go test -race -p 1 -shuffle=1793114605814973555 ./... -count=1 -timeout=600s`.
+  All 17 packages complete with no reported races; Gallery takes 164.871 s
+  and overlay 218.606 s. First package start to final result is 441.429 s;
+  `/tmp/mygoui-ci-race-linux.jsonl`. This local run also fits the old package
+  timeout; it does not reproduce hosted Linux/amd64 runner speed.
+- Independent read-only review found no blocking issue in the timeout
+  alignment or job budget; its workflow validation also passes. It did not
+  rerun the test suite.
+
+No commit, push, remote CI rerun or native desktop verification is claimed.
+Hosted-runner timing remains unverified for this follow-up.
+
 ## PR #3 race scheduling follow-up
 
 2026-10-27, follow-up to `4502b4e`. Run `40523761606` passed analysis and

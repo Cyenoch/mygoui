@@ -46,7 +46,7 @@ jobs:
 
   race:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 25
     env:
       CGO_ENABLED: '1'
     steps:
@@ -63,7 +63,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libpangocairo-1.0-0 fonts-noto-cjk fonts-noto-color-emoji
       # Each headless rasterizer uses several cores; avoid competing test binaries.
-      - run: go test -race -p 1 -shuffle=on ./... -count=1 -timeout=300s
+      - run: go test -race -p 1 -shuffle=on ./... -count=1 -timeout=600s
 
   analysis:
     runs-on: ubuntu-latest
