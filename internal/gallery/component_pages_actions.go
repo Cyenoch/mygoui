@@ -14,11 +14,11 @@ func buttonsStateOf(s *State) *buttonsState {
 func init() {
 	RegisterComponent(ComponentPage{
 		ID: "button", Title: "Button", Group: "Actions", Order: 10,
-		Description: "The primary native action, with seven variants, sizes and states.",
+		Description: "Native actions with Coss variants, sizes and states.",
 		Examples: []ComponentExample{
 			{
 				Title:       "Variants",
-				Description: "Seven HeroUI color variants share one native focusable base.",
+				Description: "Default, secondary, outline, ghost, link and destructive treatments.",
 				Demo: func(c *ui.Context, s *State) {
 					buttonVariantsBody(c, buttonsStateOf(s))
 				},
@@ -55,11 +55,11 @@ func init() {
 		Code: `package main
 
 import "github.com/Cyenoch/mygoui"
-
+import "github.com/egoist/mygo/ui"
 func save(c *ui.Context) {
     mygoui.Button(c, mygoui.ButtonOptions{
         Label: "Save", Variant: mygoui.ButtonPrimary,
-        OnClick: save,
+        OnClick: func() {},
     })
 }`,
 		Params: []ComponentParam{
@@ -75,7 +75,7 @@ func save(c *ui.Context) {
 			{"Align", "mygoui.ButtonAlign", "ButtonAlignCenter", "Centers the label or starts it for nav rows."},
 			{"Tooltip", "string", "", "Native hover description; empty uses Label when icon-only."},
 		},
-		Tokens: []string{"Accent", "AccentForeground", "Default", "DefaultHover", "Danger"},
+		Tokens: []string{"Primary", "PrimaryForeground", "Secondary", "Accent", "Destructive"},
 	})
 
 	RegisterComponent(ComponentPage{
@@ -84,14 +84,14 @@ func save(c *ui.Context) {
 		Examples: []ComponentExample{
 			{
 				Title:       "Horizontal",
-				Description: "A joined row with HeroUI's half-height shared-edge separators.",
+				Description: "A joined row with the native library's half-height shared-edge separators.",
 				Demo: func(c *ui.Context, s *State) {
 					buttonGroupBody(c, buttonsStateOf(s))
 				},
 			},
 			{
 				Title:       "Vertical",
-				Description: "A full-width vertical stack that rounds only its ends.",
+				Description: "A content-width vertical stack that rounds only its ends.",
 				Demo: func(c *ui.Context, s *State) {
 					buttonGroupVerticalBody(c, buttonsStateOf(s))
 				},
@@ -243,7 +243,7 @@ mygoui.ToggleButton(c, mygoui.ToggleButtonOptions{
 		Examples: []ComponentExample{
 			{
 				Title:       "Press feedback",
-				Description: "A pressable surface with HeroUI Native's 0.985 press scale.",
+				Description: "A pressable surface with the native control's 0.985 press scale.",
 				Demo: func(c *ui.Context, s *State) {
 					pressableBody(c, buttonsStateOf(s))
 				},

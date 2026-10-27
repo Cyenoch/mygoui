@@ -5,7 +5,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// TextAreaOptions configures HeroUI's multiline input. MinLines and MaxLines
+// TextAreaOptions configures a multiline input. MinLines and MaxLines
 // make the editor grow with its text to MaxLines, past which it scrolls.
 type TextAreaOptions struct {
 	Label, Description, Error string
@@ -19,7 +19,7 @@ type TextAreaOptions struct {
 	OnChange                  func()
 }
 
-// TextArea renders a multiline native editor on HeroUI's textarea surface.
+// TextArea renders a multiline native editor on a field surface.
 func TextArea(c *ui.Context, value *string, o TextAreaOptions) ui.Element {
 	value = inputTextAnchor(value)
 	build := func() ui.Element {
@@ -39,7 +39,7 @@ func TextArea(c *ui.Context, value *string, o TextAreaOptions) ui.Element {
 		} else {
 			e.MinWidth(theme.Scale(c, inputDefaultWidth))
 		}
-		e = e.PaddingX(theme.Space12).PaddingY(theme.Space8).Shrink(0)
+		e = e.PaddingX(theme.Space12).PaddingY(theme.Scale(c, 5)).Shrink(0)
 		if o.MinLines > 0 || o.MaxLines > 0 {
 			minLines := o.MinLines
 			if minLines <= 0 {
@@ -51,7 +51,7 @@ func TextArea(c *ui.Context, value *string, o TextAreaOptions) ui.Element {
 			}
 			e.Lines(minLines, maxLines)
 		} else {
-			e.MinHeight(theme.Scale(c, theme.HeightTextarea))
+			e.MinHeight(theme.Scale(c, 70))
 		}
 		e = fieldSurface(e, c, o.Variant, o.Invalid, o.Disabled)
 		if o.OnChange != nil {

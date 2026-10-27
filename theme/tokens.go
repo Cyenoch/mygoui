@@ -8,7 +8,7 @@ const Sans = "-apple-system, BlinkMacSystemFont, Segoe UI, system-ui, sans-serif
 // Mono is MyGo's native monospace family list.
 const Mono = "ui-monospace, SF Mono, SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace"
 
-// HeroUI's spacing rhythm is 0.25rem at a 16 DIP root.
+// coss ui's spacing rhythm is 0.25rem at a 16 DIP root.
 const (
 	SpaceUnit = 4
 	Space2    = 2
@@ -27,7 +27,7 @@ const (
 	Space64   = 64
 )
 
-// Space returns n HeroUI spacing units.
+// Space returns n coss ui spacing units.
 func Space(n float32) float32 { return n * SpaceUnit }
 
 // Text weights map to Element.FontWeight.
@@ -39,10 +39,10 @@ const (
 )
 
 // TrackingTight is Tailwind's tracking-tight, a letter spacing of -0.025em.
-// HeroUI sets it on every heading role and on prose headings.
+// coss ui sets it on every heading role and on prose headings.
 const TrackingTight = -0.025
 
-// TextStyle describes an unscaled HeroUI type role. Tracking is letter
+// TextStyle describes an unscaled coss ui type role. Tracking is letter
 // spacing as a fraction of the font size: zero keeps the font's own spacing,
 // TrackingTight tightens headings.
 type TextStyle struct {
@@ -51,6 +51,7 @@ type TextStyle struct {
 	Weight     int
 	Tracking   float32
 	Mono       bool
+	Heading    bool
 }
 
 // XS is text-xs: 12/16.
@@ -68,34 +69,34 @@ func LG() TextStyle { return TextStyle{Size: 18, LineHeight: 28, Weight: WeightN
 // XL is text-xl: 20/28.
 func XL() TextStyle { return TextStyle{Size: 20, LineHeight: 28, Weight: WeightNormal} }
 
-// H1 is HeroUI's text-4xl heading role, 36/40 semibold and tracking-tight.
+// H1 is coss ui's text-4xl heading role, 36/40 semibold and tracking-tight.
 func H1() TextStyle {
-	return TextStyle{Size: 36, LineHeight: 40, Weight: WeightSemibold, Tracking: TrackingTight}
+	return TextStyle{Size: 36, LineHeight: 40, Weight: WeightSemibold, Tracking: TrackingTight, Heading: true}
 }
 
-// H2 is HeroUI's text-3xl heading role, 30/36 semibold and tracking-tight.
+// H2 is coss ui's text-3xl heading role, 30/36 semibold and tracking-tight.
 func H2() TextStyle {
-	return TextStyle{Size: 30, LineHeight: 36, Weight: WeightSemibold, Tracking: TrackingTight}
+	return TextStyle{Size: 30, LineHeight: 36, Weight: WeightSemibold, Tracking: TrackingTight, Heading: true}
 }
 
-// H3 is HeroUI's text-2xl heading role, 24/32 semibold and tracking-tight.
+// H3 is coss ui's text-2xl heading role, 24/32 semibold and tracking-tight.
 func H3() TextStyle {
-	return TextStyle{Size: 24, LineHeight: 32, Weight: WeightSemibold, Tracking: TrackingTight}
+	return TextStyle{Size: 24, LineHeight: 32, Weight: WeightSemibold, Tracking: TrackingTight, Heading: true}
 }
 
-// H4 is HeroUI's text-xl heading role, 20/28 semibold and tracking-tight.
+// H4 is coss ui's text-xl heading role, 20/28 semibold and tracking-tight.
 func H4() TextStyle {
-	return TextStyle{Size: 20, LineHeight: 28, Weight: WeightSemibold, Tracking: TrackingTight}
+	return TextStyle{Size: 20, LineHeight: 28, Weight: WeightSemibold, Tracking: TrackingTight, Heading: true}
 }
 
-// H5 is HeroUI's text-lg heading role, 18/28 semibold and tracking-tight.
+// H5 is coss ui's text-lg heading role, 18/28 semibold and tracking-tight.
 func H5() TextStyle {
-	return TextStyle{Size: 18, LineHeight: 28, Weight: WeightSemibold, Tracking: TrackingTight}
+	return TextStyle{Size: 18, LineHeight: 28, Weight: WeightSemibold, Tracking: TrackingTight, Heading: true}
 }
 
-// H6 is HeroUI's text-base heading role, 16/24 semibold and tracking-tight.
+// H6 is coss ui's text-base heading role, 16/24 semibold and tracking-tight.
 func H6() TextStyle {
-	return TextStyle{Size: 16, LineHeight: 24, Weight: WeightSemibold, Tracking: TrackingTight}
+	return TextStyle{Size: 16, LineHeight: 24, Weight: WeightSemibold, Tracking: TrackingTight, Heading: true}
 }
 
 // Code is the inline code role.
@@ -107,7 +108,7 @@ func Label() TextStyle { return TextStyle{Size: 14, LineHeight: 20, Weight: Weig
 // HelpText is the form description role.
 func HelpText() TextStyle { return TextStyle{Size: 12, LineHeight: 16, Weight: WeightNormal} }
 
-// SemanticType is a HeroUI Typography type.
+// SemanticType is a coss ui Typography type.
 type SemanticType uint8
 
 const (
@@ -154,19 +155,19 @@ func (t SemanticType) Style() TextStyle {
 	return s
 }
 
-// RadiusBase returns the configured HeroUI radius base.
-func RadiusBase() float32 { return PreferencesSnapshot().Radius }
+// RadiusBase returns the configured coss ui radius base.
+func RadiusBase() float32 { return snapshot().prefs.Radius }
 
-// Radii is HeroUI's radius scale derived from the configured base.
+// Radii is coss ui's radius scale derived from the configured base.
 type Radii struct{ XS, SM, MD, LG, XL, XXL, XXXL, XXXXL, Field float32 }
 
-// radii derives the scale from a base. Upstream values at the 8 DIP base:
-// 2, 4, 6, 8, 12, 16, 24, 32, field 12.
+// radii follows coss's offset scale. At the default 10 DIP base the small,
+// medium, large and extra-large radii are 6, 8, 10 and 14 DIPs.
 func radii(base float32) Radii {
 	return Radii{
-		XS: base * 0.25, SM: base * 0.5, MD: base * 0.75, LG: base,
-		XL: base * 1.5, XXL: base * 2, XXXL: base * 3, XXXXL: base * 4,
-		Field: base * 1.5,
+		XS: max(0, base-6), SM: max(0, base-4), MD: max(0, base-2), LG: base,
+		XL: base + 4, XXL: base + 6, XXXL: base + 14, XXXXL: base + 22,
+		Field: max(0, base-2),
 	}
 }
 
@@ -174,25 +175,25 @@ func radii(base float32) Radii {
 // components do not re-derive it on every build.
 func RadiusScale() Radii { return snapshot().radii }
 
-// Component metrics in desktop DIPs. HeroUI's mobile button heights are 4 DIPs
+// Component metrics in desktop DIPs. coss ui's mobile button heights are 4 DIPs
 // taller; this library targets desktop windows.
 const (
-	HeightButtonSM = 32
-	HeightButtonMD = 36
-	HeightButtonLG = 40
+	HeightButtonSM = 28
+	HeightButtonMD = 32
+	HeightButtonLG = 36
 
-	HeightInput    = 36
+	HeightInput    = 32
 	HeightTextarea = 38
 	HeightChipSM   = 20
 	HeightChipMD   = 24
 	HeightChipLG   = 32
 	HeightBadgeSM  = 16
-	HeightBadgeMD  = 28
-	HeightBadgeLG  = 32
-	HeightAvatarSM = 32
-	HeightAvatarMD = 40
-	HeightAvatarLG = 48
-	HeightKbd      = 24
+	HeightBadgeMD  = 18
+	HeightBadgeLG  = 22
+	HeightAvatarSM = 24
+	HeightAvatarMD = 32
+	HeightAvatarLG = 40
+	HeightKbd      = 20
 	HeightRow      = 40
 	Hairline       = 1
 
@@ -202,13 +203,15 @@ const (
 	IconLG = 20
 )
 
-// ButtonSize is HeroUI's button size scale.
+// ButtonSize is coss ui's button size scale.
 type ButtonSize uint8
 
 const (
 	ButtonMedium ButtonSize = iota
 	ButtonSmall
 	ButtonLarge
+	ButtonExtraSmall
+	ButtonExtraLarge
 )
 
 // ButtonHeight resolves a button size.
@@ -218,6 +221,10 @@ func ButtonHeight(size ButtonSize) float32 {
 		return HeightButtonSM
 	case ButtonLarge:
 		return HeightButtonLG
+	case ButtonExtraSmall:
+		return 24
+	case ButtonExtraLarge:
+		return 40
 	}
 	return HeightButtonMD
 }
@@ -229,49 +236,29 @@ type Shadow struct {
 	Inset              bool
 }
 
-// HeroUI's three elevation tokens, layer for layer. The slices are shared by
-// every caller, so a build pass allocates nothing to paint a surface; callers
-// read them, and an append to one allocates its own array. Dark surfaces
-// separate by contrast, so upstream gives them no drop shadow.
+// Coss layers a low-alpha bottom shadow with a crisp inset edge.
 var (
-	lightSurfaceShadows = []Shadow{
-		{X: 0, Y: 2, Blur: 4, Color: ui.RGBA(0, 0, 0, 0.04)},
-		{X: 0, Y: 1, Blur: 2, Color: ui.RGBA(0, 0, 0, 0.06)},
-		{X: 0, Y: 0, Blur: 1, Color: ui.RGBA(0, 0, 0, 0.06)},
-	}
-	darkOverlayShadows = []Shadow{
-		{X: 0, Y: 0, Blur: 1, Color: ui.RGBA(255, 255, 255, 0.3), Inset: true},
-	}
-	lightOverlayShadows = []Shadow{
-		{X: 0, Y: 2, Blur: 8, Color: ui.RGBA(0, 0, 0, 0.06)},
-		{X: 0, Y: -6, Blur: 12, Color: ui.RGBA(0, 0, 0, 0.03)},
-		{X: 0, Y: 14, Blur: 28, Color: ui.RGBA(0, 0, 0, 0.08)},
-	}
+	lightSurfaceShadows = []Shadow{{Y: 1, Blur: 2, Color: ui.RGBA(0, 0, 0, 0.05)}, {Y: 1, Color: ui.RGBA(0, 0, 0, 0.04), Inset: true}}
+	darkSurfaceShadows  = []Shadow{{Y: -1, Color: ui.RGBA(255, 255, 255, 0.06), Inset: true}}
+	lightOverlayShadows = []Shadow{{Y: 4, Blur: 6, Spread: -1, Color: ui.RGBA(0, 0, 0, 0.1)}, {Y: 2, Blur: 4, Spread: -2, Color: ui.RGBA(0, 0, 0, 0.1)}}
+	lightFieldShadows   = []Shadow{{Y: 1, Blur: 2, Color: ui.RGBA(0, 0, 0, 0.05)}, {Y: 1, Color: ui.RGBA(0, 0, 0, 0.06), Inset: true}}
 )
 
-// shared returns s with its capacity trimmed to its length, so appending to
-// the result allocates instead of writing into the package's table.
-func shared(s []Shadow) []Shadow { return s[:len(s):len(s)] }
-
-// SurfaceShadows returns the light card shadow. Dark surfaces separate by
-// contrast; upstream disables the shadow. The result is shared and read-only.
+// SurfaceShadows returns an independent copy of the coss card elevation.
 func SurfaceShadows(dark bool) []Shadow {
 	if dark {
-		return nil
+		return append([]Shadow{}, darkSurfaceShadows...)
 	}
-	return shared(lightSurfaceShadows)
+	return append([]Shadow{}, lightSurfaceShadows...)
 }
 
-// OverlayShadows returns the floating-panel shadow. Dark overlays use
-// HeroUI's inset white hairline instead. The result is shared and read-only.
-func OverlayShadows(dark bool) []Shadow {
+// OverlayShadows returns the coss popup elevation in either appearance.
+func OverlayShadows(dark bool) []Shadow { return append([]Shadow{}, lightOverlayShadows...) }
+
+// FieldShadows returns the fine edge and lower shadow of an outlined input.
+func FieldShadows(dark bool) []Shadow {
 	if dark {
-		return shared(darkOverlayShadows)
+		return append([]Shadow{}, darkSurfaceShadows...)
 	}
-	return shared(lightOverlayShadows)
+	return append([]Shadow{}, lightFieldShadows...)
 }
-
-// FieldShadows returns the form-field elevation, which is the surface shadow
-// in light and a transparent inset placeholder upstream. The result is shared
-// and read-only.
-func FieldShadows(dark bool) []Shadow { return SurfaceShadows(dark) }

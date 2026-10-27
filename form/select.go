@@ -1,7 +1,6 @@
 package form
 
 import (
-	"reflect"
 	"strings"
 	"time"
 
@@ -15,7 +14,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// SelectOptions configures a HeroUI select. SelectionSingle is the default;
+// SelectOptions configures a select. SelectionSingle is the default;
 // SelectionMultiple keeps the popup open while keys are toggled.
 //
 // State is required and caller-owned. OnChange reports the chosen keys in item
@@ -65,7 +64,7 @@ func (s *SelectState) SelectedKeys() []string {
 // Clear removes every choice.
 func (s *SelectState) Clear() { s.List.ClearSelection() }
 
-// selectMode resolves an unset mode to HeroUI's single-choice select.
+// selectMode resolves an unset mode to single choice.
 func selectMode(m list.SelectionMode) list.SelectionMode {
 	if m == list.SelectionNone {
 		return list.SelectionSingle
@@ -110,34 +109,79 @@ func selectNotify(o SelectOptions, s *SelectState) {
 	o.OnChange(keys)
 }
 
-// listSource identifies the option slices a filtered list was built from, so
-// an unchanged source and query is not scanned again. Callers own the slices;
-// replacing one, as async results do, changes the data pointer.
-type listSource struct {
-	items, sections, sectionData          uintptr
-	itemCount, sectionCount, sectionItems int
+// sectionItemCount counts rows for the filtered list's scratch storage.
+func sectionItemCount(sections []list.ListBoxSection) int {
+	count := 0
+	for i := range sections {
+		count += len(sections[i].Items)
+	}
+	return count
 }
 
-// sourceOf fingerprints the options. It walks sections only, not their items.
-func sourceOf(items []list.ListBoxItem, sections []list.ListBoxSection) listSource {
-	s := listSource{
-		items: sliceData(items), sections: sliceData(sections),
-		itemCount: len(items), sectionCount: len(sections),
+// pendingFilter tracks navigation when native input and keys arrive before
+// the popup has rebuilt for the new query.
+type pendingFilter struct {
+	keys   []string
+	index  int
+	active bool
+}
+
+func (p *pendingFilter) reset(query string, filter func(string, *list.ListBoxItem) bool,
+	items []list.ListBoxItem, sections []list.ListBoxSection) {
+	p.keys = p.keys[:0]
+	p.index, p.active = 0, true
+	match := filterMatch(query, filter)
+	eachSelectItem(items, sections, func(item *list.ListBoxItem) bool {
+		if !item.Disabled && match(item) {
+			p.keys = append(p.keys, itemKey(item))
+		}
+		return true
+	})
+}
+
+func (p *pendingFilter) key() string {
+	if len(p.keys) == 0 {
+		return ""
+	}
+	return p.keys[p.index]
+}
+
+func (p *pendingFilter) move(delta int) {
+	if len(p.keys) > 0 {
+		p.index = max(0, min(p.index+delta, len(p.keys)-1))
+	}
+}
+
+func (p *pendingFilter) apply(s *list.ListBoxState, items []list.ListBoxItem, sections []list.ListBoxSection) {
+	if !p.active {
+		return
+	}
+	p.active = false
+	key := p.key()
+	index := 0
+	for i := range items {
+		if itemKey(&items[i]) == key {
+			s.Highlight = index
+			s.List.ScrollIntoView(index)
+			return
+		}
+		index++
 	}
 	for i := range sections {
-		s.sectionItems += len(sections[i].Items)
-		s.sectionData = s.sectionData*33 + sliceData(sections[i].Items)*7 +
-			uintptr(len(sections[i].Items))
+		section := &sections[i]
+		if section.Label != "" && !section.Options.HideLabel {
+			index++
+		}
+		for j := range section.Items {
+			if itemKey(&section.Items[j]) == key {
+				s.Highlight = index
+				s.List.ScrollIntoView(index)
+				return
+			}
+			index++
+		}
 	}
-	return s
-}
-
-// sliceData returns the backing array of s, or zero when it has none.
-func sliceData[T any](s []T) uintptr {
-	if len(s) == 0 {
-		return 0
-	}
-	return reflect.ValueOf(s).Pointer()
+	s.Highlight = 0
 }
 
 // filterMatch resolves the option predicate for a query, lowering it once
@@ -231,7 +275,7 @@ func itemKey(it *list.ListBoxItem) string {
 	return it.Label
 }
 
-// Select renders a HeroUI select: a field-styled trigger opening a virtualized
+// Select renders a field-styled trigger opening a virtualized
 // list box. The trigger keeps the tab stop; the list receives the keyboard when
 // the popup opens, so its own navigation, typeahead and selection apply.
 func Select(c *ui.Context, o SelectOptions) ui.Element {
@@ -257,7 +301,7 @@ func Select(c *ui.Context, o SelectOptions) ui.Element {
 		value := strings.Join(labels, ", ")
 		placeholder := value == ""
 
-		trigger := ui.ButtonBase(c).MinHeight(theme.Scale(c, theme.HeightInput)).
+		trigger := ui.ButtonBase(c).MinHeight(theme.Scale(c, 32)).
 			Padding(0, theme.Space12, 0, theme.Space12).Gap(theme.Space8).
 			AlignItems(ui.Center).Shrink(0).FocusRing(false).
 			Role(ui.RolePopUpButton).Expanded(s.Open).Value(value)
@@ -412,26 +456,28 @@ func selectPopup(c *ui.Context, o SelectOptions, s *SelectState, trigger ui.Elem
 		maxHeight = 320
 	}
 	t := theme.Colors(c)
-	radius := theme.RadiusScale().XXXL
-	if radius > 32 {
-		radius = 32
-	}
+	radius := theme.RadiusScale().LG
 	anchor := trigger
 	ui.PopoverBase(c, trigger, &s.Open, func(panel ui.Element) {
 		panel.MinWidth(anchor.Bounds().W)
-		panel.Padding(0).Radius(radius).Background(t.Overlay).Clip()
+		panel.Padding(0).Radius(radius).Background(t.Popover).Border(theme.Hairline, t.Border).Clip()
 		panel = style.Shadow(panel, c, theme.OverlayShadows(c.Theme().Dark))
 		panel = popoverMotion(c, panel, o.Placement, mygoui.SideBottom, 150*time.Millisecond)
-		anchored.Apply(panel, anchor, o.Placement, mygoui.SideBottom)
+		placement := o.Placement
+		if placement.Offset == 0 {
+			placement.Offset = 4
+		}
+		anchored.Apply(panel, anchor, placement, mygoui.SideBottom)
 		list.ListBox(c, list.ListBoxOptions{
-			Label:     o.Label,
-			Items:     o.Items,
-			Sections:  o.Sections,
-			Selection: mode,
-			State:     &s.List,
-			Padding:   theme.Space6,
-			MaxHeight: maxHeight,
-			Empty:     locale.M().NoResults,
+			Label:          o.Label,
+			Items:          o.Items,
+			Sections:       o.Sections,
+			Selection:      mode,
+			State:          &s.List,
+			Padding:        theme.Space4,
+			MaxHeight:      maxHeight,
+			Empty:          locale.M().NoResults,
+			IndicatorStart: true,
 			OnSelectionChange: func(keys []string) {
 				selectNotify(o, s)
 				if mode == list.SelectionSingle {
@@ -456,10 +502,10 @@ func selectPopup(c *ui.Context, o SelectOptions, s *SelectState, trigger ui.Elem
 func selectClearButton(c *ui.Context, clear func()) {
 	t := theme.Colors(c)
 	radius := theme.RadiusScale().XL
-	btn := ui.Row(c).Width(theme.Scale(c, 20)).Height(theme.Scale(c, 20)).
-		Shrink(0).Center().Radius(radius).FocusRing(true).
-		Role(ui.RoleButton).Label(locale.M().Clear).Cursor(ui.CursorPointer)
-	style.Background(btn, radius, ui.Transparent, t.DefaultHover, t.DefaultHover)
+	btn := ui.ButtonBase(c).Width(theme.Scale(c, 20)).Height(theme.Scale(c, 20)).
+		Shrink(0).Center().Padding(0).Radius(radius).FocusRing(true).
+		Label(locale.M().Clear).Cursor(ui.CursorPointer)
+	style.Background(btn, radius, ui.Transparent, t.Accent, t.Accent)
 	btn.OnClick(clear)
 	btn.Children(func() {
 		ui.Icon(c, selectClearIcon).Size(theme.Scale(c, 14), theme.Scale(c, 14)).
@@ -483,34 +529,14 @@ func selectIndicator(c *ui.Context, open bool) ui.Element {
 		})
 }
 
-// popoverMotion fades and scales a popup from its anchor as HeroUI's popover
-// enter and exit do. Reduced motion settles it at once.
+// popoverMotion fades and scales a popup. Reduced motion settles it at once.
 func popoverMotion(c *ui.Context, panel ui.Element, p mygoui.Placement, fallback mygoui.Side, d time.Duration) ui.Element {
 	if theme.ReduceMotion(c) {
 		return panel
 	}
-	side := p.Side
-	if side == mygoui.SideAuto {
-		side = fallback
-	}
-	enter := ui.Motion{Scale: 0.95}
-	slide := theme.Scale(c, 4)
-	switch side {
-	case mygoui.SideTop:
-		enter.Y = slide
-	case mygoui.SideLeft:
-		enter.X = slide
-	case mygoui.SideRight:
-		enter.X = -slide
-	default:
-		enter.Y = -slide
-	}
+	motion := ui.Motion{Scale: 0.98, Opacity: 0}
 	return panel.Transition(ui.ElementTransition{
-		Duration: d,
-		Ease:     ui.EaseOut,
-		Colors:   true,
-		Enter:    &enter,
-		Exit:     &ui.Motion{Scale: 0.95},
+		Duration: d, Ease: ui.EaseOut, Enter: &motion, Exit: &motion,
 	})
 }
 

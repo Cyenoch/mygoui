@@ -32,10 +32,9 @@ type overlaysState struct {
 	drawerNote       string
 	drawerDetailOpen bool
 
-	sheetOpen      bool
-	sheetTallOpen  bool
-	dialogOpen     bool
-	dialogEdgeOpen bool
+	sheetOpen     bool
+	sheetTallOpen bool
+	dialogOpen    bool
 
 	popoverOpen     bool
 	popoverEdgeOpen bool
@@ -132,21 +131,20 @@ func modalSizesExample(c *ui.Context, st *overlaysState) {
 			})
 		},
 		Footer: func() {
-			ui.Row(c).Justify(ui.End).Gap(theme.Space8).Children(func() {
-				mygoui.Button(c, mygoui.ButtonOptions{
-					Label: "Cancel", Variant: mygoui.ButtonTertiary,
-					OnClick: func() {
-						st.modalOpen = false
-						st.modalNote = "modal cancelled"
-					},
-				})
-				mygoui.Button(c, mygoui.ButtonOptions{
-					Label: "Save changes", Variant: mygoui.ButtonPrimary,
-					OnClick: func() {
-						st.modalOpen = false
-						st.modalNote = "changes saved from the " + modalSizeName(st.modalSize) + " modal"
-					},
-				})
+			w, _ := c.Size()
+			mygoui.Button(c, mygoui.ButtonOptions{
+				Label: "Cancel", Variant: mygoui.ButtonTertiary, FullWidth: w < 640,
+				OnClick: func() {
+					st.modalOpen = false
+					st.modalNote = "modal cancelled"
+				},
+			})
+			mygoui.Button(c, mygoui.ButtonOptions{
+				Label: "Save changes", Variant: mygoui.ButtonPrimary, FullWidth: w < 640,
+				OnClick: func() {
+					st.modalOpen = false
+					st.modalNote = "changes saved from the " + modalSizeName(st.modalSize) + " modal"
+				},
 			})
 		},
 	})
@@ -176,8 +174,9 @@ func modalDismissExample(c *ui.Context, st *overlaysState) {
 			mygoui.Paragraph(c, "Close the panel with its own button, or turn the switch off first.", true)
 		},
 		Footer: func() {
+			w, _ := c.Size()
 			mygoui.Button(c, mygoui.ButtonOptions{
-				Label: "Keep editing", Variant: mygoui.ButtonPrimary,
+				Label: "Keep editing", Variant: mygoui.ButtonPrimary, FullWidth: w < 640,
 				OnClick: func() { st.modalPreventOpen = false },
 			})
 		},
@@ -306,10 +305,11 @@ func drawerEdgesExample(c *ui.Context, st *overlaysState) {
 		Description: "Edge panel with a focus trap and a caller-owned open flag.",
 		Width:       theme.Scale(c, 360),
 		Height:      theme.Scale(c, 320),
-		Handle:      side == overlay.DrawerTop || side == overlay.DrawerBottom,
+		Handle:      true,
+		ShowClose:   true,
 		OnDismiss:   func() { st.drawerNote = drawerSideName(side) + " drawer dismissed" },
 		Body: func() {
-			mygoui.Paragraph(c, "Backdrop presses and Escape dismiss the drawer.", true)
+			mygoui.Paragraph(c, "Drag the edge, press Escape or use Close.", true)
 		},
 	})
 }
@@ -323,18 +323,18 @@ func drawerDetailExample(c *ui.Context, st *overlaysState) {
 	overlay.Drawer(c, &st.drawerDetailOpen, overlay.DrawerOptions{
 		Side:        overlay.DrawerBottom,
 		Title:       "Filters",
-		Description: "A bottom drawer with the visual drag handle.",
+		Description: "A bottom drawer with a drag handle.",
 		Height:      theme.Scale(c, 280),
 		Handle:      true,
+		ShowClose:   true,
 		Body: func() {
-			mygoui.Paragraph(c, "The handle is visual only; the backdrop, Escape and the footer button dismiss the drawer.", true)
+			mygoui.Paragraph(c, "Drag the edge, press Escape or apply filters.", true)
 		},
 		Footer: func() {
-			ui.Row(c).Justify(ui.End).Children(func() {
-				mygoui.Button(c, mygoui.ButtonOptions{
-					Label: "Apply filters", Variant: mygoui.ButtonPrimary,
-					OnClick: func() { st.drawerDetailOpen = false },
-				})
+			w, _ := c.Size()
+			mygoui.Button(c, mygoui.ButtonOptions{
+				Label: "Apply filters", Variant: mygoui.ButtonPrimary, FullWidth: w < 640,
+				OnClick: func() { st.drawerDetailOpen = false },
 			})
 		},
 	})
@@ -354,7 +354,7 @@ func sheetFooterExample(c *ui.Context, st *overlaysState) {
 	})
 	overlay.BottomSheet(c, &st.sheetOpen, overlay.BottomSheetOptions{
 		Title:       "Quick actions",
-		Description: "Native HeroUI's bottom sheet surface.",
+		Description: "The native bottom sheet surface.",
 		Body: func() {
 			mygoui.Paragraph(c, "The sheet floats 16 DIPs from the window edges, caps at 85% of its height and follows the handle as you drag it.", true)
 			ui.Row(c).Wrap().Gap(theme.Space8).Children(func() {
@@ -365,11 +365,10 @@ func sheetFooterExample(c *ui.Context, st *overlaysState) {
 			})
 		},
 		Footer: func() {
-			ui.Row(c).Justify(ui.End).Children(func() {
-				mygoui.Button(c, mygoui.ButtonOptions{
-					Label: "Close sheet", Variant: mygoui.ButtonPrimary,
-					OnClick: func() { st.sheetOpen = false },
-				})
+			w, _ := c.Size()
+			mygoui.Button(c, mygoui.ButtonOptions{
+				Label: "Close sheet", Variant: mygoui.ButtonPrimary, FullWidth: w < 640,
+				OnClick: func() { st.sheetOpen = false },
 			})
 		},
 	})
@@ -408,37 +407,19 @@ func dialogFooterExample(c *ui.Context, st *overlaysState) {
 		Description: "The new name appears in navigation and invitations.",
 		Width:       theme.Scale(c, 420),
 		Body: func() {
-			mygoui.Paragraph(c, "Dialogs are the smaller centered surface; use a drawer or the bottom sheet when the content needs an edge.", true)
-			mygoui.Chip(c, mygoui.ChipOptions{Label: "20 DIP padding", Variant: mygoui.ChipSoft})
+			mygoui.Paragraph(c, "Changes apply to this workspace.", true)
+			mygoui.Chip(c, mygoui.ChipOptions{Label: "24 DIP padding", Variant: mygoui.ChipSoft})
 		},
 		Footer: func() {
-			ui.Row(c).Justify(ui.End).Gap(theme.Space8).Children(func() {
-				mygoui.Button(c, mygoui.ButtonOptions{
-					Label: "Close dialog", Variant: mygoui.ButtonTertiary,
-					OnClick: func() { st.dialogOpen = false },
-				})
-				mygoui.Button(c, mygoui.ButtonOptions{
-					Label: "Rename", Variant: mygoui.ButtonPrimary,
-					OnClick: func() { st.dialogOpen = false },
-				})
+			w, _ := c.Size()
+			mygoui.Button(c, mygoui.ButtonOptions{
+				Label: "Close dialog", Variant: mygoui.ButtonTertiary, FullWidth: w < 640,
+				OnClick: func() { st.dialogOpen = false },
 			})
-		},
-	})
-}
-
-// dialogEdgeExample spans the bottom edge instead of centering.
-func dialogEdgeExample(c *ui.Context, st *overlaysState) {
-	mygoui.Button(c, mygoui.ButtonOptions{
-		Label:   "Open edge dialog",
-		Variant: mygoui.ButtonSecondary,
-		OnClick: func() { st.dialogEdgeOpen = true },
-	})
-	overlay.Dialog(c, &st.dialogEdgeOpen, overlay.DialogOptions{
-		Placement:   mygoui.Placement{Side: mygoui.SideBottom},
-		Title:       "Edge dialog",
-		Description: "An edge side spans the window edge like a sheet.",
-		Body: func() {
-			mygoui.Paragraph(c, "SideAuto centers the panel; a concrete side changes its placement.", true)
+			mygoui.Button(c, mygoui.ButtonOptions{
+				Label: "Rename", Variant: mygoui.ButtonPrimary, FullWidth: w < 640,
+				OnClick: func() { st.dialogOpen = false },
+			})
 		},
 	})
 }
@@ -539,7 +520,6 @@ func tooltipRichExample(c *ui.Context, _ *overlaysState) {
 
 // toastVariantsExample fires each visual variant.
 func toastVariantsExample(c *ui.Context, st *overlaysState) {
-	st.toasts.View(c)
 	show := func(o overlay.ToastOptions) {
 		o.Timeout = -1
 		o.Placement = toastPlacement(st.toastTop)

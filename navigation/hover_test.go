@@ -54,15 +54,15 @@ func TestTabsHoverDimsLabel(t *testing.T) {
 	}
 	// The strip container paints Default behind an unselected tab.
 	x, y := int(tab.X)+4, int(tab.Y+tab.H/2)
-	wantNavHoverPixel(t, tt.Image(), x, y, colors.Default, "tab normal fill")
+	wantNavHoverPixel(t, tt.Image(), x, y, colors.MutedBackground.Over(colors.Background), "tab normal fill")
 	normal := darkestIn(tt.Image(), tab)
 
 	tt.Move(tab.X+tab.W/2, tab.Y+tab.H/2)
 	tt.Frame()
-	wantNavHoverPixel(t, tt.Image(), x, y, colors.Default, "tab hover hides no face")
+	wantNavHoverPixel(t, tt.Image(), x, y, colors.MutedBackground.Over(colors.Background), "tab hover hides no face")
 	hovered := darkestIn(tt.Image(), tab)
-	if hovered <= normal+30 {
-		t.Fatalf("hovered label ink sums %d against %d: the label did not dim", hovered, normal)
+	if hovered >= normal-10 {
+		t.Fatalf("hovered label ink sums %d against %d: the label did not become clearer", hovered, normal)
 	}
 
 	tt.Move(2, 2)
@@ -113,7 +113,7 @@ func TestAccordionHeaderHoverPaint(t *testing.T) {
 	}
 	// The default variant paints the 3% foreground hover over the page.
 	normal := colors.Background
-	hover := colors.Foreground.Alpha(0.03).Over(normal)
+	hover := normal
 	// Sample right of the title, away from its ink and the chevron.
 	x, y := int(header.X+header.W/2), int(header.Y+header.H/2)
 	wantNavHoverPixel(t, tt.Image(), x, y, normal, "accordion header normal fill")
@@ -127,7 +127,7 @@ func TestAccordionHeaderHoverPaint(t *testing.T) {
 	wantNavHoverPixel(t, tt.Image(), x, y, normal, "accordion header fill after leaving")
 }
 
-// TestDisclosureHoverIsInert pins the upstream boundary: HeroUI's
+// TestDisclosureHoverIsInert pins the disclosure boundary: the
 // disclosure.css defines no hover face (only accordion headers do), so the
 // build-time snapshot audit finds nothing to repaint here. The trigger still
 // opens the panel.

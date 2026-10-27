@@ -8,7 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// PressableFeedbackOptions configures native HeroUI's press-feedback container.
+// PressableFeedbackOptions configures a native press-feedback container.
 type PressableFeedbackOptions struct {
 	Label     string
 	Disabled  bool
@@ -16,13 +16,11 @@ type PressableFeedbackOptions struct {
 	OnClick   func()
 }
 
-// pressableHighlightDuration is native HeroUI's press-highlight fade.
+// pressableHighlightDuration is the press-highlight fade.
 const pressableHighlightDuration = 200 * time.Millisecond
 
-// PressableFeedback provides native press feedback: HeroUI Native's 0.985
-// default press scale (without its width coefficient, which needs a measured
-// box) and hover/pressed surfaces that fade between faces. MyGo has no
-// ripple, so Native's ripple is not ported; the scale and faces are.
+// PressableFeedback animates a 0.985 press scale and fades its hover and
+// pressed surfaces. It does not draw a ripple.
 func PressableFeedback(c *ui.Context, o PressableFeedbackOptions, body func()) ui.Element {
 	t := theme.Colors(c)
 	radius := theme.RadiusScale().XL

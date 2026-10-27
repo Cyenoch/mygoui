@@ -6,8 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// StatusColor is HeroUI's status color vocabulary, plus ColorInfo for the
-// informational role HeroUI paints with accent.
+// StatusColor selects a semantic color for native status components.
 type StatusColor uint8
 
 const (
@@ -16,12 +15,11 @@ const (
 	ColorSuccess
 	ColorWarning
 	ColorDanger
-	// ColorInfo is the informational status. HeroUI has no separate info role,
-	// so it starts equal to Accent until a palette patch separates them.
+	// ColorInfo uses the theme's informational color.
 	ColorInfo
 )
 
-// ChipVariant selects a HeroUI chip surface treatment.
+// ChipVariant selects a native chip surface treatment.
 type ChipVariant uint8
 
 const (
@@ -31,7 +29,7 @@ const (
 	ChipTertiary
 )
 
-// ChipSize selects HeroUI's chip density.
+// ChipSize selects the chip's density.
 type ChipSize uint8
 
 const (
@@ -40,7 +38,7 @@ const (
 	ChipLarge
 )
 
-// ChipOptions configures a compact HeroUI chip.
+// ChipOptions configures a compact native chip.
 type ChipOptions struct {
 	Label   string
 	Color   StatusColor
@@ -49,8 +47,7 @@ type ChipOptions struct {
 	Icon    *ui.SVG
 }
 
-// Chip renders a 12 DIP medium capsule with HeroUI's color/variant matrix.
-// Its icon is one em, as HeroUI's untyped SVG inherits the label size.
+// Chip renders a compact status label. Its icon follows the label size.
 func Chip(c *ui.Context, o ChipOptions) ui.Element {
 	bg, fg := chipColors(c, o.Color, o.Variant)
 	paddingX, paddingY := float32(theme.Space8), float32(theme.Space2)
@@ -66,7 +63,7 @@ func Chip(c *ui.Context, o ChipOptions) ui.Element {
 	}
 	iconSize := theme.Scale(c, ts.Size)
 	e := ui.Row(c).Shrink(0).Center().Gap(theme.Space2).AlignSelf(ui.Start).
-		Padding(paddingY, paddingX, paddingY, paddingX).Radius(theme.RadiusScale().XXL).
+		Padding(paddingY, paddingX, paddingY, paddingX).Radius(theme.RadiusScale().SM).
 		Background(bg).TextColor(fg).Label(o.Label)
 	e.Children(func() {
 		if o.Icon != nil {
@@ -78,9 +75,8 @@ func Chip(c *ui.Context, o ChipOptions) ui.Element {
 	return e
 }
 
-// chipColors resolves HeroUI's chip and badge color matrix. A default chip
-// keeps the default foreground for its secondary and tertiary variants; the
-// other colors use their soft foreground.
+// chipColors resolves the native chip color matrix. A default chip keeps the
+// default foreground for its secondary and tertiary variants.
 func chipColors(c *ui.Context, color StatusColor, variant ChipVariant) (bg, fg ui.Color) {
 	t := theme.Colors(c)
 	p := StatusColors(c, color)
@@ -101,10 +97,21 @@ func chipColors(c *ui.Context, color StatusColor, variant ChipVariant) (bg, fg u
 	return t.Default, p.Foreground
 }
 
-// BadgeVariant selects a HeroUI badge surface treatment.
-type BadgeVariant = ChipVariant
+// BadgeVariant selects a coss ui badge surface treatment.
+type BadgeVariant uint8
 
-// BadgeSize is HeroUI's badge scale.
+const (
+	BadgePrimary BadgeVariant = iota
+	BadgeSecondary
+	BadgeOutline
+	BadgeDestructive
+	BadgeError
+	BadgeInfo
+	BadgeSuccess
+	BadgeWarning
+)
+
+// BadgeSize is coss ui's badge scale.
 type BadgeSize uint8
 
 const (
@@ -123,36 +130,61 @@ const (
 	BadgeBottomLeft
 )
 
-// BadgeOptions configures a HeroUI badge.
+// BadgeOptions configures a coss ui badge.
 type BadgeOptions struct {
 	Label   string
-	Color   StatusColor
 	Variant BadgeVariant
 	Size    BadgeSize
+	Icon    *ui.SVG
 }
 
-// Badge renders a minimum 28 DIP capsule with a 1 DIP background-colored ring.
+// Badge renders a compact COSS status label with a size-dependent minimum.
 func Badge(c *ui.Context, o BadgeOptions) ui.Element {
-	minSize, radius := float32(theme.HeightBadgeMD), theme.RadiusScale().XXXL
+	minSize, radius := float32(theme.HeightBadgeMD), theme.RadiusScale().SM
 	ts := theme.XS()
 	ts.Weight = theme.WeightMedium
 	switch o.Size {
 	case BadgeSmall:
-		minSize, radius = theme.HeightBadgeSM, theme.RadiusScale().XL
+		minSize, radius = theme.HeightBadgeSM, 4
 		ts = theme.TextStyle{Size: 10, LineHeight: 14, Weight: theme.WeightMedium}
 	case BadgeLarge:
-		minSize, radius = theme.HeightBadgeLG, theme.RadiusScale().XXL
+		minSize, radius = theme.HeightBadgeLG, theme.RadiusScale().SM
 		ts = theme.SM()
 		ts.Weight = theme.WeightMedium
 	}
-	bg, fg := chipColors(c, o.Color, o.Variant)
 	t := theme.Colors(c)
+	bg, fg := t.Primary, t.PrimaryForeground
+	border := ui.Transparent
+	switch o.Variant {
+	case BadgeSecondary:
+		bg, fg = t.Secondary, t.SecondaryForeground
+	case BadgeOutline:
+		bg, fg, border = t.Background, t.Foreground, t.Input
+	case BadgeError:
+		bg, fg = t.DangerSoft, t.DestructiveForeground
+	case BadgeInfo:
+		bg, fg = t.InfoSoft, t.InfoForeground
+	case BadgeSuccess:
+		bg, fg = t.SuccessSoft, t.SuccessForeground
+	case BadgeWarning:
+		bg, fg = t.WarningSoft, t.WarningForeground
+	case BadgeDestructive:
+		bg, fg = t.Destructive, ui.RGB(255, 255, 255)
+	}
+	padding := float32(3)
+	if o.Size == BadgeLarge {
+		padding = 5
+	}
 	e := ui.Row(c).Shrink(0).Center().AlignSelf(ui.Start).
 		MinHeight(theme.Scale(c, minSize)).MinWidth(theme.Scale(c, minSize)).
 		Radius(radius).Background(bg).TextColor(fg).
-		Border(theme.Hairline, t.Background).Label(o.Label)
+		Border(theme.Hairline, border).Gap(theme.Space4).PaddingX(padding).Label(o.Label)
 	e.Children(func() {
-		style.Text(ui.Text(c, o.Label), c, ts).PaddingX(theme.Space2).SingleLine()
+		if o.Icon != nil {
+			ui.Icon(c, o.Icon).Size(theme.Scale(c, 12), theme.Scale(c, 12)).
+				Shrink(0).Opacity(0.8).PassThrough()
+		}
+		style.Text(ui.Text(c, o.Label), c, ts).SingleLine().PassThrough()
 	})
 	return e
 }
@@ -163,21 +195,13 @@ type BadgeAnchorOptions struct {
 	Badge     BadgeOptions
 }
 
-// BadgeAnchor overlays a badge at one corner without changing the content's
-// layout. The badge lives in the native overlay layer, so it can extend beyond
-// the content box.
+// BadgeAnchor places a badge at one corner without changing the content's
+// layout. The badge can extend beyond the box and follows ancestor clipping.
 func BadgeAnchor(c *ui.Context, o BadgeAnchorOptions, body func()) ui.Element {
 	content := ui.Box(c).Shrink(0).AlignSelf(ui.Start)
-	content.Children(body)
-	ui.Overlay(c, func() {
-		at, self := ui.AnchorTopEnd, ui.AnchorTopEnd
-		switch o.Placement {
-		case BadgeTopLeft:
-			at, self = ui.AnchorTopStart, ui.AnchorTopStart
-		case BadgeBottomRight:
-			at, self = ui.AnchorBottomEnd, ui.AnchorBottomEnd
-		case BadgeBottomLeft:
-			at, self = ui.AnchorBottomStart, ui.AnchorBottomStart
+	content.Children(func() {
+		if body != nil {
+			body()
 		}
 		size := float32(theme.HeightBadgeMD)
 		switch o.Badge.Size {
@@ -186,19 +210,18 @@ func BadgeAnchor(c *ui.Context, o BadgeAnchorOptions, body func()) ui.Element {
 		case BadgeLarge:
 			size = theme.HeightBadgeLG
 		}
-		over := size / 4
-		badge := Badge(c, o.Badge)
+		over := theme.Scale(c, size) / 4
+		badge := Badge(c, o.Badge).Absolute().PassThrough()
 		switch o.Placement {
 		case BadgeTopLeft:
-			badge.Margin(-over, 0, 0, -over)
+			badge.Top(-over).Left(-over)
 		case BadgeBottomRight:
-			badge.Margin(0, -over, -over, 0)
+			badge.Bottom(-over).Right(-over)
 		case BadgeBottomLeft:
-			badge.Margin(0, 0, -over, -over)
+			badge.Bottom(-over).Left(-over)
 		default:
-			badge.Margin(-over, -over, 0, 0)
+			badge.Top(-over).Right(-over)
 		}
-		badge.AttachTo(content, at, self)
 	})
 	return content
 }

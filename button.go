@@ -10,7 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// ButtonVariant is HeroUI's button color variant.
+// ButtonVariant selects a button face, including native theme extensions.
 type ButtonVariant uint8
 
 const (
@@ -21,6 +21,8 @@ const (
 	ButtonGhost
 	ButtonDanger
 	ButtonDangerSoft
+	ButtonDestructiveOutline
+	ButtonLink
 )
 
 // ButtonAlign places button content.
@@ -53,15 +55,15 @@ type ButtonOptions struct {
 	// other left-aligned actions.
 	Align ButtonAlign
 
-	// Corners overrides the uniform HeroUI radius. Nil keeps the default;
+	// Corners overrides the uniform coss ui radius. Nil keeps the default;
 	// a zero array makes square corners.
 	Corners *[4]float32
 }
 
-// buttonPressDuration is HeroUI's `transform 250ms var(--ease-smooth)`.
+// buttonPressDuration is the native press-feedback transition.
 const buttonPressDuration = 250 * time.Millisecond
 
-// pressedPose applies HeroUI's pressed scale around the element's center.
+// pressedPose applies native press feedback around the element's center.
 // The element is posed at rest in every build, so the first press animates
 // from 1: MyGo shows a pose it was not posed with in the frame before at its
 // target, which would otherwise snap to the pressed size. AnimatePose moves
@@ -76,17 +78,6 @@ func pressedPose(e ui.Element, pressed bool, scale float32) ui.Element {
 		AnimatePose(pose, ui.Animation{Duration: buttonPressDuration, Ease: ui.EaseOut})
 }
 
-// buttonPressScale is HeroUI's pressed scale per size.
-func buttonPressScale(size theme.ButtonSize) float32 {
-	switch size {
-	case theme.ButtonSmall:
-		return 0.98
-	case theme.ButtonLarge:
-		return 0.96
-	}
-	return 0.97
-}
-
 // joinAdjust carries joined-group geometry into the internal builders
 // without widening the public options. Its zero value is a standalone
 // control.
@@ -95,16 +86,15 @@ type joinAdjust struct {
 	hasCorners bool
 	borders    [4]float32
 	hasBorders bool
-	// grouped turns the pressed scale off and lets seam paint the shared
-	// edge HeroUI renders inside the following segment.
-	grouped  bool
+	grouped    bool
+	// seam paints a separator at the shared edge of the next segment.
 	seam     bool
 	vertical bool
 }
 
 // joinCorners returns one segment's corner radii in MyGo's top-left,
 // top-right, bottom-right, bottom-left order. Only the outer ends of a
-// joined set keep the HeroUI radius.
+// joined set keep the coss ui radius.
 func joinCorners(vertical bool, index, count int, radius float32, rtl bool) [4]float32 {
 	if count <= 1 {
 		return [4]float32{radius, radius, radius, radius}
@@ -132,9 +122,8 @@ func joinCorners(vertical bool, index, count int, radius float32, rtl bool) [4]f
 	return [4]float32{}
 }
 
-// joinBorders returns the outline border widths, in top, right, bottom and
-// left order, of one segment. HeroUI removes the border two joined outline
-// buttons share so a seam stays hairline-thin.
+// joinBorders removes the inside edges of a joined segment, in top, right,
+// bottom and left order. An explicit separator can occupy the shared edge.
 func joinBorders(vertical bool, index, count int, rtl bool) [4]float32 {
 	w := float32(theme.Hairline)
 	if count <= 1 {
@@ -149,8 +138,8 @@ func joinBorders(vertical bool, index, count int, rtl bool) [4]float32 {
 		}
 		return [4]float32{0, w, 0, w}
 	}
-	first := [4]float32{w, w, w, 0}
-	last := [4]float32{w, 0, w, w}
+	first := [4]float32{w, 0, w, w}
+	last := [4]float32{w, w, w, 0}
 	if rtl {
 		first, last = last, first
 	}
@@ -163,36 +152,29 @@ func joinBorders(vertical bool, index, count int, rtl bool) [4]float32 {
 	return [4]float32{w, 0, w, 0}
 }
 
-// joinSeam paints HeroUI's group separator: a 1 DIP line across half the
-// segment, 15% of its text color, at the inline start of every button after
-// the first. HeroUI renders it inside the button, absolutely positioned, so
-// it takes no width from the group; drawing it outside the box from
-// DrawOver has the same effect and paints over the previous segment.
+// joinSeam paints a 1 DIP group separator without taking layout width.
 func joinSeam(e ui.Element, vertical, rtl bool, ink ui.Color) ui.Element {
 	if ink.A == 0 {
 		return e
 	}
 	w := float32(theme.Hairline)
+	ink = ink.Alpha(0.15)
 	radius := theme.RadiusScale().SM
 	return e.DrawOver(func(p *ui.Painter, r ui.Rect) {
 		if vertical {
-			p.Fill(ui.Rect{X: r.X + r.W*0.25, Y: r.Y - w, W: r.W * 0.5, H: w}, ink, radius)
+			p.Fill(ui.Rect{X: r.X + r.W*0.25, Y: r.Y, W: r.W * 0.5, H: w}, ink, radius)
 			return
 		}
-		x := r.X - w
+		x := r.X
 		if rtl {
-			x = r.X + r.W
+			x = r.X + r.W - w
 		}
 		p.Fill(ui.Rect{X: x, Y: r.Y + r.H*0.25, W: w, H: r.H * 0.5}, ink, radius)
 	})
 }
 
-// Button constructs a HeroUI button on the native focusable button base.
-// Hover and pressed paints follow live pointer state. A press scales the
-// button to HeroUI's 0.97/0.98/0.96 and eases back on release; joined groups
-// keep their size as HeroUI does. Pending buttons keep their full face but
-// neither light up nor activate, matching pointer-events:none. Disabled
-// buttons paint at HeroUI's 50% opacity.
+// Button builds a coss action on MyGo's native focusable button base.
+// The pending spinner overlays invisible content, preserving the button width.
 func Button(c *ui.Context, o ButtonOptions) ui.Element {
 	var adj joinAdjust
 	if o.Corners != nil {
@@ -208,15 +190,23 @@ func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 	pending := o.Loading
 	disabled := o.Disabled || pending
 	height := theme.ButtonHeight(o.Size)
-	radius := theme.RadiusScale().XXXL
-	paddingX := float32(theme.Space16)
+	radius := theme.RadiusScale().LG
+	paddingX := float32(11)
 	glyph := float32(theme.IconMD)
 	font := theme.SM()
 	font.Weight = theme.WeightMedium
 	switch o.Size {
 	case theme.ButtonSmall:
-		paddingX = theme.Space12
+		paddingX = 9
 	case theme.ButtonLarge:
+		paddingX = 13
+	case theme.ButtonExtraSmall:
+		paddingX = 7
+		font = theme.XS()
+		font.Weight = theme.WeightMedium
+		radius = theme.RadiusScale().MD
+	case theme.ButtonExtraLarge:
+		paddingX = 15
 		font = theme.Base()
 		font.Weight = theme.WeightMedium
 	}
@@ -248,24 +238,32 @@ func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 	if o.IconOnly {
 		e.Width(side).MinWidth(side)
 	}
-	e = style.Disabled(e, o.Disabled)
+	e = style.Disabled(e, disabled)
 	if o.Handle != nil {
 		e.Bind(o.Handle)
 	}
 
-	bg, hover, pressed, fg := buttonColors(t, o.Variant)
+	bg, hover, pressed, fg := buttonColors(t, o.Variant, c.Theme().Dark)
 	if pending {
-		// HeroUI's pending state removes the pointer faces but keeps the
+		// coss ui's pending state removes the pointer faces but keeps the
 		// readable surface.
 		hover, pressed = bg, bg
 	}
 	e.TextColor(fg)
-	if o.Variant == ButtonOutline {
+	if o.Variant == ButtonOutline || o.Variant == ButtonDestructiveOutline {
 		if adj.hasBorders {
 			e = e.BorderWidth(adj.borders[0], adj.borders[1], adj.borders[2], adj.borders[3]).
-				BorderColor(t.Border)
+				BorderColor(t.Input)
 		} else {
-			e.Border(theme.Hairline, t.Border)
+			e.Border(theme.Hairline, t.Input)
+		}
+	}
+	if !disabled && !e.Pressed() && !adj.grouped {
+		switch o.Variant {
+		case ButtonPrimary, ButtonDanger:
+			e = e.Shadow(0, 1, 2, 0, bg.Alpha(0.24)).InsetShadow(0, 1, 0, 0, ui.RGBA(255, 255, 255, 0.16))
+		case ButtonOutline, ButtonDestructiveOutline:
+			e = style.Shadow(e, c, theme.FieldShadows(c.Theme().Dark))
 		}
 	}
 	if o.OnClick != nil && !disabled {
@@ -278,31 +276,50 @@ func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 	}
 
 	content := func() {
+		row := ui.Row(c).Center().Gap(theme.Space8).MinWidth(0)
 		if o.Loading {
-			loading.Arc(c, loading.Options{
-				Size: iconSize, Color: fg,
-			}).Label(locale.M().Loading)
-		} else if o.Icon != nil {
-			// HeroUI pulls an icon 2 DIP into the row's gap (-mx-0.5).
-			ui.Icon(c, o.Icon).Size(iconSize, iconSize).Shrink(0).Margin(0, -2)
+			row.Opacity(0)
 		}
-		if o.Content != nil {
-			o.Content()
-		} else if !o.IconOnly {
-			style.Text(ui.Text(c, o.Label), c, font).SingleLine()
+		row.Children(func() {
+			if o.Icon != nil {
+				ui.Icon(c, o.Icon).Size(iconSize, iconSize).Shrink(0).Margin(0, -2).Opacity(0.8)
+			}
+			if o.Content != nil {
+				o.Content()
+			} else if !o.IconOnly {
+				label := style.Text(ui.Text(c, o.Label), c, font).SingleLine()
+				if o.Variant == ButtonLink && (e.Hovered() || e.Pressed()) {
+					label.DrawOver(func(p *ui.Painter, r ui.Rect) { p.Line(r.X, r.Y+r.H-1, r.X+r.W, r.Y+r.H-1, 1, fg) })
+				}
+			}
+			if o.EndIcon != nil && !o.IconOnly {
+				ui.Icon(c, o.EndIcon).Size(iconSize, iconSize).Shrink(0).Margin(0, -2).Opacity(0.8)
+			}
+		})
+	}
+	var overlay func()
+	if o.Loading {
+		spinnerInk := fg
+		if o.Variant == ButtonDestructiveOutline {
+			spinnerInk = t.Foreground
 		}
-		if o.EndIcon != nil && !o.IconOnly {
-			ui.Icon(c, o.EndIcon).Size(iconSize, iconSize).Shrink(0).Margin(0, -2)
+		overlay = func() {
+			ui.Box(c).Absolute().Left(0).Right(0).Top(0).Bottom(0).Center().Children(func() {
+				loading.Arc(c, loading.Options{Size: iconSize, Color: spinnerInk, Duration: time.Second}).
+					Label(locale.M().Loading)
+			})
 		}
 	}
 	if adj.hasCorners {
-		e = style.CornerFill(c, e, theme.Space8, adj.corners, bg, hover, pressed, content)
+		e = style.CornerFill(c, e, theme.Space8, adj.corners, bg, hover, pressed, content, overlay)
 	} else {
 		e = style.Background(e, radius, bg, hover, pressed)
-		e.Children(content)
-	}
-	if !adj.grouped {
-		e = pressedPose(e, e.Pressed() && !pending, buttonPressScale(o.Size))
+		e.Children(func() {
+			content()
+			if overlay != nil {
+				overlay()
+			}
+		})
 	}
 	if adj.seam {
 		e = joinSeam(e, adj.vertical, c.Direction() == ui.RightToLeft, fg)
@@ -310,22 +327,31 @@ func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 	return e
 }
 
-func buttonColors(t theme.Palette, v ButtonVariant) (bg, hover, pressed, fg ui.Color) {
+func buttonColors(t theme.Palette, v ButtonVariant, dark bool) (bg, hover, pressed, fg ui.Color) {
 	switch v {
-	case ButtonSecondary:
-		return t.Default, t.DefaultHover, t.DefaultHover, t.AccentSoftForeground
-	case ButtonTertiary:
-		return t.Default, t.DefaultHover, t.DefaultHover, t.DefaultForeground
+	case ButtonSecondary, ButtonTertiary:
+		return t.Secondary, t.Secondary.Alpha(0.9), t.Secondary.Alpha(0.8), t.SecondaryForeground
 	case ButtonOutline:
-		return ui.Transparent, t.Default.Alpha(0.6), t.Default.Alpha(0.6), t.DefaultForeground
+		if dark {
+			return t.Input.Alpha(0.32), t.Input.Alpha(0.64), t.Input.Alpha(0.64), t.Foreground
+		}
+		return t.Popover, t.Accent.Alpha(0.5), t.Accent.Alpha(0.5), t.Foreground
 	case ButtonGhost:
-		return ui.Transparent, t.Default, t.Default, t.DefaultForeground
+		return ui.Transparent, t.Accent, t.Accent, t.Foreground
+	case ButtonLink:
+		return ui.Transparent, ui.Transparent, ui.Transparent, t.Foreground
 	case ButtonDanger:
-		return t.Danger, t.DangerHover, t.DangerHover, t.DangerForeground
+		return t.Destructive, t.Destructive.Alpha(0.9), t.Destructive.Alpha(0.9), ui.RGB(255, 255, 255)
+	case ButtonDestructiveOutline:
+		bg := t.Popover
+		if dark {
+			bg = t.Input.Alpha(0.32)
+		}
+		return bg, t.Destructive.Alpha(0.04), t.Destructive.Alpha(0.04), t.DestructiveForeground
 	case ButtonDangerSoft:
-		return t.DangerSoft, t.DangerSoftHover, t.DangerSoftHover, t.DangerSoftForeground
+		return t.DangerSoft, t.DangerSoftHover, t.DangerSoftHover, t.DestructiveForeground
 	}
-	return t.Accent, t.AccentHover, t.AccentHover, t.AccentForeground
+	return t.Primary, t.Primary.Alpha(0.9), t.Primary.Alpha(0.9), t.PrimaryForeground
 }
 
 // ButtonGroupOrientation selects the join axis.
@@ -336,19 +362,18 @@ const (
 	GroupVertical
 )
 
-// ButtonGroupOptions controls a joined set of HeroUI buttons.
+// ButtonGroupOptions controls a joined set of coss ui buttons.
 type ButtonGroupOptions struct {
 	Orientation ButtonGroupOrientation
 	FullWidth   bool
 	Separators  bool
 }
 
-// ButtonGroup builds buttons with only the outer corners rounded, as HeroUI
+// ButtonGroup builds buttons with only the outer corners rounded, as coss ui
 // does. The caller supplies complete button options, avoiding an ambient
 // context and keeping each action independently focusable. Separators paint
-// HeroUI's half-height divider at each shared edge instead of taking layout
-// width, outline borders collapse into one, and joined buttons do not scale
-// on press.
+// a half-height divider at each shared edge instead of taking layout width.
+// Adjacent outline edges are removed, and buttons do not scale on press.
 func ButtonGroup(c *ui.Context, o ButtonGroupOptions, buttons ...ButtonOptions) ui.Element {
 	vertical := o.Orientation == GroupVertical
 	var e ui.Element
@@ -362,7 +387,7 @@ func ButtonGroup(c *ui.Context, o ButtonGroupOptions, buttons ...ButtonOptions) 
 	} else {
 		e.AlignSelf(ui.Start)
 	}
-	radius := theme.RadiusScale().XXXL
+	radius := theme.RadiusScale().LG
 	rtl := c.Direction() == ui.RightToLeft
 	n := len(buttons)
 	e.Children(func() {
@@ -370,7 +395,7 @@ func ButtonGroup(c *ui.Context, o ButtonGroupOptions, buttons ...ButtonOptions) 
 			b := buttons[i]
 			adj := joinAdjust{grouped: true, vertical: vertical}
 			adj.corners, adj.hasCorners = joinCorners(vertical, i, n, radius, rtl), true
-			if b.Variant == ButtonOutline {
+			if b.Variant == ButtonOutline || b.Variant == ButtonDestructiveOutline {
 				adj.borders, adj.hasBorders = joinBorders(vertical, i, n, rtl), true
 			}
 			adj.seam = o.Separators && i > 0
@@ -378,6 +403,9 @@ func ButtonGroup(c *ui.Context, o ButtonGroupOptions, buttons ...ButtonOptions) 
 				b.FullWidth = true
 			}
 			item := buttonView(c, b, adj)
+			if vertical {
+				item.FillWidth()
+			}
 			if o.FullWidth && !vertical {
 				item.Grow(1).Basis(0).MinWidth(0)
 			}

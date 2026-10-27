@@ -1,7 +1,5 @@
-# The MyGo CLI is run from the module version below, so no tool install is
-# needed. Pin it for reproducibility: make dev MYGO_VERSION=v0.6.3
-MYGO_VERSION ?= latest
-MYGO = go run github.com/egoist/mygo/cmd/mygo@$(MYGO_VERSION)
+# The tool directive resolves the same MyGo version as the library.
+MYGO = go tool mygo
 
 .PHONY: check test race vet build lint wasm workflows gallery basic dev app refs
 
@@ -17,7 +15,7 @@ test:
 	CGO_ENABLED=0 go test ./... -count=1 -timeout=180s
 
 race:
-	CGO_ENABLED=1 go test -race ./... -count=1 -timeout=300s
+	CGO_ENABLED=1 go test -race -p 1 ./... -count=1 -timeout=300s
 
 build:
 	CGO_ENABLED=0 go build ./...

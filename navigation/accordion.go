@@ -6,7 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// AccordionVariant selects HeroUI's accordion surface.
+// AccordionVariant selects the accordion surface.
 type AccordionVariant uint8
 
 const (
@@ -93,10 +93,10 @@ func accordionItem(c *ui.Context, sc *accordionScope, index, count int, o Accord
 	if key == "" {
 		key = o.Title
 	}
-	item := ui.Column(c).Shrink(0).MinWidth(0)
 	if key != "" {
-		item.Key(key)
+		c.Key(key)
 	}
+	item := ui.Column(c).Shrink(0).MinWidth(0)
 	expanded := sc.expanded
 	open := false
 	for _, k := range *expanded {
@@ -120,10 +120,10 @@ func accordionItem(c *ui.Context, sc *accordionScope, index, count int, o Accord
 		var tr ui.Element
 		glyph := &ui.Path{}
 		header := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).
-			PaddingX(scale(c, theme.Space16))
-		hover := t.Foreground.Alpha(0.03)
+			PaddingX(0)
+		hover := ui.Transparent
 		if variant == AccordionSurface {
-			hover = t.Default
+			hover = ui.Transparent
 		}
 		header.Children(func() {
 			parts = ui.CollapsibleBase(c, &open)
@@ -173,9 +173,9 @@ func accordionItem(c *ui.Context, sc *accordionScope, index, count int, o Accord
 		}
 		if panel := parts.Panel(o.Body); panel.Valid() {
 			panel.FillWidth().MinWidth(0).Gap(scale(c, theme.Space8)).
-				Padding(0, scale(c, theme.Space16), scale(c, theme.Space16), scale(c, theme.Space16)).
+				Padding(0, 0, scale(c, theme.Space16), 0).
 				TextColor(t.Muted)
-			fadePanel(panel, parts.Progress())
+
 		}
 	})
 	return item

@@ -186,7 +186,7 @@ func TestPaginationBoundariesAndEllipsis(t *testing.T) {
 		theme.Apply(c)
 		navigation.Pagination(c, navigation.PaginationOptions{Page: &wide, Pages: 10})
 	}, 640, 200)
-	if !tw.HasText("\u2026") {
+	if !tw.HasText("More pages") {
 		t.Fatal("expected an ellipsis between page groups")
 	}
 	if err := tw.Click("10"); err != nil {
@@ -194,6 +194,46 @@ func TestPaginationBoundariesAndEllipsis(t *testing.T) {
 	}
 	if wide != 10 {
 		t.Fatalf("page link set page=%d, want 10", wide)
+	}
+}
+
+func TestPaginationNarrowControlsKeepAccessibleLabels(t *testing.T) {
+	page := 1
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		navigation.Pagination(c, navigation.PaginationOptions{Page: &page, Pages: 4})
+	}, 380, 120)
+	next, ok := tt.Find("Next")
+	if !ok || next.W != 32 || next.H != 32 {
+		t.Fatalf("narrow Next bounds: %+v, found %v", next, ok)
+	}
+	if err := tt.Click("Next"); err != nil {
+		t.Fatal(err)
+	}
+	if page != 2 {
+		t.Fatalf("narrow Next selected page %d", page)
+	}
+}
+
+func TestPaginationSelectedPageHasVisibleDarkSurface(t *testing.T) {
+	page := 2
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, true)
+		ui.Column(c).Fill().Background(theme.Colors(c).Background).Center().Children(func() {
+			navigation.Pagination(c, navigation.PaginationOptions{Page: &page, Pages: 5})
+		})
+	}, 640, 160)
+
+	selected, ok := tt.Find("2, Selected")
+	if !ok {
+		t.Fatal("selected page is not exposed")
+	}
+	img := tt.Image()
+	y := int(selected.Y + selected.H/2)
+	inside := img.RGBAAt(int(selected.X+4), y)
+	outside := img.RGBAAt(int(selected.X-2), y)
+	if inside.R <= outside.R {
+		t.Fatalf("selected page surface is not visible: inside=%v outside=%v", inside, outside)
 	}
 }
 

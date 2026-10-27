@@ -3,6 +3,7 @@ package form
 import (
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/anchored"
@@ -13,7 +14,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// ComboBoxOptions configures a HeroUI combo box: a text input filtering a
+// ComboBoxOptions configures a combo box: a text input filtering a
 // virtualized list of options.
 //
 // SelectionMultiple shows chosen keys as removable chips before the input.
@@ -40,6 +41,7 @@ type ComboBoxOptions struct {
 	// AllowsCustomValue keeps text that matches no option.
 	AllowsCustomValue bool
 	// Filter overrides the default case-insensitive substring match on Label.
+	// Options are scanned on popup builds; Filter must not perform side effects.
 	Filter func(query string, item *list.ListBoxItem) bool
 	// Empty is shown when nothing matches; zero uses the localized message.
 	Empty string
@@ -67,12 +69,11 @@ type ComboBoxState struct {
 	dirty        bool
 	escaped      bool
 	wasActive    bool
+	placeCaret   bool
+	pending      pendingFilter
 	items        []list.ListBoxItem
 	sectionItems []list.ListBoxItem
 	sections     []list.ListBoxSection
-	filtered     bool
-	filterQuery  string
-	filterSource listSource
 }
 
 // SelectedKeys returns the chosen keys, single choice first.
@@ -121,18 +122,9 @@ func comboMode(m list.SelectionMode) list.SelectionMode {
 	return m
 }
 
-// applyFilter rebuilds the filtered items and sections in caller-owned scratch
-// capacity. An unchanged query over the same option slices reuses the last
-// result, so rebuilding the popup for a highlight or hover does not rescan
-// every option.
+// applyFilter rebuilds filtered options in caller-owned scratch capacity.
 func (s *ComboBoxState) applyFilter(o ComboBoxOptions, query string) {
-	src := sourceOf(o.Items, o.Sections)
-	if s.filtered && query == s.filterQuery && src == s.filterSource {
-		return
-	}
-	s.filtered, s.filterQuery, s.filterSource = true, query, src
-
-	totalSections := src.sectionItems
+	totalSections := sectionItemCount(o.Sections)
 	if cap(s.items) < len(o.Items) {
 		s.items = make([]list.ListBoxItem, 0, len(o.Items))
 	}
@@ -171,9 +163,10 @@ func (s *ComboBoxState) applyFilter(o ComboBoxOptions, query string) {
 	}
 }
 
-// ComboBox renders a HeroUI combo box. The input keeps the tab stop and the
+// ComboBox renders a combo box. The input keeps the tab stop and the
 // keyboard; the popup list highlights the row the arrows are on, and Enter or
-// a click chooses it.
+// a click chooses it. The list API does not expose the highlighted row as an
+// active descendant for assistive technology.
 func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 	s := o.State
 	if s == nil {
@@ -182,6 +175,13 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 	mode := comboMode(o.Selection)
 	invalid := o.Invalid || o.Error != ""
 	errText := fieldMessage(invalid, o.Error)
+	if o.Disabled {
+		s.Open = false
+	}
+	if s.wasActive && !s.Input.Focused(c) && !s.List.FocusWithin(c) {
+		s.Open = false
+		s.escaped = false
+	}
 
 	root := ui.Column(c).MinWidth(0).Gap(theme.Space4)
 	if o.FullWidth {
@@ -192,11 +192,14 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 			fieldLabel(c, o.Label, o.Required, invalid, o.Disabled, &s.Input)
 		}
 
-		field := ui.Row(c).MinHeight(theme.Scale(c, theme.HeightInput)).
+		field := ui.Row(c).MinHeight(theme.Scale(c, 32)).
 			Padding(0, theme.Space12, 0, theme.Space12).Gap(theme.Space8).
 			AlignItems(ui.Center).Shrink(0).FocusRing(false).Clip()
 		if o.FullWidth {
 			field.FillWidth()
+		}
+		if mode == list.SelectionMultiple {
+			field.Wrap().Gap(theme.Space4).PaddingY(theme.Space4)
 		}
 		name := o.Label
 		if name == "" {
@@ -230,12 +233,22 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 					comboChip(c, label, func() { comboRemove(c, o, s, k) })
 				}
 			}
+			c.Key("combobox-input")
 			input = ui.TextInputBase(c, &s.Text).Grow(1).MinWidth(0).
 				Shrink(1).FocusRing(false).Placeholder(o.Placeholder).
 				Label(name).Description(o.Description).Error(errText)
+			if multiple {
+				input.MinWidth(theme.Scale(c, 48))
+			}
 			input = fieldText(input, c)
 			input.Role(ui.RoleComboBox).Expanded(s.Open)
 			input.Bind(&s.Input)
+			input.OnTextKey(func(k ui.TextKey) bool { return comboTextKey(c, o, s, k, mode) })
+			if s.placeCaret {
+				s.placeCaret = false
+				end := utf8.RuneCountInString(s.Text)
+				input.SetTextSelection(end, end)
+			}
 			if o.Clearable {
 				chosen := s.List.SelectedKey != ""
 				if multiple {
@@ -252,12 +265,8 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 		if input.Valid() {
 			focused := input.Focused() || s.Input.FocusWithin(c)
 			active := focused || s.List.FocusWithin(c)
-			if active && !s.Open && !o.Disabled && !s.escaped {
+			if focused && !s.wasActive && !s.Open && !o.Disabled && !s.escaped {
 				comboOpen(s)
-			}
-			if s.wasActive && !active {
-				s.Open = false
-				s.escaped = false
 			}
 			s.wasActive = active
 		}
@@ -277,10 +286,11 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 				query = s.Text
 			}
 			s.applyFilter(o, query)
+			s.pending.apply(&s.List, s.items, s.sections)
+		} else {
+			s.pending.active = false
 		}
 		style.Disabled(field, o.Disabled)
-
-		comboKeys(c, o, s, field, mode)
 
 		comboPopup(c, o, s, field, mode)
 		if o.Description != "" && !invalid {
@@ -311,76 +321,101 @@ func labelOf(items []list.ListBoxItem, sections []list.ListBoxSection, key strin
 	return label
 }
 
-// comboKeys binds the input's keyboard behavior: the arrows open and move,
-// Enter chooses, Escape closes and Backspace clears.
-func comboKeys(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, field ui.Element, mode list.SelectionMode) {
-	field.OnShortcut(0, ui.KeyDown, func() {
-		if o.Disabled {
-			return
+// comboTextKey handles keys the native editor would otherwise consume.
+func comboTextKey(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, k ui.TextKey, mode list.SelectionMode) bool {
+	if o.Disabled || k.Mods != 0 {
+		return false
+	}
+	switch k.Key {
+	case ui.KeyDown, ui.KeyUp, ui.KeyEnter, ui.KeyEscape:
+		if text := k.Text(); text != s.Text {
+			s.Text = text
+			s.dirty, s.Open, s.escaped = true, true, false
+			s.Custom = ""
+			if o.OnQueryChange != nil {
+				o.OnQueryChange(text)
+			}
+			k.SetText(s.Text)
+			s.pending.reset(s.Text, o.Filter, o.Items, o.Sections)
 		}
+	}
+	switch k.Key {
+	case ui.KeyDown, ui.KeyUp:
 		if !s.Open {
 			comboOpen(s)
+			s.escaped = false
+		} else if s.pending.active && k.Key == ui.KeyDown {
+			s.pending.move(1)
+		} else if s.pending.active {
+			s.pending.move(-1)
+		} else if k.Key == ui.KeyDown {
+			s.List.MoveHighlight(1)
+		} else {
+			s.List.MoveHighlight(-1)
 		}
-		s.List.MoveHighlight(1)
-	})
-	field.OnShortcut(0, ui.KeyUp, func() {
-		if o.Disabled {
-			return
-		}
-		if !s.Open {
-			comboOpen(s)
-		}
-		s.List.MoveHighlight(-1)
-	})
-	field.OnShortcut(0, ui.KeyEnter, func() {
-		if o.Disabled {
-			return
-		}
+		return true
+	case ui.KeyEnter:
 		if s.Open {
-			if key := s.List.HighlightKey(); key != "" {
-				comboChoose(c, o, s, key, mode)
-				return
+			key := s.List.HighlightKey()
+			if s.pending.active {
+				key = s.pending.key()
+			}
+			if key != "" {
+				s.Text = k.Text()
+				comboSetSelection(s, key, mode)
+				comboCommit(c, o, s, key, mode, false)
+				s.pending.active = false
+				k.SetText(s.Text)
+				listNotify(o.Items, o.Sections, &s.List, o.OnChange)
+				return true
 			}
 		}
-		comboCustom(c, o, s)
-	})
-	field.OnShortcut(0, ui.KeyEscape, func() {
+		s.Text = k.Text()
+		changed := comboCustom(s, o)
+		k.SetText(s.Text)
+		if changed {
+			listNotify(o.Items, o.Sections, &s.List, o.OnChange)
+		}
+		return true
+	case ui.KeyEscape:
 		if s.Open {
-			// Keep the focus from reopening the popup it just closed;
-			// a click or typing clears escaped.
 			s.Open = false
 			s.escaped = true
-			s.Input.Focus(c)
+			return true
 		}
-	})
+	}
+	return false
 }
 
 func comboOpen(s *ComboBoxState) {
 	s.Open = true
-	s.dirty = true
+	if s.List.SelectedKey == "" && s.Text != "" {
+		s.dirty = true
+	}
 	s.List.Highlight = 0
 }
 
-// comboChoose applies a keyboard choice; the popup list has not selected it.
-func comboChoose(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, key string, mode list.SelectionMode) {
+// comboSetSelection applies a keyboard choice.
+func comboSetSelection(s *ComboBoxState, key string, mode list.SelectionMode) {
 	switch mode {
 	case list.SelectionSingle:
 		s.List.SelectedKey = key
 	default:
 		s.List.Toggle(mode, key)
 	}
-	comboCommit(c, o, s, key, mode)
 }
 
 // comboCommit finalizes a choice the popup list already applied, or one
-// comboChoose just applied. It must not mutate the selection again.
-func comboCommit(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, key string, mode list.SelectionMode) {
+// applied from the keyboard. It must not mutate the selection again.
+func comboCommit(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, key string, mode list.SelectionMode, notify bool) {
 	switch mode {
 	case list.SelectionSingle:
 		s.Text = comboLabel(o, key)
 		s.Custom = ""
 		s.dirty = false
 		s.Open = false
+		s.escaped = true
+		s.placeCaret = true
 		s.Input.Focus(c)
 	case list.SelectionMultiple:
 		s.Text = ""
@@ -389,26 +424,29 @@ func comboCommit(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, key string,
 		s.List.Highlight = 0
 		s.Input.Focus(c)
 	}
-	listNotify(o.Items, o.Sections, &s.List, o.OnChange)
+	if notify {
+		listNotify(o.Items, o.Sections, &s.List, o.OnChange)
+	}
 }
 
 // comboCustom keeps the text when it matches no item and custom values are
 // allowed.
-func comboCustom(c *ui.Context, o ComboBoxOptions, s *ComboBoxState) {
+func comboCustom(s *ComboBoxState, o ComboBoxOptions) bool {
 	if !o.AllowsCustomValue {
 		s.Open = false
-		return
+		s.escaped = true
+		return false
 	}
 	text := strings.TrimSpace(s.Text)
 	if text == "" {
-		return
+		return false
 	}
 	s.Custom = text
 	s.List.SelectedKey = ""
 	s.Open = false
+	s.escaped = true
 	s.dirty = false
-	s.Input.Focus(c)
-	listNotify(o.Items, o.Sections, &s.List, o.OnChange)
+	return true
 }
 
 // comboClear clears the choice and the text.
@@ -420,6 +458,7 @@ func comboClear(c *ui.Context, o ComboBoxOptions, s *ComboBoxState) {
 	}
 	s.Clear()
 	s.Open = false
+	s.escaped = true
 	s.Input.Focus(c)
 	listNotify(o.Items, o.Sections, &s.List, o.OnChange)
 }
@@ -443,13 +482,13 @@ func comboChip(c *ui.Context, label string, remove func()) {
 	radius := theme.RadiusScale().XL
 	chip := ui.Row(c).Shrink(0).Center().Height(theme.Scale(c, 20)).
 		Gap(theme.Space4).Padding(0, theme.Space6, 0, theme.Space6).
-		Radius(radius).Background(t.Default)
+		Radius(radius).Background(t.Accent)
 	chip.Children(func() {
 		style.Text(ui.Text(c, label), c, theme.XS()).
-			TextColor(t.DefaultForeground).SingleLine()
-		btn := ui.Box(c).Width(theme.Scale(c, 12)).Height(theme.Scale(c, 12)).
-			Shrink(0).Center().Role(ui.RoleButton).Label(locale.M().Remove).
-			Cursor(ui.CursorPointer).FocusRing(false)
+			TextColor(t.AccentForeground).SingleLine()
+		btn := ui.ButtonBase(c).Width(theme.Scale(c, 12)).Height(theme.Scale(c, 12)).
+			Shrink(0).Center().Padding(0).Label(locale.M().Remove + " " + label).
+			Cursor(ui.CursorPointer).FocusRing(true)
 		btn.OnClick(remove)
 		btn.Children(func() {
 			ui.Icon(c, selectClearIcon).Size(theme.Scale(c, 10), theme.Scale(c, 10)).
@@ -465,10 +504,7 @@ func comboPopup(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, field ui.Ele
 		maxHeight = 320
 	}
 	t := theme.Colors(c)
-	radius := theme.RadiusScale().XXXL
-	if radius > 32 {
-		radius = 32
-	}
+	radius := theme.RadiusScale().LG
 	empty := o.Empty
 	if empty == "" {
 		empty = locale.M().NoResults
@@ -476,22 +512,28 @@ func comboPopup(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, field ui.Ele
 	anchor := field
 	ui.PopoverBase(c, field, &s.Open, func(panel ui.Element) {
 		panel.MinWidth(anchor.Bounds().W)
-		panel.Padding(0).Radius(radius).Background(t.Overlay).Clip().KeepFocus()
+		panel.Padding(0).Radius(radius).Background(t.Popover).Border(theme.Hairline, t.Border).Clip().KeepFocus()
 		panel = style.Shadow(panel, c, theme.OverlayShadows(c.Theme().Dark))
 		panel = popoverMotion(c, panel, o.Placement, mygoui.SideBottom, 150*time.Millisecond)
-		anchored.Apply(panel, anchor, o.Placement, mygoui.SideBottom)
+		placement := o.Placement
+		if placement.Offset == 0 {
+			placement.Offset = 4
+		}
+		anchored.Apply(panel, anchor, placement, mygoui.SideBottom)
 		list.ListBox(c, list.ListBoxOptions{
-			Label:          o.Label,
-			Items:          s.items,
-			Sections:       s.sections,
-			Selection:      mode,
-			State:          &s.List,
-			Padding:        theme.Space6,
-			MaxHeight:      maxHeight,
-			Empty:          empty,
-			NoFocusOnClick: true,
+			Label:             o.Label,
+			Items:             s.items,
+			Sections:          s.sections,
+			Selection:         mode,
+			State:             &s.List,
+			Padding:           theme.Space4,
+			MaxHeight:         maxHeight,
+			Empty:             empty,
+			NoFocusOnClick:    true,
+			KeyboardHighlight: s.Input.Focused(c),
+			IndicatorStart:    true,
 			OnAction: func(key string) {
-				comboCommit(c, o, s, key, mode)
+				comboCommit(c, o, s, key, mode, true)
 			},
 		})
 	})

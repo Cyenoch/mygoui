@@ -27,7 +27,7 @@ func init() {
 					st.ensure()
 					tableSortingExample(c, st)
 				}},
-			{Title: "Secondary variant", Description: "A flush table under a standalone header card.",
+			{Title: "Card variant",
 				Demo: func(c *ui.Context, s *State) {
 					st := StateOf[tableState](s, "table")
 					st.ensure()

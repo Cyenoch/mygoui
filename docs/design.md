@@ -1,125 +1,155 @@
 # Design and public contract
 
-`github.com/Cyenoch/mygoui` is one native Go library covering the union of
-[HeroUI v3](https://heroui.com/docs/react/components)'s web and native
-component catalogs, built for [MyGo](https://github.com/egoist/mygo). It is
-not a React port, a browser compatibility layer or a WebView component kit.
+`github.com/Cyenoch/mygoui` reconstructs suitable
+[coss ui](https://coss.com/ui/docs) components with native MyGo controls.
+The coss component catalog, MIT registry and published styling documentation
+are the design reference. Previous appearance and tokens impose no
+constraint on the `coss` branch.
+
+The [component matrix](components.md) records the complete catalog mapping,
+implemented subsets and gaps. Names in that matrix establish correspondence,
+not pixel equivalence or completed platform testing.
 
 ## Ownership
 
-A constructor receives a build-scoped `*ui.Context` and returns a build-scoped
-`ui.Element`. Callers retain values, selection, expansion, validation and
-`ui.Handle` focus targets per window. MyGo owns editing, input, focus,
-selection, scrolling, animation scheduling and accessibility. Views perform no
-network, filesystem, clipboard or background work.
+A constructor receives a build-scoped `*ui.Context`. Returned `ui.Element`
+values and custom parts expire before the next build pass, even when two passes
+happen in one frame. Retain model values, widget state and `ui.Handle` per
+window. Never save an element or context in application state or a worker.
 
-Composition is Go-native. Roots take typed options and either a body callback
-for freely composed content or a typed slice for coordinated collections
-(accordion sections, tabs, menus). There is no provider tree, context
-propagation, ambient build scope or slot registry. Collection components use
-stable keys and native virtualized state rather than rebuilding every row.
+MyGo bases own input, editing, caret and selection, focus routing, scroll
+behavior and the accessible control tree. Style those bases rather than
+replacing them with pointer-only drawings. Use stable identities before
+construction: `c.Key(key)` for controls and collection entries, and native
+handles for persistent focus and committed geometry.
 
-Toast deck geometry uses MyGo's native springs for entry, stacking and
-hover/focus expansion. Only geometry and gesture state survive builds; native
-toast state owns lifetimes and keyed updates, and native transition snapshots
-paint inert exits. Absolute overlay positions animate their declared geometry
-so MyGo's overlay relayout cannot replace an intermediate frame with its target.
-Overlay constructors keep the native overlay layer present while closed;
-entry has an existing parent and the last exit has somewhere to paint.
-Modal backdrops retain the last built panel as an inert native snapshot after
-close, without rebuilding caller content or delaying native focus restoration.
-Modal identities are assigned before calling `DialogBase`, which reads input
-before its styling callback; animation styling never rekeys that backdrop.
-AlertDialog requests initial Cancel focus after `DialogBase` records its opener,
-so an explicit choice restores focus to the trigger rather than a closed button.
-BottomSheet translates its panel for the slide-in and handle swipe; its scrim
-fades with the panel so dismissals do not leave a mask behind. Popover and
-Tooltip zoom around the anchor-facing edge.
+Composition uses typed Go options, body callbacks for independent content,
+and typed slices for coordinated items. There are no ambient component
+providers or child introspection. `GroupItem.Build` receives its segment's
+corners explicitly; it must apply them to the control it returns.
+Vertical groups own their members' width, including icon-only and explicitly
+sized controls, and match their widest member without filling the parent.
+`FullWidth` fills the parent instead. Explicit separators are ordinary
+`GroupItem` builders, matching the upstream Group examples. Explicit `Corners` changes geometry, not a
+button's elevation; specialized ButtonGroup owns its joined-button styling.
 
-The package layout follows component families:
+Native input is applied as constructors return. Use handled actions such as
+`OnClick`, `OnChange` and `OnSubmit` for side effects; a view may rebuild
+several times for one event. Capture `c.Services()` for persistent clipboard
+and URL callbacks. Slow I/O belongs in application workers, with results
+published through `Window.Update`; invalidation alone does not synchronize
+model writes.
+
+Importing the library must not initialize an application, register application
+languages or fonts, read files, use persistent storage, or start background
+jobs. Application startup owns those policies.
+
+## Packages
 
 | Package | Responsibility |
 | --- | --- |
-| `mygoui` | Surfaces, typography, actions, status, progress, avatars, cards, lists |
-| `theme` | HeroUI semantic tokens, geometry, typography, host preferences |
-| `form` | Field primitives and form controls |
-| `list` | ListBox selection and rendering |
-| `navigation` | Accordion, disclosure, tabs, breadcrumbs, pagination, menus |
-| `overlay` | Modal family, popovers, tooltips and toasts |
-| `date` | Calendars, date fields/pickers and time fields |
-| `color` | Color area, channel sliders, fields, swatches and pickers |
-| `data` | Table |
-| `locale` | Library-level accessible messages |
+| `mygoui` | Actions, surfaces, text, feedback, Frame, Group, Sidebar, ScrollArea and ScrollFade |
+| `theme` | Semantic colors, radius/spacing/type metrics and process-wide host preferences |
+| `form` | Native fields, choices, editors, search and plain-text Composer |
+| `list` | Virtualized keyed ListBox and selection state |
+| `navigation` | Accordion/Disclosure, tabs, segments, breadcrumbs, pagination, toolbar, menus and commands |
+| `overlay` | Dialogs, sheets, drawers, popovers, previews, tooltips and toast state |
+| `date` | Gregorian calendars, date/range pickers and time editing |
+| `data` | Native virtualized table and column/selection state |
+| `color` | Additional native color editing components |
+| `locale` | Library messages; application language registration remains outside the library |
+| `fonts` | Opt-in embedded Cal Sans and explicit startup registration; no import-side registration |
+
+Public APIs live at the module root or in coherent family packages.
+`internal/gallery` and `examples/` are consumers, not an alternate API layer.
+Additional library families can remain useful without becoming coss guarantees.
+
+The gallery is a native workbench consumer, not a web documentation clone. Its
+52 DIP custom title bar reads `c.TitleBar()` for actual left/right system
+control insets, keeps draggable content regions, and uses native macOS traffic
+lights. A grouped sidebar, Cmd/Ctrl+K search and Preview/Code/API/Tokens views
+share window-owned component state. Compact layouts preserve focus rather
+than rebuilding a second application shell. Dialog owns the Modal size
+examples; Drawer owns the native floating BottomSheet examples. Their Go APIs
+remain available, without duplicate top-level Gallery pages.
+
+Cmd/Ctrl `+`, `-` and `0` use native content zoom, not text-only scaling.
+The system-button strip stays 52 window DIPs high while content breakpoints
+and insets follow the zoom. Windows caption buttons follow the explicit
+Gallery appearance. A separate native Flyout example lives on the Popover
+page; it is not a duplicate overlay catalog entry.
+
+Install `ToastState.View` once at the window root, after theme application and
+before modal views; page navigation must not remove its renderer. Overlay
+footers use a full-bleed muted face and top rule. Footer callbacks build their
+actions directly; set `ButtonOptions.FullWidth` on narrow layouts rather than
+expecting a parent to override a control's explicit alignment. Body scrolling
+keeps actions fixed normally; an outer native viewport makes header and footer
+reachable when short windows or enlarged text cannot fit the chrome.
 
 ## Appearance
 
-Colors, radii, spacing and type come from HeroUI's published tokens, translated
-from `references/heroui/packages/styles/themes/default/variables.css`.
-Components read `theme.Colors(c)` live; palettes are immutable snapshots rebuilt
-only when `theme.Configure` changes accent, radius, vibrancy or typography.
+Read current semantic roles with `theme.Colors(c)`. `Primary` is the action
+color; `Accent` is the subtle interaction surface. `MutedBackground` and
+`MutedForeground` have distinct meanings. Preserve translucent border/input
+tokens so they composite over the real surface.
 
-The default palette is HeroUI's light/dark pair, including surface, overlay,
-field, default, accent, success, warning and danger roles with their derived
-hover, soft and separator levels. HeroUI's desktop metrics are authoritative:
-4 DIP spacing, 8 DIP radius base, 14 DIP control text, 36 DIP control height,
-16 DIP card padding and 24 DIP large radius.
+`theme.Apply(c)` installs the native widget theme for the current appearance.
+`ApplyMode(c, dark)` supports explicit previews. Preferences are process-wide;
+widget values and focus state remain window-local. `Configure` replaces the
+whole preference value, while `UpdatePreferences` preserves fields the host
+does not edit. Each appearance has a `PalettePatch`, including canonical
+sidebar and chart roles.
 
-`theme.Apply(c)` installs the matching native widget theme for the current
-appearance. `theme.ApplyMode(c, dark)` exists for previews and tests.
-`theme.Configure` is process-wide host policy; widget state remains
-window-local.
+The default radius base is 10 DIP, giving SM 6, MD 8, LG 10 and XL 14.
+Desktop buttons use 32 DIP by default, 28/36 for small/large and 24/40 for
+extra small/extra large. Button press feedback uses color and shadow changes,
+without a pressed scale. Native disabled painting uses 50% opacity, whereas
+the coss button reference specifies 64%.
 
-Hosts inject their own semantic palette with `theme.Preferences.Palette`
-(`theme.PalettePatch` per appearance). A nil field keeps the HeroUI default and
-an injected token is used verbatim, so a transparent `Border` is valid; derived
-hover, soft and foreground levels rebuild from the injected base. Fields default
-to HeroUI's transparent `FieldBorder`; a host opts into an outline with
-`PalettePatch.FieldBorder`. `Configure` replaces the whole preference value, so a
-later typography change publishes the palette again or edits it in place with
-`theme.UpdatePreferences`. `Apply` composes the native theme from the resolved
-palette, so injected colors also reach native control faces and selections.
-Heading roles carry HeroUI's tight tracking through `TextStyle.Tracking`.
+Default body/heading/mono families are native fallbacks. Configurable family
+names do not load a font. See [theme.md](theme.md) for role customization and
+the documented/runtime dark palette discrepancy, and [fonts.md](fonts.md)
+for independently licensed host font sources.
 
-## API rules
+## Native behavior and boundaries
 
-- Options are typed Go structs. Unsupported combinations fail visibly rather
-  than silently degrading.
-- Callbacks describe user intent; a nil callback never fabricates success.
-- Disabled controls cannot activate; pending controls remain readable but
-  cannot submit.
-- Icon-only controls keep the caller's label as their accessible name and
-  tooltip.
-- Field controls associate their label, description and error through MyGo's
-  native field mechanism.
-- Package upgrades remove obsolete code at the same time; no deprecated
-  aliases, adapters or compatibility shims are kept.
+MyGo 0.7.1's GPU path can still drop an ancestor's rounded clip beneath a rectangular
+descendant clip. Headless rendering does not expose that backend limitation.
+State backgrounds use native per-corner fills; progress and table row painting
+apply their final clip directly around the fill. Arbitrary nested content
+still requires a toolkit fix. Do not flatten every container into an effect:
+that would hide embedded WebViews, change fade behavior and impose texture limits.
 
-## Upstream fidelity and limits
+- Caller-owned values and callbacks express selection, validation, submission
+  and external actions. A nil callback does not fabricate a successful action.
+- Labels and help/errors must reach native field and control associations.
+  Icon-only actions still need a meaningful accessible name.
+- Disabled actions must remain inert. Read-only editors preserve selection.
+  Loading/submission policy must be explicit in the owning component.
+- Anchors and overlay parts are consumed in the same build. Keep overlay
+  constructors installed while closed when native retained exits require it.
+  Exit snapshots are inert and must not rebuild consumer content.
+- Native menus, tooltip timing, clipboard services, scrollbars and input
+  methods keep toolkit/platform behavior. The matrix names adaptations such
+  as plain-text Composer and Drawer without snap points.
+- `ScrollFade` offers true subtree alpha masking through `MaskFade`, alongside
+  shadow and opaque-surface edge treatments. Native effect layers have an
+  8192-pixel side limit and omit embedded webviews.
 
-`references/heroui` and `references/heroui-native` are pinned submodules. Their
-CSS, variant definitions and compound APIs are read for every component; see
-`docs/references.md` for the update procedure. Web-only behavior is translated
-only where native semantics allow it. Known limits are recorded in
-`docs/components.md` instead of being implied by a component's presence, and
-the concrete MyGo/CSS differences are in `docs/mygo-vs-css.md`.
+The library translates appearance and behavior using the toolkit's contracts.
+Tailwind selectors, DOM polymorphism, portals, contenteditable tokens and
+React hooks do not become parallel native infrastructure.
 
-The module depends on MyGo v0.6.3 and mygoicons v0.2.1. Module metadata contains
-no local replacements or workspace requirements.
+## Verification and reference updates
 
-## Verification
+The coss snapshot and licensing boundary are recorded in
+[references.md](references.md). Read affected MIT registry files, their MDX
+examples and published styling before changing behavior. The pinned
+`references/coss` checkout is the only component design reference.
 
-Consumers must build using only this module and resolvable dependencies.
-Meaningful tests cover editing, focus, disabled and invalid states, selection,
-dates, filtering, overlays, motion and narrow or enlarged layouts. Headless
-rendering establishes paint and native event routing; OS gestures, GPU
-presentation and screen-reader integration remain separate platform checks.
-
-The gallery devotes one page to each component and follows HeroUI's docs
-anatomy: Usage, Examples, API Reference and Theme tokens, with a right-hand
-"On this page" rail. `ComponentPage` carries one full `Code` snippet, an
-optional `Import` override for the compact Usage bar (empty derives the block
-from the snippet's package qualifiers, always naming the module root), and
-named `ComponentExample` frames; there is no page-level demo fallback. Each
-named example renders its title outside its own bordered panel; the page
-snippet renders once after the examples (inside the panel for a single
-example, or in a shared Code panel for several).
+Meaningful tests protect observable editing, activation, focus, selection,
+validation, dismissal and retained paint. `ui.NewTester` can exercise native
+event routing, semantic metadata and headless paint; it does not prove GPU
+presentation, OS gestures, IME integration or screen-reader operation.
+Record those separately in [VALIDATION.md](../VALIDATION.md).

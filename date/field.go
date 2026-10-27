@@ -6,13 +6,12 @@ import (
 
 	"github.com/Cyenoch/mygoui/form"
 	"github.com/Cyenoch/mygoui/internal/formstyle"
-	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
 
-// DateFieldOptions configures a HeroUI date field. The value is caller-owned:
+// DateFieldOptions configures a date field. The value is caller-owned:
 // a nil pointer keeps the committed date in the field itself and reports it
 // through OnChange only.
 type DateFieldOptions struct {
@@ -32,8 +31,8 @@ type DateFieldOptions struct {
 	OnChange func(time.Time)
 }
 
-// DateField renders an ISO 8601 date editor (YYYY-MM-DD) inside HeroUI's date
-// input group. A complete, in-bounds date commits as it is typed; partial text
+// DateField renders an ISO 8601 date editor (YYYY-MM-DD) in a COSS-style input
+// group. A complete, in-bounds date commits as it is typed; partial text
 // stays quiet, and an impossible or out-of-bounds date shows the localized
 // invalid message.
 func DateField(c *ui.Context, o DateFieldOptions) ui.Element {
@@ -81,8 +80,6 @@ func DateField(c *ui.Context, o DateFieldOptions) ui.Element {
 type dateValueKey struct{}
 type dateBufferKey struct{}
 
-// fieldSpec is HeroUI's date-field/time-field chrome: a 4 DIP gapped column
-// with a label, the control, and either its description or its error.
 type fieldSpec struct {
 	label, description, error string
 	required, invalid         bool
@@ -103,50 +100,10 @@ func formField(c *ui.Context, spec fieldSpec, errorText string, body func()) ui.
 	}, body)
 }
 
-// fieldGroup is HeroUI's date-input-group surface: the field background, its
-// hover and focus-within states, the danger ring when invalid, and 12 DIP
-// horizontal padding around a 36 DIP row. ignoreFocus, when set, is the
-// picker's trigger: HeroUI keeps the field face quiet while only that trigger
-// has the focus, since the trigger draws its own ring.
-func fieldGroup(c *ui.Context, invalid, disabled bool, ignoreFocus *ui.Handle) ui.Element {
-	t := theme.Colors(c)
-	radius := theme.RadiusScale().Field
-	e := ui.Row(c).MinHeight(theme.Scale(c, 36)).AlignItems(ui.Center).
-		PaddingX(theme.Space12).Radius(radius).Clip()
-	// Snapshot the states in the build: a retained copy of a leaving
-	// element paints in later passes, where e has expired.
-	focused, hovered := e.FocusWithin(), e.Hovered()
-	if ignoreFocus != nil && ignoreFocus.Focused(c) {
-		// HeroUI's group excludes its trigger from :focus-within; with the
-		// pointer on that trigger neither the hover nor the focus face shows.
-		focused, hovered = false, false
-	}
-	e.Draw(func(p *ui.Painter, r ui.Rect) {
-		fill := t.FieldBackground
-		switch {
-		case focused:
-			fill = t.FieldFocus
-		case hovered:
-			fill = t.FieldHover
-		}
-		p.Fill(r, fill, radius)
-		switch {
-		case invalid:
-			width := float32(1)
-			if focused {
-				width = 2
-			}
-			p.Stroke(r, t.Danger, radius, width)
-		case focused:
-			p.FocusRing(r, [4]float32{radius, radius, radius, radius})
-		case hovered:
-			if t.FieldBorderHover.A != 0 {
-				p.Stroke(r, t.FieldBorderHover, radius, theme.Hairline)
-			}
-		}
-	})
-	e = style.Shadow(e, c, theme.FieldShadows(c.Theme().Dark))
-	return style.Disabled(e, disabled)
+// fieldGroup uses the shared COSS input surface and focus-within treatment.
+func fieldGroup(c *ui.Context, invalid, disabled bool) ui.Element {
+	e := ui.Row(c).MinHeight(theme.Scale(c, 32)).AlignItems(ui.Center).PaddingX(theme.Space12)
+	return formstyle.Surface(e, c, false, invalid, disabled)
 }
 
 // fieldInput styles a native text editor as one date-input-group input.
@@ -165,10 +122,7 @@ type dateFieldSpec struct {
 	loc           *time.Location
 	width         float32
 	suffix        func()
-	// triggerFocus is the popup trigger built by suffix, when there is one:
-	// the group hides its focus face while that trigger holds the focus.
-	triggerFocus *ui.Handle
-	onChange     func(time.Time)
+	onChange      func(time.Time)
 }
 
 // dateField builds the field and returns it with the input group, which
@@ -192,7 +146,7 @@ func dateGroup(c *ui.Context, spec dateFieldSpec, buf *dateBuffer, invalid bool)
 	if placeholder == "" {
 		placeholder = "YYYY-MM-DD"
 	}
-	group := fieldGroup(c, invalid, spec.field.disabled, spec.triggerFocus)
+	group := fieldGroup(c, invalid, spec.field.disabled)
 	if spec.width > 0 && !spec.field.fullWidth {
 		group = group.Width(spec.width)
 	}

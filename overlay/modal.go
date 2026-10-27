@@ -5,11 +5,11 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// ModalSize is HeroUI's modal width scale.
+// ModalSize is the modal width scale.
 type ModalSize uint8
 
 const (
-	// ModalMedium is max-w-md (448 DIPs), HeroUI's default.
+	// ModalMedium is 448 DIPs wide before viewport clamping.
 	ModalMedium ModalSize = iota
 	// ModalSmall is max-w-sm (384 DIPs).
 	ModalSmall
@@ -19,14 +19,14 @@ const (
 	ModalExtraLarge
 	// ModalFull fills the window without radius or shadow.
 	ModalFull
-	// ModalExtraSmall is max-w-xs (320 DIPs), HeroUI's smallest dialog.
+	// ModalExtraSmall is 320 DIPs wide before viewport clamping.
 	ModalExtraSmall
 	// ModalCover fills the space its container leaves, keeping the floating
 	// surface's radius and shadow.
 	ModalCover
 )
 
-// ModalOptions configures a HeroUI modal.
+// ModalOptions configures a modal.
 type ModalOptions struct {
 	Size        ModalSize
 	Backdrop    ModalBackdrop
@@ -34,7 +34,8 @@ type ModalOptions struct {
 	Description string
 	// Header replaces the generated title/description block.
 	Header func()
-	// Body is the scrollable content; Footer is the action row.
+	// Body is the scrollable content; Footer builds the action row directly.
+	// Set ButtonOptions.FullWidth for full-width actions on narrow windows.
 	Body   func()
 	Footer func()
 	// BodyLabel names the scroll region for assistive technology.
@@ -48,7 +49,7 @@ type ModalOptions struct {
 	OnDismiss func()
 }
 
-// Modal shows a HeroUI modal over a dimmed window while *open is true. The
+// Modal shows a modal over a dimmed window while *open is true. The
 // native dialog base keeps the focus inside, restores it to the opener, and
 // closes on backdrop press or Escape unless PreventDismiss is set.
 func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
@@ -85,7 +86,7 @@ func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
 		if full {
 			radius = 0
 		}
-		panel.Radius(radius).Clip().Background(t.Overlay).TextColor(t.OverlayForeground)
+		panel.Radius(radius).Clip().Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border)
 		if !full {
 			panel = panelElevation(c, panel)
 		}
@@ -114,11 +115,13 @@ func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
 			bodyLabel:        o.BodyLabel,
 			hideClose:        o.HideClose,
 			onClose:          close,
-			titleStyle:       theme.Base(),
+			titleStyle:       theme.H4(),
 			descriptionStyle: theme.SM(),
-			bodyInk:          t.Muted,
 			padding:          theme.Space24,
-			headerGap:        theme.Space12,
+			headerGap:        theme.Space8,
+			maxHeight:        availH,
+			fillHeight:       full || o.Size == ModalCover,
+			footerCorners:    [2]float32{max(0, radius-theme.Hairline), max(0, radius-theme.Hairline)},
 		})
 	})
 	if wasOpen && !*open && p.Valid() && p.Dismissed() {
@@ -131,7 +134,7 @@ func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
 	return p
 }
 
-// modalWidth is HeroUI's max-w for a floating size. ModalFull and ModalCover
+// modalWidth is the maximum width for a floating size. ModalFull and ModalCover
 // take the space their container leaves instead.
 func modalWidth(size ModalSize) float32 {
 	switch size {

@@ -2,159 +2,86 @@
 
 ## Unreleased
 
-Complete native rewrite from the shadcn-inspired API to a HeroUI v3 component
-library. The previous component set is not part of this API and no compatibility
-shims are provided.
-
-### Added
-
-- HeroUI v3 semantic theme: light/dark palettes, accent/default/status roles,
-  derived hover/soft/separator levels, configured radius and system typography.
-- Host palette injection: `theme.Preferences.Palette` overlays semantic roles
-  per appearance through `theme.PalettePatch` — canvas, surface, ink, muted
-  ink, border (transparent is valid), accent and status pairs, hover and
-  selection fills, overlay and backdrop. Unset roles keep HeroUI's defaults;
-  derived hover, soft and foreground levels rebuild from the injected base.
-  `theme.Apply` composes its native theme from the resolved palette, and
-  `theme.UpdatePreferences` edits typography without dropping it. `ColorInfo`
-  joins the status colors, defaulting to the accent family.
-- `TableOptions.Footer` adds HeroUI's in-frame footer row for pagination or
-  summaries; `ToggleButtonGroupOptions.Separators` draws the joined-group
-  divider; `ModalExtraSmall` and `ModalCover` extend the modal size scale.
-- `theme.PalettePatch.FieldBorder` lets a host opt into a field outline while
-  HeroUI's default stays transparent; `TextStyle.Tracking` and
-  `theme.TrackingTight` carry the official heading tracking.
-- Root components: Alert, Avatar, AvatarGroup, Badge, BadgeAnchor, Button,
-  ButtonGroup, Card and parts, Chip, CloseButton, EmptyState, Header, Kbd, Link,
-  LinkButton, ListGroup, Meter, PressableFeedback, ProgressBar, ProgressCircle,
-  ScrollShadow, Separator, Skeleton, SkeletonGroup, Spinner, Surface, Tag,
-  TagGroup, ToggleButton, ToggleButtonGroup and Typography.
-- Form package: field primitives, Input, TextArea, TextField, InputGroup,
-  InputOTP, SearchField, NumberField, Checkbox/Group, Radio/Group, Switch/Group,
-  ControlField, Slider, Select, ComboBox and Autocomplete.
-- ListBox package with virtualized rows, sections, typeahead and selection.
-- Navigation: Accordion, Disclosure/Group, Tabs, Breadcrumbs, Pagination,
-  Toolbar and Menu/Dropdown/SubMenu.
-- Overlays: Modal, AlertDialog, Drawer, BottomSheet, Dialog, Popover, Tooltip
-  and a Toast manager.
-- Date: Calendar, RangeCalendar, DateField, DatePicker, DateRangePicker and
-  TimeField.
-- Color: ColorArea, ColorSlider, ColorField, ColorSwatch, ColorSwatchPicker and
-  ColorPicker.
-- Data: virtualized Table with sorting, selection, row actions, resizing,
-  hiding and an empty state.
-- Per-component gallery in the HeroUI docs layout: a 880 DIP main column and
-  a right-hand "On this page" rail (hidden below 1000 DIP) whose links scroll
-  to Usage, Examples, API Reference and Theme tokens. The page header carries
-  the group label, title, description, Copy Markdown and Copy import actions
-  with native clipboard feedback. Usage is a compact import bar: with no
-  explicit `ComponentPage.Import`, its block is derived from the package
-  qualifiers the page's snippet names (module root plus the subpackages and
-  `mygoicons/lucide` it uses, de-duplicated and sorted, as one line or a
-  parenthesized block), and both copy actions write that block.
-- Gallery named examples: `ComponentPage.Examples` holds
-  `ComponentExample{Title, Description, Demo}` frames. Each frame renders its
-  title and description outside its own clipped variant panel. All 86
-  component pages ship 2-5 named examples (260 in total); there is no
-  page-level `Demo` fallback.
-- Gallery code areas: the page's full Go snippet renders once with line
-  numbers, syntax highlighting, selectable lines, horizontal scrolling and a
-  tooltip-only copy control; snippets longer than six lines fold under a
-  surface-colored fade with Expand code/Collapse code. API Reference tables
-  wrap long code pills and stack at narrow widths; theme-token cards show
-  light/dark swatches, hex values and role descriptions.
-- Gallery overview: a landing hero with feature points and one card per
-  component group, with page counts and links. The sidebar groups every
-  component under the MyGo UI brand and uses ScrollShadow for overflow;
-  light/dark modes, accent and radius customization, and search remain live.
-- MyGo UI brand across the README, documentation and gallery shell.
+The `coss` reconstruction replaces the previous unreleased appearance
+and token contract with coss ui references and native Go APIs. Existing extra
+families remain library extensions; the catalog is a capability mapping,
+not a claim of pixel-perfect completion. No release is asserted by this log.
 
 ### Changed
 
-- Official parity and motion pass across the component families: button and
-  toggle pressed scales, switch/checkbox/radio/slider state motion, sliding
-  tabs indicator, accordion/disclosure panel fades, calendar and color
-  transitions, HeroUI's progress/skeleton timings, menu indicator draws and
-  popover/tooltip zoom. All motion uses native MyGo scheduling and settles
-  immediately under reduced motion.
-- BottomSheet is now a floating sheet with 16 DIP screen gutters and rounded
-  corners, slides up over 250 ms, follows a handle swipe, slides out on a long
-  drag or the close button, and clears its scrim with the sheet. Short drags
-  ease back; the body keeps native scrolling.
-- Table uses HeroUI's primary/secondary chrome: a secondary header band, white
-  body card, 44 DIP rows, 12 DIP muted headers, hairline rows, column
-  separators and an in-frame footer. The gallery Table page mirrors the official
-  four-column, paginated demo.
-- NumberField builds its steppers in official order (decrement, editor,
-  increment), restoring the single `40 / 1fr / 40` row, 36 DIP height, inner
-  separators and a compact 200 DIP demo width.
-- RangeCalendar gallery examples reserve the range summary's width and height,
-  so completing a range no longer shifts the grid.
-- Upgraded MyGo to v0.6.3 and mygoicons to v0.2.1.
-- Theme application now installs a HeroUI palette derived from upstream
-  variables; `theme.Configure` publishes process-wide accent, radius,
-  typography and motion preferences.
-- Coordinated collections (accordion sections, disclosures, tabs, menus) take
-  typed slices instead of ambient build scopes. No context-keyed globals or
-  build values are stored outside the current frame.
-- Documentation, examples, notices and validation were rewritten for the
-  HeroUI reference and pinned upstream submodules.
-- Hover, pressed and focus faces are pinned by headless pointer-move pixel
-  tests: Button, ToggleButton, ButtonGroup, Checkbox, Radio, Switch,
-  InputGroup, Tabs, Accordion header, ListBox rows, calendar days, DateField
-  and the color swatch picker, plus inert/pressed-only behavior for Disclosure
-  and ColorArea. A face that stops repainting on hover now fails a test
-  instead of being found by eye.
+- Upgrade MyGo to v0.7.1 and Go to 1.27.3; the CLI now resolves from the
+  module tool directive instead of an unpinned latest version.
+- Gallery supports native content zoom and Windows caption theme updates.
+  Loading animations use paint-only frames, with skeleton motion capped at
+  60 fps. Short-window alert autofocus reveals the safe action after layout.
 
-### Fixed
+- Replace previous reference submodules with `references/coss`, pinned to the
+  documented source commit; retain earlier copyright notices separately.
+- Native per-corner button backgrounds retain their face through exits without
+  allocating persistent handles per frame. Vertical groups share member width;
+  Gallery groups include explicit separators.
+- Progress sweeps and table row states stay inside their rounded bounds.
+  Arbitrary nested rounded clipping remains a documented toolkit limitation;
+  no blanket offscreen-effect workaround changes native content composition.
+- Cross-platform paint tests distinguish synthetic markers from subpixel text
+  edges and use values that genuinely exceed the available API column width.
 
-- Table: gallery examples size their frame to six whole rows (header, six
-  44 DIP rows, and the bottom frame), so the default viewport no longer cuts
-  the next status chip at its lower edge. Arbitrary scroll offsets still clip
-  at the native viewport boundary.
-- Toast: a new card starts fully outside the deck's 16 DIP gutter and no longer
-  animates its own width and height on entry; only its translation and fade
-  animate, so an action's result does not unfold from a sliver before settling.
-- Performance: shared shadow tables and a cached radius scale remove per-build
-  allocations; `theme.ApplyMode` stops reinstalling an identical native theme;
-  Table caches row metadata per pass and ListBox typeahead folds without
-  allocating; Toast expresses the collapsed deck in geometry instead of
-  scaling shadowed cards (the hover regression fell from 51 s to 0.3 s);
-  OTP blinks on a repaint deadline instead of every display frame; ComboBox
-  and Autocomplete filtering avoids per-item lowercasing; gallery token cards
-  and page lookup no longer use reflection or linear scans per frame.
-- Toast: restored spring entry/exit, stacked cards, hover/focus expansion,
-  continuous insertion/removal and horizontal swipe dismissal. Animated
-  declared geometry survives MyGo's absolute-overlay relayout. Reduced motion
-  settles immediately; native timers, focus pause and inert exit snapshots
-  remain authoritative.
-- Toast: the close button floats across the upper-right corner without
-  reserving message or action width. Undo keeps the normal right padding;
-  the centered lucide X reveals on hover or focus and remains keyboard-accessible.
-- Toast status controls expose the message title (or description without a
-  title), not an internal notification ID, as their accessible name.
-- Gallery Toast triggers create a fresh notification on every press; only
-  the explicit Update example reuses its ID.
-- Modal, AlertDialog, Dialog, Drawer, BottomSheet, Popover and Tooltip now
-  animate entry and exit with native inert snapshots. Their constructors
-  keep the overlay layer alive while closed, so animation works without a
-  Toast viewport. Reduced motion skips the transitions.
-- Modal identity is assigned before native input is read, preserving backdrop
-  dismissal on immediate reopen. AlertDialog focuses Cancel only after the
-  native base records its opener, so closing restores focus to the trigger.
-- Drawer panels keep 16 DIP screen gutters on every side and rounded corners
-  instead of touching the window edges.
-- Navigation and color indicators: the menu's check mark and submenu
-  chevron, the disclosure and accordion chevrons, and the selected color
-  swatch tick used `Painter.Line` too, so their diagonals collapsed into
-  bars. They now stroke a `ui.Path` with the same sizes, angles and
-  right-to-left direction.
-- Toast: dismissing a toast no longer panics while its exit transition paints
-  the retained copy, which read Elements from the build pass that made it.
-- Component state faces (buttons, toggles, tags, links, form controls, date,
-  color, navigation and list rows) snapshot hover, pressed and focus state
-  during the build instead of reading Elements from a paint callback, so any
-  component placed inside an `ElementTransition` exit keeps painting without
-  an expired-element panic.
+- Canonical theme roles follow coss: Primary/Secondary, separate muted
+  background/foreground, Accent, Card/Popover, Destructive, Input/Ring and
+  sidebar/chart roles, with per-appearance palette patches.
+- Default geometry uses a 10 DIP radius base and coss desktop control sizes:
+  buttons 32 DIP, small/large 28/36 and extra small/large 24/40. Body,
+  heading and mono families are independently configurable. System fonts
+  remain the theme default; applications own explicit font registration.
+- Button states use coss color/border/shadow feedback without a pressed scale.
+  Native disabled opacity remains 50% rather than the reference's 64%.
+- Badge uses its own BadgeVariant: Primary, Secondary, Outline, Destructive,
+  Error, Info, Success and Warning. BadgeOptions contains Label, Variant,
+  Size and Icon.
+- Documentation now identifies the MIT coss registry/docs, the upstream
+  AGPL package boundary, dark palette provenance differences and independent
+  OFL font sources. Historical references are no longer design authority.
 
-No version has been released from this checkout.
+### Added
+
+- Native `overlay.NewFlyout`, coss `FlyoutSurface`, zoom-aware `FlyoutAnchor`
+  and a Popover Gallery example. Explicit parent/tray and dimensions keep
+  window ownership outside the build; WebAssembly returns an error.
+- Optional `TabsOptions.KeepMounted` preserves hidden panels' native state
+  without layout space or keyboard targets.
+
+- Root Frame with independent panels, mixed Group with explicit segment
+  corners, caller-owned collapsible Sidebar, ScrollArea with
+  vertical/horizontal/both axes, and reusable ScrollFade shadow, surface and
+  native shader alpha-mask treatments.
+- Plain-text form.Composer with caller-owned draft, persistent actions,
+  Enter/Shift+Enter policy and caller-controlled submission/clearing.
+- Inline editable Autocomplete with focused-input suggestion navigation.
+- navigation.Command searchable actions, native ContextMenu and independent
+  radio-semantics SegmentedControl with animated selection.
+- CardFrame helpers, overlay.Sheet edge slide, Drawer slide/inset presentation
+  and PreviewCard with hover/focus continuity.
+- A 57-component coss mapping plus two native hook/service translations,
+  separate extra-family inventory and explicit behavior/platform gaps.
+- Optional embedded Cal Sans regular/italic from the independent official
+  OFL source, with explicit `fonts.Register() error` startup registration.
+  Browser registration fails explicitly; Paper Mono remains host-provided.
+- Redesigned native gallery with a custom 52 DIP title bar, platform window
+  control insets, grouped sidebar, keyboard search and Preview/Code/API/Tokens
+  views. macOS keeps native traffic lights; other platforms reserve the
+  toolkit-reported control area.
+- Per-component official-browser/native visual review and an opt-in capture
+  collector, with explicit missing-state and platform evidence boundaries.
+
+### Known limits and validation
+
+Composer rich tokens/mentions, Drawer snap points/nested gesture behavior
+and automatic form validation/submission are not supplied. OS context menus
+and tooltip timing remain native.
+Mask effect dimensions, webview exclusions and native font rendering need
+explicit attention; see the component and scrolling docs.
+
+Current reconstruction checks are recorded in [VALIDATION.md](VALIDATION.md).
+Earlier rewrite results do not certify this source state. GPU, platform
+input/gesture and actual screen-reader evidence are separate from headless
+layout, semantic metadata and pixel tests.

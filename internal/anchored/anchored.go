@@ -1,5 +1,5 @@
-// Package anchored maps HeroUI placement options onto MyGo's native anchor
-// engine. It owns no state and performs no measurement.
+// Package anchored maps typed placements onto MyGo's native anchor engine.
+// It owns no state and performs no measurement.
 package anchored
 
 import (
@@ -7,12 +7,10 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// defaultOffset is HeroUI's default distance from the trigger, which React
-// Aria's popover and its documented Popover and Select defaults publish as 8
-// DIPs. Tooltips override it with their own 3/7 DIP scale.
-const defaultOffset = 8
+// defaultOffset matches the coss popover and picker positioners.
+const defaultOffset = 4
 
-// Apply attaches panel to anchor for a HeroUI placement, falling back to the
+// Apply attaches panel to anchor for a typed placement, falling back to the
 // component-appropriate side when the caller leaves it unset.
 func Apply(panel, anchor ui.Element, p mygoui.Placement, fallback mygoui.Side) ui.Element {
 	side := p.Side

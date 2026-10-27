@@ -18,12 +18,14 @@ type datesState struct {
 	Min   time.Time
 	Max   time.Time
 
-	Cal   date.CalendarState
-	Range date.RangeCalendarState
+	CalDefault date.CalendarState
+	Cal        date.CalendarState
+	Range      date.RangeCalendarState
 
 	CalMonday   date.CalendarState
 	CalReadOnly date.CalendarState
 	CalStatic   date.CalendarState
+	CalYear     date.CalendarState
 	RangeMonday date.RangeCalendarState
 	RangeFree   date.RangeCalendarState
 
@@ -57,6 +59,7 @@ func (st *datesState) ensure(c *ui.Context) {
 	st.Today = datesStartOfDay(c.Now())
 	st.Min = st.Today.AddDate(0, 0, -10)
 	st.Max = st.Today.AddDate(0, 0, 24)
+	st.CalDefault = date.CalendarState{Value: st.Today}
 	st.Cal = date.CalendarState{Value: datesNextWeekday(st.Today)}
 	st.Range = date.RangeCalendarState{Value: date.DateRange{
 		Start: datesNextWeekday(st.Today.AddDate(0, 0, 3)),
@@ -72,6 +75,7 @@ func (st *datesState) ensure(c *ui.Context) {
 	st.CalMonday = date.CalendarState{Value: datesNextWeekday(st.Today.AddDate(0, 0, 1))}
 	st.CalReadOnly = date.CalendarState{Value: datesNextWeekday(st.Today)}
 	st.CalStatic = date.CalendarState{Value: datesNextWeekday(st.Today.AddDate(0, 0, 2))}
+	st.CalYear = date.CalendarState{Value: datesNextWeekday(st.Today.AddDate(0, 0, 2))}
 	st.RangeMonday = date.RangeCalendarState{Value: date.DateRange{
 		Start: datesNextWeekday(st.Today.AddDate(0, 0, 2)),
 		End:   datesNextWeekday(st.Today.AddDate(0, 0, 8)),
@@ -89,15 +93,25 @@ func (st *datesState) ensure(c *ui.Context) {
 	st.Time12 = date.TimeFieldState{Value: datesClock(st.Today, 16, 45)}
 }
 
+func calendarDefaultExample(c *ui.Context, st *datesState) {
+	ui.Row(c).FillWidth().MinWidth(0).Justify(ui.Center).Children(func() {
+		date.Calendar(c, date.CalendarOptions{
+			Label: "Calendar",
+			Today: st.Today,
+		}, &st.CalDefault)
+	})
+}
+
 // calendarBoundedExample bounds the grid and disables weekends.
 func calendarBoundedExample(c *ui.Context, st *datesState) {
 	ui.Row(c).Wrap().Gap(theme.Space24).AlignItems(ui.Start).Children(func() {
 		date.Calendar(c, date.CalendarOptions{
-			Label:         "Deployment day",
-			Today:         st.Today,
-			Min:           st.Min,
-			Max:           st.Max,
-			DisabledDates: datesWeekend,
+			Label:          "Deployment day",
+			Today:          st.Today,
+			Min:            st.Min,
+			Max:            st.Max,
+			DisabledDates:  datesWeekend,
+			ShowYearPicker: true,
 		}, &st.Cal)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
 			mygoui.Typography(c, "Selected day", mygoui.TypographyOptions{Type: theme.TypeH6})
@@ -115,11 +129,12 @@ func calendarBoundedExample(c *ui.Context, st *datesState) {
 func calendarMondayExample(c *ui.Context, st *datesState) {
 	ui.Row(c).Wrap().Gap(theme.Space24).AlignItems(ui.Start).Children(func() {
 		date.Calendar(c, date.CalendarOptions{
-			Label:        "Review day",
-			Today:        st.Today,
-			Min:          st.Min,
-			Max:          st.Max,
-			FirstWeekday: time.Monday,
+			Label:          "Review day",
+			Today:          st.Today,
+			Min:            st.Min,
+			Max:            st.Max,
+			FirstWeekday:   time.Monday,
+			ShowYearPicker: true,
 		}, &st.CalMonday)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
 			mygoui.Typography(c, datesDayLabel(st.CalMonday.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
@@ -128,15 +143,14 @@ func calendarMondayExample(c *ui.Context, st *datesState) {
 	})
 }
 
-// calendarStaticHeadingExample removes the year picker and keeps the month static.
+// calendarStaticHeadingExample keeps the default static month heading.
 func calendarStaticHeadingExample(c *ui.Context, st *datesState) {
 	ui.Row(c).Wrap().Gap(theme.Space24).AlignItems(ui.Start).Children(func() {
 		date.Calendar(c, date.CalendarOptions{
-			Label:          "Static heading day",
-			Today:          st.Today,
-			Min:            st.Min,
-			Max:            st.Max,
-			HideYearPicker: true,
+			Label: "Static heading day",
+			Today: st.Today,
+			Min:   st.Min,
+			Max:   st.Max,
 		}, &st.CalStatic)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
 			mygoui.Typography(c, datesDayLabel(st.CalStatic.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
@@ -145,14 +159,30 @@ func calendarStaticHeadingExample(c *ui.Context, st *datesState) {
 	})
 }
 
+// calendarYearPickerExample enables the optional year selector.
+func calendarYearPickerExample(c *ui.Context, st *datesState) {
+	ui.Row(c).Wrap().Gap(theme.Space24).AlignItems(ui.Start).Children(func() {
+		date.Calendar(c, date.CalendarOptions{
+			Label:          "Year picker day",
+			Today:          st.Today,
+			ShowYearPicker: true,
+		}, &st.CalYear)
+		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+			mygoui.Typography(c, datesDayLabel(st.CalYear.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
+			datesChip(c, "Choose year")
+		})
+	})
+}
+
 // calendarReadOnlyExample renders the grid at reduced opacity.
 func calendarReadOnlyExample(c *ui.Context, st *datesState) {
 	date.Calendar(c, date.CalendarOptions{
-		Label:    "Archived day",
-		Today:    st.Today,
-		Min:      st.Min,
-		Max:      st.Max,
-		Disabled: true,
+		Label:          "Archived day",
+		Today:          st.Today,
+		Min:            st.Min,
+		Max:            st.Max,
+		Disabled:       true,
+		ShowYearPicker: true,
 	}, &st.CalReadOnly)
 }
 
@@ -160,11 +190,12 @@ func calendarReadOnlyExample(c *ui.Context, st *datesState) {
 func rangeBoundedExample(c *ui.Context, st *datesState) {
 	ui.Row(c).Wrap().Gap(theme.Space24).AlignItems(ui.Start).Children(func() {
 		date.RangeCalendar(c, date.RangeCalendarOptions{
-			Label:         "Release window",
-			Today:         st.Today,
-			Min:           st.Min,
-			Max:           st.Max,
-			DisabledDates: datesWeekend,
+			Label:          "Release window",
+			Today:          st.Today,
+			Min:            st.Min,
+			Max:            st.Max,
+			DisabledDates:  datesWeekend,
+			ShowYearPicker: true,
 		}, &st.Range)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
 			mygoui.Typography(c, "Selected range", mygoui.TypographyOptions{Type: theme.TypeH6})
@@ -188,11 +219,12 @@ func rangeBoundedExample(c *ui.Context, st *datesState) {
 func rangeMondayExample(c *ui.Context, st *datesState) {
 	ui.Row(c).Wrap().Gap(theme.Space24).AlignItems(ui.Start).Children(func() {
 		date.RangeCalendar(c, date.RangeCalendarOptions{
-			Label:        "Sprint window",
-			Today:        st.Today,
-			Min:          st.Min,
-			Max:          st.Max,
-			FirstWeekday: time.Monday,
+			Label:          "Sprint window",
+			Today:          st.Today,
+			Min:            st.Min,
+			Max:            st.Max,
+			FirstWeekday:   time.Monday,
+			ShowYearPicker: true,
 		}, &st.RangeMonday)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
 			mygoui.Typography(c, datesRangeLabel(st.RangeMonday.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
@@ -205,8 +237,9 @@ func rangeMondayExample(c *ui.Context, st *datesState) {
 func rangeFreeExample(c *ui.Context, st *datesState) {
 	ui.Row(c).Wrap().Gap(theme.Space24).AlignItems(ui.Start).Children(func() {
 		date.RangeCalendar(c, date.RangeCalendarOptions{
-			Label: "Travel window",
-			Today: st.Today,
+			Label:          "Travel window",
+			Today:          st.Today,
+			ShowYearPicker: true,
 		}, &st.RangeFree)
 		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
 			mygoui.Typography(c, datesRangeLabel(st.RangeFree.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
@@ -280,7 +313,7 @@ func datePickerBoundedExample(c *ui.Context, st *datesState) {
 			Label: "Deploy date", Description: "Bounded, weekdays only",
 			Value: &st.Picker, State: &st.PickerCal, Open: &st.PickerOpen,
 			Min: st.Min, Max: st.Max, DisabledDates: datesWeekend,
-			Width: 220, OpenLabel: "Open deploy calendar",
+			Width: 220, OpenLabel: "Open deploy calendar", ShowYearPicker: true,
 			DayLabel: func(d time.Time) string {
 				return "Deploy " + d.Format("Monday, January 2, 2006")
 			},
@@ -297,7 +330,7 @@ func datePickerFreeExample(c *ui.Context, st *datesState) {
 		date.DatePicker(c, date.DatePickerOptions{
 			Label: "Travel date", Description: "No bounds",
 			Value: &st.PickerFree, State: &st.PickerFreeCal, Open: &st.PickerFreeOpen,
-			Width: 220, OpenLabel: "Open travel calendar",
+			Width: 220, OpenLabel: "Open travel calendar", ShowYearPicker: true,
 		})
 		mygoui.Typography(c, datesDayLabel(st.PickerFree), mygoui.TypographyOptions{
 			Type: theme.TypeBodyXS, Muted: true,
@@ -310,6 +343,7 @@ func datePickerDisabledExample(c *ui.Context, st *datesState) {
 	date.DatePicker(c, date.DatePickerOptions{
 		Label: "Archived deploy", Description: "Disabled picker",
 		Value: &st.Picker, State: &st.PickerCal, Disabled: true, Width: 220,
+		ShowYearPicker: true,
 	})
 }
 
@@ -320,7 +354,7 @@ func rangePickerBoundedExample(c *ui.Context, st *datesState) {
 			Label: "Release window", Description: "Two editable endpoints",
 			Value: &st.RangePick, State: &st.RangePickCal, Open: &st.RangeOpen,
 			Min: st.Min, Max: st.Max, DisabledDates: datesWeekend,
-			Width: 264, OpenLabel: "Open release calendar",
+			Width: 264, OpenLabel: "Open release calendar", ShowYearPicker: true,
 			DayLabel: func(d time.Time) string {
 				return "Window " + d.Format("Monday, January 2, 2006")
 			},
@@ -337,7 +371,7 @@ func rangePickerFreeExample(c *ui.Context, st *datesState) {
 		date.DateRangePicker(c, date.DateRangePickerOptions{
 			Label: "Travel window", Description: "No bounds",
 			Value: &st.RangePickFree, State: &st.RangePickFreeCal, Open: &st.RangePickFreeOpen,
-			Width: 264, OpenLabel: "Open travel calendar",
+			Width: 264, OpenLabel: "Open travel calendar", ShowYearPicker: true,
 		})
 		mygoui.Typography(c, datesRangeLabel(st.RangePickFree), mygoui.TypographyOptions{
 			Type: theme.TypeBodyXS, Muted: true,
@@ -350,6 +384,7 @@ func rangePickerDisabledExample(c *ui.Context, st *datesState) {
 	date.DateRangePicker(c, date.DateRangePickerOptions{
 		Label: "Archived window", Description: "Disabled picker",
 		Value: &st.RangePick, State: &st.RangePickCal, Disabled: true, Width: 264,
+		ShowYearPicker: true,
 	})
 }
 

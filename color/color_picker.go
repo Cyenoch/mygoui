@@ -10,7 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// ColorPickerOptions configures HeroUI's color picker: a trigger that opens a
+// ColorPickerOptions configures the color picker: a trigger that opens a
 // panel with a color area, channel sliders, a hex field and a palette, all
 // editing the same ColorState.
 type ColorPickerOptions struct {
@@ -51,7 +51,7 @@ func DefaultSwatches() []ui.Color {
 	return out
 }
 
-// ColorPicker is HeroUI v3's ColorPicker. The trigger shows the current color
+// ColorPicker edits a color through a popup. The trigger shows the color
 // and hex value; the panel combines the area, hue and alpha sliders, a hex
 // field and a swatch palette, all synchronized through State.
 func ColorPicker(c *ui.Context, o ColorPickerOptions) ui.Element {
@@ -82,7 +82,7 @@ func ColorPicker(c *ui.Context, o ColorPickerOptions) ui.Element {
 		})
 		trigger.Children(func() {
 			current := s.Value
-			// HeroUI's default trigger swatch is MD: 32 DIP, 16 DIP round.
+			// The default trigger swatch is MD: 32 DIP, 16 DIP round.
 			ui.Box(c).Size(32, 32).Shrink(0).Radius(16).
 				Role(ui.RoleNone).Clip().Draw(func(p *ui.Painter, r ui.Rect) {
 				paintSwatch(p, r, current, 16)
@@ -118,7 +118,7 @@ func ColorPicker(c *ui.Context, o ColorPickerOptions) ui.Element {
 			}
 			panel.Children(func() {
 				if !o.HideArea {
-					// HeroUI's picker stretches the area to the panel's
+					// The picker stretches the area to the panel's
 					// content width (248 - 16 padding).
 					ColorArea(c, ColorAreaOptions{
 						Label: "Color area", State: s, Size: 232,

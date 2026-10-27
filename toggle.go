@@ -6,12 +6,13 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// ToggleButtonVariant is HeroUI's toggle surface treatment.
+// ToggleButtonVariant selects a toggle surface, including a native ghost variant.
 type ToggleButtonVariant uint8
 
 const (
 	ToggleDefault ToggleButtonVariant = iota
 	ToggleGhost
+	ToggleOutline
 )
 
 // ToggleButtonOptions configures a persistent pressed-state button. Selected
@@ -32,8 +33,7 @@ type ToggleButtonOptions struct {
 }
 
 // ToggleButton is a focusable native toggle whose selected paint follows the
-// caller's bool. It is not a radio: each button owns its state. A press
-// scales it like a HeroUI button; joined groups keep their size.
+// caller's bool. It is not a radio: each button owns its state.
 func ToggleButton(c *ui.Context, o ToggleButtonOptions) ui.Element {
 	var adj joinAdjust
 	if o.Corners != nil {
@@ -47,23 +47,24 @@ func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.E
 	t := theme.Colors(c)
 	selected := o.Selected != nil && *o.Selected
 	height := theme.ButtonHeight(o.Size)
-	radius := theme.RadiusScale().XXXL
-	paddingX := float32(theme.Space16)
+	radius := theme.RadiusScale().LG
+	paddingX := float32(7)
 	glyph := float32(theme.IconMD)
 	font := theme.SM()
 	font.Weight = theme.WeightMedium
-	normal, hover, fg := t.Default, t.DefaultHover, t.DefaultForeground
+	normal, hover, fg := ui.Transparent, t.Accent, t.Foreground
 	if o.Variant == ToggleGhost {
 		normal, hover, fg = ui.Transparent, t.Default, t.DefaultForeground
 	}
 	if selected {
-		normal, hover, fg = t.AccentSoft, t.AccentSoftHover, t.AccentSoftForeground
+		normal, hover, fg = t.Input.Alpha(0.64), t.Input, t.AccentForeground
 	}
 	if o.Size == theme.ButtonSmall {
-		paddingX = theme.Space12
+		paddingX = 5
 	}
 	if o.Size == theme.ButtonLarge {
-		font = theme.Base()
+		paddingX = 9
+		font = theme.SM()
 		font.Weight = theme.WeightMedium
 	}
 	if o.IconOnly {
@@ -81,8 +82,25 @@ func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.E
 	} else {
 		e = e.Radius(radius)
 	}
+	if o.Variant == ToggleOutline {
+		if adj.hasBorders {
+			e.BorderWidth(adj.borders[0], adj.borders[1], adj.borders[2], adj.borders[3]).BorderColor(t.Input)
+		} else {
+			e.Border(theme.Hairline, t.Input)
+		}
+		if !selected {
+			normal = t.Background
+			e = style.Shadow(e, c, theme.FieldShadows(c.Theme().Dark))
+		}
+		if c.Theme().Dark {
+			normal, hover = t.Input.Alpha(0.32), t.Input.Alpha(0.64)
+			if selected {
+				normal, hover = t.Input, t.Input
+			}
+		}
+	}
 	// Disable before the faces read their pointer state: a disabled toggle
-	// paints its rest face, matching HeroUI's pointer-events:none.
+	// paints its rest face, matching coss ui's pointer-events:none.
 	e = style.Disabled(e, o.Disabled)
 	if o.FullWidth {
 		e.FillWidth()
@@ -101,7 +119,7 @@ func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.E
 		}
 	}
 	if adj.hasCorners {
-		e = style.CornerFill(c, e, theme.Space8, adj.corners, normal, hover, hover, content)
+		e = style.CornerFill(c, e, theme.Space8, adj.corners, normal, hover, hover, content, nil)
 	} else {
 		e = style.Background(e, radius, normal, hover, hover)
 		e.Children(content)
@@ -119,9 +137,6 @@ func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.E
 	} else if o.IconOnly && o.Label != "" {
 		e.Tooltip(o.Label)
 	}
-	if !adj.grouped {
-		e = pressedPose(e, e.Pressed(), buttonPressScale(o.Size))
-	}
 	if adj.seam {
 		e = joinSeam(e, adj.vertical, c.Direction() == ui.RightToLeft, fg)
 	}
@@ -132,47 +147,63 @@ func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.E
 type ToggleButtonGroupOptions struct {
 	Orientation Orientation
 	FullWidth   bool
-	Detached    bool
-	// Separators paints HeroUI's divider at each shared edge. Detached sets
-	// hide it, as HeroUI does.
+	// Detached keeps a 4 DIP gap even for outline toggles.
+	Detached bool
+	// Separators paints a divider at the shared edges of joined outline toggles.
 	Separators bool
 }
 
 // ToggleButtonGroup lays out caller-owned toggle states. Each option carries
 // its own Selected pointer, so single- and multi-select are both explicit Go
-// state rather than an ambient group context. HeroUI removes the press scale
-// from every toggle inside a group, detached ones included.
+// state rather than an ambient group context. Outline-only groups join their
+// items; other groups use independent rounded items with a 2 DIP gap.
 func ToggleButtonGroup(c *ui.Context, o ToggleButtonGroupOptions, buttons ...ToggleButtonOptions) ui.Element {
 	vertical := o.Orientation == Vertical
+	joined := !o.Detached && len(buttons) > 0
+	for _, b := range buttons {
+		if b.Variant != ToggleOutline {
+			joined = false
+			break
+		}
+	}
+	gap := float32(theme.Space2)
+	if o.Detached {
+		gap = theme.Space4
+	} else if joined {
+		gap = 0
+	}
 	var e ui.Element
 	if vertical {
-		e = ui.Column(c).Gap(0).MinWidth(0)
+		e = ui.Column(c).Gap(gap).MinWidth(0)
 	} else {
-		e = ui.Row(c).Gap(0).MinWidth(0)
-	}
-	if o.Detached {
-		e.Gap(theme.Space4)
+		e = ui.Row(c).Gap(gap).MinWidth(0)
 	}
 	if o.FullWidth {
 		e.FillWidth()
 	} else {
 		e.AlignSelf(ui.Start)
 	}
-	radius := theme.RadiusScale().XXXL
+	radius := theme.RadiusScale().LG
 	rtl := c.Direction() == ui.RightToLeft
 	n := len(buttons)
 	e.Children(func() {
 		for i := range buttons {
 			b := buttons[i]
 			adj := joinAdjust{grouped: true, vertical: vertical}
-			if !o.Detached {
+			if joined {
 				adj.corners, adj.hasCorners = joinCorners(vertical, i, n, radius, rtl), true
 				adj.seam = o.Separators && i > 0
+				adj.borders, adj.hasBorders = joinBorders(vertical, i, n, rtl), true
+			} else if b.Corners != nil {
+				adj.corners, adj.hasCorners = *b.Corners, true
 			}
 			if o.FullWidth && vertical {
 				b.FullWidth = true
 			}
 			item := toggleButtonView(c, b, adj)
+			if vertical {
+				item.FillWidth()
+			}
 			if o.FullWidth && !vertical {
 				item.Grow(1).Basis(0).MinWidth(0)
 			}

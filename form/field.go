@@ -1,6 +1,6 @@
-// Package form implements HeroUI v3's form field primitives and controls with
-// native MyGo editing, focus, selection and accessibility. Callers own values,
-// validation state and error text; the package performs no I/O.
+// Package form provides Coss-inspired form controls with native MyGo editing,
+// focus, selection and accessibility. Callers own values, validation state
+// and error text; the package performs no I/O.
 package form
 
 import (
@@ -27,27 +27,39 @@ func Field(c *ui.Context, o FieldOptions, body func()) ui.Element {
 	if o.Required && label != "" {
 		label += " *"
 	}
-	f := ui.Field(c, label, body).Gap(theme.Space4).MinWidth(0).
+	f := ui.Field(c, label, body).Gap(theme.Space8).MinWidth(0).
 		FontSize(theme.Scale(c, theme.Label().Size)).
-		FontWeight(theme.Label().Weight).
+		FontWeight(theme.WeightNormal).
 		TextColor(theme.Colors(c).Foreground)
 	if o.FullWidth {
 		f.FillWidth()
 	}
+	errorText := o.Error
+	if errorText == "" && o.Invalid {
+		errorText = locale.M().Invalid
+	}
+	if o.Description == "" && errorText == "" {
+		return f
+	}
+	// Native Field help text uses the current theme's font size minus one.
+	// Limit the temporary theme to creating those texts, preserving the
+	// native field's description, error and control associations.
+	original := c.Theme()
+	helpTheme := *original
+	helpTheme.FontSize = theme.Scale(c, theme.HelpText().Size) + 1
+	c.SetTheme(&helpTheme)
 	if o.Description != "" {
 		f.Description(o.Description)
 	}
-	switch {
-	case o.Error != "":
-		f.Error(o.Error)
-	case o.Invalid:
-		f.Error(locale.M().Invalid)
+	if errorText != "" {
+		f.Error(errorText)
 	}
+	c.SetTheme(original)
 	return f
 }
 
-// Label is a standalone HeroUI label. A valid target receives focus when the
-// label is clicked; the required marker is visual only.
+// LabelOptions configures a standalone label. Target receives focus when
+// clicked; the required marker is visual only.
 type LabelOptions struct {
 	Required bool
 	Invalid  bool
@@ -78,7 +90,7 @@ func Label(c *ui.Context, text string, o LabelOptions) ui.Element {
 	return style.Disabled(e, o.Disabled)
 }
 
-// Description renders HeroUI's 12/16 muted help text.
+// Description renders muted help text.
 func Description(c *ui.Context, text string) ui.Element {
 	return style.Text(ui.Text(c, text), c, theme.HelpText()).TextColor(theme.Colors(c).Muted)
 }
@@ -89,7 +101,7 @@ func FieldError(c *ui.Context, text string) ui.Element {
 		return ui.Element{}
 	}
 	return style.Text(ui.Text(c, text), c, theme.HelpText()).
-		TextColor(theme.Colors(c).Danger).Role(ui.RoleStatus)
+		TextColor(theme.Colors(c).DestructiveForeground).Role(ui.RoleStatus)
 }
 
 // ErrorMessage is the low-level error message without field layout.
@@ -102,7 +114,7 @@ type FieldsetOptions struct {
 	FullWidth           bool
 }
 
-// Fieldset renders a 24 DIP gapped group with a 16 DIP medium legend.
+// Fieldset renders a group with a semibold legend.
 func Fieldset(c *ui.Context, o FieldsetOptions, body func()) ui.Element {
 	t := theme.Colors(c)
 	e := ui.Column(c).Gap(theme.Space24).MinWidth(0).Shrink(0).Disabled(o.Disabled)
@@ -112,7 +124,7 @@ func Fieldset(c *ui.Context, o FieldsetOptions, body func()) ui.Element {
 	e.Children(func() {
 		if o.Legend != "" {
 			style.Text(ui.Text(c, o.Legend), c, theme.Base()).
-				FontWeight(theme.WeightMedium).TextColor(t.Foreground)
+				FontWeight(theme.WeightSemibold).TextColor(t.Foreground)
 		}
 		if o.Description != "" {
 			Description(c, o.Description)
@@ -122,7 +134,7 @@ func Fieldset(c *ui.Context, o FieldsetOptions, body func()) ui.Element {
 	return e
 }
 
-// FieldGroup spaces fields with HeroUI's 16 DIP rhythm.
+// FieldGroup spaces a column of fields.
 func FieldGroup(c *ui.Context, body func()) ui.Element {
 	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space16).Children(body)
 }
@@ -132,7 +144,7 @@ func FieldActions(c *ui.Context, body func()) ui.Element {
 	return ui.Row(c).Gap(theme.Space8).AlignItems(ui.Center).Children(body)
 }
 
-// FormOptions configures a HeroUI form container.
+// FormOptions configures a form container.
 type FormOptions struct {
 	Label   string
 	Invalid bool

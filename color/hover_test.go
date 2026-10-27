@@ -28,7 +28,7 @@ func wantColorHoverPixel(t *testing.T, img *image.RGBA, x, y int, c ui.Color, wh
 }
 
 // TestColorSwatchPickerHoverGrowsSwatch checks the picker item's hover
-// snapshot: HeroUI scales the swatch to 1.1 over 100 ms, so the rest fill
+// snapshot: the control scales the swatch to 1.1 over 100 ms, so the rest fill
 // becomes the color under the pointer and shrinks back when it leaves. The
 // swatch sits inside the item's border, so the growth stays within the item.
 func TestColorSwatchPickerHoverGrowsSwatch(t *testing.T) {
@@ -71,7 +71,7 @@ func TestColorSwatchPickerHoverGrowsSwatch(t *testing.T) {
 }
 
 // TestColorAreaThumbPressed checks the area's pressed snapshot: a press grows
-// the thumb from 16 to 20 DIP, exposing its white border. HeroUI defines no
+// the thumb from 16 to 20 DIP, exposing its white border. The control defines no
 // hover face for the area or its thumb.
 func TestColorAreaThumbPressed(t *testing.T) {
 	var colors theme.Palette

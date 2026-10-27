@@ -83,3 +83,95 @@ func TestComboBoxEscapeClosesAndStaysClosed(t *testing.T) {
 		t.Fatalf("after Escape: text %q, open %v", state.Text, state.Open)
 	}
 }
+
+func TestComboBoxKeyboardChoosesAndKeepsFocus(t *testing.T) {
+	var state form.ComboBoxState
+	var changed []string
+	var focused bool
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		ui.Column(c).Fill().Padding(16).Children(func() {
+			form.ComboBox(c, form.ComboBoxOptions{
+				Label: "Letters", Items: comboItems(), State: &state,
+				OnChange: func(keys []string) { changed = keys },
+			})
+			focused = state.Input.Focused(c)
+		})
+	}, 360, 480)
+	if err := tt.Click("Letters"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("Be")
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if state.Text != "Beta" || state.Open || !focused || len(changed) != 1 || changed[0] != "b" {
+		t.Fatalf("keyboard choice: text %q open %v focused %v callback %v", state.Text, state.Open, focused, changed)
+	}
+	tt.Key(0, ui.KeyDown)
+	tt.Frame()
+	if !state.Open || !tt.HasText("Alpha") || !tt.HasText("Beta") {
+		t.Fatalf("reopened choices: open %v text %q", state.Open, tt.Texts())
+	}
+}
+
+func TestComboBoxSelectionCallbackCanEditText(t *testing.T) {
+	var state form.ComboBoxState
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		form.ComboBox(c, form.ComboBoxOptions{
+			Label: "Letters", Items: comboItems(), State: &state,
+			OnChange: func([]string) { state.Text = "custom" },
+		})
+	}, 360, 480)
+	if err := tt.Click("Letters"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("Al")
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if state.Text != "custom" {
+		t.Fatalf("text after callback = %q", state.Text)
+	}
+}
+
+func TestEditablePopupKeyboardFiltersGroupedOptions(t *testing.T) {
+	for _, kind := range []string{"autocomplete", "combobox"} {
+		t.Run(kind, func(t *testing.T) {
+			var autocomplete form.AutocompleteState
+			var combo form.ComboBoxState
+			var changed []string
+			items := []list.ListBoxItem{
+				{Key: "a", Label: "Alpha"},
+				{Key: "disabled", Label: "Bee", Disabled: true},
+			}
+			sections := []list.ListBoxSection{{
+				Label: "Group",
+				Items: []list.ListBoxItem{{Key: "b", Label: "Beta"}, {Key: "c", Label: "Bravo"}},
+			}}
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, false)
+				ui.Column(c).Fill().Padding(16).Children(func() {
+					onChange := func(keys []string) { changed = keys }
+					if kind == "autocomplete" {
+						form.Autocomplete(c, form.AutocompleteOptions{
+							Label: "Fruit", State: &autocomplete, Items: items, Sections: sections, OnChange: onChange,
+						})
+					} else {
+						form.ComboBox(c, form.ComboBoxOptions{
+							Label: "Fruit", State: &combo, Items: items, Sections: sections, OnChange: onChange,
+						})
+					}
+				})
+			}, 360, 480)
+			if err := tt.Click("Fruit"); err != nil {
+				t.Fatal(err)
+			}
+			tt.Type("b")
+			tt.Key(0, ui.KeyDown)
+			tt.Key(0, ui.KeyEnter)
+			if len(changed) != 1 || changed[0] != "c" {
+				t.Fatalf("filtered keyboard selection = %v, want Bravo", changed)
+			}
+		})
+	}
+}

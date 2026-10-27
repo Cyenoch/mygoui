@@ -1,76 +1,86 @@
 # Contributing
 
-Use Go 1.27.1 or later and MyGo v0.6.3. The library is a native Go translation
-of HeroUI v3, not a React port: typed options, caller-owned state, native MyGo
-controls and no CSS/DOM runtime.
+The `coss` branch reconstructs coss ui with native Go/MyGo controls. Read
+[design](docs/design.md), the [component matrix](docs/components.md),
+[references](docs/references.md) and [MyGo 0.7 guidance](docs/mygo-0.7.md)
+before changing public behavior. The current coss contract supersedes the
+older visual-reference wording in the MyGo migration notes.
 
-## Set up
+Use the module's Go 1.27.3 target and pinned MyGo v0.7.1/mygoicons v0.2.1.
+Published module metadata must have no local replacements. Use a private
+development workspace when testing local dependencies.
 
-```sh
-git submodule update --init --depth 1
-```
+## References and licensing
 
-`references/heroui` and `references/heroui-native` are pinned visual/API
-references. Read the relevant CSS, variant definitions and TSX before changing
-a component. `docs/references.md` records the update procedure.
+Use coss commit `3d8ca28e7d90123e9e0f44665944dc240b026ccb`.
+Run `make refs` to populate the pinned `references/coss` submodule.
+Reference sources are development inputs, not runtime dependencies.
+[docs/references.md](docs/references.md) identifies the source paths and
+catalog discrepancies.
 
-## Rules
+Read relevant `apps/ui/registry/default/ui/*.tsx`, MDX documentation and
+examples. That subtree is declared MIT by upstream. The monorepo default
+and `packages/*` are AGPL; do not copy their implementation or font assets
+under the MIT attribution. Use the MIT styling documentation for token
+provenance and record any observed runtime differences separately.
 
-- Read `docs/design.md`, `docs/components.md` and `docs/mygo-0.6.md` first.
-- Keep components native: no providers, ambient scopes, build values stored in
-  structs, parallel render caches or per-frame allocation in paint callbacks.
-- Coordinated collections take typed slices. Freely composed content uses body
-  callbacks. Caller state stays explicit and window-scoped.
-- HeroUI `Start` is the zero `ui.Align` value; do not use zero as an "unset"
-  sentinel for alignment. MyGo `ui.Row` centers across its axis by default, so
-  set explicit alignment where CSS would not center.
-- Use `theme.Colors(c)` live, `internal/style` for text/paint, stable keys in
-  collections, and `FocusRing(true)` for keyboard focus.
-- Update the component catalog and limits when public behavior changes.
+Fonts are an application responsibility. Independently licensed Cal Sans v2
+and Paper Mono sources are listed in [docs/fonts.md](docs/fonts.md).
+The library must not register fonts on import. Preserve the original OFL
+notices if an application elects to distribute those fonts.
+
+## Implementation
+
+- Reuse standard Go, MyGo and mygoicons before adding infrastructure.
+  Prefer typed options and explicit window-owned state.
+- Keep `ui.Element`, custom parts and `*ui.Context` build-scoped. Use stable
+  keys and handles; capture services for persistent native callbacks.
+- Use native bases for editing, focus, selection and accessibility. Paint
+  callbacks must not retain or query expired elements.
+- Use `theme.Colors(c)` and canonical coss roles. `Primary` and `Accent`,
+  and `MutedBackground` and `MutedForeground`, are separate roles.
+- Set layout alignment explicitly. `ui.Start` is a real zero value;
+  `ui.Row` cross-axis centering differs from CSS.
+- Keep UI labels concise. Document toolkit limits instead of implying that
+  every upstream part, CSS state or gesture exists.
+- Update capability, customization and provenance documentation alongside
+  public API changes. Legacy extra families need no invented coss equivalent.
 
 ## Validate
 
+Run the checks appropriate to the change. Before release:
+
 ```sh
-go mod tidy
 make check
 make race
-make dev      # go run .../cmd/mygo@latest dev
 golangci-lint run ./...
 make wasm
 make workflows
-make vet
-go run golang.org/x/vuln/cmd/govulncheck@v1.9.0 ./...
 ```
 
-The headless gallery suite renders every registered page at compact and wide
-widths in light and dark modes. Page-local tests exercise real controls. Tests
-must protect observable behavior, boundaries, focus, validation and paint
-states; do not assert implementation details or duplicate coverage.
+`make check` runs headless tests, ordinary build, Go vet, MyGo lifetime vet,
+formatting and module verification. Race checks matter for shared-state
+changes. `make race` runs test binaries serially because each headless
+rasterizer already uses multiple cores; package-local concurrency stays
+enabled. Inspect module integrity when changing dependencies; run
+`go mod tidy` only as part of intentional module work.
 
-Real OS gestures, native menu appearance, GPU presentation and screen-reader
-operation require separate platform checks. Record limits honestly in
-`docs/components.md` and `VALIDATION.md`.
+Exercise changed controls with `ui.NewTester`: keyboard/pointer activation,
+focus, read-only/disabled/invalid states, relevant light/dark paint and
+retained exits. Tests should protect a current consumer-visible contract.
+Do not add assertions of deleted APIs or arbitrary visual/count gates.
 
-## Upstream updates
-
-```sh
-git -C references/heroui fetch --depth 1 origin v3
-git -C references/heroui checkout <commit>
-git -C references/heroui-native fetch --depth 1 origin main
-git -C references/heroui-native checkout <commit>
-git add references/heroui references/heroui-native
-```
-
-Review upstream logs and changelogs, then re-read every affected CSS/TSX file.
-Do not infer current behavior from an older reference copy.
+Record commands, result and revision in [VALIDATION.md](VALIDATION.md).
+Keep pending checks pending. Gallery page presence or headless images do not
+establish coss parity, GPU correctness, OS menu appearance, IME/gesture
+behavior or actual screen-reader operation.
 
 ## Release
 
-1. Review `CHANGELOG.md` and the public API. While v0, incompatible changes
-   require a minor bump; patches preserve behavior.
-2. Run the validation commands and inspect CI on Linux, macOS and Windows.
-3. Verify `go.mod` has no replacements or workspace requirements, and that
-   `git diff --check` and `go mod verify` are clean.
-4. Replace Unreleased with the version/date, then tag and publish. Release
-   publication is a maintainer action; local checks do not establish public
-   availability.
+1. Review the public API, capability matrix, notices and `CHANGELOG.md`.
+   While v0, incompatible changes require a minor bump.
+2. Complete the relevant validation and inspect Linux/macOS/Windows CI.
+3. Check resolvable module metadata, formatting and `git diff --check`.
+   Verify copied notices match the exact distributed reference/assets.
+4. Record the version/date before the maintainer tags and publishes.
+   Local checks alone do not establish public availability.

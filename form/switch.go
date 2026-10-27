@@ -8,7 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// SwitchSize is HeroUI's switch scale: 32×16, 40×20 and 48×24 DIP tracks.
+// SwitchSize selects the switch's desktop track and thumb size.
 type SwitchSize uint8
 
 const (
@@ -42,7 +42,7 @@ type SwitchOptions struct {
 	Handle        *ui.Handle
 }
 
-// Switch is HeroUI's switch: a focusable row whose track and thumb follow the
+// Switch is a focusable row whose track and thumb follow the
 // caller's bool. The thumb's travel and colors animate unless the desktop
 // asks for reduced motion, which moves it at once.
 func Switch(c *ui.Context, o SwitchOptions) ui.Element {
@@ -58,11 +58,11 @@ func Switch(c *ui.Context, o SwitchOptions) ui.Element {
 
 	indent := float32(0)
 	if o.LabelPosition == SwitchLabelAfter {
-		indent = switchMetrics(c, o.Size).w + theme.Space12
+		indent = switchMetrics(c, o.Size).w + theme.Space8
 	}
 	outer := ui.Column(c).MinWidth(0).Gap(theme.Space4)
 	outer.Children(func() {
-		row := ui.SwitchBase(c, on).Gap(theme.Space12).Shrink(0).
+		row := ui.SwitchBase(c, on).Gap(theme.Space8).Shrink(0).
 			FocusRing(false).TextColor(t.Foreground).Label(o.Label)
 		if o.Handle != nil {
 			row.Bind(o.Handle)
@@ -105,102 +105,59 @@ type switchDimensions struct {
 	w, h, thumbW, thumbH, radius, thumbRadius, inset float32
 }
 
-// switchMetrics resolves HeroUI's switch sizes. The upstream values are rem,
-// so they follow the text scale.
+// switchMetrics resolves the Coss desktop switch and its optional sizes.
 func switchMetrics(c *ui.Context, size SwitchSize) switchDimensions {
-	r := theme.RadiusScale()
-	d := switchDimensions{
-		w: theme.Scale(c, 40), h: theme.Scale(c, 20),
-		thumbW: theme.Scale(c, 22), thumbH: theme.Scale(c, 16),
-		radius: r.XL, thumbRadius: r.LG, inset: theme.Scale(c, 2),
-	}
+	thumb := float32(16)
 	switch size {
 	case SwitchSmall:
-		d.w, d.h = theme.Scale(c, 32), theme.Scale(c, 16)
-		d.thumbW, d.thumbH = theme.Scale(c, 16.5), theme.Scale(c, 12)
-		d.radius, d.thumbRadius = r.LG, r.MD
+		thumb = 12
 	case SwitchLarge:
-		d.w, d.h = theme.Scale(c, 48), theme.Scale(c, 24)
-		d.thumbW, d.thumbH = theme.Scale(c, 27.5), theme.Scale(c, 20)
-		d.radius, d.thumbRadius = r.XL, r.XL
+		thumb = 20
 	}
-	return d
+	thumb = theme.Scale(c, thumb)
+	inset := theme.Scale(c, 1)
+	return switchDimensions{
+		w: 2*thumb - 2*inset, h: thumb + 2*inset,
+		thumbW: thumb, thumbH: thumb, radius: (thumb + 2*inset) / 2,
+		thumbRadius: thumb / 2, inset: inset,
+	}
 }
 
-// switchIndicator draws a switch track and thumb, animated toward on unless
-// the toolkit's reduced-motion preference is set. owner supplies the row's
-// live hover, pressed and focus state.
+// switchIndicator paints the native switch's Coss track and round thumb.
 func switchIndicator(c *ui.Context, on *bool, size SwitchSize, disabled bool, owner ui.Element) ui.Element {
 	t := theme.Colors(c)
 	m := switchMetrics(c, size)
 	rtl := c.Direction() == ui.RightToLeft
-	reduceMotion := theme.ReduceMotion(c)
 	track := ui.Box(c).Size(m.w, m.h).Shrink(0)
-	onNow := *on
-	pos := choiceOnOff(onNow)
-	if !disabled {
-		// Upstream moves the thumb with a 300 ms ease-out-fluid margin.
-		pos = track.Animate("switch-thumb", pos, 300*time.Millisecond)
+	pos := choiceOnOff(*on)
+	if !disabled && !theme.ReduceMotion(c) {
+		pos = track.Animate("switch-thumb", pos, 150*time.Millisecond)
 	}
-	// Snapshot the row's states in the build: a retained copy of a leaving
-	// element paints in later passes, where owner has expired.
-	hovered, pressed, focused := owner.Hovered(), owner.Pressed(), owner.FocusVisible()
-	trackFill := t.Default
-	switch {
-	case onNow:
-		trackFill = t.Accent
-		if hovered || pressed {
-			trackFill = t.AccentHover
-		}
-	case hovered || pressed:
-		trackFill = t.DefaultHover
+	focused, pressed := owner.FocusVisible(), owner.Pressed()
+	fill := t.Input
+	if *on {
+		fill = t.Primary
 	}
-	face := ui.RGB(255, 255, 255)
-	if onNow {
-		face = t.AccentForeground
+	if !theme.ReduceMotion(c) {
+		fill = track.AnimateColor("switch-track", fill, ui.Animation{Duration: 200 * time.Millisecond, Ease: ui.EaseOut})
 	}
-	if disabled {
-		switch {
-		case onNow:
-			face = face.Alpha(0.4)
-		default:
-			face = t.DefaultForeground.Alpha(0.2)
-		}
-	}
-	if !reduceMotion {
-		// Track and thumb colors follow HeroUI's 250 ms and 200 ms curves.
-		trackFill = track.AnimateColor("switch-track", trackFill, ui.Animation{
-			Duration: 250 * time.Millisecond, Ease: ui.EaseOut,
-		})
-		face = track.AnimateColor("switch-face", face, ui.Animation{
-			Duration: 200 * time.Millisecond, Ease: ui.EaseOut,
-		})
-	}
-	// Resolve the theme's field shadow once per build, not per paint.
-	shadows := theme.FieldShadows(c.Theme().Dark)
 	track.Draw(func(p *ui.Painter, r ui.Rect) {
-		p.Fill(r, trackFill, m.radius)
-
+		p.Fill(r, fill, m.radius)
 		off, end := m.inset, r.W-m.inset-m.thumbW
 		if rtl {
 			off, end = end, off
 		}
+		w := m.thumbW
+		if pressed && !disabled {
+			w *= 1.1
+		}
 		x := off + (end-off)*pos
-		thumb := ui.Rect{
-			X: r.X + x, Y: r.Y + (r.H-m.thumbH)/2,
-			W: m.thumbW, H: m.thumbH,
+		if *on && !rtl || !*on && rtl {
+			x -= w - m.thumbW
 		}
-		if onNow {
-			// HeroUI lifts the chosen thumb with its own three shadows.
-			p.Shadow(thumb, m.thumbRadius, 0, 0, 5, 0, ui.RGBA(0, 0, 0, 0.02))
-			p.Shadow(thumb, m.thumbRadius, 0, 2, 10, 0, ui.RGBA(0, 0, 0, 0.06))
-			p.Shadow(thumb, m.thumbRadius, 0, 0, 1, 0, ui.RGBA(0, 0, 0, 0.3))
-		} else {
-			for _, shadow := range shadows {
-				p.Shadow(thumb, m.thumbRadius, shadow.X, shadow.Y, shadow.Blur, shadow.Spread, shadow.Color)
-			}
-		}
-		p.Fill(thumb, face, m.thumbRadius)
+		thumb := ui.Rect{X: r.X + x, Y: r.Y + m.inset, W: w, H: m.thumbH}
+		p.Shadow(thumb, m.thumbRadius, 0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.05))
+		p.Fill(thumb, t.Background, m.thumbRadius)
 		if focused {
 			p.FocusRing(r, choiceRadii(m.radius))
 		}

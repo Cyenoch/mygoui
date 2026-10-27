@@ -28,6 +28,7 @@ type navigationState struct {
 
 	crumbNote   string
 	page        int
+	pageDefault int
 	pageMedium  int
 	pageSmall   int
 	pageSummary int
@@ -337,6 +338,13 @@ func breadcrumbsSelectionExample(c *ui.Context, st *navigationState) {
 			note = "click a link to report its index"
 		}
 		mygoui.Chip(c, mygoui.ChipOptions{Label: note, Color: mygoui.ColorAccent, Variant: mygoui.ChipSoft})
+	})
+}
+
+// paginationDefaultExample shows the centered page controls.
+func paginationDefaultExample(c *ui.Context, st *navigationState) {
+	navigation.Pagination(c, navigation.PaginationOptions{
+		Label: "Pages", Page: &st.pageDefault, Pages: 5, Siblings: 1,
 	})
 }
 

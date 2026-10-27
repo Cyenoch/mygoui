@@ -14,26 +14,43 @@ type EmptyStateOptions struct {
 	Action             func()
 }
 
-// EmptyState is HeroUI's low-emphasis "no content" block. With no icon,
-// text or action it shows the localized empty placeholder, as HeroUI shows
-// its default copy.
+// EmptyState centers an icon, title, description and optional recovery action.
+// With no content it shows the localized empty placeholder.
 func EmptyState(c *ui.Context, o EmptyStateOptions) ui.Element {
 	t := theme.Colors(c)
-	e := ui.Column(c).Gap(theme.Space4).Padding(theme.Space8).MinWidth(0)
+	e := ui.Column(c).Gap(theme.Space24).Padding(theme.Space48, theme.Space24).
+		MinWidth(0).FillWidth().AlignItems(ui.Center).Justify(ui.Center)
 	e.Children(func() {
 		if o.Icon == nil && o.Title == "" && o.Description == "" && o.Action == nil {
 			style.Text(ui.Text(c, locale.M().Empty), c, theme.SM()).TextColor(t.Muted)
 			return
 		}
-		if o.Icon != nil {
-			ui.Icon(c, o.Icon).Size(theme.Scale(c, theme.IconLG), theme.Scale(c, theme.IconLG)).
-				TextColor(t.Muted)
-		}
-		if o.Title != "" {
-			style.Text(ui.Text(c, o.Title), c, theme.SM()).TextColor(t.Foreground)
-		}
-		if o.Description != "" {
-			style.Text(ui.Text(c, o.Description), c, theme.SM()).TextColor(t.Muted)
+		if o.Icon != nil || o.Title != "" || o.Description != "" {
+			ui.Column(c).MaxWidth(384).AlignItems(ui.Center).Children(func() {
+				if o.Icon != nil {
+					icon := ui.Box(c).Size(36, 36).
+						Radius(theme.RadiusScale().MD).Border(theme.Hairline, t.Border).
+						Background(t.Card).Center()
+					if o.Title != "" || o.Description != "" {
+						icon.Margin(0, 0, theme.Space24, 0)
+					}
+					style.Shadow(icon, c, theme.SurfaceShadows(c.Theme().Dark)).Children(func() {
+						ui.Icon(c, o.Icon).Size(18, 18).TextColor(t.Foreground)
+					})
+				}
+				if o.Title != "" {
+					ts := theme.XL()
+					ts.Heading, ts.Weight = true, theme.WeightBold
+					style.Text(ui.Text(c, o.Title), c, ts).TextColor(t.Foreground).TextAlign(ui.Center)
+				}
+				if o.Description != "" {
+					description := style.Text(ui.Text(c, o.Description), c, theme.SM()).
+						TextColor(t.MutedForeground).TextAlign(ui.Center)
+					if o.Title != "" {
+						description.Margin(theme.Space4, 0, 0, 0)
+					}
+				}
+			})
 		}
 		if o.Action != nil {
 			o.Action()
@@ -47,7 +64,7 @@ type HeaderOptions struct {
 	Text string
 }
 
-// Header is HeroUI's small muted section heading used by menus and lists.
+// Header is a small muted section heading used by menus and lists.
 func Header(c *ui.Context, o HeaderOptions) ui.Element {
 	ts := theme.XS()
 	ts.Weight = theme.WeightMedium

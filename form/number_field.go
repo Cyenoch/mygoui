@@ -4,7 +4,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui/internal/style"
@@ -26,7 +25,7 @@ type NumberFieldState struct {
 	lastValue   float64
 }
 
-// NumberFieldOptions configures HeroUI's number field. Min and Max are nil when
+// NumberFieldOptions configures a number field. Min and Max are nil when
 // unbounded; Step defaults to 1. Format replaces the default display, which is
 // rounded to the step's decimals.
 type NumberFieldOptions struct {
@@ -107,20 +106,6 @@ func numberClamp(v, lo, hi float64) float64 {
 	return v
 }
 
-// numberStepperRule paints HeroUI's hairline between a stepper and the
-// editor: one DIP of field-placeholder color on the button's end edge when
-// atEnd, otherwise on its start edge. It paints after the button's children,
-// so the pressed face and the icon never cover it.
-func numberStepperRule(b ui.Element, color ui.Color, atEnd bool) ui.Element {
-	return b.DrawOver(func(p *ui.Painter, r ui.Rect) {
-		x := r.X
-		if atEnd {
-			x = r.X + r.W - theme.Hairline
-		}
-		p.Fill(ui.Rect{X: x, Y: r.Y, W: theme.Hairline, H: r.H}, color, 0)
-	})
-}
-
 // NumberField renders a native numeric editor between increment and decrement
 // buttons. Typed text commits only as a finite in-range number; out-of-range
 // numbers clamp and invalid text returns to the last value.
@@ -164,9 +149,8 @@ func NumberField(c *ui.Context, state *NumberFieldState, o NumberFieldOptions) u
 	}
 
 	t := theme.Colors(c)
-	height := theme.Scale(c, theme.HeightInput)
-	buttonWidth := theme.Scale(c, 40)
-	rtl := c.Direction() == ui.RightToLeft
+	height := theme.Scale(c, 32)
+	buttonWidth := theme.Scale(c, 36)
 
 	build := func() ui.Element {
 		row := ui.Grid(c).ColumnTracks(ui.Fixed(buttonWidth), ui.Fr(1), ui.Fixed(buttonWidth)).
@@ -180,24 +164,14 @@ func NumberField(c *ui.Context, state *NumberFieldState, o NumberFieldOptions) u
 
 		var editor ui.Element
 		row.Children(func() {
-			// HeroUI's steppers are plain 40 DIP faces separated from the
-			// editor by a 1 DIP field-placeholder rule: the decrement button
-			// on its end edge, the increment button on its start edge.
-			button := func(label string, icon *ui.SVG, delta float64, atBound, innerAtEnd bool) {
+			button := func(label string, icon *ui.SVG, delta float64, atBound bool) {
 				b := ui.ButtonBase(c).Width(buttonWidth).Height(height).Center().Shrink(0).
 					Padding(0).Radius(0).FocusRing(false).Label(label).Tooltip(label)
 				b.TextColor(t.FieldForeground)
 				blocked := o.Disabled || o.ReadOnly || atBound
 				b = style.Disabled(b, blocked)
-				b = style.Background(b, 0, ui.Transparent, ui.Transparent, t.FieldForeground.Alpha(0.1))
-				// Animate returns the target at once under ReduceMotion.
-				scale := float32(1)
-				if b.Pressed() {
-					scale = 0.97
-				}
-				scale = b.Animate("number-field-stepper-press", scale, 150*time.Millisecond)
-				b = b.Scale(scale, scale)
-				b = numberStepperRule(b, t.FieldPlaceholder.Alpha(0.15), innerAtEnd != rtl)
+				b = style.Background(b, 0, ui.Transparent, t.Accent, t.Accent)
+
 				b.Children(func() {
 					ui.Icon(c, icon).Size(theme.Scale(c, theme.IconMD), theme.Scale(c, theme.IconMD)).Shrink(0)
 				})
@@ -205,11 +179,10 @@ func NumberField(c *ui.Context, state *NumberFieldState, o NumberFieldOptions) u
 					b.OnClick(func() { apply(state.Value + delta) })
 				}
 			}
-			// Place them in source order so the grid fills one row 40/1fr/40;
-			// a later button with an earlier column would wrap to a new row.
-			button(locale.M().Decrease, lucide.Minus(), -step, state.Value <= lo, true)
-			editor = ui.TextInputBase(c, &state.Text).MinWidth(0).FillWidth().
-				PaddingX(theme.Space12).PaddingY(theme.Space8).FontFeatures("tnum")
+			// Grid children must be built in visual column order.
+			button(locale.M().Decrease, lucide.Minus(), -step, state.Value <= lo)
+			editor = ui.TextInputBase(c, &state.Text).MinWidth(0).TextAlign(ui.Center).
+				PaddingX(theme.Space12).PaddingY(theme.Scale(c, 5)).FontFeatures("tnum")
 			editor = fieldText(editor, c)
 			if o.Placeholder != "" {
 				editor.Placeholder(o.Placeholder)
@@ -264,7 +237,7 @@ func NumberField(c *ui.Context, state *NumberFieldState, o NumberFieldOptions) u
 				return true
 			})
 
-			button(locale.M().Increase, lucide.Plus(), step, state.Value >= hi, false)
+			button(locale.M().Increase, lucide.Plus(), step, state.Value >= hi)
 		})
 
 		if editor.Valid() {

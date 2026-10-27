@@ -24,7 +24,7 @@ func init() {
 			},
 			{
 				Title:       "Status colors",
-				Description: "The five status colors in the soft variant.",
+				Description: "Error, info, success and warning.",
 				Demo:        func(c *ui.Context, s *State) { chipColorsBody(c) },
 			},
 			{
@@ -54,39 +54,37 @@ func init() {
 
 	RegisterComponent(ComponentPage{
 		ID: "badge", Title: "Badge", Group: "Display", Order: 20,
-		Description: "A compact count or status pill, with an anchored overlay variant.",
+		Description: "A compact semantic label with eight Coss variants.",
 		Examples: []ComponentExample{
 			{
 				Title:       "Variants",
-				Description: "Primary, secondary, soft and tertiary fills.",
+				Description: "Eight semantic Coss variants.",
 				Demo:        func(c *ui.Context, s *State) { badgeVariantsBody(c) },
 			},
 			{
 				Title:       "Status colors",
-				Description: "The five status colors in the soft variant.",
+				Description: "Error, info, success and warning.",
 				Demo:        func(c *ui.Context, s *State) { badgeColorsBody(c) },
 			},
 			{
 				Title:       "Sizes",
-				Description: "Small, medium and large badge diameters.",
+				Description: "Small, medium and large labels.",
 				Demo:        func(c *ui.Context, s *State) { badgeSizesBody(c) },
 			},
 			{
-				Title:       "Anchored",
-				Description: "BadgeAnchor overlays a count over content without moving it.",
-				Demo:        func(c *ui.Context, s *State) { badgeAnchorsBody(c) },
+				Title: "Native anchors",
+				Demo:  func(c *ui.Context, s *State) { badgeAnchorsBody(c) },
 			},
 		},
 		Code: `mygoui.Badge(c, mygoui.BadgeOptions{
-    Label: "9", Color: mygoui.ColorAccent, Variant: mygoui.BadgePrimary,
+    Label: "9", Variant: mygoui.BadgePrimary,
 })`,
 		Params: []ComponentParam{
 			{"Label", "string", "required", "Badge text."},
-			{"Color", "mygoui.StatusColor", "ColorDefault", "Status color of the fill."},
-			{"Variant", "mygoui.BadgeVariant", "BadgePrimary", "Primary or soft fill."},
-			{"Size", "mygoui.BadgeSize", "BadgeMedium", "Small or medium."},
+			{"Variant", "mygoui.BadgeVariant", "BadgePrimary", "Default, secondary, outline, destructive, error, info, success or warning."},
+			{"Size", "mygoui.BadgeSize", "BadgeMedium", "Small, medium or large."},
 		},
-		Tokens: []string{"Accent", "AccentForeground", "Background"},
+		Tokens: []string{"Primary", "PrimaryForeground", "Secondary", "Destructive", "Info", "Success", "Warning"},
 	})
 
 	RegisterComponent(ComponentPage{
@@ -244,11 +242,11 @@ func init() {
 
 	RegisterComponent(ComponentPage{
 		ID: "alert", Title: "Alert", Group: "Display", Order: 70,
-		Description: "A status callout with an indicator, foreground and action.",
+		Description: "A status callout with an optional icon and action.",
 		Examples: []ComponentExample{
 			{
 				Title:       "Status colors",
-				Description: "One callout per status, each with its default indicator.",
+				Description: "Status callouts without icons.",
 				Demo:        func(c *ui.Context, s *State) { alertStatusBody(c) },
 			},
 			{
@@ -259,8 +257,13 @@ func init() {
 				},
 			},
 			{
+				Title:       "Status icon",
+				Description: "Opt into the status glyph.",
+				Demo:        func(c *ui.Context, s *State) { alertStatusIconBody(c) },
+			},
+			{
 				Title:       "Custom icon",
-				Description: "An explicit icon replaces the status glyph.",
+				Description: "An explicit icon is shown even without ShowIcon.",
 				Demo:        func(c *ui.Context, s *State) { alertIconBody(c) },
 			},
 		},
@@ -268,12 +271,14 @@ func init() {
     Title: "Deploy finished",
     Description: "The new build is live.",
     Status: mygoui.ColorSuccess,
+    ShowIcon: false, // Set true to show the status glyph.
 })`,
 		Params: []ComponentParam{
 			{"Title", "string", "required", "Headline of the callout."},
 			{"Description", "string", "", "Supporting line under the title."},
 			{"Status", "mygoui.StatusColor", "ColorDefault", "Default, accent, info, success, warning or danger."},
-			{"Icon", "*ui.SVG", "status icon", "Overrides the status indicator."},
+			{"ShowIcon", "bool", "false", "Shows the status glyph when Icon is nil."},
+			{"Icon", "*ui.SVG", "nil", "Shows a custom icon instead of the status glyph."},
 			{"Action", "func()", "nil", "Builds a trailing action."},
 		},
 		Tokens: []string{"Surface", "SurfaceForeground", "SuccessSoftForeground"},

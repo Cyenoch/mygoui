@@ -16,7 +16,7 @@ type TimeFieldState struct {
 	Value time.Time
 }
 
-// TimeFieldOptions configures a HeroUI time field. The editor is ISO 8601
+// TimeFieldOptions configures a time field. The editor is ISO 8601
 // HH:MM by default, or hh:mm AM/PM when Hour12 is set.
 type TimeFieldOptions struct {
 	Label, Description, Error string
@@ -34,7 +34,7 @@ type TimeFieldOptions struct {
 	OnChange func(time.Time)
 }
 
-// TimeField renders a HeroUI time field. A complete time commits as it is
+// TimeField renders a COSS-style time field. A complete time commits as it is
 // typed, keeping the date of the state's value (or today's date when it holds
 // none). A nil state uses a component-local copy.
 func TimeField(c *ui.Context, o TimeFieldOptions, st *TimeFieldState) ui.Element {
@@ -51,8 +51,9 @@ func TimeField(c *ui.Context, o TimeFieldOptions, st *TimeFieldState) ui.Element
 	}
 	width := o.Width
 	if width == 0 {
-		width = theme.Scale(c, 104)
+		width = 104
 	}
+	width = theme.Scale(c, width)
 	loc := c.Now().Location()
 	if !state.Value.IsZero() {
 		loc = state.Value.Location()
@@ -117,7 +118,7 @@ func timeField(c *ui.Context, spec timeFieldSpec, buf *timeBuffer) ui.Element {
 		errorText = locale.M().Invalid
 	}
 	return formField(c, spec.field, errorText, func() {
-		group := fieldGroup(c, invalid, spec.field.disabled, nil)
+		group := fieldGroup(c, invalid, spec.field.disabled)
 		if spec.width > 0 && !spec.field.fullWidth {
 			group = group.Width(spec.width)
 		}
@@ -135,6 +136,7 @@ type timeBuffer struct {
 	text      string
 	committed time.Time
 	invalid   bool
+	hour12    bool
 }
 
 func newTimeBuffer(root ui.Element, spec timeFieldSpec) *timeBuffer {
@@ -142,17 +144,19 @@ func newTimeBuffer(root ui.Element, spec timeFieldSpec) *timeBuffer {
 		return timeBuffer{
 			text:      formatClock(spec.state.Value, spec.hour12),
 			committed: spec.state.Value,
+			hour12:    spec.hour12,
 		}
 	})
 }
 
 func (b *timeBuffer) refresh(value time.Time, hour12 bool) {
-	if sameClock(value, b.committed) {
+	if sameClock(value, b.committed) && hour12 == b.hour12 {
 		return
 	}
 	b.text = formatClock(value, hour12)
 	b.committed = value
 	b.invalid = false
+	b.hour12 = hour12
 }
 
 func (b *timeBuffer) commit(spec timeFieldSpec) {

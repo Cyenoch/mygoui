@@ -28,6 +28,11 @@ type DatePickerOptions struct {
 	Today         time.Time
 	Placeholder   string
 
+	// ShowYearPicker makes the calendar's month heading open a year selector.
+	ShowYearPicker bool
+	// HideYearPicker overrides ShowYearPicker.
+	//
+	// Deprecated: leave ShowYearPicker false instead.
 	HideYearPicker                        bool
 	PrevLabel, NextLabel, YearPickerLabel string
 	MonthLabel                            func(time.Time) string
@@ -41,7 +46,7 @@ type DatePickerOptions struct {
 	Open *bool
 	// OpenLabel names the calendar trigger. Empty uses "Open calendar".
 	OpenLabel string
-	// Placement places the popup. The zero value uses bottom-center, as HeroUI
+	// Placement places the popup. The zero value uses bottom-center, as COSS
 	// does.
 	Placement mygoui.Placement
 
@@ -50,7 +55,7 @@ type DatePickerOptions struct {
 	OnOpenChange func(bool)
 }
 
-// DatePicker renders a HeroUI date field with a popup calendar. Choosing a day
+// DatePicker renders a date field with a COSS-style popup calendar. Choosing a day
 // commits it to Value, reports OnChange and closes the popup.
 func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
 	if c == nil {
@@ -83,7 +88,6 @@ func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
 		width = 200
 	}
 	width = theme.Scale(c, width)
-	var triggerHandle ui.Handle
 	spec := dateFieldSpec{
 		field: fieldSpec{
 			label:       o.Label,
@@ -101,7 +105,6 @@ func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
 		placeholder:   o.Placeholder,
 		loc:           locationOf(*value, c),
 		width:         width,
-		triggerFocus:  &triggerHandle,
 		onChange:      o.OnChange,
 	}
 	buf := newDateBuffer(root, spec)
@@ -132,7 +135,6 @@ func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
 					o.OnOpenChange(true)
 				}
 			})
-			trigger.Bind(&triggerHandle)
 		}
 		field, group = dateField(c, spec, buf)
 		if *refocus && trigger.Valid() {
@@ -151,6 +153,7 @@ func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
 						Max:             o.Max,
 						DisabledDates:   o.DisabledDates,
 						FirstWeekday:    o.FirstWeekday,
+						ShowYearPicker:  o.ShowYearPicker,
 						HideYearPicker:  o.HideYearPicker,
 						PrevLabel:       o.PrevLabel,
 						NextLabel:       o.NextLabel,
@@ -210,24 +213,21 @@ func triggerButton(c *ui.Context, label string, onClick func()) ui.Element {
 	e := ui.ButtonBase(c).Size(size, size).Center().Shrink(0).
 		Radius(theme.RadiusScale().Field).FocusRing(true).Label(label).
 		Cursor(ui.CursorPointer)
+	e = style.Background(e, theme.RadiusScale().Field, ui.Transparent, t.Accent, t.Accent)
 	if onClick != nil {
 		e = e.OnClick(onClick)
 	}
 	e.Children(func() {
 		ui.Icon(c, lucide.Calendar()).Size(theme.Scale(c, 16), theme.Scale(c, 16)).
-			TextColor(t.FieldPlaceholder)
+			TextColor(t.Foreground)
 	})
 	return e
 }
 
-// popoverPanel styles the floating calendar panel: HeroUI's overlay surface,
-// 12 DIP padding, min(32, 2.5 × radius) corners, the overlay shadow and the
-// 150 ms arrival fade. The fade needs the overlay layer to have shown in the
-// frame before, which the picker keeps warm.
+// popoverPanel gives the calendar a bordered COSS popover and an arrival fade.
 func popoverPanel(c *ui.Context, panel, anchor ui.Element, place mygoui.Placement) ui.Element {
 	t := theme.Colors(c)
-	radius := min(float32(32), theme.RadiusBase()*2.5)
-	p := panel.Padding(theme.Space12).Radius(radius).Clip().Background(t.Overlay)
+	p := panel.Padding(theme.Space8).Radius(theme.RadiusScale().XL).Clip().Background(t.Popover).Border(theme.Hairline, t.Border)
 	p = style.Shadow(p, c, theme.OverlayShadows(c.Theme().Dark))
 	p = anchored.Apply(p, anchor, place, mygoui.SideBottom)
 	if !theme.ReduceMotion(c) {

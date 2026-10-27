@@ -6,7 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// Checker colors of HeroUI's transparency pattern (16 DIP tile, 8 DIP
+// Checker colors of the transparency pattern (16 DIP tile, 8 DIP
 // squares).
 var (
 	checkerLight = ui.RGB(0xf7, 0xf7, 0xf7)
@@ -91,7 +91,7 @@ func paintSwatchBorder(p *ui.Painter, r ui.Rect, radius float32) {
 }
 
 // paintThumb paints a color thumb: a 1 DIP outer shadow, a three DIP white
-// ring around the chosen color and a hairline inside that ring, as HeroUI's
+// ring around the chosen color and a hairline inside that ring, as the control's
 // border and stacked shadows draw it.
 func paintThumb(p *ui.Painter, centerX, centerY, diameter float32, color ui.Color) {
 	outer := diameter + 2

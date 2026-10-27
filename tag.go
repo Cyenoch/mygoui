@@ -10,7 +10,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// TagSelection is HeroUI's tag selection behavior.
+// TagSelection selects the tag group's selection behavior.
 type TagSelection uint8
 
 const (
@@ -19,7 +19,7 @@ const (
 	TagSelectMultiple
 )
 
-// TagSize is HeroUI's tag density.
+// TagSize selects the tag's density.
 type TagSize uint8
 
 const (
@@ -28,7 +28,7 @@ const (
 	TagLarge
 )
 
-// TagVariant is HeroUI's unselected tag surface.
+// TagVariant selects the unselected tag surface.
 type TagVariant uint8
 
 const (
@@ -104,16 +104,9 @@ func TagGroup(c *ui.Context, o TagGroupOptions, tags []TagOptions) ui.Element {
 				tag := tags[i]
 				r := resolved
 				r.Selected = o.State.IsSelected(tag.Key)
-				tagView(c, TagOptions{
-					Key: tag.Key, Label: tag.Label, Icon: tag.Icon, Removable: tag.Removable,
-					Disabled: tag.Disabled, OnRemove: tag.OnRemove,
-					OnClick: func() {
-						if o.Selection == TagSelectNone || o.State == nil {
-							if tag.OnClick != nil {
-								tag.OnClick()
-							}
-							return
-						}
+				if o.Selection != TagSelectNone && o.State != nil {
+					onClick := tag.OnClick
+					tag.OnClick = func() {
 						if o.Selection == TagSelectSingle {
 							o.State.clearExcept(tag.Key)
 						} else {
@@ -122,11 +115,12 @@ func TagGroup(c *ui.Context, o TagGroupOptions, tags []TagOptions) ui.Element {
 						if o.OnChange != nil {
 							o.OnChange(tagKeys(tags, o.State))
 						}
-						if tag.OnClick != nil {
-							tag.OnClick()
+						if onClick != nil {
+							onClick()
 						}
-					},
-				}, r)
+					}
+				}
+				tagView(c, tag, r)
 			}
 		})
 		if o.Error != "" {
@@ -154,18 +148,18 @@ type tagResolved struct {
 	Variant  TagVariant
 }
 
-// tagMotionDuration is HeroUI's background-color transition for a tag. It
+// tagMotionDuration is the background-color transition for a tag. It
 // doubles as the fade of a removed tag's exit copy.
 const tagMotionDuration = 100 * time.Millisecond
 
-// Tag renders one HeroUI tag. Most callers use TagGroup; Tag is available for
+// Tag renders one tag. Most callers use TagGroup; Tag is available for
 // a standalone label.
 func Tag(c *ui.Context, o TagOptions) ui.Element {
 	return tagView(c, o, tagResolved{Variant: TagDefault, Size: TagMedium})
 }
 
 // tagView is the actual builder used by TagGroup and standalone Tag. Selection
-// and hover faces fade over HeroUI's 100 ms, and a tag that leaves the build
+// and hover faces fade over 100 ms, and a tag that leaves the build
 // fades and shrinks as an inert exit copy. A key keeps that exit attached to
 // the tag the caller removed.
 func tagView(c *ui.Context, o TagOptions, r tagResolved) ui.Element {
@@ -193,17 +187,20 @@ func tagView(c *ui.Context, o TagOptions, r tagResolved) ui.Element {
 	if r.Selected {
 		bg, fg, hover = t.AccentSoft, t.AccentSoftForeground, t.AccentSoftHover
 	}
+	if o.Key != "" {
+		c.Key(o.Key)
+	}
 	e := ui.Row(c).Shrink(0).Center().AlignSelf(ui.Start).Gap(theme.Space4).
 		Padding(paddingY, paddingX, paddingY, paddingX).
 		Radius(radius).Label(o.Label).
 		Role(ui.RoleListItem).Selected(r.Selected)
-	if o.Key != "" {
-		e.Key(o.Key)
-	}
 	// Disable before the face reads the pointer, so a disabled tag never
-	// paints HeroUI's hover face.
+	// paints its hover face.
 	e = style.Disabled(e, o.Disabled)
-	e.Focusable().FocusRing(true).TextColor(fg)
+	e.TextColor(fg)
+	if o.OnClick != nil || o.Removable {
+		e.Focusable().FocusRing(true)
+	}
 	fill := bg
 	if e.Pressed() || e.Hovered() {
 		fill = hover

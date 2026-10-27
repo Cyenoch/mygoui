@@ -1,91 +1,174 @@
 package theme
 
-import "github.com/egoist/mygo/ui"
+import (
+	"github.com/egoist/mygo/ui"
+)
 
-// Colors is HeroUI v3's semantic palette. Background/foreground pairs belong
-// together; soft and hover values are resolved once, not at paint time.
+// Palette contains coss semantic colors. Translucent tokens stay translucent:
+// borders and subtle fills composite against the actual surface beneath them.
+// MutedBackground is CSS --muted; MutedForeground is CSS --muted-foreground.
 type Palette struct {
-	Background, Foreground                               ui.Color
-	BackgroundSecondary, BackgroundTertiary              ui.Color
-	BackgroundInverse                                    ui.Color
-	Surface, SurfaceForeground                           ui.Color
-	SurfaceSecondary, SurfaceSecondaryForeground         ui.Color
-	SurfaceTertiary, SurfaceTertiaryForeground           ui.Color
-	SurfaceHover                                         ui.Color
-	Overlay, OverlayForeground                           ui.Color
-	Muted                                                ui.Color
-	Default, DefaultForeground, DefaultHover             ui.Color
-	DefaultSoft, DefaultSoftForeground, DefaultSoftHover ui.Color
-	Accent, AccentForeground, AccentHover                ui.Color
-	AccentSoft, AccentSoftForeground, AccentSoftHover    ui.Color
-	Success, SuccessForeground, SuccessHover             ui.Color
-	SuccessSoft, SuccessSoftForeground, SuccessSoftHover ui.Color
-	Warning, WarningForeground, WarningHover             ui.Color
-	WarningSoft, WarningSoftForeground, WarningSoftHover ui.Color
-	Danger, DangerForeground, DangerHover                ui.Color
-	DangerSoft, DangerSoftForeground, DangerSoftHover    ui.Color
-	// Info has no upstream HeroUI role; it starts as the accent family and a
-	// host may separate it through PalettePatch.Info.
-	Info, InfoForeground, InfoHover                  ui.Color
-	InfoSoft, InfoSoftForeground, InfoSoftHover      ui.Color
-	Segment, SegmentForeground                       ui.Color
-	Border, BorderSecondary, BorderTertiary          ui.Color
-	Separator, SeparatorSecondary, SeparatorTertiary ui.Color
-	// Selection fills selected rows and selected text.
-	Selection, Focus, Link                             ui.Color
-	FieldBackground, FieldForeground, FieldPlaceholder ui.Color
-	FieldBorder, FieldHover, FieldFocus                ui.Color
-	FieldBorderHover, FieldBorderFocus                 ui.Color
-	Backdrop                                           ui.Color
-	Scrollbar                                          ui.Color
+	Background                 ui.Color
+	Foreground                 ui.Color
+	Card                       ui.Color
+	CardForeground             ui.Color
+	Popover                    ui.Color
+	PopoverForeground          ui.Color
+	Primary                    ui.Color
+	PrimaryForeground          ui.Color
+	Secondary                  ui.Color
+	SecondaryForeground        ui.Color
+	MutedBackground            ui.Color
+	MutedForeground            ui.Color
+	Accent                     ui.Color
+	AccentForeground           ui.Color
+	Destructive                ui.Color
+	DestructiveForeground      ui.Color
+	Info                       ui.Color
+	InfoForeground             ui.Color
+	Success                    ui.Color
+	SuccessForeground          ui.Color
+	Warning                    ui.Color
+	WarningForeground          ui.Color
+	Border                     ui.Color
+	Input                      ui.Color
+	Ring                       ui.Color
+	Chart1                     ui.Color
+	Chart2                     ui.Color
+	Chart3                     ui.Color
+	Chart4                     ui.Color
+	Chart5                     ui.Color
+	Sidebar                    ui.Color
+	SidebarForeground          ui.Color
+	SidebarPrimary             ui.Color
+	SidebarPrimaryForeground   ui.Color
+	SidebarAccent              ui.Color
+	SidebarAccentForeground    ui.Color
+	SidebarBorder              ui.Color
+	SidebarRing                ui.Color
+	Code                       ui.Color
+	CodeForeground             ui.Color
+	CodeHighlight              ui.Color
+	BackgroundSecondary        ui.Color
+	BackgroundTertiary         ui.Color
+	BackgroundInverse          ui.Color
+	Surface                    ui.Color
+	SurfaceForeground          ui.Color
+	SurfaceSecondary           ui.Color
+	SurfaceSecondaryForeground ui.Color
+	SurfaceTertiary            ui.Color
+	SurfaceTertiaryForeground  ui.Color
+	SurfaceHover               ui.Color
+	Overlay                    ui.Color
+	OverlayForeground          ui.Color
+	Muted                      ui.Color
+	Default                    ui.Color
+	DefaultForeground          ui.Color
+	DefaultHover               ui.Color
+	DefaultSoft                ui.Color
+	DefaultSoftForeground      ui.Color
+	DefaultSoftHover           ui.Color
+	AccentHover                ui.Color
+	AccentSoft                 ui.Color
+	AccentSoftForeground       ui.Color
+	AccentSoftHover            ui.Color
+	SuccessHover               ui.Color
+	SuccessSoft                ui.Color
+	SuccessSoftForeground      ui.Color
+	SuccessSoftHover           ui.Color
+	WarningHover               ui.Color
+	WarningSoft                ui.Color
+	WarningSoftForeground      ui.Color
+	WarningSoftHover           ui.Color
+	Danger                     ui.Color
+	DangerForeground           ui.Color
+	DangerHover                ui.Color
+	DangerSoft                 ui.Color
+	DangerSoftForeground       ui.Color
+	DangerSoftHover            ui.Color
+	InfoHover                  ui.Color
+	InfoSoft                   ui.Color
+	InfoSoftForeground         ui.Color
+	InfoSoftHover              ui.Color
+	Segment                    ui.Color
+	SegmentForeground          ui.Color
+	BorderSecondary            ui.Color
+	BorderTertiary             ui.Color
+	Separator                  ui.Color
+	SeparatorSecondary         ui.Color
+	SeparatorTertiary          ui.Color
+	Selection                  ui.Color
+	Focus                      ui.Color
+	Link                       ui.Color
+	FieldBackground            ui.Color
+	FieldForeground            ui.Color
+	FieldPlaceholder           ui.Color
+	FieldBorder                ui.Color
+	FieldHover                 ui.Color
+	FieldFocus                 ui.Color
+	FieldBorderHover           ui.Color
+	FieldBorderFocus           ui.Color
+	Backdrop                   ui.Color
+	Scrollbar                  ui.Color
 }
 
-// PalettePatch replaces individual semantic tokens for one appearance. Nil
-// fields keep the HeroUI default for that appearance; a non-nil field is
-// applied verbatim, so new(ui.Transparent) expresses a borderless border.
-// Derived tokens (hover shades, soft fills and the foreground of an injected
-// ink) are rebuilt from the patched roles.
+// PalettePatch overrides named tokens for one appearance. Nil inherits the
+// default; a pointer to ui.Transparent deliberately removes a fill or border.
 type PalettePatch struct {
-	// Background is the canvas behind panels and overlays.
-	Background *ui.Color
-	// Surface is the face of panels, cards, sheets and toasts. Apply also
-	// uses it as the native control face, as a host sheet serves both.
-	Surface *ui.Color
-	// Foreground is the primary ink and, unless named separately, the ink on
-	// every surface role.
-	Foreground *ui.Color
-	// Muted is secondary ink, placeholders and help text.
-	Muted *ui.Color
-	// Border outlines controls. new(ui.Transparent) is valid and erases them.
-	Border *ui.Color
-	// FieldBorder outlines form fields. HeroUI's default is transparent, so a
-	// field shows no outline until a host gives it one; an opaque border
-	// brings the hover and focus shades with it.
-	FieldBorder *ui.Color
-
-	Accent, AccentForeground   *ui.Color
-	Danger, DangerForeground   *ui.Color
-	Success, SuccessForeground *ui.Color
-	Warning, WarningForeground *ui.Color
-	Info, InfoForeground       *ui.Color
-
-	// Hover is the fill of hovered rows, menus and controls. It seeds the
-	// neutral Default role those surfaces paint, and its hover level.
-	Hover *ui.Color
-	// Selected is the fill of selected rows and selected text.
-	Selected *ui.Color
-	// Overlay is the face of dialogs, modals and drawers. Unset follows
-	// Surface, as HeroUI defines it.
-	Overlay *ui.Color
-	// Backdrop is the scrim behind overlays.
-	Backdrop *ui.Color
+	Background               *ui.Color
+	Foreground               *ui.Color
+	Card                     *ui.Color
+	CardForeground           *ui.Color
+	Popover                  *ui.Color
+	PopoverForeground        *ui.Color
+	Primary                  *ui.Color
+	PrimaryForeground        *ui.Color
+	Secondary                *ui.Color
+	SecondaryForeground      *ui.Color
+	MutedBackground          *ui.Color
+	MutedForeground          *ui.Color
+	Accent                   *ui.Color
+	AccentForeground         *ui.Color
+	Destructive              *ui.Color
+	DestructiveForeground    *ui.Color
+	Info                     *ui.Color
+	InfoForeground           *ui.Color
+	Success                  *ui.Color
+	SuccessForeground        *ui.Color
+	Warning                  *ui.Color
+	WarningForeground        *ui.Color
+	Border                   *ui.Color
+	Input                    *ui.Color
+	Ring                     *ui.Color
+	Chart1                   *ui.Color
+	Chart2                   *ui.Color
+	Chart3                   *ui.Color
+	Chart4                   *ui.Color
+	Chart5                   *ui.Color
+	Sidebar                  *ui.Color
+	SidebarForeground        *ui.Color
+	SidebarPrimary           *ui.Color
+	SidebarPrimaryForeground *ui.Color
+	SidebarAccent            *ui.Color
+	SidebarAccentForeground  *ui.Color
+	SidebarBorder            *ui.Color
+	SidebarRing              *ui.Color
+	Code                     *ui.Color
+	CodeForeground           *ui.Color
+	CodeHighlight            *ui.Color
+	Surface                  *ui.Color
+	Muted                    *ui.Color
+	FieldBorder              *ui.Color
+	Danger                   *ui.Color
+	DangerForeground         *ui.Color
+	Hover                    *ui.Color
+	Selected                 *ui.Color
+	Overlay                  *ui.Color
+	Backdrop                 *ui.Color
 }
 
-// PaletteOverrides carries one patch per appearance. A nil patch keeps the
-// HeroUI defaults for that appearance.
-type PaletteOverrides struct {
-	Light, Dark *PalettePatch
-}
+// PaletteOverrides customizes light and dark modes independently.
+type PaletteOverrides struct{ Light, Dark *PalettePatch }
 
 func (o PaletteOverrides) patch(dark bool) *PalettePatch {
 	if dark {
@@ -94,215 +177,355 @@ func (o PaletteOverrides) patch(dark bool) *PalettePatch {
 	return o.Light
 }
 
-// apply writes the named tokens. It runs before the derived tokens so that
-// hover, soft and foreground levels follow the injected base colors.
-func (o *PalettePatch) apply(p *Palette) {
-	set := func(dst *ui.Color, src *ui.Color) {
-		if src != nil {
-			*dst = *src
+func (p *PalettePatch) apply(c *Palette) {
+	pairs := []struct{ dst, src *ui.Color }{
+		{&c.Background, p.Background},
+		{&c.Foreground, p.Foreground},
+		{&c.Card, p.Card},
+		{&c.CardForeground, p.CardForeground},
+		{&c.Popover, p.Popover},
+		{&c.PopoverForeground, p.PopoverForeground},
+		{&c.Primary, p.Primary},
+		{&c.PrimaryForeground, p.PrimaryForeground},
+		{&c.Secondary, p.Secondary},
+		{&c.SecondaryForeground, p.SecondaryForeground},
+		{&c.MutedBackground, p.MutedBackground},
+		{&c.MutedForeground, p.MutedForeground},
+		{&c.Accent, p.Accent},
+		{&c.AccentForeground, p.AccentForeground},
+		{&c.Destructive, p.Destructive},
+		{&c.DestructiveForeground, p.DestructiveForeground},
+		{&c.Info, p.Info},
+		{&c.InfoForeground, p.InfoForeground},
+		{&c.Success, p.Success},
+		{&c.SuccessForeground, p.SuccessForeground},
+		{&c.Warning, p.Warning},
+		{&c.WarningForeground, p.WarningForeground},
+		{&c.Border, p.Border},
+		{&c.Input, p.Input},
+		{&c.Ring, p.Ring},
+		{&c.Chart1, p.Chart1},
+		{&c.Chart2, p.Chart2},
+		{&c.Chart3, p.Chart3},
+		{&c.Chart4, p.Chart4},
+		{&c.Chart5, p.Chart5},
+		{&c.Sidebar, p.Sidebar},
+		{&c.SidebarForeground, p.SidebarForeground},
+		{&c.SidebarPrimary, p.SidebarPrimary},
+		{&c.SidebarPrimaryForeground, p.SidebarPrimaryForeground},
+		{&c.SidebarAccent, p.SidebarAccent},
+		{&c.SidebarAccentForeground, p.SidebarAccentForeground},
+		{&c.SidebarBorder, p.SidebarBorder},
+		{&c.SidebarRing, p.SidebarRing},
+		{&c.Code, p.Code},
+		{&c.CodeForeground, p.CodeForeground},
+		{&c.CodeHighlight, p.CodeHighlight},
+		{&c.Surface, p.Surface},
+		{&c.Muted, p.Muted},
+		{&c.FieldBorder, p.FieldBorder},
+		{&c.Danger, p.Danger},
+		{&c.DangerForeground, p.DangerForeground},
+		{&c.Overlay, p.Overlay},
+		{&c.Backdrop, p.Backdrop},
+	}
+	for _, pair := range pairs {
+		if pair.src != nil {
+			*pair.dst = *pair.src
 		}
 	}
-	set(&p.Background, o.Background)
-	set(&p.Surface, o.Surface)
-	set(&p.Foreground, o.Foreground)
-	set(&p.Muted, o.Muted)
-	set(&p.Border, o.Border)
-	set(&p.FieldBorder, o.FieldBorder)
-	set(&p.Accent, o.Accent)
-	set(&p.AccentForeground, o.AccentForeground)
-	set(&p.Danger, o.Danger)
-	set(&p.DangerForeground, o.DangerForeground)
-	set(&p.Success, o.Success)
-	set(&p.SuccessForeground, o.SuccessForeground)
-	set(&p.Warning, o.Warning)
-	set(&p.WarningForeground, o.WarningForeground)
-	set(&p.Info, o.Info)
-	set(&p.InfoForeground, o.InfoForeground)
-	set(&p.SurfaceHover, o.Hover)
-	set(&p.Default, o.Hover)
-	set(&p.Selection, o.Selected)
-	set(&p.Overlay, o.Overlay)
-	set(&p.Backdrop, o.Backdrop)
 }
 
-var (
-	white   = ui.Oklch(1, 0, 0)
-	snow    = ui.Oklch(0.9911, 0, 0)
-	eclipse = ui.Oklch(0.2103, 0.0059, 285.89)
-)
+// clonePatch detaches all caller-owned color pointers at the publication boundary.
+func clonePatch(p *PalettePatch) *PalettePatch {
+	if p == nil {
+		return nil
+	}
+	out := *p
+	fields := []**ui.Color{
+		&out.Background,
+		&out.Foreground,
+		&out.Card,
+		&out.CardForeground,
+		&out.Popover,
+		&out.PopoverForeground,
+		&out.Primary,
+		&out.PrimaryForeground,
+		&out.Secondary,
+		&out.SecondaryForeground,
+		&out.MutedBackground,
+		&out.MutedForeground,
+		&out.Accent,
+		&out.AccentForeground,
+		&out.Destructive,
+		&out.DestructiveForeground,
+		&out.Info,
+		&out.InfoForeground,
+		&out.Success,
+		&out.SuccessForeground,
+		&out.Warning,
+		&out.WarningForeground,
+		&out.Border,
+		&out.Input,
+		&out.Ring,
+		&out.Chart1,
+		&out.Chart2,
+		&out.Chart3,
+		&out.Chart4,
+		&out.Chart5,
+		&out.Sidebar,
+		&out.SidebarForeground,
+		&out.SidebarPrimary,
+		&out.SidebarPrimaryForeground,
+		&out.SidebarAccent,
+		&out.SidebarAccentForeground,
+		&out.SidebarBorder,
+		&out.SidebarRing,
+		&out.Code,
+		&out.CodeForeground,
+		&out.CodeHighlight,
+		&out.Surface,
+		&out.Muted,
+		&out.FieldBorder,
+		&out.Danger,
+		&out.DangerForeground,
+		&out.Hover,
+		&out.Selected,
+		&out.Overlay,
+		&out.Backdrop,
+	}
+	for _, field := range fields {
+		if *field != nil {
+			value := **field
+			*field = &value
+		}
+	}
+	return &out
+}
 
-// buildPalette translates packages/styles/themes/default/variables.css and its
-// calculated colors. Values are upstream oklch literals; the CSS color-mix
-// results are reproduced with premultiplied sRGB mixing.
+var white = ui.RGB(255, 255, 255)
+var black = ui.RGB(0, 0, 0)
+
+// buildPalette expresses coss's published styling tokens as native colors.
+// The MIT apps/ui/content/docs/(root)/styling.mdx at revision
+// 3d8ca28e7d90123e9e0f44665944dc240b026ccb is the token reference;
+// docs/references.md records the docs site's runtime color differences.
 func buildPalette(dark bool, prefs Preferences) Palette {
-	var p Palette
-	p.Accent = ui.Oklch(0.6204, 0.195, 253.83)
-	p.AccentForeground = snow
-	p.Success = ui.Oklch(0.7329, 0.1935, 150.81)
-	p.SuccessForeground = eclipse
-	if prefs.Accent.A != 0 {
-		p.Accent = prefs.Accent
-		p.Accent.A = 255
+	ink := ui.Oklch(0.269, 0, 0)
+	p := Palette{
+		Background: white, Foreground: ink, Card: white, CardForeground: ink,
+		Popover: white, PopoverForeground: ink, Primary: ink,
+		PrimaryForeground: ui.Oklch(0.985, 0, 0),
+		Secondary:         black.Alpha(0.04), SecondaryForeground: ink,
+		MutedBackground: black.Alpha(0.04),
+		MutedForeground: mix(ui.Oklch(0.556, 0, 0), black, 0.1),
+		Accent:          black.Alpha(0.04), AccentForeground: ink,
+		Destructive:           ui.Oklch(0.637, 0.237, 25.331),
+		DestructiveForeground: ui.Oklch(0.505, 0.213, 27.518),
+		Info:                  ui.Oklch(0.623, 0.214, 259.815), InfoForeground: ui.Oklch(0.488, 0.243, 264.376),
+		Success: ui.Oklch(0.696, 0.17, 162.48), SuccessForeground: ui.Oklch(0.508, 0.118, 165.612),
+		Warning: ui.Oklch(0.769, 0.188, 70.08), WarningForeground: ui.Oklch(0.555, 0.163, 48.998),
+		Border: black.Alpha(0.08), Input: black.Alpha(0.10), Ring: ui.Oklch(0.708, 0, 0),
+		Chart1: ui.Oklch(0.646, 0.222, 41.116), Chart2: ui.Oklch(0.6, 0.118, 184.704),
+		Chart3: ui.Oklch(0.398, 0.07, 227.392), Chart4: ui.Oklch(0.828, 0.189, 84.429),
+		Chart5:  ui.Oklch(0.769, 0.188, 70.08),
+		Sidebar: ui.Oklch(0.985, 0, 0), SidebarPrimary: ink,
+		SidebarPrimaryForeground: ui.Oklch(0.985, 0, 0),
+		SidebarAccent:            black.Alpha(0.04), SidebarAccentForeground: ink,
+		SidebarBorder: black.Alpha(0.06), SidebarRing: ui.Oklch(0.708, 0, 0),
+		Code: white, CodeForeground: ink, CodeHighlight: black.Alpha(0.04),
 	}
-
 	if dark {
-		p.Background = ui.Oklch(0.12, 0.005, 285.823)
-		p.Foreground = snow
-		p.Surface = ui.Oklch(0.2103, 0.0059, 285.89)
-		p.SurfaceForeground = p.Foreground
-		p.SurfaceSecondary = ui.Oklch(0.257, 0.0037, 286.14)
-		p.SurfaceSecondaryForeground = p.Foreground
-		p.SurfaceTertiary = ui.Oklch(0.2721, 0.0024, 247.91)
-		p.SurfaceTertiaryForeground = p.Foreground
-		p.Overlay = p.Surface
-		p.OverlayForeground = p.Foreground
-		p.Muted = ui.Oklch(0.705, 0.015, 286.067)
-		p.Default = ui.Oklch(0.274, 0.006, 286.033)
-		p.DefaultForeground = snow
-		p.Warning = ui.Oklch(0.8203, 0.1388, 76.34)
-		p.WarningForeground = eclipse
-		p.Danger = ui.Oklch(0.594, 0.1967, 24.63)
-		p.DangerForeground = snow
-		p.Segment = ui.Oklch(0.3964, 0.01, 285.93)
-		p.SegmentForeground = p.Foreground
-		p.Border = ui.Oklch(0.28, 0.006, 286.033)
-		p.Separator = ui.Oklch(0.25, 0.006, 286.033)
-		p.Backdrop = ui.RGBA(0, 0, 0, 0.6)
-	} else {
-		p.Background = ui.Oklch(0.9702, 0, 0)
-		p.Foreground = eclipse
-		p.Surface = white
-		p.SurfaceForeground = p.Foreground
-		p.SurfaceSecondary = ui.Oklch(0.9524, 0.0013, 286.37)
-		p.SurfaceSecondaryForeground = p.Foreground
-		p.SurfaceTertiary = ui.Oklch(0.9373, 0.0013, 286.37)
-		p.SurfaceTertiaryForeground = p.Foreground
-		p.Overlay = white
-		p.OverlayForeground = p.Foreground
-		p.Muted = ui.Oklch(0.5517, 0.0138, 285.94)
-		p.Default = ui.Oklch(0.94, 0.001, 286.375)
-		p.DefaultForeground = eclipse
-		p.Warning = ui.Oklch(0.7819, 0.1585, 72.33)
-		p.WarningForeground = eclipse
-		p.Danger = ui.Oklch(0.6532, 0.2328, 25.74)
-		p.DangerForeground = snow
-		p.Segment = white
-		p.SegmentForeground = eclipse
-		p.Border = ui.Oklch(0.90, 0.004, 286.32)
-		p.Separator = ui.Oklch(0.92, 0.004, 286.32)
-		p.Backdrop = ui.RGBA(0, 0, 0, 0.5)
+		p.Background = mix(ui.Oklch(0.145, 0, 0), white, 0.04)
+		p.Foreground = ui.Oklch(0.97, 0, 0)
+		p.Card = mix(p.Background, white, 0.02)
+		p.CardForeground = p.Foreground
+		p.Popover = mix(p.Background, white, 0.04)
+		p.PopoverForeground = p.Foreground
+		p.Primary = p.Foreground
+		p.PrimaryForeground = ink
+		p.Secondary = white.Alpha(0.04)
+		p.SecondaryForeground = p.Foreground
+		p.MutedBackground = white.Alpha(0.04)
+		p.MutedForeground = mix(ui.Oklch(0.556, 0, 0), white, 0.1)
+		p.Accent = white.Alpha(0.04)
+		p.AccentForeground = p.Foreground
+		p.Destructive = mix(p.Destructive, white, 0.1)
+		p.DestructiveForeground = ui.Oklch(0.704, 0.191, 22.216)
+		p.InfoForeground = ui.Oklch(0.707, 0.165, 254.624)
+		p.SuccessForeground = ui.Oklch(0.765, 0.177, 163.223)
+		p.WarningForeground = ui.Oklch(0.828, 0.189, 84.429)
+		p.Border = white.Alpha(0.06)
+		p.Input = white.Alpha(0.08)
+		p.Ring = ui.Oklch(0.556, 0, 0)
+		p.Chart1 = ui.Oklch(0.488, 0.243, 264.376)
+		p.Chart2 = p.Success
+		p.Chart3 = p.Warning
+		p.Chart4 = ui.Oklch(0.627, 0.265, 303.9)
+		p.Chart5 = ui.Oklch(0.645, 0.246, 16.439)
+		p.Sidebar = mix(ui.Oklch(0.145, 0, 0), white, 0.03)
+		p.SidebarPrimary = p.Primary
+		p.SidebarPrimaryForeground = ink
+		p.SidebarAccent = white.Alpha(0.04)
+		p.SidebarAccentForeground = p.Foreground
+		p.SidebarBorder = white.Alpha(0.05)
+		p.Code = mix(p.Background, white, 0.02)
+		p.CodeForeground = p.Foreground
+		p.CodeHighlight = white.Alpha(0.04)
 	}
-
-	// HeroUI has no separate info role: accent is its info color until a host
-	// separates them through PalettePatch.Info.
-	p.Info, p.InfoForeground = p.Accent, p.AccentForeground
-	// HeroUI declares the field border as a common, transparent variable that
-	// no theme overrides; a host opts into an outline through the patch.
-	p.FieldBorder = ui.Transparent
-
+	p.SidebarForeground = mix(p.Foreground, p.Sidebar, 0.36)
+	if prefs.Accent.A != 0 {
+		p.Primary = prefs.Accent
+		p.PrimaryForeground = contrastInk(p.Primary)
+	}
 	patch := prefs.Palette.patch(dark)
 	if patch != nil {
 		patch.apply(&p)
-	}
-	// An injected ink reaches every role that pairs with it; HeroUI's own
-	// seeds already agree, so this is a no-op without a patch.
-	p.SurfaceForeground = p.Foreground
-	p.SurfaceSecondaryForeground = p.Foreground
-	p.SurfaceTertiaryForeground = p.Foreground
-	p.SegmentForeground = p.Foreground
-	p.DefaultForeground = p.Foreground
-	if patch == nil || patch.Overlay == nil {
-		p.Overlay = p.Surface
-	}
-	p.OverlayForeground = p.Foreground
-
-	p.FieldBackground = p.Surface
-	p.FieldForeground = p.Foreground
-	p.FieldPlaceholder = p.Muted
-	p.Focus = p.Accent
-	p.Link = p.Foreground
-	p.Scrollbar = p.Foreground.Alpha(0.15)
-
-	hover := patch != nil && patch.Hover != nil
-	if !hover {
-		p.SurfaceHover = mixRatio(p.Surface, p.SurfaceForeground, 92, 8)
-	}
-	p.BackgroundSecondary = mixRatio(p.Background, p.Foreground, 96, 4)
-	p.BackgroundTertiary = mixRatio(p.Background, p.Foreground, 92, 8)
-	p.BackgroundInverse = p.Foreground
-	p.DefaultHover = mixRatio(p.Default, p.DefaultForeground, 96, 4)
-	p.AccentHover = mixRatio(p.Accent, p.AccentForeground, 90, 10)
-	p.SuccessHover = mixRatio(p.Success, p.SuccessForeground, 90, 10)
-	p.WarningHover = mixRatio(p.Warning, p.WarningForeground, 90, 10)
-	p.DangerHover = mixRatio(p.Danger, p.DangerForeground, 90, 10)
-	p.InfoHover = mixRatio(p.Info, p.InfoForeground, 90, 10)
-	if patch == nil || patch.Selected == nil {
-		p.Selection = p.Accent.Alpha(0.30)
-	}
-
-	p.FieldHover = mixRatio(p.FieldBackground, p.FieldForeground, 90, 2)
-	p.FieldFocus = p.FieldBackground
-	p.FieldBorderHover = mixRatio(p.FieldBorder, p.FieldForeground, 88, 10)
-	p.FieldBorderFocus = mixRatio(p.FieldBorder, p.FieldForeground, 74, 22)
-
-	p.DefaultSoft = p.Default.Alpha(0.5)
-	p.DefaultSoftForeground = p.DefaultForeground
-	p.DefaultSoftHover = p.Default.Alpha(0.6)
-
-	// Soft fills: accent, success and warning drop to 12% in the dark theme;
-	// danger keeps 15% in both.
-	softAlpha, hoverAlpha := float32(0.15), float32(0.20)
-	if dark {
-		softAlpha, hoverAlpha = 0.12, 0.16
-	}
-	p.AccentSoft = p.Accent.Alpha(softAlpha)
-	p.AccentSoftHover = p.Accent.Alpha(hoverAlpha)
-	p.SuccessSoft = p.Success.Alpha(softAlpha)
-	p.SuccessSoftHover = p.Success.Alpha(hoverAlpha)
-	p.WarningSoft = p.Warning.Alpha(softAlpha)
-	p.WarningSoftHover = p.Warning.Alpha(hoverAlpha)
-	p.InfoSoft = p.Info.Alpha(softAlpha)
-	p.InfoSoftHover = p.Info.Alpha(hoverAlpha)
-	p.DangerSoft = p.Danger.Alpha(0.15)
-	p.DangerSoftHover = p.Danger.Alpha(0.20)
-
-	// Soft foregrounds mix the status with the ink at the theme's percentages;
-	// the vibrant palette flattens every status to 92/8.
-	softMix := func(color ui.Color, statusPct, inkPct float32) ui.Color {
-		if prefs.Vibrant {
-			return mixRatio(color, p.Foreground, 92, 8)
+		if patch.Foreground != nil {
+			if patch.CardForeground == nil {
+				p.CardForeground = p.Foreground
+			}
+			if patch.PopoverForeground == nil {
+				p.PopoverForeground = p.Foreground
+			}
+			if patch.SecondaryForeground == nil {
+				p.SecondaryForeground = p.Foreground
+			}
+			if patch.AccentForeground == nil {
+				p.AccentForeground = p.Foreground
+			}
+			if patch.CodeForeground == nil {
+				p.CodeForeground = p.Foreground
+			}
 		}
-		return mixRatio(color, p.Foreground, statusPct, inkPct)
 	}
-	dangerStatus, dangerInk := float32(70), float32(40)
-	warningStatus, warningInk := float32(80), float32(70)
-	successStatus, successInk := float32(80), float32(60)
+	// These names are component-family conveniences, not a second token system.
+	p.BackgroundSecondary = p.MutedBackground.Over(p.Background)
+	p.BackgroundTertiary = p.Input.Over(p.Background)
+	p.BackgroundInverse = p.Foreground
+	p.Surface = p.Card
+	p.SurfaceForeground = p.CardForeground
+	p.SurfaceSecondary = p.BackgroundSecondary
+	p.SurfaceSecondaryForeground = p.Foreground
+	p.SurfaceTertiary = p.BackgroundTertiary
+	p.SurfaceTertiaryForeground = p.Foreground
+	p.SurfaceHover = p.Accent
+	p.Overlay = p.Popover
+	p.OverlayForeground = p.PopoverForeground
+	p.Muted = p.MutedForeground
+	p.Default = p.Secondary
+	p.DefaultForeground = p.SecondaryForeground
+	p.DefaultHover = opacity(p.Secondary, 0.9)
+	p.DefaultSoft = p.Secondary
+	p.DefaultSoftForeground = p.SecondaryForeground
+	p.DefaultSoftHover = p.DefaultHover
+	p.AccentHover = opacity(p.Accent, 0.9)
+	p.AccentSoft = p.Accent
+	p.AccentSoftForeground = p.AccentForeground
+	p.AccentSoftHover = p.AccentHover
+	alpha := float32(0.08)
 	if dark {
-		dangerStatus, dangerInk = 80, 30
-		warningStatus, warningInk = 80, 30
-		successStatus, successInk = 80, 30
+		alpha = 0.16
 	}
-	p.AccentSoftForeground = softMix(p.Accent, 70, 30)
-	p.SuccessSoftForeground = softMix(p.Success, successStatus, successInk)
-	p.WarningSoftForeground = softMix(p.Warning, warningStatus, warningInk)
-	p.DangerSoftForeground = softMix(p.Danger, dangerStatus, dangerInk)
-	p.InfoSoftForeground = softMix(p.Info, 70, 30)
-
-	p.SeparatorSecondary = mixRatio(p.Surface, p.SurfaceForeground, 85, 15)
-	p.SeparatorTertiary = mixRatio(p.Surface, p.SurfaceForeground, 81, 19)
-	p.BorderSecondary = mixRatio(p.Surface, p.SurfaceForeground, 78, 22)
-	p.BorderTertiary = mixRatio(p.Surface, p.SurfaceForeground, 66, 34)
+	p.SuccessHover = opacity(p.Success, 0.9)
+	p.SuccessSoft = opacity(p.Success, alpha)
+	p.SuccessSoftForeground = p.SuccessForeground
+	p.SuccessSoftHover = opacity(p.Success, alpha+0.04)
+	p.WarningHover = opacity(p.Warning, 0.9)
+	p.WarningSoft = opacity(p.Warning, alpha)
+	p.WarningSoftForeground = p.WarningForeground
+	p.WarningSoftHover = opacity(p.Warning, alpha+0.04)
+	p.Danger = p.Destructive
+	p.DangerForeground = white
+	p.DangerHover = opacity(p.Destructive, 0.9)
+	p.DangerSoft = opacity(p.Destructive, alpha)
+	p.DangerSoftForeground = p.DestructiveForeground
+	p.DangerSoftHover = opacity(p.Destructive, alpha+0.04)
+	p.InfoHover = opacity(p.Info, 0.9)
+	p.InfoSoft = opacity(p.Info, alpha)
+	p.InfoSoftForeground = p.InfoForeground
+	p.InfoSoftHover = opacity(p.Info, alpha+0.04)
+	p.Segment = p.Background
+	if dark {
+		p.Segment = p.Input.Over(p.Background)
+	}
+	p.SegmentForeground = p.Foreground
+	p.BorderSecondary = opacity(p.Border, 1.5)
+	p.BorderTertiary = opacity(p.Border, 2)
+	p.Separator = p.Border
+	p.SeparatorSecondary = p.BorderSecondary
+	p.SeparatorTertiary = p.BorderTertiary
+	p.Selection = opacity(p.Primary, 0.20)
+	p.Focus = p.Ring
+	p.Link = p.Foreground
+	p.FieldBackground = p.Background
+	if dark {
+		p.FieldBackground = opacity(p.Input, 0.32)
+	}
+	p.FieldForeground = p.Foreground
+	p.FieldPlaceholder = p.MutedForeground
+	p.FieldBorder = p.Input
+	p.FieldHover = p.FieldBackground
+	p.FieldFocus = p.FieldBackground
+	p.FieldBorderHover = p.Input
+	p.FieldBorderFocus = p.Ring
+	p.Backdrop = black.Alpha(0.32)
+	p.Scrollbar = opacity(p.Foreground, 0.2)
+	if patch != nil {
+		applyConveniences(&p, patch)
+	}
 	return p
 }
 
-// mixRatio blends b into a from their CSS color-mix percentages. Upstream
-// writes pairs that do not sum to 100, which CSS normalizes before mixing.
-func mixRatio(a, b ui.Color, aPct, bPct float32) ui.Color {
-	if total := aPct + bPct; total != 0 {
-		return mix(a, b, bPct/total)
+func applyConveniences(p *Palette, o *PalettePatch) {
+	if o.Surface != nil {
+		p.Surface = *o.Surface
+		p.Card = *o.Surface
+		p.FieldBackground = *o.Surface
 	}
-	return a
+	if o.Muted != nil {
+		p.Muted = *o.Muted
+		p.MutedForeground = *o.Muted
+		p.FieldPlaceholder = *o.Muted
+	}
+	if o.FieldBorder != nil {
+		p.FieldBorder = *o.FieldBorder
+		p.Input = *o.FieldBorder
+	}
+	if o.Danger != nil {
+		p.Danger = *o.Danger
+		p.Destructive = *o.Danger
+		p.DangerHover = opacity(p.Danger, 0.9)
+		p.DangerSoft = opacity(p.Danger, 0.08)
+		p.DangerSoftHover = opacity(p.Danger, 0.12)
+	}
+	if o.DangerForeground != nil {
+		p.DangerForeground = *o.DangerForeground
+	}
+	if o.Hover != nil {
+		p.SurfaceHover = *o.Hover
+		p.Default = *o.Hover
+		p.DefaultHover = opacity(*o.Hover, 0.9)
+	}
+	if o.Selected != nil {
+		p.Selection = *o.Selected
+	}
+	if o.Overlay != nil {
+		p.Overlay = *o.Overlay
+		p.Popover = *o.Overlay
+	}
+	if o.Backdrop != nil {
+		p.Backdrop = *o.Backdrop
+	}
 }
+
+func contrastInk(c ui.Color) ui.Color {
+	if float32(c.R)*0.2126+float32(c.G)*0.7152+float32(c.B)*0.0722 > 150 {
+		return ui.RGB(38, 38, 38)
+	}
+	return white
+}
+
+func opacity(c ui.Color, factor float32) ui.Color { return c.Alpha(factor) }
 
 // mix blends in premultiplied sRGB. It handles straight alpha exactly once.
 func mix(a, b ui.Color, t float32) ui.Color {

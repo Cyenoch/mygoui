@@ -17,18 +17,22 @@ func init() {
 		ID: "calendar", Title: "Calendar", Group: "Dates", Order: 10,
 		Description: "A single-day grid with bounded days, disabled dates and keyboard selection.",
 		Examples: []ComponentExample{
+			{Title: "Default",
+				Demo: func(c *ui.Context, s *State) { calendarDefaultExample(c, datesComponentState(c, s)) }},
 			{Title: "Bounded dates", Description: "Selectable days are bounded and weekends stay disabled.",
 				Demo: func(c *ui.Context, s *State) { calendarBoundedExample(c, datesComponentState(c, s)) }},
 			{Title: "Monday first", Description: "The week starts on Monday instead of Sunday.",
 				Demo: func(c *ui.Context, s *State) { calendarMondayExample(c, datesComponentState(c, s)) }},
-			{Title: "Static heading", Description: "HideYearPicker keeps the month heading static, with no year grid.",
+			{Title: "Static heading", Description: "The month heading stays static by default.",
 				Demo: func(c *ui.Context, s *State) { calendarStaticHeadingExample(c, datesComponentState(c, s)) }},
+			{Title: "Year picker", Description: "Enable the optional year selector in the month heading.",
+				Demo: func(c *ui.Context, s *State) { calendarYearPickerExample(c, datesComponentState(c, s)) }},
 			{Title: "Archived", Description: "An archived calendar dims its whole grid and takes no input.",
 				Demo: func(c *ui.Context, s *State) { calendarReadOnlyExample(c, datesComponentState(c, s)) }},
 		},
 		Code: `date.Calendar(c, date.CalendarOptions{
     Label: "Deployment day", Today: today,
-    Min: min, Max: max, DisabledDates: isWeekend,
+    Min: min, Max: max, DisabledDates: isWeekend, ShowYearPicker: true,
 }, &cal)`,
 		Params: []ComponentParam{
 			{"Label", "string", "required", "Names the day grid for assistive technology."},
@@ -37,7 +41,8 @@ func init() {
 			{"DisabledDates", "func(time.Time) bool", "nil", "Rejects individual days."},
 			{"FirstWeekday", "time.Weekday", "time.Sunday", "First column of the week."},
 			{"Disabled", "bool", "false", "Locks the whole calendar: it dims and takes no input."},
-			{"HideYearPicker", "bool", "false", "Hides the year grid behind the month heading."},
+			{"ShowYearPicker", "bool", "false", "Makes the month heading open a year selector."},
+			{"HideYearPicker", "bool", "false", "Deprecated; overrides ShowYearPicker and keeps the heading static."},
 			{"YearPickerLabel", "string", "\"Choose year\"", "Names the year grid for assistive technology."},
 			{"OnChange", "func(time.Time)", "nil", "Reports a chosen day."},
 		},
@@ -57,7 +62,7 @@ func init() {
 		},
 		Code: `date.RangeCalendar(c, date.RangeCalendarOptions{
     Label: "Release window", Today: today,
-    Min: min, Max: max, DisabledDates: isWeekend,
+    Min: min, Max: max, DisabledDates: isWeekend, ShowYearPicker: true,
 }, &rangeState)`,
 		Params: []ComponentParam{
 			{"Label", "string", "required", "Names both calendar grids for assistive technology."},
@@ -66,7 +71,8 @@ func init() {
 			{"DisabledDates", "func(time.Time) bool", "nil", "Rejects individual days."},
 			{"FirstWeekday", "time.Weekday", "time.Sunday", "First column of the week."},
 			{"Disabled", "bool", "false", "Locks both grids: they dim and take no input."},
-			{"HideYearPicker", "bool", "false", "Hides the year grid behind the month heading."},
+			{"ShowYearPicker", "bool", "false", "Makes the month heading open a year selector."},
+			{"HideYearPicker", "bool", "false", "Deprecated; overrides ShowYearPicker and keeps the heading static."},
 			{"YearPickerLabel", "string", "\"Choose year\"", "Names the year grid for assistive technology."},
 			{"OnChange", "func(date.DateRange)", "nil", "Reports a completed, ordered range."},
 		},
@@ -140,7 +146,7 @@ func init() {
 		Code: `date.DatePicker(c, date.DatePickerOptions{
     Label: "Deploy date", Value: &deploy,
     State: &cal, Open: &open, Min: min, Max: max,
-    Width: 220, OpenLabel: "Open deploy calendar",
+    Width: 220, OpenLabel: "Open deploy calendar", ShowYearPicker: true,
 })`,
 		Params: []ComponentParam{
 			{"Label, Description", "string", "\"\"", "Visible field labels."},
@@ -149,6 +155,9 @@ func init() {
 			{"Open", "*bool", "nil", "Caller-owned popup state."},
 			{"Min, Max", "time.Time", "zero", "Inclusive selectable bounds."},
 			{"Width", "float32", "200", "Field width in DIPs before scaling."},
+			{"ShowYearPicker", "bool", "false", "Makes the calendar's month heading open a year selector."},
+			{"HideYearPicker", "bool", "false", "Deprecated; overrides ShowYearPicker and keeps the heading static."},
+			{"YearPickerLabel", "string", "\"Choose year\"", "Names the year grid for assistive technology."},
 		},
 		Tokens: []string{"FieldBackground", "FieldFocus", "Overlay", "AccentSoft", "Border"},
 	})
@@ -167,7 +176,7 @@ func init() {
 		Code: `date.DateRangePicker(c, date.DateRangePickerOptions{
     Label: "Release window", Value: &window,
     State: &rangeState, Open: &open, Min: min, Max: max,
-    Width: 264, OpenLabel: "Open release calendar",
+    Width: 264, OpenLabel: "Open release calendar", ShowYearPicker: true,
 })`,
 		Params: []ComponentParam{
 			{"Label, Description", "string", "\"\"", "Visible field labels."},
@@ -176,6 +185,9 @@ func init() {
 			{"Open", "*bool", "nil", "Caller-owned popup state."},
 			{"Min, Max", "time.Time", "zero", "Inclusive selectable bounds."},
 			{"Width", "float32", "264", "Field width in DIPs before scaling."},
+			{"ShowYearPicker", "bool", "false", "Makes the calendar's month heading open a year selector."},
+			{"HideYearPicker", "bool", "false", "Deprecated; overrides ShowYearPicker and keeps the heading static."},
+			{"YearPickerLabel", "string", "\"Choose year\"", "Names the year grid for assistive technology."},
 		},
 		Tokens: []string{"FieldBackground", "FieldFocus", "Overlay", "AccentSoft", "Border"},
 	})

@@ -6,18 +6,23 @@ import (
 	"log"
 
 	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/fonts"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 )
 
 func main() {
-	mygo.App.SetName("HeroUI native")
+	if err := fonts.Register(); err != nil {
+		log.Fatal(err)
+	}
+	theme.Configure(theme.Preferences{FontFamily: fonts.Family, HeadingFontFamily: fonts.Family})
+	mygo.App.SetName("Coss UI · MyGo")
 	mygo.App.OnWindowAllClosed(func() { mygo.App.Quit() })
 	mygo.App.WhenReady(func() {
 		count := 0
 		mygo.NewWindow(mygo.WindowOptions{
-			Title: "HeroUI native", Width: 520, Height: 380,
+			Title: "Coss UI · MyGo", Width: 520, Height: 380,
 			Content: ui.View(func(c *ui.Context) {
 				theme.Apply(c)
 				colors := theme.Colors(c)
@@ -25,8 +30,8 @@ func main() {
 					Background(colors.Background).TextColor(colors.Foreground).Children(func() {
 					mygoui.Card(c, mygoui.CardOptions{}, func() {
 						mygoui.CardHeader(c, func() {
-							mygoui.CardTitle(c, "Native HeroUI components")
-							mygoui.CardDescription(c, "Go state, MyGo controls, HeroUI appearance.")
+							mygoui.CardTitle(c, "Coss components for MyGo")
+							mygoui.CardDescription(c, "Caller-owned state. Native controls.")
 						})
 						mygoui.CardContent(c, func() {
 							mygoui.Paragraph(c, fmt.Sprintf("Count: %d", count), false)

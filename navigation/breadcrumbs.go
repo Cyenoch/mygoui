@@ -34,26 +34,21 @@ type BreadcrumbsOptions struct {
 func Breadcrumb(c *ui.Context, o BreadcrumbOptions) ui.Element {
 	t := theme.Colors(c)
 	ts := theme.SM()
-	ts.Weight = theme.WeightMedium
 	if o.Current {
 		e := ui.Text(c, o.Label)
-		e = style.Text(e, c, ts).TextColor(t.Link).FontWeight(theme.WeightMedium).SingleLine()
+		e = style.Text(e, c, ts).TextColor(t.Foreground).SingleLine()
 		e.Role(ui.RoleText)
 		return e
 	}
-	e := ui.ButtonBase(c).Padding(0).Gap(0).Shrink(0).FocusRing(true).Label(o.Label)
-	e.TextColor(t.Muted)
+	e := ui.ButtonBase(c).Padding(0).Gap(0).Shrink(0).FocusRing(true).Role(ui.RoleLink).Label(o.Label)
+	ink := t.MutedForeground
+	if !o.Disabled && (e.Hovered() || e.FocusVisible()) {
+		ink = t.Foreground
+	}
+	e.TextColor(ink)
 	if o.OnClick != nil && !o.Disabled {
 		e.OnClick(o.OnClick)
 	}
-	// Snapshot the link's states in the build: a retained copy of a
-	// leaving element paints in later passes, where e has expired.
-	underline := e.Hovered() || e.FocusVisible()
-	e.DrawOver(func(p *ui.Painter, r ui.Rect) {
-		if underline {
-			p.Line(r.X, r.Y+r.H-1, r.X+r.W, r.Y+r.H-1, 1, t.Muted)
-		}
-	})
 	e.Children(func() {
 		style.Text(ui.Text(c, o.Label), c, ts).SingleLine()
 	})
@@ -69,7 +64,7 @@ func Breadcrumbs(c *ui.Context, o BreadcrumbsOptions) ui.Element {
 	if o.Label != "" {
 		root.Label(o.Label)
 	}
-	root.Gap(scale(c, theme.Space6))
+	root.Gap(scale(c, 10))
 	if len(o.Items) == 0 {
 		return root
 	}
@@ -83,9 +78,6 @@ func Breadcrumbs(c *ui.Context, o BreadcrumbsOptions) ui.Element {
 			tail = o.MaxVisible - 2
 			head = 1
 		}
-		// Upstream wraps each crumb and its separator in one item with a
-		// 4 DIP gap, and keeps 6 DIP between items: the separator trails the
-		// crumb it follows.
 		var slots []func()
 		add := func(i int) {
 			it := o.Items[i]
@@ -147,15 +139,15 @@ func Breadcrumbs(c *ui.Context, o BreadcrumbsOptions) ui.Element {
 			add(i)
 		}
 		for j := range slots {
-			item := ui.Row(c).AlignItems(ui.Center).Gap(scale(c, theme.Space4)).Shrink(0)
+			item := ui.Row(c).AlignItems(ui.Center).Gap(scale(c, theme.Space6)).Shrink(0)
 			last := j == len(slots)-1
 			item.Children(func() {
 				slots[j]()
 				if last {
 					return
 				}
-				sep := ui.Icon(c, lucide.ChevronRight()).Size(scale(c, theme.IconXS), scale(c, theme.IconXS)).
-					Shrink(0).TextColor(t.Muted)
+				sep := ui.Icon(c, lucide.ChevronRight()).Size(scale(c, theme.IconMD), scale(c, theme.IconMD)).
+					Shrink(0).TextColor(t.MutedForeground.Alpha(0.8))
 				if c.Direction() == ui.RightToLeft {
 					sep.Rotate(180)
 				}

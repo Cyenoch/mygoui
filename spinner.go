@@ -9,7 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// SpinnerSize is HeroUI's indicator scale.
+// SpinnerSize selects a native loading indicator size.
 type SpinnerSize uint8
 
 const (
@@ -27,18 +27,17 @@ type SpinnerOptions struct {
 }
 
 // Spinner uses MyGo's maintained arc indicator. The toolkit owns frame
-// scheduling and reduced-motion poses. HeroUI's dual-gradient arc is
-// approximated by the native arc, whose stroke and cadence stay platform
-// native.
+// scheduling and reduced-motion poses. The native arc approximates COSS's
+// rotating loading icon.
 func Spinner(c *ui.Context, o SpinnerOptions) ui.Element {
-	size := float32(24)
+	size := float32(16)
 	switch o.Size {
 	case SpinnerSmall:
-		size = 16
+		size = 12
 	case SpinnerLarge:
-		size = 32
+		size = 24
 	case SpinnerExtraLarge:
-		size = 40
+		size = 32
 	}
 	label := o.Label
 	if label == "" {
@@ -46,15 +45,15 @@ func Spinner(c *ui.Context, o SpinnerOptions) ui.Element {
 	}
 	return loading.Arc(c, loading.Options{
 		Size: theme.Scale(c, size), Color: statusForeground(theme.Colors(c), o.Color),
-		// HeroUI's --animate-spin-fast: one turn every 750 ms.
-		Duration: 750 * time.Millisecond,
+		// COSS's standard spin completes one turn each second.
+		Duration: time.Second,
 	}).Label(label)
 }
 
 func statusForeground(t theme.Palette, color StatusColor) ui.Color {
 	switch color {
 	case ColorAccent:
-		return t.Accent
+		return t.Primary
 	case ColorSuccess:
 		return t.Success
 	case ColorWarning:

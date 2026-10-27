@@ -9,7 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// ColorSwatchSize is HeroUI's swatch scale.
+// ColorSwatchSize is the swatch scale.
 type ColorSwatchSize uint8
 
 // Swatch sizes.
@@ -36,7 +36,7 @@ func (s ColorSwatchSize) side() float32 {
 	return 32
 }
 
-// ColorSwatchShape is HeroUI's swatch shape.
+// ColorSwatchShape is the swatch shape.
 type ColorSwatchShape uint8
 
 // Swatch shapes.
@@ -45,7 +45,7 @@ const (
 	SwatchSquare
 )
 
-// swatchRadius returns HeroUI's radius for a standalone swatch.
+// swatchRadius returns the radius for a standalone swatch.
 func swatchRadius(size ColorSwatchSize, shape ColorSwatchShape) float32 {
 	if shape == SwatchSquare {
 		return 6
@@ -71,7 +71,7 @@ type ColorSwatchOptions struct {
 	Selected bool
 }
 
-// ColorSwatch is HeroUI v3's color chip: the color over a checkerboard for
+// ColorSwatch is a color chip: the color over a checkerboard for
 // transparency, with a hairline border and a native accessible name.
 func ColorSwatch(c *ui.Context, o ColorSwatchOptions) ui.Element {
 	if c == nil {
@@ -100,7 +100,7 @@ func ColorSwatch(c *ui.Context, o ColorSwatchOptions) ui.Element {
 	return e
 }
 
-// ColorSwatchPickerLayout stacks HeroUI's swatch grid or runs it as a column.
+// ColorSwatchPickerLayout stacks the swatch grid or runs it as a column.
 type ColorSwatchPickerLayout uint8
 
 // Swatch picker layouts.
@@ -128,7 +128,7 @@ type ColorSwatchPickerOptions struct {
 	OnChange func()
 }
 
-// ColorSwatchPicker is HeroUI v3's palette of swatches. It is a native radio
+// ColorSwatchPicker is a palette of swatches. It is a native radio
 // group: Tab reaches the chosen swatch, arrows rove among them and choose,
 // and Space or Enter chooses the focused one.
 func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
@@ -161,7 +161,7 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 	if o.Disabled {
 		cursor = ui.CursorDefault
 	}
-	// HeroUI's border sits inside the item, so the swatch fills the content
+	// The border sits inside the item, so the swatch fills the content
 	// box and grows on hover without escaping its item.
 	content := side - 2*border
 	group := ui.RadioGroup(c, func() {
@@ -178,7 +178,7 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 				Border(border, borderColor).FocusRing(true).
 				Cursor(cursor).Label(name).Tooltip(name)
 			// Snapshot the item's hover in the build: the pose then animates
-			// the swatch in paint-only frames, as HeroUI's scale transition
+			// the swatch in paint-only frames, as the scale transition
 			// does.
 			hovered := item.Hovered() && !o.Disabled
 			itemColor := col
@@ -192,7 +192,7 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 				}
 				innerRadius := itemRadius
 				if o.Shape == SwatchSquare && o.Size == SwatchSM && chosen {
-					// HeroUI rounds a selected small square swatch to 6 DIP
+					// The control rounds a selected small square swatch to 6 DIP
 					// inside its 8 DIP item.
 					innerRadius = 6
 				}
@@ -247,7 +247,7 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 type colorItemKey int
 
 // pickerRadii returns the item radius of a picker; the inner swatch inherits
-// it, as HeroUI's swatch does.
+// it, as the swatch does.
 func pickerRadii(size ColorSwatchSize, shape ColorSwatchShape) (item float32) {
 	if shape == SwatchSquare {
 		switch size {

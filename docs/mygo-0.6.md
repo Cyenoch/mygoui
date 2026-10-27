@@ -1,7 +1,10 @@
-# MyGo 0.6.3 integration
+# MyGo 0.6.3 integration (historical)
 
-Minimum toolkit: `github.com/egoist/mygo v0.6.3`, upgraded from v0.6.0 during
-this rewrite. The reviewed upstream release notes are the authority:
+Current integration: [MyGo 0.7.1](mygo-0.7.md). The results below describe
+the earlier version, not current validation.
+
+Pinned toolkit: `github.com/egoist/mygo v0.6.3`. The earlier dependency upgrade
+from v0.6.0 is retained by the coss reconstruction. Upstream release notes:
 [v0.6.1](https://github.com/egoist/mygo/releases/tag/v0.6.1),
 [v0.6.2](https://github.com/egoist/mygo/releases/tag/v0.6.2) and
 [v0.6.3](https://github.com/egoist/mygo/releases/tag/v0.6.3).
@@ -22,7 +25,7 @@ against 0.6.3; no migration shims were added.
 
 ## Native layout defaults
 
-MyGo is not CSS. Two defaults matter for HeroUI parity:
+Two native layout defaults matter when translating the coss reference:
 
 - `ui.Row` centers children across the row by default; CSS flex rows stretch.
   Rows that need top alignment set `AlignItems(ui.Start)`. Button content is
@@ -31,14 +34,16 @@ MyGo is not CSS. Two defaults matter for HeroUI parity:
   stretch. Containers that should hug content set `Shrink(0)` or
   `AlignSelf(ui.Start)`.
 
-HeroUI's `Start` is the zero `ui.Align` value. Components therefore do not use
+`ui.Start` is the zero `ui.Align` value. Components therefore do not use
 `ui.Align != 0` as a presence check; they define their own enum where the zero
 value must mean centered (for example `ButtonAlignCenter`).
 
 ## Verification
 
-`go build ./...`, `go vet ./...`, the ordinary and race suites, the WebAssembly
-build, lint and `make vet` (MyGo CLI at `@latest`) pass against v0.6.3. Headless tests cover
-native editing, focus, selection, scrolling, overlays, tables and paint states.
-GPU presentation, OS gestures, native menu appearance and screen-reader output
-remain platform checks.
+`make check MYGO_VERSION=v0.6.3` runs the headless tests, build, Go vet and
+pinned MyGo lifetime vet. Also run `make race`, `make wasm` and
+`golangci-lint run ./...` after integration. Current results are recorded in
+[VALIDATION.md](../VALIDATION.md), separately from historical dependency work.
+Headless tests exercise editing, focus, selection, scrolling, overlays, tables
+and paint states. GPU presentation, OS gestures, native menu appearance and
+screen-reader output require separate platform evidence.

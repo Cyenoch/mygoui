@@ -197,7 +197,7 @@ func cardVariantsBody(c *ui.Context) {
 							Label: "Live", Color: mygoui.ColorSuccess, Variant: mygoui.ChipSoft,
 							Size: mygoui.ChipSmall,
 						})
-					})
+					}).Padding(0, theme.Space24, theme.Space24)
 				})
 			})
 		}
@@ -368,7 +368,7 @@ func listChoice(st *foundationsState) string {
 	return st.ListChoice
 }
 
-// emptyTextBody renders the placeholder HeroUI shows without content.
+// emptyTextBody renders the placeholder Coss shows without content.
 func emptyTextBody(c *ui.Context) {
 	ui.Column(c).AlignItems(ui.Center).Children(func() {
 		mygoui.EmptyState(c, mygoui.EmptyStateOptions{})

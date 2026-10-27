@@ -5,7 +5,8 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// ControlVariant is HeroUI's form-field surface variant.
+// ControlVariant selects the form-field surface. Both variants use the
+// same Coss field face.
 type ControlVariant uint8
 
 const (
@@ -13,7 +14,7 @@ const (
 	ControlSecondary
 )
 
-// fieldSurface paints HeroUI's field background, border and invalid/focus
+// fieldSurface paints the field background, border and invalid/focus
 // states, including the field ring, around a native editor.
 func fieldSurface(e ui.Element, c *ui.Context, variant ControlVariant, invalid, disabled bool) ui.Element {
 	return formstyle.Surface(e, c, variant == ControlSecondary, invalid, disabled)
@@ -26,7 +27,7 @@ func triggerSurface(e ui.Element, c *ui.Context, variant ControlVariant, invalid
 		variant == ControlSecondary, invalid, disabled)
 }
 
-// fieldText applies HeroUI's 14/20 field typography and foreground.
+// fieldText applies field typography and foreground.
 func fieldText(e ui.Element, c *ui.Context) ui.Element {
 	return formstyle.Text(e, c)
 }

@@ -6,13 +6,14 @@ import (
 	"time"
 
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/plugins/loading"
 	"github.com/egoist/mygo/ui"
 )
 
 // IndicatorColor is the color of a progress or meter indicator. Its zero
-// value is HeroUI's default accent, unlike the status colors used by chips.
+// value uses the primary color, unlike the status colors used by chips.
 type IndicatorColor uint8
 
 const (
@@ -23,7 +24,7 @@ const (
 	IndicatorDanger
 )
 
-// ProgressSize is HeroUI's meter/progress scale.
+// ProgressSize selects a native meter or progress track height.
 type ProgressSize uint8
 
 const (
@@ -32,8 +33,8 @@ const (
 	ProgressLarge
 )
 
-// progressDuration is HeroUI's indicator transition: 300 ms on --ease-out.
-const progressDuration = 300 * time.Millisecond
+// progressDuration is coss ui's 500 ms indicator transition.
+const progressDuration = 500 * time.Millisecond
 
 // indicatorTransition animates a value change on the indicator. MyGo lays the
 // fill out at each width on the way, so the track never jumps and asks for
@@ -57,7 +58,7 @@ func progressFill(c *ui.Context, pct, height, radius float32, fill ui.Color) {
 	bar.Transition(indicatorTransition)
 }
 
-// ProgressOptions configures a HeroUI bar indicator.
+// ProgressOptions configures a coss ui bar indicator.
 type ProgressOptions struct {
 	Label           string
 	Value, Min, Max float64
@@ -73,7 +74,7 @@ type ProgressOptions struct {
 func ProgressBar(c *ui.Context, o ProgressOptions) ui.Element {
 	t := theme.Colors(c)
 	lo, hi := progressBounds(o.Min, o.Max)
-	e := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space4).
+	e := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8).
 		Role(ui.RoleProgress).Label(o.Label)
 	if o.Indeterminate {
 		e.Range(0, 1, -1)
@@ -89,25 +90,27 @@ func ProgressBar(c *ui.Context, o ProgressOptions) ui.Element {
 		height, radius := progressMetrics(o.Size)
 		fill := indicatorFill(c, o.Color)
 		track := ui.Box(c).FillWidth().Height(height).Radius(radius).Clip().
-			Background(t.Default)
+			Background(t.Input)
 		if o.Indeterminate {
 			start := ui.Local(track, progressStartKey{}, func() time.Time { return c.Now() })
+			reduced := theme.ReduceMotion(c)
 			track.DrawOver(func(p *ui.Painter, r ui.Rect) {
 				if r.W <= 0 || r.H <= 0 {
 					return
 				}
 				band := r.W * 0.4
-				if theme.ReduceMotion(c) {
-					// HeroUI's reduced motion holds the 2/5 fill at the start.
+				if reduced {
+					// Reduced motion holds the 2/5 fill at the start.
 					p.Fill(ui.Rect{X: r.X, Y: r.Y, W: band, H: r.H}, fill, radius)
 					return
 				}
-				// HeroUI's 1.5 s cubic-bezier(0.65, 0, 0.35, 1) sweep from
-				// -100% to 350% of the band's own width.
+				// Sweep from -100% to 350% of the band's own width.
 				const period = 1500 * time.Millisecond
 				phase := float32(p.Now().Sub(*start)%period) / float32(period)
 				x := r.X - band + ui.EaseInOut(phase)*(band*4.5)
-				p.Fill(ui.Rect{X: x, Y: r.Y, W: band, H: r.H}, fill, radius)
+				p.Clip(r, radius, func() {
+					p.Fill(ui.Rect{X: x, Y: r.Y, W: band, H: r.H}, fill, radius)
+				})
 				p.AnimationFrame()
 			})
 		} else {
@@ -130,11 +133,11 @@ type MeterOptions struct {
 	OutputText      string
 }
 
-// Meter renders a HeroUI meter with its label and output.
+// Meter renders a coss ui meter with its label and output.
 func Meter(c *ui.Context, o MeterOptions) ui.Element {
 	t := theme.Colors(c)
 	lo, hi := progressBounds(o.Min, o.Max)
-	e := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space4).
+	e := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8).
 		Role(ui.RoleMeter).Label(o.Label).Range(lo, hi, o.Value)
 	e.Children(func() {
 		output := ""
@@ -142,10 +145,14 @@ func Meter(c *ui.Context, o MeterOptions) ui.Element {
 			output = meterText(o)
 		}
 		progressHeading(c, o.Label, o.ShowOutput, output)
-		height, radius := progressMetrics(o.Size)
+		height, _ := progressMetrics(o.Size)
+		if o.Size == ProgressMedium {
+			height = theme.Space8
+		}
+		radius := float32(0)
 		pct := progressFraction(o.Value, lo, hi)
 		fill := indicatorFill(c, o.Color)
-		ui.Box(c).FillWidth().Height(height).Radius(radius).Clip().Background(t.Default).
+		ui.Box(c).FillWidth().Height(height).Radius(radius).Clip().Background(t.Input).
 			Children(func() {
 				progressFill(c, pct, height, radius, fill)
 			})
@@ -174,12 +181,12 @@ func progressHeading(c *ui.Context, label string, showOutput bool, output string
 }
 
 func progressMetrics(size ProgressSize) (height, radius float32) {
-	height, radius = theme.Space8, theme.RadiusScale().SM
+	height, radius = theme.Space6, 999
 	switch size {
 	case ProgressSmall:
-		height, radius = theme.Space4, theme.RadiusScale().XS
+		height, radius = theme.Space4, 999
 	case ProgressLarge:
-		height, radius = theme.Space12, theme.RadiusScale().MD
+		height, radius = theme.Space8, 999
 	}
 	return height, radius
 }
@@ -189,6 +196,9 @@ type progressStartKey struct{}
 func progressText(o ProgressOptions) string {
 	if o.OutputText != "" {
 		return o.OutputText
+	}
+	if o.Indeterminate {
+		return locale.M().Loading
 	}
 	return percentText(o.Value, o.Min, o.Max)
 }
@@ -234,7 +244,7 @@ func indicatorFill(c *ui.Context, color IndicatorColor) ui.Color {
 	case IndicatorDanger:
 		return t.Danger
 	}
-	return t.Accent
+	return t.Primary
 }
 
 func clamp01(v float64) float32 {
@@ -257,8 +267,8 @@ type ProgressCircleOptions struct {
 	ShowOutput      bool
 }
 
-// ProgressCircle draws a determinate ring from native paint segments or an
-// indeterminate native spinner. The value is exposed as accessible text.
+// ProgressCircle draws a determinate ring or an indeterminate native spinner
+// and exposes its progress through native accessibility semantics.
 func ProgressCircle(c *ui.Context, o ProgressCircleOptions) ui.Element {
 	t := theme.Colors(c)
 	size := float32(28)
@@ -272,7 +282,11 @@ func ProgressCircle(c *ui.Context, o ProgressCircleOptions) ui.Element {
 	lo, hi := progressBounds(o.Min, o.Max)
 	label := o.Label
 	if label == "" {
-		label = percentText(o.Value, o.Min, o.Max)
+		if o.Indeterminate {
+			label = locale.M().Loading
+		} else {
+			label = percentText(o.Value, o.Min, o.Max)
+		}
 	}
 	if o.Indeterminate {
 		return ui.Box(c).Size(size, size).Shrink(0).Children(func() {

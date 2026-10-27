@@ -5,7 +5,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// InputOptions configures a single-line HeroUI input. Label, Description and
+// InputOptions configures a single-line input. Label, Description and
 // Error compose the field around it; without them the control is bare so it can
 // sit inside a caller's own Field.
 type InputOptions struct {
@@ -60,7 +60,7 @@ func inputAccessibleName(label, ariaLabel, placeholder string) string {
 	return placeholder
 }
 
-// inputEditor builds the HeroUI input surface around one native single-line
+// inputEditor builds the input surface around one native single-line
 // editor. Hover, focus and invalid paint stay live through fieldSurface.
 func inputEditor(c *ui.Context, value *string, o inputCoreOptions) ui.Element {
 	e := ui.TextInputBase(c, value)
@@ -82,8 +82,8 @@ func inputEditor(c *ui.Context, value *string, o inputCoreOptions) ui.Element {
 	} else {
 		e.MinWidth(theme.Scale(c, inputDefaultWidth))
 	}
-	e = e.PaddingX(theme.Space12).PaddingY(theme.Space8).
-		MinHeight(theme.Scale(c, theme.HeightInput)).Shrink(0)
+	e = e.PaddingX(theme.Space12).PaddingY(theme.Scale(c, 5)).
+		MinHeight(theme.Scale(c, 32)).Shrink(0)
 	e = fieldSurface(e, c, o.Variant, o.Invalid, o.Disabled)
 	if o.OnChange != nil {
 		e.OnChange(o.OnChange)
@@ -95,7 +95,7 @@ func inputEditor(c *ui.Context, value *string, o inputCoreOptions) ui.Element {
 }
 
 // inputField composes label, description and error around an input. The
-// description is hidden while invalid, as HeroUI's field roots do.
+// description is hidden while invalid.
 func inputField(c *ui.Context, o InputOptions, hideDescriptionOnInvalid bool, body func()) ui.Element {
 	description := o.Description
 	if hideDescriptionOnInvalid && (o.Invalid || o.Error != "") {
@@ -117,7 +117,7 @@ func inputNeedsField(o InputOptions) bool {
 	return o.Label != "" || o.Description != "" || o.Error != "" || o.Invalid
 }
 
-// Input renders HeroUI's single-line input on a native editor: typing commits
+// Input renders a single-line native editor: typing commits
 // to value, and Enter submits without a fabricated action.
 func Input(c *ui.Context, value *string, o InputOptions) ui.Element {
 	value = inputTextAnchor(value)

@@ -1,226 +1,341 @@
 # Validation
 
-Local validation used macOS arm64, Go 1.27.3, MyGo v0.6.3 and mygoicons
-v0.2.1. Module metadata targets Go 1.27.1. The public repository is
-`github.com/Cyenoch/mygoui`; no release has been tagged.
+## PR #3 race scheduling follow-up
 
-## Completed checks
+2026-10-27, follow-up to `4502b4e`. Run `40523761606` passed analysis and
+all three OS test jobs, including Windows job `122257584865`. Race job
+`122257584206` hit the 300-second package timeout in Gallery and overlay;
+its log contains no data-race report. The stacks show CPU shader evaluation
+and backdrop blur, not a deadlock.
 
-- The component parity/motion pass passed `make check MYGO_VERSION=v0.6.3`
-  after the final BottomSheet, Table and NumberField changes: `go vet ./...`,
-  the pinned MyGo lifetime vet, the ordinary suite, `go build ./...`,
-  formatting and `go mod verify`.
-- All packages with tests passed: root, `theme`, `form`, `list`, `navigation`,
-  `overlay`, `date`, `color`, `data`, and `internal/gallery`. Examples and
-  internal helpers have no tests. Fixed test counts are not retained here;
-  they become stale as behavior regressions are added or removed.
-- `make race` passed with `CGO_ENABLED=1` after those changes, with no data
-  races; the slowest package, `internal/gallery`, took about 50–75 s depending
-  on host load.
-- `golangci-lint run ./...` reported zero issues and `make wasm` built every
-  package for `GOOS=js GOARCH=wasm`.
-- Toast's semantic-name smoke verified title and description-only
-  notifications, native announcements, same-ID renaming and removal on close;
-  internal IDs did not appear in the native tester's semantic labels.
-- Targeted probes verified the NumberField single-row stepper geometry and
-  separators, BottomSheet floating/slide/gesture/scrim behavior, Table chrome
-  and footer, and the RangeCalendar summary's stable grid position.
-- The checks below record the earlier rewrite validation. Actionlint and
-  govulncheck were run for that rewrite, not rerun for this pass.
-- The MyGo CLI build and dev paths were exercised from the repository root:
-  `go run github.com/egoist/mygo/cmd/mygo@v0.6.3 build` produced a signed
-  development-era `.app` and `.dmg`, and `dev -skip-dev-command` built the
-  gallery, watched for changes and stopped cleanly under a timeout. The root
-  `mygo.json` points `main` at `./examples/gallery`. `make dev` runs the same
-  CLI at `@latest`.
+Race test binaries now run serially (`-p 1`) in CI and `make race`, avoiding
+competition between internally parallel software rasterizers. Package-local
+goroutines, race instrumentation, CI shuffle and the 300-second package
+timeout remain enabled. The 15-minute job limit is unchanged. Gallery's
+bulk tests no longer force an extra frame after `NewTester`, `Click` or
+`SetPreferences`, which already settle frames in pinned MyGo v0.7.1.
+Explicit frames after direct state mutations and all existing assertions
+remain. Production component behavior is unchanged.
 
-## Gallery evidence
+- In Linux Docker capped at two CPUs, old overlay code passes its failing
+  shuffle seed `1793112409978699930` in 230.577 s in isolation. CPU profiles
+  identify glass blur and software effect rasterization as hot paths.
+- In the same two-CPU-capped setup, Gallery's full race suite with seed
+  `1793112401198632472` passes before and after removing duplicate frames:
+  284.118 s and 178.718 s respectively. These are shared-host observations,
+  not a controlled performance benchmark. Logs:
+  `/tmp/mygoui-pr3-race-gallery-full-baseline.jsonl` and
+  `/tmp/mygoui-pr3-race-gallery-no-duplicate-frames.jsonl`.
+- `make check`: pass; `/tmp/mygoui-pr3-race-check.log`.
+- Full Linux Docker race suite capped at two CPUs: pass using
+  `CGO_ENABLED=1 go test -race -p 1 -shuffle=1793112401198632472 ./... -count=1 -timeout=300s`.
+  Gallery 177.329 s, overlay 228.003 s; from the first package start to the
+  final result is about 7 min 42 s. Log:
+  `/tmp/mygoui-pr3-race-serial-linux.jsonl`.
+- Full lint: zero issues; `/tmp/mygoui-pr3-race-lint.log`.
+- `make workflows`, `make wasm` and Windows/amd64 Gallery test-binary
+  cross-compilation: pass.
+- Independent read-only review found no blocking issue in frame removal or
+  race scheduling; it did not run tests. It noted that serial execution
+  changes scheduling and must still fit the overall job limit.
 
-- The gallery registers 87 pages: the Overview landing page plus 86 component
-  pages, each added through `RegisterComponent(ComponentPage{...})`. No family
-  page registrations remain; `TestCatalogIsUniqueAndComplete` checks unique IDs
-  and ordering.
-- All 86 component pages use `ComponentPage.Examples`
-  (`ComponentExample{Title, Description, Demo}`). `ComponentPage` has no
-  page-level `Demo` field and the fallback plus its preview collector were
-  deleted, so the named frames are the only demo source. The catalog contains
-  260 named examples across 10 groups: Actions 19 (6 pages), Collections 5 (1),
-  Color 19 (6), Data 4 (1), Dates 18 (6), Display 38 (13), Forms 81 (24),
-  Foundations 28 (11), Navigation 30 (10) and Overlays 18 (8). Every page has
-  2-5 named examples (minimum 2, maximum 5); none has fewer than two.
-- The docs shell follows HeroUI: an 880 DIP main column (800 DIP of content),
-  a 220 DIP "On this page" rail shown at 1000 DIP and hidden below it, and the
-  compact sidebar branch below 760 DIP. Section links use committed
-  `ui.Handle` bounds to set the content scroll and derive the active entry
-  (`TestDocsTOCScrollsTheContent`, `TestDocsRailHidesOnNarrowWindows`).
-- The page header shows the group label, 30/36 title, 16/28 muted description,
-  rule, and Copy Markdown/Copy import pills with native clipboard feedback.
-  Usage is a 44 DIP import bar with a 32 DIP icon-only copy control that grows
-  for a parenthesized block. No page sets `ComponentPage.Import`: all 86
-  blocks are derived from the qualifiers the page's `Code` names (module root
-  always present, module subpackages and `mygoicons/lucide`, de-duplicated and
-  sorted, one line or a block), and the header copy writes the same block
-  (`TestDocsHeaderActionsCopyRealContent`, `TestUsageBarIsACompactImportLine`,
-  `TestComponentPageImportStatement`,
-  `TestComponentPageImportStatementDerivesFromCode`,
-  `TestUsageAndHeaderCopyDerivedImport`, `TestUsageBarGrowsForMultipleImports`).
-- Every named example renders its title and description outside its own
-  clipped rounded panel; the page's full code snippet renders exactly once
-  (inside a single example's panel, or in one shared `Code` panel after two or
-  more). `TestComponentExampleFrames`, `TestDemoTitlesSitOutsidePreviewPanels`
-  and `TestSingleExampleOwnsItsCode` pin this structure.
-- Code areas carry line numbers, Go highlighting, selectable lines, horizontal
-  scrolling, a tooltip-only copy control with Copied feedback, and a six-line
-  fold with a surface-colored fade plus Expand code/Collapse code. Copy controls
-  are 32x32, centered within 1 DIP and inset 8-12 DIP in both narrow and wide
-  layouts (`TestCodeBlockCopyControl`, `TestCodeBlockLineNumbersAndHighlighting`,
-  `TestCodeBlockHugsSnippet`, `TestCodeBlockScrollsLongLines`,
-  `TestCopyControlsAlignAndDoNotStretchRows`).
-- Rounded gallery surfaces clip their children to the corner: example panels,
-  the shared code panel, the Usage bar, the API panel, token cards and overview
-  group cards. `TestRoundedSurfacesClipCorners` samples the four outside-corner
-  pixels against the page background and one inside pixel against the surface,
-  in light and dark modes, while keeping copy focus rings clear of the clip.
-- Long API type/default values wrap instead of clipping and stack at narrow
-  widths (`TestAPILongValuesWrapInsteadOfClipping`,
-  `TestAPILongValuesWrapInStackedLayout`, `TestAPIShowsFullTypeValues`,
-  `TestComponentPageHeaderAndAPIPills`); theme-token cards show light/dark
-  swatches, hex values and roles (`TestThemeTokenCardsShowValuesAndRoles`,
-  `TestThemeTokenCardsMarkCustomTokens`).
-- The Overview page is a landing experience: hero, feature points, and one card
-  per component group with page counts and links. The sidebar shows the MyGo UI
-  brand, lists every component page by group, and uses ScrollShadow for
-  overflow (`TestSidebarShowsEveryComponentPage`, `TestSidebarUsesScrollShadow`,
-  `TestCompactDrawerUsesScrollShadow`).
-- `TestEveryPageRendersAtDesktopAndCompactWidths` renders every registered page
-  at 640x900 and 1100x900 in light mode and 1100x900 in dark mode.
-  `TestPagesRenderWithEnlargedText` renders every page at 1.75x text scale.
-  `TestCompactNavigationOpensAndSelects` exercises the sub-760 DIP navigation.
-- Toast exit-paint regressions cover the close-button crash
-  (`TestToastPageDismissesWithoutExpiredPaint`,
-  `TestToastTopPlacementDismissDuringExit`,
-  `TestToastDismissDuringExitKeepsPaintSafe`).
-  `TestToastCloseGlyphIsOneCenteredX` checks the floating upper-right close
-  button, normal action right padding, centered X and keyboard focus ring;
-  `TestToastCloseRevealsOnHoverAndDismisses` checks hover reveal and dismissal.
-- Toast motion uses MyGo's spring with a 320 ms response, not a fixed-duration
-  250 ms transition. `TestToastEntryTravelsAndFadesFromWindowEdge` samples
-  entry translation and fade at both window edges. Deck tests cover continuous
-  insertion/removal, unequal-height hover/focus expansion, stable gap hover and
-  timeout pause, rapid reversal, same-ID focus/drag continuity and swipe
-  cancel/commit. `TestToastReducedMotionAndRetainedExit` checks immediate
-  reduced-motion settlement and painted but inert exit snapshots.
-- Modal-family and popup tests sample first, intermediate and settled paint
-  and require pending animation frames on entry and exit in isolated Testers
-  without a Toast viewport. They also cover immediate reopen, backdrop
-  dismissal, AlertDialog Cancel focus/restoration, inert departing controls,
-  reduced motion and all four Drawer edges with 16 DIP gutters.
-- A throwaway `ui.NewTester` smoke exercised actual entry/exit rendering for
-  Modal, Dialog, AlertDialog, BottomSheet, Popover, Tooltip and all four Drawer
-  directions. Every path painted intermediate frames, removed closed semantic
-  content and stopped requesting frames after exit. Separate Toast smokes
-  observed collapsed/intermediate/expanded geometry and verified Undo's 16 DIP
-  right padding with a floating close button that dismissed independently.
-- The diagonal indicator glyphs stroke a `ui.Path` instead of
-  `Painter.Line`, which only draws horizontal and vertical strokes: the
-  disclosure and accordion down chevrons and the menu check/right chevron
-  (`navigation/glyph_pixel_test.go`: `TestDisclosureAndAccordionChevronsAreDrawn`,
-  `TestMenuIndicatorGlyphsAreDrawn`) and the selected color swatch tick
-  (`color/checkmark_pixel_test.go`: `TestColorSwatchSelectedCheckIsDrawn`,
-  `TestColorSwatchPickerSelectedCheckIsDrawn`) are each asserted as two
-  diagonal strokes that meet at the right vertex.
-- Hover faces repaint from build-time snapshots when the pointer moves,
-  checked in the headless tester: Button primary/ghost, standalone
-  ToggleButton default/selected/ghost, joined ghost ButtonGroup, Checkbox,
-  Radio, Switch, InputGroup, Tabs, Accordion header, ListBox rows, calendar
-  days and DateField (`TestButtonHoverAndPressedPaint`,
-  `TestToggleButtonHoverAndPressedPaint`, `TestButtonGroupGhostHoverPaint`,
-  `TestCheckboxHoverAndPressedPaint`, `TestRadioHoverAndPressedPaint`,
-  `TestSwitchHoverPaint`, `TestInputGroupHoverPaint`, `TestTabsHoverDimsLabel`,
-  `TestAccordionHeaderHoverPaint`, `TestListBoxRowHoverPaint`,
-  `TestCalendarDayHoverPaint`, `TestDateFieldHoverPaint`). Surfaces with no
-  upstream hover rule stay inert or pressed-only (`TestDisclosureHoverIsInert`,
-  `TestColorSwatchPickerHoverGrowsSwatch`, `TestColorAreaThumbPressed`,
-  `TestSliderPressedShrinksKnob`).
-- Exits keep painting retained copies instead of expired Elements:
-  `TestToastDismissDuringExitKeepsPaintSafe`,
-  `TestToastPageDismissesWithoutExpiredPaint`,
-  `TestToastTopPlacementDismissDuringExit` (the gallery Toast page),
-  `TestModalWithButtonClosesWithoutExpiredPaint` and
-  `TestButtonPaintsThroughExitTransition` (Button, ToggleButton and
-  ButtonGroup inside an `ElementTransition` exit, which used to panic in
-  `style.Background` and `style.CornerFill`).
-- Page-local tests open and dismiss modals, drawers, bottom sheets, dialogs,
-  popovers and menus; commit dates; select options; sort and select table rows;
-  run toasts; and mutate form, toggle, tag and progress state.
-- Pixel tests verify Button/Card fills, disabled-state single-dimming, calendar
-  range endpoints (solid accent) versus middle days (soft accent), joined-group
-  clipping and inset focus (`TestToggleButtonGroupFillStaysInsideRoundedBox`,
-  `TestButtonGroupFillStaysInsideRoundedBox`,
-  `TestGroupedFocusRingIsInset`), and grouped button width sharing. Select
-  single/multiple/clear, ComboBox/Autocomplete pointer selection, DatePicker
-  dismissal and progress's default 0–100 range have direct regressions.
+Remote CI on this follow-up remains pending; the local container run does not
+establish hosted-runner wall time or native desktop behavior.
 
-## Corrections made during acceptance
+## PR #3 Windows marker follow-up
 
-- Calendar range days are no longer marked with native `Selected`, which painted
-  every middle day in solid accent; only endpoints paint solid, middle days use
-  the HeroUI soft band, and a pending range with only a start day paints no band
-  (`TestRangeCalendarStartOnlyPaintsNoBand`). Calendar cells are square and use
-  HeroUI's clamped 24 DIP corner.
-- The calendar year picker pages 12 years at a time and clamps the page to the
-  configured bounds (`TestCalendarYearPickerDefaultPage`,
-  `TestCalendarYearPickerBounds`).
-- The per-component migration left the old family-page builders unreachable;
-  26 unused functions and the `actionsOpen` field (27 `unused` findings) were
-  deleted along with an orphaned import. `golangci-lint run ./...` reports zero
-  issues.
-- Root intrinsic components (Button, ToggleButton, Chip, Badge, Tag, Kbd, Link)
-  opt out of the default column stretch; full-width variants still fill.
-- Field surfaces paint a 2 DIP focus ring; disabled nodes are dimmed once by the
-  toolkit rather than by both an outer and inner node.
-- Popover/Tooltip and all form/date/color popups share the dark inset hairline;
-  top/left anchor offsets move panels away from, not into, their anchor.
-- Selection in ComboBox/Autocomplete is applied once on pointer input; the
-  custom filter receives raw query text; section items no longer duplicate as
-  ungrouped rows.
-- DatePicker notifies `OnOpenChange(false)` on Escape/outside dismissal; the
-  DateRangePicker popup autofocuses its grid.
-- The page-level `Demo` fallback and its preview collector were removed;
-  `ComponentPage.Examples` is the only demo source, and two or more frames
-  share one Code panel (`TestSingleExampleOwnsItsCode`,
-  `TestComponentExampleFrames`).
-- The Usage bar and the header Copy import action derive their block from the
-  packages the page's snippet names instead of a fixed module-root line, so a
-  page that uses `form`, `overlay`, `theme` or `lucide` no longer copies an
-  import it cannot build with (`TestUsageAndHeaderCopyDerivedImport`).
-- Hover, pressed and focus faces snapshot state during the build; pointer-move
-  tests cover the families above, and no paint callback reads an Element from
-  an earlier pass (`TestButtonPaintsThroughExitTransition`).
+2026-10-27, follow-up to `215767b`. Windows job `122248524857` in
+run `40521219792` failed overlay motion tests: the detected residual bounds
+matched the Open label rather than the solid motion marker. The old
+equal-green/blue color filter still accepts some red ClearType fringes.
+A synthetic equal-G/B fringe regression fails with that filter.
 
-## Platform limits
+The shared test sampler now requires filled 5x5 red patches and unions their
+full extents, rejecting thin glyph fringes while retaining the bounds of the
+larger solid markers, including their faded exits. Production components,
+motion/focus assertions and CI configuration are unchanged; no test is skipped.
 
-The native Gallery window was inspected through screenshots and accessibility
-data, and its Toast triggers were exercised. Isolated headless render captures
-also inspected Toast stacking, floating close layout, dialogs and Drawer gutters.
-No personal application configuration was read or changed. These checks do not
-establish screen-reader operation, platform IME/gesture behavior, OS menu
-appearance or GPU partial-presentation performance; those remain separate
-platform checks.
+- The fringe regression passes, as do the responsive dialog, edge surface
+  and drawer exit tests with the failed job's shuffle seed
+  `1793111328520692000`;
+  `/tmp/mygoui-pr3-windows-marker-regression.log`.
+- `make check`: pass; `/tmp/mygoui-pr3-marker-check.log`.
+- Linux Docker full overlay suite with the same shuffle seed: pass;
+  `/tmp/mygoui-pr3-marker-linux.log`.
+- Targeted overlay race tests with the same shuffle seed: pass;
+  `/tmp/mygoui-pr3-marker-race.log` (111.204 s).
+- Full lint: zero issues; `/tmp/mygoui-pr3-marker-lint.log`.
+- Windows/amd64 overlay test-binary cross-compilation and WASM build: pass.
 
-Documented approximations are listed in `docs/components.md`: BottomSheet
-dismisses only from its handle while Drawer keeps native dismissal, pressed
-scales replace HeroUI's ripple, ScrollShadow paints surface-colored fades
-instead of an alpha mask, and the toolkit owns native list/menu geometry and
-the table header's exact metrics. Table selection is tinted across the row
-while MyGo owns the selection semantics.
+Windows execution subsequently passed on `4502b4e` in job `122257584865`, run
+`40523761606`. This is a hosted headless Windows test result, not native GPU
+or desktop input verification.
 
-MyGo 0.6.3 re-lays absolute overlays after element transitions. Toast avoids
-the previous vertical-motion and stack-reflow snap by animating its declared
-`Top`/`Width`/`Height` geometry; BottomSheet translates its panel for the slide
-and gesture. Modal, AlertDialog, Dialog and Drawer fade; Popover and Tooltip
-zoom from the anchor-facing edge. Installed overlay constructors keep the
-native overlay layer alive while closed so first-open entry and last-close exit
-can run without a Toast viewport. Native exit snapshots are inert and never
-rebuild consumer content. The optional blur backdrop uses MyGo's glass material;
-its GPU shader path was not exercised by the headless suite.
+## MyGo 0.7.1 follow-up
+
+2026-10-27, `coss`, based on `a8cd38e99fa564e4b162620d6313085e5476de3a`.
+MyGo is now v0.7.1 and the minimum Go version is 1.27.3. This section
+supersedes the older pinned-version statements below, not their historical
+measurements. Remote CI and merge are tracked separately by PR #3.
+
+- `make check`: pass. Full headless suite, build, Go vet, MyGo lifetime vet,
+  formatting and module integrity. Final review-fix run:
+  `/tmp/mygoui-071-check-reviewed.log`.
+- `make race`: pass. Gallery 261.531 s and overlay 247.393 s;
+  `/tmp/mygoui-071-race.log`. Subsequent data/navigation/overlay race passes
+  are in `/tmp/mygoui-071-race-final.log`; final header-fix data race is in
+  `/tmp/mygoui-071-data-race-reviewed.log`.
+- `golangci-lint run ./...`: pass, zero issues;
+  `/tmp/mygoui-071-lint-reviewed.log`.
+- WASM and Windows/amd64 headless cross-builds: pass. `make workflows`: pass.
+- Linux Docker full shuffled headless suite: pass;
+  `/tmp/mygoui-071-linux-final.log`. The final header-fix data/Gallery
+  shuffled recheck is in `/tmp/mygoui-071-linux-reviewed.log`.
+- `govulncheck@v1.9.0 ./...`: no reachable vulnerabilities found;
+  `/tmp/mygoui-071-vuln.log`.
+- Native app build/sign with the pinned CLI: pass;
+  `/tmp/mygoui-071-app-final.log`. Output:
+  `artifacts/coss/mygo-071/app/darwin-arm64/Coss UI Gallery.app`.
+
+New tests cover zoomed search/input and compact layout, native title-bar
+insets, per-window zoom, inactive tab state/focus, loading paint without view
+rebuilds, flyout option boundaries/anchors/surface, and initially visible
+Cancel in a short 2x-text AlertDialog. `go tool mygo migrate-ui -write .`
+moves safe constructor keys; its remaining Popover/Tooltip notices refer to
+native base callback elements, which cannot be constructed by this layer.
+MyGo lifetime vet passes without stored frame values.
+
+Actual Metal offscreen scenes were rendered using the v0.7.1 module, not the
+headless rasterizer: `artifacts/coss/mygo-071/`. Light/dark ScrollFade,
+Modal and BottomSheet corners pass scoped pixel checks. Light ScrollFade,
+dark BottomSheet, light FlyoutSurface and light card Table were inspected.
+The card Table no longer draws a square header bottom border across the
+rounded body's top corners. A red-first regression and selected-row/card
+boundary tests cover that change. Gallery labels now call this the card
+variant. The plain variant keeps its separate header rule and square body.
+
+Independent pre-merge review identified that the card's transparent row
+theme also hid header hover and resize grips. Card headers now restore those
+affordances from committed native cell geometry while native sorting,
+resizing/reordering and keyboard input remain untouched. Empty card headers
+clip only their bottom divider and retain the native theme. A red-first
+regression covers hover, resting/hovered grips, resizing and sorting in empty
+and populated tables. No backdrop repaint or whole-table bitmap effect is
+used to erase the rule.
+Reviewed Metal captures include `table-grip-hover-false-metal.png` and
+`table-card-true-metal.png`: header feedback remains outside the rounded body.
+
+A separate nested-clip probe **still fails on Metal in 0.7.1**:
+`rounded ancestor -> rectangular Clip -> red fill` paints a red corner where
+the CPU image is white (`nested-clip-metal.png`). The explicit final-fill
+clips/corner fills in changed components remain necessary. This is not a
+claim that arbitrary rounded-container descendants are fixed; blanket
+Effect/Cache remains rejected because it hides embedded WebViews and adds
+texture-size/fade regressions.
+
+macOS live accessibility observed the rebuilt Gallery and a separate native
+flyout dialog with its heading, Name editor and Done action. The automation
+then returned to the parent; no completed editor/dismissal sequence is
+claimed. Windows caption appearance, Linux desktop flyout placement, native
+gestures and actual screen-reader operation remain unverified locally.
+
+## Clipping and CI follow-up
+
+Follow-up on 2026-10-27 is based on `a8cd38e99fa564e4b162620d6313085e5476de3a`
+on `coss`. Changes remain uncommitted; no push or remote CI rerun is asserted.
+The older reconstruction record follows this section and does not override it.
+
+- `references/coss` is checked out at
+  `3d8ca28e7d90123e9e0f44665944dc240b026ccb`. Previous reference submodules
+  are removed. Repository text outside the upstream checkout has no old-brand
+  matches; original NextUI copyright remains in the retained Apache notice.
+- Added red-first regressions for exiting per-corner button faces, vertical
+  intrinsic group widths and the indeterminate progress band's paint bounds.
+  The old CornerFill probe grew window references every rebuild and lost its
+  fill on exit; the revised native background probe retains zero new handles
+  and fades the face through intermediate frames.
+- TableSecondary row/hover/cell-selection fills now respect the body's rounded
+  boundary without clipping the header. Focus, virtualized controls and
+  scroll-hover tests pass. Group examples use explicit separators; Vertical
+  reproduces upstream `p-group-9.tsx`, with full-width actions a separate example.
+- Actual Metal offscreen captures in
+  `artifacts/coss/rounding-final-<false|true>-metal.png` cover light/dark Group,
+  hovered Billing, vertical zoom controls and selected Table last row. Both
+  images were inspected. These are GPU-rendered scenes, not window/OS input.
+- The native audit was re-collected into
+  `artifacts/coss/native-audit-clipping-final/manifest.json`: 57 subjects,
+  114 appearance entries, 550 captures and 102 contact sheets. Capture count
+  is evidence inventory, not a claim that every state matches the website.
+- Browser reopened the official Group page and read live segment radius,
+  borders, separators and size; two screenshot operations timed out. The
+  earlier saved official vertical zoom example was inspected alongside the
+  pinned source. Native app automation also timed out; no new OS-input claim.
+
+### Known renderer boundary
+
+An actual Metal probe confirms MyGo v0.6.3 can lose an outer rounded clip under
+a rectangular descendant clip (`Card -> Clip -> fill`), while the CPU renderer
+clips correctly. Native per-corner button fills and innermost progress/table
+clips fix those concrete paths, not arbitrary consumer subtrees.
+
+A blanket offscreen-effect workaround was tried and rejected: independent
+review reproduced unsynchronized arrow/shadow fades, hidden embedded WebViews
+and missing shadows beyond the effect size limit. Its race suite also timed
+out. That workaround is **not in the final source**. The generic nested-clip
+backend issue remains unresolved and must not be reported as fixed.
+
+### Follow-up checks
+
+- `make check MYGO_VERSION=v0.6.3`: pass;
+  `/tmp/mygoui-coss-check-final-followup.log`.
+- `make race`: pass, all packages, no reported races;
+  `/tmp/mygoui-coss-race-final-followup.log` (Gallery 260.755 s,
+  overlay 246.017 s). The earlier rejected-workaround timeout is not this run.
+- Linux/arm64 Docker, Go 1.27.3, full
+  `CGO_ENABLED=0 go test -shuffle=on ./... -count=1 -timeout=180s`: pass;
+  `/tmp/mygoui-coss-linux-final-followup.log`. This is actual Linux test
+  execution, not a cross-build.
+- `make wasm`, Windows/amd64 cross-build, `golangci-lint run ./...`: pass.
+- Remote run `40493219365` failed on the base commit. Its Linux/Windows logs
+  identified a font-width-dependent fixture and paint samplers that can pick
+  up glyph ink/subpixel color fringes. Tests now use a genuinely overwide
+  fixture, ink-free sample and shared synthetic-marker detector. Windows
+  runtime verification still requires remote CI; no platform skip was added.
+- Native Gallery app/DMG rebuilt locally; no release, notarization or fresh
+  full-window interaction acceptance is claimed.
+
+## Earlier Reconstruction
+
+Validated on 2026-10-27 in the then-uncommitted `coss` worktree based on
+`8d1d2a336da159998edbedf2d12bd505b5f8cebe`. No commit, push or release is
+asserted. These results apply to this reconstruction, not the previous design.
+
+Environment: Go 1.27.3, darwin/arm64, macOS 27.0.1 (26A434), Apple M5 Pro
+(Metal 4 capable). MyGo is pinned at v0.6.3 and mygoicons at v0.2.1;
+`go.mod` minimum Go version is 1.27.1. `GOWORK` is unset and release module
+metadata has no local replacement.
+
+## Required checks
+
+| Check | Status | Evidence to record |
+| --- | --- | --- |
+| `make check MYGO_VERSION=v0.6.3` | Pass | Full headless suite, build, Go vet, MyGo lifetime vet, gofmt and module verify. `/tmp/mygoui-coss-check-final.log`: Gallery 13.616 s, overlay 31.655 s. |
+| `make race` | Pass | Final full run exited 0. `/tmp/mygoui-coss-race-verified.log`: root 28.798 s, Gallery 279.625 s, overlay 259.130 s; all packages pass without reported data races. |
+| `golangci-lint run ./...` | Pass | Final invocation: `0 issues.` |
+| `make wasm` | Pass: build only | Complete `GOOS=js GOARCH=wasm CGO_ENABLED=0 go build ./...`. No browser runtime claim. |
+| `make workflows` | Not run; workflows unchanged | Run actionlint before release if workflow files change. |
+| Dependency/module integrity | Pass | `go mod tidy`, `go mod verify`, no version upgrades, added direct dependencies or local replacements. |
+| Documentation/API review | Source reconciliation performed | Re-read current inline Autocomplete, SegmentedBase radio control, Sidebar, sliding Sheet/Drawer, CardFrame, ScrollFade modes and optional font registration; no build/runtime result inferred |
+
+Windows amd64 and Linux amd64 cross-builds also pass:
+`GOOS=windows GOARCH=amd64 CGO_ENABLED=0 go build ./...` and the equivalent
+`GOOS=linux` command. `git diff --check` passes. These are build/whitespace
+checks, not native platform runtime evidence.
+
+An initial Gallery check exposed lost Calendar keyboard focus with reduced
+motion. Native transition registration was corrected and compact/wide tests
+now pass. Five root joined-corner/seam/focus tests now explicitly use outline
+groups; separate new tests protect default rounded items and 2 DIP gaps.
+Assertions were not removed to manufacture a passing suite.
+
+## Behavior and headless rendering
+
+| Area | Status | Consumer-visible evidence needed |
+| --- | --- | --- |
+| Theme roles and patches | Pass: headless | Both appearances, all canonical patch roles, transparency, derived alpha, detached snapshots and native-theme installation. |
+| Controls and surfaces | Pass: headless | State faces, geometry, native disabled/loading/invalid, no Button press scale, Group seams/corners and toggle focus. |
+| Forms | Pass: headless | Editing, selection, bounds, filtering, OTP, native label/help/error association and Composer submit policy. Final help-text and number centering also visually rechecked. |
+| ScrollArea / ScrollFade | Pass: headless; scoped native GPU check below | Axis/edge/RTL/endpoints/no-overflow, patterned alpha transparency and child activation/focus. |
+| Command / Tabs / segments | Pass: headless plus queued-event probes | Filtering/activation, pointer/keyboard highlight, disabled or removed selection, moving-parent indicator and reduced motion. |
+| Sidebar | Pass: headless | Selected/collapsed state, callbacks, disabled items, overflow and labels. |
+| Overlays / dates / data | Pass: headless | Dismissal/focus, retained exit safety, placement/motion, PreviewCard handoff, date boundaries/keyboard and table selection/paging. OS context menu popup is not rasterized by Tester. |
+| Gallery/examples | Pass: headless plus scoped native window | Snippets typechecked, compact/wide/enlarged-text interaction, state retention, search, appearance and titlebar inset cases. |
+| Optional fonts | Pass: native registration/headless shaping | Concurrent/idempotent Register, regular/italic glyph advances at 400/700 versus original faces, visible text and no import-side initialization. |
+
+`ui.NewTester` can validate native event routing, semantic metadata, layout
+and headless pixel output. A recorded Tester test or screenshot proves only
+what it actually exercises. Catalog row counts and gallery page counts are
+not acceptance gates or evidence of pixel-perfect coss behavior.
+
+## Platform evidence
+
+| Target | Status | Evidence needed |
+| --- | --- | --- |
+| macOS / Metal | Scoped pass | Packaged app renders, actual traffic lights/titlebar alignment, Cmd+K search, Button navigation/action, Light/Dark, MaskFade gradient transparency and child activation/Page Down. Not exhaustive OS integration. |
+| Windows / Direct3D | Build only | Actual native behavior/effects/fonts not verified. |
+| Linux / available renderer | Build only | Actual native behavior/effects/fonts not verified. |
+| WebAssembly / WebGL | Build pass; runtime not verified | Optional fonts explicitly reject browser registration; no browser runtime claim. |
+| Screen reader | Not verified | Semantic metadata tests do not establish actual reader announcements/navigation. |
+| Reduced motion and enlarged text | Headless pass | Native Calendar focus and Gallery resize/keyboard cases, animated control settlement. No exhaustive OS preference matrix. |
+
+Native effects render subtrees through an intermediate layer, have an
+8192-pixel side limit and omit embedded webviews. A CPU/headless mask test
+cannot establish GPU effect correctness or performance. Fonts selected by
+family name alone do not establish matching coss optical sizing/shaping.
+
+## Visual comparison and real window
+
+The per-component inspection and differences are recorded in
+[docs/visual-review.md](docs/visual-review.md), not inferred from catalog counts.
+Official rendered light/dark reference pages were captured for all 56 currently
+available component URLs. The Sidebar URL returned 404; the actual docs sidebar
+and MIT registry source supply its reference instead.
+
+Inspected every mapped native component's light/dark baseline against rendered
+reference samples. Repaired the three concrete visual findings: Field help/error
+typography, NumberField centering and default ToggleGroup corner/gap behavior.
+After production freeze the parent re-ran the collector successfully: 57
+subjects, 114 appearance entries, 550 captures and 102 contact sheets. Final
+manifest: `artifacts/coss/native-audit-final/manifest.json`; command log:
+`/tmp/mygoui-coss-native-audit-final-parent.log`. Inspected corrected contact
+sheets and the updated default Calendar/Card examples. The manifest records
+unexercised states explicitly. No pixel-perfect or all-state parity is claimed.
+
+Built and signed the macOS app with the pinned CLI:
+`go run github.com/egoist/mygo/cmd/mygo@v0.6.3 build -platform darwin/arm64 -skip-dmg -skip-notarize -o artifacts/coss/app`.
+Final log: `/tmp/mygoui-coss-app-final.log`; the 13.0 MB app is at
+`artifacts/coss/app/darwin-arm64/Coss UI Gallery.app`. No notarization or
+distribution claim. Opened the native app and inspected real traffic lights
+at (16, 19) aligned with the 52 DIP title bar. Operated Cmd+K search, navigated
+to Button, activated Default (counter advanced), opened Appearance and selected
+Dark. Both appearances rendered in this scoped check.
+
+On the real macOS Metal window, MaskFade revealed the blue/green gradient
+beneath fading content. Activated a masked child button (counter advanced),
+then Page Down moved from builds 01-04 to 05-08 with both overflowing edges
+fading. The task's native screenshots hold this evidence. This is a scoped
+render/input check, not a GPU benchmark or every-backend certification.
+
+## Supplemental independent probes
+
+Final local probe reruns passed queued Command filtering/Enter and repeated
+activation, actual PreviewCard PointerLeave, SegmentedControl following parent
+movement, mask background/RTL/no-overflow/input, and Tabs after removing the
+selected item or receiving a disabled selected index.
+
+Probes use a temporary Go overlay against pinned MyGo solely to inject queued
+events and PointerLeave that ordinary Tester does not expose. Release module
+metadata is unchanged. Files: `/tmp/mygoui_final_integration_review_test.go`,
+`/tmp/mygoui_review_native_events_test.go`, `/tmp/mygoui_review_segment_test.go`,
+`/tmp/mygoui_review_mask_test.go`; overlay/modfile:
+`/tmp/mygoui_review_overlay.json`, `/tmp/mygoui_review.mod`. They supplement,
+not replace, the portable repository suite.
+
+No physical Windows/Linux window, browser runtime, screen reader, exhaustive
+IME/clipboard/gesture behavior or per-component all-state OS matrix was checked.
+Native menus/data-grid geometry/scrollbars/loading arcs/provider timing are
+intentional adaptations. Composer is plain text and Drawer lacks snap-point
+and nested-gesture coordination; see the component capability matrix.
+
+## Documentation and provenance observations
+
+The documentation pass read the downloaded coss site/LLM catalogs, pinned
+`apps/ui` registry/MDX, mixed-license declarations and current Go sources.
+It mapped 57 distinct component subjects and two hooks, recording partial
+adaptations and missing upstream behavior rather than certifying completion.
+
+Official font repository metadata and license text were inspected on
+2026-10-27: Cal Sans at `9fe03d44f00806aadeb6d3653e37dce358554de0` and
+Paper Mono at `e6eaeceaef02e77e3db997711e07a16378de2bd7`. Cal Sans upright/italic binaries were subsequently embedded unmodified with
+the OFL notice and explicitly registered/tested; Paper Mono was not embedded. See [docs/fonts.md](docs/fonts.md)
+and [docs/references.md](docs/references.md).

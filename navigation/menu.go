@@ -134,10 +134,10 @@ func buildMenu(c *ui.Context, o MenuOptions, extra menuExtra, parent *menuScope)
 // buildMenuSection builds a titled group of menu items.
 func buildMenuSection(c *ui.Context, o MenuSectionOptions, sc *menuScope) ui.Element {
 	t := theme.Colors(c)
-	section := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Gap(0).Role(ui.RoleGroup)
 	if o.Key != "" {
-		section.Key(o.Key)
+		c.Key(o.Key)
 	}
+	section := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Gap(0).Role(ui.RoleGroup)
 	if o.Title != "" {
 		section.Label(o.Title)
 	}
@@ -191,17 +191,16 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 	}
 	hasIndicator := (inMenu && sc.selection != MenuSelectNone) || o.Checked
 	hasSubmenu := len(o.Submenu) > 0
-	radio := inMenu && sc.selection == MenuSelectSingle
-	radius := theme.RadiusScale().XXL
-	el := ui.ButtonBase(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Justify(ui.Start).
-		Gap(scale(c, theme.Space12)).Padding(scale(c, theme.Space6), scale(c, theme.Space8)).
-		MinHeight(scale(c, 36)).Radius(radius).FocusRing(true).
-		Role(role).Label(o.Label).Cursor(ui.CursorPointer)
+	radius := theme.RadiusScale().SM
 	if o.Key != "" {
-		el.Key(o.Key)
+		c.Key(o.Key)
 	}
+	el := ui.ButtonBase(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Justify(ui.Start).
+		Gap(scale(c, theme.Space8)).Padding(scale(c, theme.Space4), scale(c, theme.Space8)).
+		MinHeight(scale(c, 28)).Radius(radius).FocusRing(true).
+		Role(role).Label(o.Label).Cursor(ui.CursorPointer)
 	el.Checked(on)
-	el = style.Background(el, radius, ui.Transparent, t.Default, t.Default)
+	el = style.Background(el, radius, ui.Transparent, t.Accent, t.Accent)
 	// Upstream's indicator is absolute: the row pads its start by 28 DIP to
 	// clear it, and both sides where a submenu keeps it at the end.
 	if hasIndicator {
@@ -211,10 +210,10 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 			el.PaddingEnd(scale(c, 28))
 		}
 	}
-	fg := t.DefaultForeground
+	fg := t.Foreground
 	indicatorColor := t.Muted
 	if o.Variant == MenuItemDanger {
-		fg, indicatorColor = t.Danger, t.Danger
+		fg, indicatorColor = t.DestructiveForeground, t.DestructiveForeground
 	}
 	if o.Description != "" {
 		el.Description(o.Description)
@@ -229,20 +228,16 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 	} else {
 		el.OnClick(func() { activateMenuItem(sc, inMenu, key, o) })
 	}
-	// The check draws itself in over 100 ms and the dot grows from 70% over
-	// 250 ms, as upstream's stroke dash offset and scale transition do. The
-	// value starts at its first target, so an item already checked in the
-	// first frame shows it at once.
+	// Checkbox and radio menu items share the same Coss check indicator.
 	if hasIndicator {
 		target := float32(0)
 		if on {
 			target = 1
 		}
-		d := menuCheckMotion
-		if radio {
-			d = menuIndicatorMotion
+		shown := target
+		if !theme.ReduceMotion(c) {
+			shown = el.AnimateTo("menu-indicator", target, ui.Animation{Duration: menuCheckMotion, Ease: ui.EaseOut})
 		}
-		shown := el.AnimateTo("menu-indicator", target, ui.Animation{Duration: d, Ease: ui.EaseOut})
 		glyph := &ui.Path{}
 		iconSize := scale(c, theme.IconMD)
 		el.DrawOver(func(p *ui.Painter, r ui.Rect) {
@@ -259,10 +254,6 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 				x = end
 			}
 			box := ui.Rect{X: x, Y: r.Y + (r.H-iconSize)/2, W: iconSize, H: iconSize}
-			if radio {
-				drawDot(p, box, 0.7+0.3*shown, indicatorColor.Alpha(shown))
-				return
-			}
 			drawCheck(p, glyph, box, shown, indicatorColor)
 		})
 	}
@@ -348,10 +339,10 @@ func SubMenu(c *ui.Context, anchor ui.Element, o SubMenuOptions) ui.Element {
 		return ui.Element{}
 	}
 	keepOverlay(c)
-	radius := min(scale(c, theme.Space32), theme.RadiusScale().XXXL)
+	radius := theme.RadiusScale().LG
 	var panel ui.Element
 	panel = ui.PopoverBase(c, anchor, o.Open, func(p ui.Element) {
-		p.MaxWidth(scale(c, 360)).MinWidth(scale(c, 220)).Padding(0)
+		p.MaxWidth(scale(c, 360)).MinWidth(scale(c, 128)).Padding(0)
 		overlayPanel(c, p, radius)
 		focus := ui.Local(p, "submenu-focus", func() bool { return true })
 		scroll := ui.Scroll(c).MaxHeight(scale(c, 360)).MinWidth(0).Shrink(0)
@@ -408,9 +399,9 @@ func Dropdown(c *ui.Context, o DropdownOptions) ui.Element {
 	if !o.Disabled {
 		trigger.OnClick(func() { *open = !*open })
 	}
-	radius := min(scale(c, theme.Space32), theme.RadiusScale().XXXL)
+	radius := theme.RadiusScale().LG
 	panel := ui.PopoverBase(c, trigger, open, func(p ui.Element) {
-		p.MinWidth(scale(c, 220)).MaxWidth(scale(c, 320)).Padding(0)
+		p.MinWidth(scale(c, 128)).MaxWidth(scale(c, 320)).Padding(0)
 		overlayPanel(c, p, radius)
 		focus := enter
 		scroll := ui.Scroll(c).MaxHeight(scale(c, 420)).MinWidth(0).Shrink(0)
@@ -419,7 +410,11 @@ func Dropdown(c *ui.Context, o DropdownOptions) ui.Element {
 		})
 	})
 	if panel.Valid() {
-		panel = anchored.Apply(panel, trigger, o.Placement, mygoui.SideBottom)
+		placement := o.Placement
+		if placement.Offset == 0 {
+			placement.Offset = 4
+		}
+		panel = anchored.Apply(panel, trigger, placement, mygoui.SideBottom)
 		entryFade(c, panel, panelEntryMotion)
 	}
 	return trigger

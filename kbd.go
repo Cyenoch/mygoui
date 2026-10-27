@@ -15,25 +15,36 @@ type KbdOptions struct {
 	Light bool
 }
 
-// Kbd renders one HeroUI keycap. Multiple keys form a chord separated by a
+// Kbd renders one coss ui keycap. Multiple keys form a chord separated by a
 // thin gap, with the concatenated chord as its accessible text.
 func Kbd(c *ui.Context, o KbdOptions) ui.Element {
 	t := theme.Colors(c)
-	background := t.Default
+	background := t.MutedBackground
 	if o.Light {
 		background = ui.Transparent
 	}
 	label := strings.Join(o.Keys, " ")
-	e := ui.Row(c).Shrink(0).Center().AlignSelf(ui.Start).Gap(theme.Space2).
-		MinHeight(theme.Scale(c, theme.HeightKbd)).
-		PaddingX(theme.Space8).Radius(theme.RadiusScale().LG).Background(background).
-		TextColor(t.Muted).Label(label)
+	e := ui.Row(c).Shrink(0).Center().AlignSelf(ui.Start).Gap(theme.Space4).
+		MinHeight(theme.Scale(c, theme.HeightKbd)).MinWidth(theme.Scale(c, theme.HeightKbd)).
+		PaddingX(theme.Space4).Radius(4).Background(background).
+		TextColor(t.MutedForeground).Label(label)
 	e.Children(func() {
-		ts := theme.SM()
+		ts := theme.XS()
 		ts.Weight = theme.WeightMedium
 		for _, key := range o.Keys {
 			style.Text(ui.Text(c, key), c, ts).SingleLine()
 		}
 	})
 	return e
+}
+
+// KbdGroup renders each key in a chord as a separate keycap.
+func KbdGroup(c *ui.Context, o KbdOptions) ui.Element {
+	e := ui.Row(c).Shrink(0).AlignSelf(ui.Start).AlignItems(ui.Center).
+		Gap(theme.Space4).Label(strings.Join(o.Keys, " "))
+	return e.Children(func() {
+		for _, key := range o.Keys {
+			Kbd(c, KbdOptions{Keys: []string{key}, Light: o.Light})
+		}
+	})
 }

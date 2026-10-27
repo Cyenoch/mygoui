@@ -9,7 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// ColorSliderOptions configures one channel slider with HeroUI's gradient
+// ColorSliderOptions configures one channel slider with the gradient
 // track and thumb.
 type ColorSliderOptions struct {
 	// Label names the slider for assistive technology, such as "Hue".
@@ -29,7 +29,7 @@ type ColorSliderOptions struct {
 	OnChange func()
 }
 
-// ColorSlider is HeroUI v3's single-channel color slider. It paints a gradient
+// ColorSlider is a single-channel color slider. It paints a gradient
 // of the channel's range with a draggable thumb; arrows move by one unit (ten
 // with Shift), and Home and End go to the ends.
 func ColorSlider(c *ui.Context, o ColorSliderOptions) ui.Element {
@@ -202,7 +202,7 @@ func colorSliderTrack(c *ui.Context, o ColorSliderOptions, label string,
 		if alpha {
 			p.Clip(r, radius, func() { checkers(p, r, 8) })
 		}
-		// HeroUI insets the gradient by 10 DIP at each end and draws the
+		// The control insets the gradient by 10 DIP at each end and draws the
 		// channel's extreme colors as caps, so the thumb travels between the
 		// cap centers rather than to the bare edges.
 		inset := thumb/2 + theme.Space2
@@ -288,7 +288,7 @@ func gradientAngle(vertical, rtl bool) float32 {
 }
 
 // fromPointer maps a pointer position inside a track to a channel value. The
-// thumb's center travels between the cap centers, HeroUI's half thumb plus a
+// thumb's center travels between the cap centers, the half thumb plus a
 // 2 DIP gap, so the ends are reachable at the track's outer edge.
 func fromPointer(x, y, width, height, thumb float32, lo, hi float64, vertical, rtl bool) float64 {
 	inset := thumb/2 + 2

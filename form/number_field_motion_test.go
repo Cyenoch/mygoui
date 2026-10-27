@@ -79,7 +79,7 @@ func TestNumberFieldStepperChrome(t *testing.T) {
 			if dec.Y != inc.Y {
 				t.Fatalf("steppers sit on different rows: decrement y=%v, increment y=%v", dec.Y, inc.Y)
 			}
-			// HeroUI mirrors the group: the decrement button starts the
+			// The decrement button starts the
 			// inline axis, which is the right in a right-to-left layout.
 			if mode.rtl != (dec.X > inc.X) {
 				t.Fatalf("decrement x=%v, increment x=%v in rtl=%v", dec.X, inc.X, mode.rtl)
@@ -91,52 +91,27 @@ func TestNumberFieldStepperChrome(t *testing.T) {
 				r    ui.Rect
 			}{{"minus", dec}, {"plus", inc}} {
 				cx, cy := int(tc.r.X+tc.r.W/2), int(tc.r.Y+tc.r.H/2)
-				if got := numberFieldContrast(img, cx, cy, f.pal.FieldBackground); got < 80 {
+				facePixel := img.RGBAAt(int(tc.r.X+4), cy)
+				face := ui.RGB(facePixel.R, facePixel.G, facePixel.B)
+				if got := numberFieldContrast(img, cx, cy, face); got < 80 {
 					t.Fatalf("%s icon center paints %v, only %d from the face %v",
-						tc.name, img.RGBAAt(cx, cy), got, f.pal.FieldBackground)
+						tc.name, img.RGBAAt(cx, cy), got, face)
 				}
 			}
 		})
 	}
 }
 
-// TestNumberFieldStepperPressScale checks the pressed stepper shrinks to 97%,
-// settles without asking for more frames and returns to full size; reduced
-// motion applies the pose at once.
-func TestNumberFieldStepperPressScale(t *testing.T) {
-	for _, reduce := range []bool{false, true} {
-		name := "motion"
-		if reduce {
-			name = "reduced motion"
-		}
-		t.Run(name, func(t *testing.T) {
-			f := newNumberFieldFixture(t, false, reduce, false)
-			inc := f.numberFieldButton(t, "Increase")
-			x, y := inc.X+inc.W/2, inc.Y+inc.H/2
-
-			f.tester.Press(x, y)
-			if !reduce {
-				if early := f.numberFieldButton(t, "Increase"); early.W < 39.8 {
-					t.Fatalf("pressed stepper jumped to %v instead of starting the pose", early.W)
-				}
-				f.tester.Advance(200 * time.Millisecond)
-			}
-			pressed := f.numberFieldButton(t, "Increase")
-			if want := float32(40 * 0.97); math.Abs(float64(pressed.W-want)) > 0.2 {
-				t.Fatalf("pressed stepper is %v wide, want %v", pressed.W, want)
-			}
-			if f.tester.FramePending() {
-				t.Fatal("pressed stepper still asks for frames after settling")
-			}
-
-			f.tester.Release(x, y)
-			if reduce {
-				return
-			}
-			f.tester.Advance(200 * time.Millisecond)
-			if back := f.numberFieldButton(t, "Increase"); math.Abs(float64(back.W)-40) > 0.2 {
-				t.Fatalf("released stepper is %v wide, want 40", back.W)
-			}
-		})
+// Coss changes the stepper background on hover without scaling its hit box.
+func TestNumberFieldStepperKeepsHitBoxOnPress(t *testing.T) {
+	f := newNumberFieldFixture(t, false, false, false)
+	before := f.numberFieldButton(t, "Increase")
+	x, y := before.X+before.W/2, before.Y+before.H/2
+	f.tester.Press(x, y)
+	f.tester.Advance(200 * time.Millisecond)
+	after := f.numberFieldButton(t, "Increase")
+	if math.Abs(float64(after.W-before.W)) > 0.2 {
+		t.Fatalf("stepper width changed on press: before %v, after %v", before.W, after.W)
 	}
+	f.tester.Release(x, y)
 }

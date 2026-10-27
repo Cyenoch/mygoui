@@ -12,7 +12,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// AvatarSize is HeroUI's avatar scale.
+// AvatarSize selects a native avatar size.
 type AvatarSize uint8
 
 const (
@@ -39,7 +39,7 @@ func Avatar(c *ui.Context, o AvatarOptions) ui.Element {
 	t := theme.Colors(c)
 	size, radius, ts := avatarMetrics(c, o.Size)
 	status := StatusColors(c, o.Color)
-	bg := t.Default
+	bg := t.Border
 	if o.Soft {
 		bg = status.Soft
 	}
@@ -63,9 +63,8 @@ func Avatar(c *ui.Context, o AvatarOptions) ui.Element {
 				if hasImage(o.Image) {
 					image := ui.Image(c, o.Image).Size(size, size).Fit(ui.Cover).Role(ui.RoleNone)
 					if !theme.ReduceMotion(c) {
-						// HeroUI fades a portrait in over the fallback. MyGo
-						// plays Enter only when the portrait outlives the
-						// frame that made it, so a first build shows at once.
+						// A newly loaded portrait fades in; an image already
+						// present on the first build shows immediately.
 						image.Transition(ui.ElementTransition{
 							Duration: 250 * time.Millisecond,
 							Ease:     ui.EaseOut,
@@ -84,18 +83,18 @@ func Avatar(c *ui.Context, o AvatarOptions) ui.Element {
 	return e
 }
 
-// avatarMetrics resolves HeroUI's portrait size, corner radius and fallback
-// type role. The overflow count shares them.
+// avatarMetrics resolves the portrait size, circular radius and fallback type
+// role. The overflow count shares them.
 func avatarMetrics(c *ui.Context, size AvatarSize) (float32, float32, theme.TextStyle) {
-	dip, radius, ts := float32(theme.HeightAvatarMD), theme.RadiusScale().XXXL, theme.SM()
+	dip := float32(theme.HeightAvatarMD)
 	switch size {
 	case AvatarSmall:
-		dip, radius, ts = theme.HeightAvatarSM, theme.RadiusScale().XXL, theme.XS()
+		dip = theme.HeightAvatarSM
 	case AvatarLarge:
-		dip, radius, ts = theme.HeightAvatarLG, theme.RadiusScale().XXXL, theme.Base()
+		dip = theme.HeightAvatarLG
 	}
-	ts.Weight = theme.WeightMedium
-	return theme.Scale(c, dip), radius, ts
+	actual := theme.Scale(c, dip)
+	return actual, actual / 2, theme.TextStyle{Size: dip * 0.375, LineHeight: dip * 0.5, Weight: theme.WeightMedium}
 }
 
 type avatarStateKey struct{}
@@ -143,7 +142,7 @@ func avatarInitials(name string) string {
 	return first + initial(fields[len(fields)-1])
 }
 
-// AvatarGroupOptions configures a HeroUI avatar stack or grid.
+// AvatarGroupOptions configures an avatar stack or grid.
 type AvatarGroupOptions struct {
 	Size    AvatarSize
 	Overlap float32
@@ -153,8 +152,8 @@ type AvatarGroupOptions struct {
 	Avatars []AvatarOptions
 }
 
-// AvatarGroup overlaps avatars by 8 DIPs and optionally separates them with a
-// background-colored ring. A positive Total adds an overflow count.
+// AvatarGroup overlaps avatars by 30% of the group size and optionally adds
+// background-colored rings. A Total above the displayed count adds overflow.
 func AvatarGroup(c *ui.Context, o AvatarGroupOptions) ui.Element {
 	var e ui.Element
 	if o.Grid {
@@ -164,7 +163,8 @@ func AvatarGroup(c *ui.Context, o AvatarGroupOptions) ui.Element {
 	}
 	overlap := o.Overlap
 	if overlap == 0 {
-		overlap = theme.Space8
+		size, _, _ := avatarMetrics(c, o.Size)
+		overlap = size * 0.3
 	}
 	t := theme.Colors(c)
 	e.Children(func() {

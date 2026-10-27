@@ -46,9 +46,10 @@ func TestCalendarBoundsStopMonthNavigation(t *testing.T) {
 	st := &date.CalendarState{}
 	tt := start(t, func(c *ui.Context) {
 		date.Calendar(c, date.CalendarOptions{
-			Today: jan2026,
-			Min:   time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC),
-			Max:   time.Date(2026, time.January, 31, 0, 0, 0, 0, time.UTC),
+			Today:    jan2026,
+			Min:      time.Date(2026, time.January, 1, 0, 0, 0, 0, time.UTC),
+			Max:      time.Date(2026, time.January, 31, 0, 0, 0, 0, time.UTC),
+			DayLabel: label,
 		}, st)
 	}, 340, 460)
 
@@ -64,6 +65,15 @@ func TestCalendarBoundsStopMonthNavigation(t *testing.T) {
 			t.Fatalf("%s left the bounded month: %v", action, tt.Texts())
 		}
 	}
+	if err := tt.Click("2026-01-15"); err != nil {
+		t.Fatal(err)
+	}
+	for _, key := range []ui.Key{ui.KeyPageUp, ui.KeyPageDown} {
+		tt.Key(0, key)
+		if st.Month.Month() != time.January || st.Cursor.Day() != 15 {
+			t.Fatalf("bounded keyboard navigation moved to %v, cursor %v", st.Month, st.Cursor)
+		}
+	}
 }
 
 // TestCalendarYearPickerHidesMonthNavigation checks that the month arrows stop
@@ -72,7 +82,10 @@ func TestCalendarBoundsStopMonthNavigation(t *testing.T) {
 func TestCalendarYearPickerHidesMonthNavigation(t *testing.T) {
 	st := &date.CalendarState{}
 	tt := start(t, func(c *ui.Context) {
-		date.Calendar(c, date.CalendarOptions{Today: time.Date(2026, time.March, 15, 12, 0, 0, 0, time.UTC)}, st)
+		date.Calendar(c, date.CalendarOptions{
+			Today:          time.Date(2026, time.March, 15, 12, 0, 0, 0, time.UTC),
+			ShowYearPicker: true,
+		}, st)
 	}, 340, 460)
 
 	if err := tt.Click("March 2026, Choose year"); err != nil {
@@ -112,7 +125,10 @@ func TestCalendarYearPickerHidesMonthNavigation(t *testing.T) {
 func TestCalendarYearPickerEscapeCloses(t *testing.T) {
 	st := &date.CalendarState{}
 	tt := start(t, func(c *ui.Context) {
-		date.Calendar(c, date.CalendarOptions{Today: time.Date(2026, time.March, 15, 12, 0, 0, 0, time.UTC)}, st)
+		date.Calendar(c, date.CalendarOptions{
+			Today:          time.Date(2026, time.March, 15, 12, 0, 0, 0, time.UTC),
+			ShowYearPicker: true,
+		}, st)
 	}, 340, 460)
 
 	if err := tt.Click("March 2026, Choose year"); err != nil {
@@ -141,7 +157,8 @@ func TestCalendarYearPickerFadesIn(t *testing.T) {
 			ui.Column(c).FillWidth().FillHeight().Padding(20).Background(pal.Background).
 				Children(func() {
 					date.Calendar(c, date.CalendarOptions{
-						Today: time.Date(2026, time.March, 15, 12, 0, 0, 0, time.UTC),
+						Today:          time.Date(2026, time.March, 15, 12, 0, 0, 0, time.UTC),
+						ShowYearPicker: true,
 					}, st)
 				})
 		}, 360, 480)
@@ -162,16 +179,16 @@ func TestCalendarYearPickerFadesIn(t *testing.T) {
 		}
 		x, y := int(cell.X+cell.W*0.3), int(cell.Y+cell.H*0.5)
 		before := tt.Image().RGBAAt(x, y)
-		if diff(before.R, pal.Accent.R) < 8 && diff(before.G, pal.Accent.G) < 8 &&
-			diff(before.B, pal.Accent.B) < 8 {
+		if diff(before.R, pal.Primary.R) < 8 && diff(before.G, pal.Primary.G) < 8 &&
+			diff(before.B, pal.Primary.B) < 8 {
 			t.Fatal("the year grid is already opaque on its first frame")
 		}
 		tt.Advance(300 * time.Millisecond)
 		after := tt.Image().RGBAAt(x, y)
-		if diff(after.R, pal.Accent.R) > 3 || diff(after.G, pal.Accent.G) > 3 ||
-			diff(after.B, pal.Accent.B) > 3 {
+		if diff(after.R, pal.Primary.R) > 3 || diff(after.G, pal.Primary.G) > 3 ||
+			diff(after.B, pal.Primary.B) > 3 {
 			t.Fatalf("settled year fill = %d,%d,%d, want %d,%d,%d",
-				after.R, after.G, after.B, pal.Accent.R, pal.Accent.G, pal.Accent.B)
+				after.R, after.G, after.B, pal.Primary.R, pal.Primary.G, pal.Primary.B)
 		}
 	})
 
@@ -183,9 +200,9 @@ func TestCalendarYearPickerFadesIn(t *testing.T) {
 		}
 		x, y := int(cell.X+cell.W*0.3), int(cell.Y+cell.H*0.5)
 		got := tt.Image().RGBAAt(x, y)
-		if diff(got.R, pal.Accent.R) > 3 || diff(got.G, pal.Accent.G) > 3 ||
-			diff(got.B, pal.Accent.B) > 3 {
-			t.Fatalf("reduced-motion year fill = %d,%d,%d, want accent",
+		if diff(got.R, pal.Primary.R) > 3 || diff(got.G, pal.Primary.G) > 3 ||
+			diff(got.B, pal.Primary.B) > 3 {
+			t.Fatalf("reduced-motion year fill = %d,%d,%d, want primary",
 				got.R, got.G, got.B)
 		}
 	})
@@ -233,10 +250,11 @@ func TestRangeCalendarRejectsOutOfBoundsEndpoint(t *testing.T) {
 	st := &date.RangeCalendarState{}
 	tt := start(t, func(c *ui.Context) {
 		date.RangeCalendar(c, date.RangeCalendarOptions{
-			Today:    time.Date(2026, time.February, 10, 12, 0, 0, 0, time.UTC),
-			Min:      time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC),
-			Max:      time.Date(2026, time.February, 28, 0, 0, 0, 0, time.UTC),
-			DayLabel: label,
+			Today:        time.Date(2026, time.February, 10, 12, 0, 0, 0, time.UTC),
+			Min:          time.Date(2026, time.February, 1, 0, 0, 0, 0, time.UTC),
+			Max:          time.Date(2026, time.February, 28, 0, 0, 0, 0, time.UTC),
+			DayLabel:     label,
+			FirstWeekday: time.Monday,
 		}, st)
 	}, 360, 500)
 

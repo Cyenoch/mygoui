@@ -33,7 +33,7 @@ type ComponentExample struct {
 	Demo               func(c *ui.Context, s *State)
 }
 
-// ComponentPage is one component's documentation page, shaped like a HeroUI
+// ComponentPage is one component's documentation page, shaped like a Coss
 // docs page: live demos, a Go usage snippet, its usable parameters and the
 // theme tokens it consumes. Examples split demos into named frames.
 type ComponentPage struct {
@@ -120,12 +120,10 @@ func componentPage(id string) (ComponentPage, bool) {
 // mygouiImportPath is the module root the usage bar always names.
 const mygouiImportPath = "github.com/Cyenoch/mygoui"
 
-// mygouiImport is the module root's single-line import.
-const mygouiImport = `import "` + mygouiImportPath + `"`
-
 // RegisterComponent registers p as a gallery page. The page ID is the
 // component ID, so the sidebar, search and tests address it directly.
 func RegisterComponent(p ComponentPage) {
+	p.Tokens = cossTokens(p)
 	componentMu.Lock()
 	componentByID[p.ID] = p
 	componentMu.Unlock()
@@ -141,31 +139,60 @@ func RegisterComponent(p ComponentPage) {
 	})
 }
 
-// buildComponentPage renders the docs sections every component page shares.
-// The section order matches the HeroUI docs: usage, examples, the API table
-// and the theme tokens the component consumes.
+// buildComponentPage shows one workbench view while keeping the page's
+// examples, source and reference data together.
 func buildComponentPage(c *ui.Context, s *State, p ComponentPage) ui.Element {
 	chrome := docsChromeOf(s, p.ID)
-	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space32)).
+	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space16)).
 		Children(func() {
-			docsSection(c, chrome, "usage", "Usage", func() {
-				usageBar(c, chrome, p)
-			})
-			docsSection(c, chrome, "examples", "Examples", func() {
-				examplePanel(c, s, p)
-			})
-			docsSection(c, chrome, "api", "API Reference", func() {
-				ui.Column(c).Gap(theme.Scale(c, theme.Space12)).Children(func() {
-					mygoui.Typography(c, p.Title+" options", mygoui.TypographyOptions{
-						Type: theme.TypeBodySM, Muted: true,
-					})
-					apiTable(c, p.Params)
+			switch s.Panel {
+			case 1:
+				ui.Row(c).FillWidth().Wrap().Gap(theme.Space8).AlignItems(ui.Center).Children(func() {
+					docsCopyPill(c, &chrome.MarkdownCopiedAt, "Copy Markdown", lucide.FileText(),
+						func() string { return markdownDoc(p) })
+					docsCopyPill(c, &chrome.ImportCopiedAt, "Copy import", lucide.Code(),
+						func() string { return p.importStatement() })
+					if url := sourceURL(p.ID); url != "" {
+						services := c.Services()
+						mygoui.Link(c, mygoui.LinkOptions{
+							Label: "Coss source", Icon: lucide.ExternalLink(),
+							OnClick: func() { services.OpenURL(url) },
+						})
+					}
 				})
-			})
-			docsSection(c, chrome, "tokens", "Theme tokens", func() {
-				tokenCards(c, p.Tokens)
-			})
+				usageBar(c, chrome, p)
+				panel(c, func() { exampleCode(c, s, p) })
+			case 2:
+				apiTable(c, s, p.Params)
+			case 3:
+				tokenCards(c, s, p.Tokens)
+			default:
+				examplePanel(c, s, p)
+			}
 		})
+}
+
+func docsCopyPill(c *ui.Context, at *time.Time, label string, icon *ui.SVG, text func() string) {
+	shown, glyph := label, icon
+	if !at.IsZero() {
+		elapsed := c.Now().Sub(*at)
+		if elapsed < codeCopyFeedback {
+			shown, glyph = "Copied", lucide.Check()
+			c.After(codeCopyFeedback - elapsed)
+		} else {
+			*at = time.Time{}
+		}
+	}
+	services := c.Services()
+	mygoui.Button(c, mygoui.ButtonOptions{
+		Label: shown, Icon: glyph, Variant: mygoui.ButtonSecondary,
+		Size: theme.ButtonSmall,
+		OnClick: func() {
+			services.WriteClipboard(text())
+			*at = c.Now()
+			c.Invalidate()
+		},
+	})
 }
 
 // usageBar is the import block under Usage: one rounded bar, mono text and an
@@ -196,79 +223,39 @@ func usageBar(c *ui.Context, chrome *docsChromeState, p ComponentPage) ui.Elemen
 func demoPanel(c *ui.Context, label string, body func()) ui.Element {
 	t := theme.Colors(c)
 	panel := ui.Column(c).FillWidth().MinWidth(0).Clip().
-		Radius(theme.Scale(c, 20)).Background(t.Surface).
+		Radius(theme.RadiusScale().XL).Background(t.Card).
 		TextColor(t.SurfaceForeground).BorderWidth(theme.Hairline).
 		BorderColor(t.Border).Label(label)
 	panel.Children(func() {
-		ui.Column(c).FillWidth().MinWidth(0).Padding(theme.Scale(c, theme.Space40)).
+		ui.Column(c).FillWidth().MinWidth(0).Padding(theme.Scale(c, theme.Space24)).
 			AlignItems(ui.Center).Children(body)
 	})
 	return panel
 }
 
-// exampleFrame renders one named demo: its title and description outside,
-// then its own panel containing only the demo.
-func exampleFrame(c *ui.Context, s *State, label, title, description string,
-	demo func(c *ui.Context, s *State)) (ui.Element, ui.Element) {
-	var panel ui.Element
-	frame := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space12)).
+// exampleFrame keeps each live specimen in its own keyed surface.
+func exampleFrame(c *ui.Context, s *State, example ComponentExample) ui.Element {
+	return ui.Column(c.Key(example.Title)).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space8)).
 		Children(func() {
-			ui.Column(c).Gap(theme.Scale(c, theme.Space4)).Children(func() {
-				mygoui.Typography(c, title, mygoui.TypographyOptions{Type: theme.TypeH5})
-				if description != "" {
-					mygoui.Typography(c, description, mygoui.TypographyOptions{
-						Type: theme.TypeBodySM, Muted: true,
-					})
-				}
-			})
-			panel = demoPanel(c, "Example panel: "+label, func() {
-				if demo != nil {
-					demo(c, s)
+			mygoui.Typography(c, example.Title, mygoui.TypographyOptions{Type: theme.TypeH5})
+			demoPanel(c, "Example panel: "+example.Title, func() {
+				if example.Demo != nil {
+					example.Demo(c, s)
 				}
 			})
 		})
-	return frame, panel
 }
 
-// examplePanel renders a page's examples and its shared code. Each
-// ComponentExample gets its own panel. A single frame carries the code area
-// under a divider; two or more frames share one code panel under a small
-// "Code" label. The full snippet renders once.
+// examplePanel renders all live examples, including off-screen scroll content.
 func examplePanel(c *ui.Context, s *State, p ComponentPage) ui.Element {
-	t := theme.Colors(c)
-	var lastPanel ui.Element
-	outer := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space40))
-	outer.Children(func() {
+	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space24)).Children(func() {
 		for _, example := range p.Examples {
-			_, panel := exampleFrame(c, s, example.Title, example.Title,
-				example.Description, example.Demo)
-			lastPanel = panel
+			exampleFrame(c, s, example)
 		}
-
-		if strings.TrimSpace(p.Code) == "" {
-			return
-		}
-		if len(p.Examples) <= 1 && lastPanel.Valid() {
-			lastPanel.Children(func() {
-				mygoui.Separator(c, mygoui.SeparatorOptions{})
-				exampleCode(c, s, p)
-			})
-			return
-		}
-		ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space12)).
-			Children(func() {
-				mygoui.Typography(c, "Code", mygoui.TypographyOptions{Type: theme.TypeH5})
-				panel := ui.Column(c).FillWidth().MinWidth(0).Clip().
-					Radius(theme.Scale(c, 20)).Background(t.Surface).
-					TextColor(t.SurfaceForeground).BorderWidth(theme.Hairline).
-					BorderColor(t.Border).Label("Example code panel")
-				panel.Children(func() { exampleCode(c, s, p) })
-			})
 	})
-	return outer
 }
 
-// panel is a HeroUI documentation surface: 16 DIP padding, 12 DIP radius,
+// panel is a Coss documentation surface: 16 DIP padding, 12 DIP radius,
 // a hairline border and the page surface.
 func panel(c *ui.Context, body func()) ui.Element {
 	t := theme.Colors(c)
@@ -283,6 +270,11 @@ func panel(c *ui.Context, body func()) ui.Element {
 func markdownDoc(p ComponentPage) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# %s\n\n%s\n", p.Title, p.Description)
+	if url := sourceURL(p.ID); url != "" {
+		fmt.Fprintf(&b, "\n[Coss source](%s)\n", url)
+	} else {
+		b.WriteString("\nNative addition.\n")
+	}
 	if code := strings.TrimSpace(p.Code); code != "" {
 		fmt.Fprintf(&b, "\n## Usage\n\n```go\n%s\n```\n", code)
 	}
@@ -315,7 +307,7 @@ func mdCell(text string) string {
 
 // exampleCode is the code area of the Examples panel: a compact header with
 // an icon-only copy control, a line-number gutter and highlighted lines that
-// scroll horizontally. Long snippets fold to six lines under a fade.
+// scroll horizontally. Long snippets can fold to six lines under a fade.
 func exampleCode(c *ui.Context, s *State, p ComponentPage) {
 	code := strings.TrimRight(p.Code, "\n")
 	if strings.TrimSpace(code) == "" {
@@ -326,7 +318,7 @@ func exampleCode(c *ui.Context, s *State, p ComponentPage) {
 	long := len(lines) > codeCollapseLines
 	st := StateOf[codeScrollState](s, "code:"+p.ID)
 	visible := lines
-	collapsed := long && !st.Expanded
+	collapsed := long && st.Collapsed
 	if collapsed {
 		visible = lines[:codeCollapseLines]
 	}
@@ -374,7 +366,7 @@ func exampleCode(c *ui.Context, s *State, p ComponentPage) {
 						Label: "Expand code", Icon: lucide.ChevronDown(),
 						Variant: mygoui.ButtonSecondary, Size: theme.ButtonSmall,
 						OnClick: func() {
-							st.Expanded = true
+							st.Collapsed = false
 							c.Invalidate()
 						},
 					})
@@ -388,7 +380,7 @@ func exampleCode(c *ui.Context, s *State, p ComponentPage) {
 							Label: "Collapse code", Icon: lucide.ChevronUp(),
 							Variant: mygoui.ButtonGhost, Size: theme.ButtonSmall,
 							OnClick: func() {
-								st.Expanded = false
+								st.Collapsed = true
 								c.Invalidate()
 							},
 						})
@@ -512,7 +504,7 @@ func goSpans(c *ui.Context, line string) []ui.Span {
 			}
 			word := line[i:j]
 			if goKeywords[word] {
-				add(word, t.Accent, false)
+				add(word, t.Primary, false)
 			} else {
 				add(word, t.Foreground, false)
 			}
@@ -534,9 +526,9 @@ func goSpans(c *ui.Context, line string) []ui.Span {
 // lines do not truncate, its expanded/collapsed choice and the time its copy
 // control last reported success, so feedback survives frames.
 type codeScrollState struct {
-	Scroll   ui.ScrollState
-	CopiedAt time.Time
-	Expanded bool
+	Scroll    ui.ScrollState
+	CopiedAt  time.Time
+	Collapsed bool
 }
 
 // codeCopyFeedback is how long the copy button shows "Copied".
@@ -549,11 +541,11 @@ const codeCollapseLines = 6
 // apiTable lists a component's parameters. Above 760 DIP of page width it
 // keeps the Name/Type/Default/Description table; below it stacks one block
 // per parameter so long values stay readable.
-func apiTable(c *ui.Context, params []ComponentParam) {
+func apiTable(c *ui.Context, s *State, params []ComponentParam) {
 	if len(params) == 0 {
 		return
 	}
-	width := pageWidth(c)
+	width := pageWidth(c, s)
 	if width < theme.Scale(c, 600) {
 		apiStacked(c, params)
 		return
@@ -587,7 +579,7 @@ func apiStacked(c *ui.Context, params []ComponentParam) {
 						Gap(theme.Space6).Children(func() {
 						apiParamName(c, param.Name)
 						if param.Type != "" {
-							codePill(c, param.Type, theme.Colors(c).Accent)
+							codePill(c, param.Type, theme.Colors(c).Foreground)
 						}
 						if param.Default != "" {
 							codePill(c, param.Default, defaultInk(c, param.Default))
@@ -634,7 +626,7 @@ func apiRow(c *ui.Context, p ComponentParam, header bool, available float32) {
 				apiHeaderText(c, p.Type)
 				return
 			}
-			codePill(c, p.Type, theme.Colors(c).Accent)
+			codePill(c, p.Type, theme.Colors(c).Foreground)
 		})
 		ui.Column(c).Width(defW).Shrink(0).MinWidth(0).Children(func() {
 			if header {
@@ -699,7 +691,37 @@ func defaultInk(c *ui.Context, value string) ui.Color {
 // tokenRoles explains what each theme token is for, so a token card is
 // self-explanatory rather than a bare name.
 var tokenRoles = map[string]string{
-	"Accent":                     "Primary action and focus emphasis.",
+	"Primary":                    "Primary action fill; neutral by default.",
+	"PrimaryForeground":          "Text and icons on a Primary fill.",
+	"Secondary":                  "Low-emphasis control fill.",
+	"SecondaryForeground":        "Text and icons on a Secondary fill.",
+	"Card":                       "Card and panel background.",
+	"CardForeground":             "Text and icons on a Card.",
+	"Popover":                    "Floating menu and popover background.",
+	"PopoverForeground":          "Text and icons inside a Popover.",
+	"MutedBackground":            "Quiet background; CSS --muted.",
+	"MutedForeground":            "Secondary text; CSS --muted-foreground.",
+	"Destructive":                "Destructive action fill.",
+	"DestructiveForeground":      "Destructive status text.",
+	"Input":                      "Input outline at rest.",
+	"Ring":                       "Keyboard focus ring.",
+	"Chart1":                     "First chart series.",
+	"Chart2":                     "Second chart series.",
+	"Chart3":                     "Third chart series.",
+	"Chart4":                     "Fourth chart series.",
+	"Chart5":                     "Fifth chart series.",
+	"Sidebar":                    "Sidebar background.",
+	"SidebarForeground":          "Sidebar supporting text.",
+	"SidebarPrimary":             "Sidebar primary action fill.",
+	"SidebarPrimaryForeground":   "Text on a SidebarPrimary fill.",
+	"SidebarAccent":              "Selected or hovered navigation row.",
+	"SidebarAccentForeground":    "Text on a SidebarAccent fill.",
+	"SidebarBorder":              "Sidebar boundary and separators.",
+	"SidebarRing":                "Sidebar keyboard focus ring.",
+	"Code":                       "Code block background.",
+	"CodeForeground":             "Code block text.",
+	"CodeHighlight":              "Highlighted source line.",
+	"Accent":                     "Subtle hover and interaction fill.",
 	"AccentForeground":           "Text and icons on an Accent fill.",
 	"AccentHover":                "Accent fill under the pointer.",
 	"AccentSoft":                 "Selected or softly highlighted surface.",
@@ -726,7 +748,7 @@ var tokenRoles = map[string]string{
 	"DefaultSoftForeground":      "Text on a DefaultSoft surface.",
 	"DefaultSoftHover":           "DefaultSoft fill under the pointer.",
 	"FieldBackground":            "Input and text-field fill.",
-	"FieldBorder":                "Input outline at rest; transparent by default.",
+	"FieldBorder":                "Native derived input outline.",
 	"FieldBorderHover":           "Input outline under the pointer.",
 	"FieldBorderFocus":           "Input outline while focused.",
 	"FieldFocus":                 "Input fill while focused.",
@@ -735,8 +757,8 @@ var tokenRoles = map[string]string{
 	"FieldPlaceholder":           "Placeholder text inside an empty field.",
 	"Focus":                      "Ring around the focused control.",
 	"Foreground":                 "Primary body and heading text.",
-	"Info":                       "Informational status; starts as the Accent family.",
-	"InfoForeground":             "Text and icons on an Info fill.",
+	"Info":                       "Informational status color.",
+	"InfoForeground":             "Informational status text.",
 	"InfoHover":                  "Info fill under the pointer.",
 	"InfoSoft":                   "Informational status at low emphasis.",
 	"InfoSoftForeground":         "Text on an InfoSoft surface.",
@@ -753,7 +775,7 @@ var tokenRoles = map[string]string{
 	"SeparatorSecondary":         "Stronger divider rule.",
 	"SeparatorTertiary":          "Strongest divider rule.",
 	"Success":                    "Positive status and valid state.",
-	"SuccessForeground":          "Text on a Success fill.",
+	"SuccessForeground":          "Positive status text.",
 	"SuccessHover":               "Success fill under the pointer.",
 	"SuccessSoft":                "Positive status fill at low emphasis.",
 	"SuccessSoftForeground":      "Text on a SuccessSoft surface.",
@@ -767,7 +789,7 @@ var tokenRoles = map[string]string{
 	"SurfaceTertiary":            "Tertiary, quietest surface.",
 	"SurfaceTertiaryForeground":  "Text on a SurfaceTertiary surface.",
 	"Warning":                    "Caution status and attention state.",
-	"WarningForeground":          "Text on a Warning fill.",
+	"WarningForeground":          "Caution status text.",
 	"WarningHover":               "Warning fill under the pointer.",
 	"WarningSoft":                "Caution status fill at low emphasis.",
 	"WarningSoftForeground":      "Text on a WarningSoft surface.",
@@ -781,6 +803,66 @@ var tokenRoles = map[string]string{
 // field for each of tens of cards on every frame.
 func paletteColor(p *theme.Palette, token string) (ui.Color, bool) {
 	switch token {
+	case "Primary":
+		return p.Primary, true
+	case "PrimaryForeground":
+		return p.PrimaryForeground, true
+	case "Secondary":
+		return p.Secondary, true
+	case "SecondaryForeground":
+		return p.SecondaryForeground, true
+	case "Card":
+		return p.Card, true
+	case "CardForeground":
+		return p.CardForeground, true
+	case "Popover":
+		return p.Popover, true
+	case "PopoverForeground":
+		return p.PopoverForeground, true
+	case "MutedBackground":
+		return p.MutedBackground, true
+	case "MutedForeground":
+		return p.MutedForeground, true
+	case "Destructive":
+		return p.Destructive, true
+	case "DestructiveForeground":
+		return p.DestructiveForeground, true
+	case "Input":
+		return p.Input, true
+	case "Ring":
+		return p.Ring, true
+	case "Chart1":
+		return p.Chart1, true
+	case "Chart2":
+		return p.Chart2, true
+	case "Chart3":
+		return p.Chart3, true
+	case "Chart4":
+		return p.Chart4, true
+	case "Chart5":
+		return p.Chart5, true
+	case "Sidebar":
+		return p.Sidebar, true
+	case "SidebarForeground":
+		return p.SidebarForeground, true
+	case "SidebarPrimary":
+		return p.SidebarPrimary, true
+	case "SidebarPrimaryForeground":
+		return p.SidebarPrimaryForeground, true
+	case "SidebarAccent":
+		return p.SidebarAccent, true
+	case "SidebarAccentForeground":
+		return p.SidebarAccentForeground, true
+	case "SidebarBorder":
+		return p.SidebarBorder, true
+	case "SidebarRing":
+		return p.SidebarRing, true
+	case "Code":
+		return p.Code, true
+	case "CodeForeground":
+		return p.CodeForeground, true
+	case "CodeHighlight":
+		return p.CodeHighlight, true
 	case "Accent":
 		return p.Accent, true
 	case "AccentForeground":
@@ -932,11 +1014,11 @@ func paletteColor(p *theme.Palette, token string) (ui.Color, bool) {
 // tokenCards shows a component's theme tokens as cards: the live swatch, its
 // name and hex, the light and dark variants and what the token is for. The
 // three palettes are resolved once for every card in the section.
-func tokenCards(c *ui.Context, tokens []string) {
+func tokenCards(c *ui.Context, s *State, tokens []string) {
 	if len(tokens) == 0 {
 		return
 	}
-	width := pageWidth(c)
+	width := pageWidth(c, s)
 	two := width >= theme.Scale(c, 600)
 	gap := float32(theme.Space12)
 	cardWidth := width

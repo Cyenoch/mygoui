@@ -7,7 +7,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// ListGroupOptions configures a native HeroUI list group.
+// ListGroupOptions configures a native list group.
 type ListGroupOptions struct {
 	Variant SurfaceVariant
 	Label   string

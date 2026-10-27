@@ -8,7 +8,7 @@ import (
 )
 
 // formTextTester runs a form specimen in a filled column and applies the
-// HeroUI theme, as an application's view root does.
+// configured theme, as an application's view root does.
 func formTextTester(t *testing.T, build func(c *ui.Context)) *ui.Tester {
 	t.Helper()
 	return ui.NewTester(func(c *ui.Context) {

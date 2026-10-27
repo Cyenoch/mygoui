@@ -1,4 +1,4 @@
-// Package color implements HeroUI v3's color controls with native MyGo
+// Package color implements color controls with native MyGo
 // painting, keyboard handling and accessibility. Callers own every value; the
 // package performs no I/O and builds no images.
 package color

@@ -1,10 +1,10 @@
 module github.com/Cyenoch/mygoui
 
-go 1.27.1
+go 1.27.3
 
 require (
 	github.com/Cyenoch/mygoicons v0.2.1
-	github.com/egoist/mygo v0.6.3
+	github.com/egoist/mygo v0.7.1
 )
 
 require (
