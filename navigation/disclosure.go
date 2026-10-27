@@ -28,10 +28,10 @@ func Disclosure(c *ui.Context, o DisclosureOptions) ui.Element {
 
 func disclosure(c *ui.Context, o DisclosureOptions, group *disclosureGroupScope) ui.Element {
 	t := theme.Colors(c)
-	root := ui.Column(c).FillWidth().MinWidth(0).Shrink(0)
 	if o.Key != "" {
-		root.Key(o.Key)
+		c.Key(o.Key)
 	}
+	root := ui.Column(c).FillWidth().MinWidth(0).Shrink(0)
 	open := o.Open
 	if open == nil {
 		open = ui.Local(root, "disclosure-open", func() bool { return false })

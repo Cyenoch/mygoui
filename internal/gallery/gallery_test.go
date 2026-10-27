@@ -55,7 +55,7 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 			"pagination", "toolbar", "menu", "dropdown", "submenu",
 		},
 		"Overlays": {
-			"modal", "alertdialog", "drawer", "bottomsheet", "dialog", "popover",
+			"dialog", "alertdialog", "drawer", "popover",
 			"tooltip", "toast", "previewcard", "sheet",
 		},
 		"Dates": {

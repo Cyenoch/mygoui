@@ -201,6 +201,9 @@ func ToggleButtonGroup(c *ui.Context, o ToggleButtonGroupOptions, buttons ...Tog
 				b.FullWidth = true
 			}
 			item := toggleButtonView(c, b, adj)
+			if vertical {
+				item.FillWidth()
+			}
 			if o.FullWidth && !vertical {
 				item.Grow(1).Basis(0).MinWidth(0)
 			}

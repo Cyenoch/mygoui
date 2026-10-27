@@ -51,7 +51,7 @@ not download, install or register the corresponding fonts.
 
 ## MyGo
 
-`github.com/egoist/mygo v0.6.3` is a module dependency under MIT, copyright
+`github.com/egoist/mygo v0.7.1` is a module dependency under MIT, copyright
 2026 MyGo contributors. Its full [license](licenses/MyGo-LICENSE) is retained.
 
 Spinner uses MyGo's `plugins/loading`, whose shapes and motion follow Jakub
@@ -73,13 +73,12 @@ distributing icons or applications containing them.
 
 No Twemoji package is imported by this library.
 
-## Historical references
+## Earlier reference attribution
 
-The remaining `references/heroui` and `references/heroui-native` submodules
-and [Apache 2.0 license text](licenses/HeroUI-LICENSE) are historical reference
-artifacts. They are retained for attribution history; HeroUI no longer owns
-the current design or token contract. Each reference subtree retains its
-upstream terms.
+The [retained Apache 2.0 notice](licenses/legacy-Apache-2.0.txt) preserves the
+original NextUI Inc. copyright for earlier reference work. It is not a current
+design source. The only reference submodule is `references/coss`; the mixed
+upstream licensing boundary is described in [docs/references.md](docs/references.md).
 
 ## Agent skills
 

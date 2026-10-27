@@ -136,10 +136,11 @@ func init() {
 			}},
 			{Title: "Mixed controls", Demo: func(c *ui.Context, s *State) {
 				st := cossStateOf(s, "group")
-				mygoui.Group(c, mygoui.GroupOptions{FullWidth: true, Label: "Repository search"},
+				mygoui.Group(c, mygoui.GroupOptions{Label: "Repository search"},
 					mygoui.GroupItem{Key: "query", Build: func(corners [4]float32) ui.Element {
 						return ui.TextInput(c, &st.Name).Label("Repository query").Placeholder("Find a repository").
-							MinWidth(0).Radius(corners[0], corners[1], corners[2], corners[3])
+							Width(theme.Scale(c, 200)).MinWidth(0).
+							Radius(corners[0], corners[1], corners[2], corners[3])
 					}},
 					mygoui.GroupItem{Key: "search", Build: func(corners [4]float32) ui.Element {
 						return mygoui.Button(c, mygoui.ButtonOptions{
@@ -147,12 +148,41 @@ func init() {
 						})
 					}},
 				)
-				ui.Text(c, "Query: "+st.Last)
+				if st.Last != "" {
+					ui.Text(c, st.Last)
+				}
 			}},
 			{Title: "Vertical", Demo: func(c *ui.Context, s *State) {
 				st := cossStateOf(s, "group")
-				items := make([]mygoui.GroupItem, 0, 3)
-				for _, label := range []string{"Profile", "Security", "Billing"} {
+				ui.Row(c).FillWidth().Justify(ui.Center).Children(func() {
+					mygoui.Group(c, mygoui.GroupOptions{Orientation: mygoui.Vertical, Label: "Zoom controls"},
+						mygoui.GroupItem{Key: "in", Build: func(corners [4]float32) ui.Element {
+							return mygoui.Button(c, mygoui.ButtonOptions{
+								Label: "Zoom in", Icon: lucide.ZoomIn(), IconOnly: true,
+								Variant: mygoui.ButtonOutline, Corners: &corners, OnClick: func() { st.Count++ },
+							})
+						}},
+						mygoui.GroupItem{Key: "separator", Build: func([4]float32) ui.Element {
+							return mygoui.Separator(c, mygoui.SeparatorOptions{}).Background(theme.Colors(c).Input)
+						}},
+						mygoui.GroupItem{Key: "out", Build: func(corners [4]float32) ui.Element {
+							return mygoui.Button(c, mygoui.ButtonOptions{
+								Label: "Zoom out", Icon: lucide.ZoomOut(), IconOnly: true,
+								Variant: mygoui.ButtonOutline, Corners: &corners, OnClick: func() { st.Count-- },
+							})
+						}},
+					)
+				})
+			}},
+			{Title: "Full width", Demo: func(c *ui.Context, s *State) {
+				st := cossStateOf(s, "group")
+				items := make([]mygoui.GroupItem, 0, 5)
+				for i, label := range []string{"Profile", "Security", "Billing"} {
+					if i > 0 {
+						items = append(items, mygoui.GroupItem{Key: label + "-separator", Build: func([4]float32) ui.Element {
+							return mygoui.Separator(c, mygoui.SeparatorOptions{}).Background(theme.Colors(c).Input)
+						}})
+					}
 					items = append(items, mygoui.GroupItem{Key: label, Build: func(corners [4]float32) ui.Element {
 						return mygoui.Button(c, mygoui.ButtonOptions{
 							Label: label, Variant: mygoui.ButtonOutline, Corners: &corners,
@@ -738,8 +768,9 @@ func sheetSpecimen(c *ui.Context, st *cossState, index int, side mygoui.Side) {
 			form.Switch(c, form.SwitchOptions{Label: "Notifications", On: &st.Checked})
 		},
 		Footer: func() {
+			w, _ := c.Size()
 			mygoui.Button(c, mygoui.ButtonOptions{
-				Label: "Save settings", OnClick: func() { st.Count++; st.Open[index] = false },
+				Label: "Save settings", FullWidth: w < 640, OnClick: func() { st.Count++; st.Open[index] = false },
 			})
 		},
 	})

@@ -72,7 +72,7 @@ func TestColorSliderPointerClampsToEnds(t *testing.T) {
 	}
 }
 
-// TestColorSliderCapsPaintChannelEnds checks the solid end caps HeroUI draws
+// TestColorSliderCapsPaintChannelEnds checks the solid end caps the control draws
 // outside the gradient: the unselected red channel's extremes.
 func TestColorSliderCapsPaintChannelEnds(t *testing.T) {
 	s := NewColorState(ui.RGB(128, 80, 40))

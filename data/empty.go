@@ -26,10 +26,15 @@ func buildEmpty(c *ui.Context, o TableOptions, st *TableState, tl *tableLayout, 
 			st.List.Sort = &st.nativeSort
 			st.List.Selected = nil
 			st.List.Selection = nil
-			ui.Table(c, &st.List, tl.nativeColumns(), 0, func(row, col int) {}).
+			header := ui.Table(c, &st.List, tl.nativeColumns(), 0, func(row, col int) {}).
 				Height(theme.Space(8) + theme.Hairline).
 				Shrink(0).MinWidth(0).
 				Label(o.Label).FontSize(theme.Scale(c, 14))
+			if o.Variant == TableSecondary {
+				// Clip the divider below the native header, not its grips.
+				header.Height(theme.Space(8))
+				ui.Box(c).Height(theme.Hairline).Shrink(0)
+			}
 		}
 		body := ui.Column(c).Grow(1).MinWidth(0).
 			AlignItems(ui.Center).Justify(ui.Center).

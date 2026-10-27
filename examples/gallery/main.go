@@ -19,7 +19,17 @@ func main() {
 	mygo.App.OnWindowAllClosed(func() { mygo.App.Quit() })
 	mygo.App.WhenReady(func() {
 		state := gallery.New()
-		mygo.NewWindow(windowOptions(state))
+		window := mygo.NewWindow(windowOptions(state))
+		state.Window = window
+		state.OnAppearanceChange = func(dark bool) {
+			source := mygo.ThemeLight
+			if dark {
+				source = mygo.ThemeDark
+			}
+			window.SetWindowButtonsTheme(source)
+		}
+		state.OnAppearanceChange(state.Dark)
+		window.Invalidate()
 	})
 	if err := mygo.App.Run(); err != nil {
 		log.Fatal(err)

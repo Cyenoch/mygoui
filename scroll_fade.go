@@ -74,36 +74,44 @@ func ScrollFade(c *ui.Context, viewport ui.Element, state *ui.ScrollState, o Scr
 		ink = theme.Colors(c).Foreground.Alpha(0.18)
 	}
 	rtl := c.Direction() == ui.RightToLeft
-	return viewport.DrawOver(func(p *ui.Painter, r ui.Rect) {
-		if r.W <= 0 || r.H <= 0 {
-			return
-		}
-		x, y := max(0, min(state.X, state.MaxX)), max(0, min(state.Y, state.MaxY))
-		if rtl {
-			x = state.MaxX - x
-		}
-		paint := func(edge ScrollFadeEdges, remaining float32, box ui.Rect, angle float32, reverse bool) {
-			if edges&edge == 0 || remaining <= 0 {
+	// Absolute children stay fixed in a scroll viewport and paint inside its
+	// rounded content clip, before its border and native scrollbars.
+	viewport.Clip().Children(func() {
+		ui.Box(c.Key(scrollFadeLayerKey{})).Absolute().Left(0).Top(0).Right(0).Bottom(0).
+			PassThrough().Role(ui.RoleNone).Draw(func(p *ui.Painter, r ui.Rect) {
+			if r.W <= 0 || r.H <= 0 {
 				return
 			}
-			length := box.H
-			if edge == FadeLeft || edge == FadeRight {
-				length = box.W
+			x, y := max(0, min(state.X, state.MaxX)), max(0, min(state.Y, state.MaxY))
+			if rtl {
+				x = state.MaxX - x
 			}
-			strength := min(float32(1), remaining/length)
-			from, to := ink.Alpha(strength), ink.Alpha(0)
-			if reverse {
-				from, to = to, from
+			paint := func(edge ScrollFadeEdges, remaining float32, box ui.Rect, angle float32, reverse bool) {
+				if edges&edge == 0 || remaining <= 0 {
+					return
+				}
+				length := box.H
+				if edge == FadeLeft || edge == FadeRight {
+					length = box.W
+				}
+				strength := min(float32(1), remaining/length)
+				from, to := ink.Alpha(strength), ink.Alpha(0)
+				if reverse {
+					from, to = to, from
+				}
+				p.FillGradient(box, ui.LinearGradient{From: from, To: to, Angle: angle}, 0)
 			}
-			p.FillGradient(box, ui.LinearGradient{From: from, To: to, Angle: angle}, 0)
-		}
-		w, h := min(depth, r.W/2), min(depth, r.H/2)
-		paint(FadeTop, y, ui.Rect{X: r.X, Y: r.Y, W: r.W, H: h}, 180, false)
-		paint(FadeBottom, state.MaxY-y, ui.Rect{X: r.X, Y: r.Y + r.H - h, W: r.W, H: h}, 180, true)
-		paint(FadeLeft, x, ui.Rect{X: r.X, Y: r.Y, W: w, H: r.H}, 90, false)
-		paint(FadeRight, state.MaxX-x, ui.Rect{X: r.X + r.W - w, Y: r.Y, W: w, H: r.H}, 90, true)
+			w, h := min(depth, r.W/2), min(depth, r.H/2)
+			paint(FadeTop, y, ui.Rect{X: r.X, Y: r.Y, W: r.W, H: h}, 180, false)
+			paint(FadeBottom, state.MaxY-y, ui.Rect{X: r.X, Y: r.Y + r.H - h, W: r.W, H: h}, 180, true)
+			paint(FadeLeft, x, ui.Rect{X: r.X, Y: r.Y, W: w, H: r.H}, 90, false)
+			paint(FadeRight, state.MaxX-x, ui.Rect{X: r.X + r.W - w, Y: r.Y, W: w, H: r.H}, 90, true)
+		})
 	})
+	return viewport
 }
+
+type scrollFadeLayerKey struct{}
 
 type scrollMaskKey struct{}
 

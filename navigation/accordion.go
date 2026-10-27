@@ -93,10 +93,10 @@ func accordionItem(c *ui.Context, sc *accordionScope, index, count int, o Accord
 	if key == "" {
 		key = o.Title
 	}
-	item := ui.Column(c).Shrink(0).MinWidth(0)
 	if key != "" {
-		item.Key(key)
+		c.Key(key)
 	}
+	item := ui.Column(c).Shrink(0).MinWidth(0)
 	expanded := sc.expanded
 	open := false
 	for _, k := range *expanded {

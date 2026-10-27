@@ -91,7 +91,7 @@ func save(c *ui.Context) {
 			},
 			{
 				Title:       "Vertical",
-				Description: "A full-width vertical stack that rounds only its ends.",
+				Description: "A content-width vertical stack that rounds only its ends.",
 				Demo: func(c *ui.Context, s *State) {
 					buttonGroupVerticalBody(c, buttonsStateOf(s))
 				},

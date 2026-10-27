@@ -157,6 +157,25 @@ func TestProgressIndeterminateKeepsPainting(t *testing.T) {
 	}
 }
 
+func TestProgressIndeterminateStaysInsideTrack(t *testing.T) {
+	var pal theme.Palette
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		pal = theme.Colors(c)
+		ui.Column(c).Fill().Padding(40).Background(pal.Background).Children(func() {
+			mygoui.ProgressBar(c, mygoui.ProgressOptions{Indeterminate: true}).Label("Track")
+		})
+	}, 300, 100)
+	r := findRect(t, tt, "Track")
+	for frame := 0; frame < 9; frame++ {
+		tt.Advance(200 * time.Millisecond)
+		img := tt.Image()
+		for _, x := range []int{15, 30, int(r.X) - 1, int(r.X + r.W), 280} {
+			wantPixel(t, img, x, int(r.Y+r.H/2), pal.Background, "outside progress track")
+		}
+	}
+}
+
 // TestProgressClampsAtItsBounds covers the empty, full and inverted ranges
 // that the output text reports.
 func TestProgressClampsAtItsBounds(t *testing.T) {

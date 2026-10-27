@@ -6,6 +6,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/egoist/mygo"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -71,22 +72,42 @@ func pageFor(id string) (Page, bool) {
 // State is the window-owned gallery state. Page state is typed and stored by
 // page ID, so sibling pages do not share a struct or initialization order.
 type State struct {
-	Selected       string
-	Dark           bool
-	Search         string
-	OpenGroup      string
-	Primary        int
-	Radius         float32
-	NavOpen        bool
-	SidebarClosed  bool
-	AppearanceOpen bool
-	SystemFont     bool
-	Panel          int
-	SearchFocus    ui.Handle
-	Sidebar        ui.ScrollState
-	NavScroll      ui.ScrollState
-	Content        ui.ScrollState
-	pages          map[string]any
+	Selected           string
+	Dark               bool
+	OnAppearanceChange func(bool)
+	Window             *mygo.Window
+	flyout             *mygo.Window
+	flyoutTrigger      ui.Handle
+	flyoutAnchor       mygo.Rectangle
+	flyoutError        string
+	zoomStep           int
+	Search             string
+	OpenGroup          string
+	Primary            int
+	Radius             float32
+	NavOpen            bool
+	SidebarClosed      bool
+	AppearanceOpen     bool
+	SystemFont         bool
+	Panel              int
+	SearchFocus        ui.Handle
+	Sidebar            ui.ScrollState
+	NavScroll          ui.ScrollState
+	Content            ui.ScrollState
+	pages              map[string]any
+}
+
+func (s *State) setDark(dark bool) {
+	if s.Dark == dark {
+		return
+	}
+	s.Dark = dark
+	if s.flyout != nil {
+		s.flyout.Invalidate()
+	}
+	if s.OnAppearanceChange != nil {
+		s.OnAppearanceChange(dark)
+	}
 }
 
 // New returns the default gallery state.

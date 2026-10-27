@@ -2,19 +2,19 @@
 
 The `coss` branch reconstructs coss ui with native Go/MyGo controls. Read
 [design](docs/design.md), the [component matrix](docs/components.md),
-[references](docs/references.md) and [MyGo 0.6 guidance](docs/mygo-0.6.md)
+[references](docs/references.md) and [MyGo 0.7 guidance](docs/mygo-0.7.md)
 before changing public behavior. The current coss contract supersedes the
 older visual-reference wording in the MyGo migration notes.
 
-Use the module's Go 1.27.1 target and pinned MyGo v0.6.3/mygoicons v0.2.1.
+Use the module's Go 1.27.3 target and pinned MyGo v0.7.1/mygoicons v0.2.1.
 Published module metadata must have no local replacements. Use a private
 development workspace when testing local dependencies.
 
 ## References and licensing
 
 Use coss commit `3d8ca28e7d90123e9e0f44665944dc240b026ccb`.
-The reconstruction reference checkout is `/tmp/mygoui-coss-upstream`;
-it is a local research input and is not required to build a consumer.
+Run `make refs` to populate the pinned `references/coss` submodule.
+Reference sources are development inputs, not runtime dependencies.
 [docs/references.md](docs/references.md) identifies the source paths and
 catalog discrepancies.
 
@@ -28,10 +28,6 @@ Fonts are an application responsibility. Independently licensed Cal Sans v2
 and Paper Mono sources are listed in [docs/fonts.md](docs/fonts.md).
 The library must not register fonts on import. Preserve the original OFL
 notices if an application elects to distribute those fonts.
-
-The HeroUI submodules still present in repository metadata are historical
-references. They are not prerequisites or appearance constraints for coss
-work; do not use their tokens to fill a coss gap.
 
 ## Implementation
 
@@ -55,7 +51,7 @@ work; do not use their tokens to fill a coss gap.
 Run the checks appropriate to the change. Before release:
 
 ```sh
-make check MYGO_VERSION=v0.6.3
+make check
 make race
 golangci-lint run ./...
 make wasm

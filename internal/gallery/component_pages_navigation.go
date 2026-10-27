@@ -171,6 +171,7 @@ navigation.Tabs(c, navigation.TabsOptions{
 			{"Items", "[]navigation.TabOptions", "required", "Tabs with label, content builder and disabled flag."},
 			{"Align", "navigation.TabsAlign", "TabsAlignCenter", "Centers, starts or ends each label in its box."},
 			{"MaxListHeight", "float32", "0", "Bounds a vertical list so it scrolls."},
+			{"KeepMounted", "bool", "false", "Preserves inactive panels' native state without layout or keyboard targets."},
 		},
 		Tokens: []string{"Accent", "Default", "Border", "Segment", "SegmentForeground"},
 	})

@@ -16,5 +16,5 @@ does not register the font. Registration is process-wide, and repeated calls
 return the first result. If the italic face fails to register, the regular
 face remains registered.
 
-Browser builds return an error: MyGo 0.6.3 registers both faces as normal
+Browser builds return an error: MyGo 0.7.1 registers both faces as normal
 weight and style and does not report asynchronous font-loading errors.

@@ -45,16 +45,16 @@ actual docs sidebar and that registry source instead. See the per-component
 | [Command](https://coss.com/ui/docs/components/command) | `navigation.Command / CommandState` - `navigation/command.go` | Inline searchable action list with label/keyword matching, named groups, disabled items, shared pointer/keyboard highlight, arrows/Enter and callbacks. Compose inside Dialog for a palette. Shortcut strings are display only; global shortcut registration belongs to the application. |
 | [Context Menu](https://coss.com/ui/docs/components/context-menu) | `navigation.ContextMenu(anchor, MenuOptions)` - `navigation/context_menu.go` | Adapted to the OS/native context menu, including secondary click and platform keyboard invocation. Actions/checks/submenus are supported; native presentation does not use coss CSS, item icons, descriptions or shortcut styling. |
 | [Date Picker](https://coss.com/ui/docs/components/date-picker) | `date.DatePicker / DateRangePicker` - `date/picker.go, date/range_picker.go` | Native ISO date editors plus anchored single/range calendar. Strict Gregorian date validation; no localized free-form parsing or timezone policy. |
-| [Dialog](https://coss.com/ui/docs/components/dialog) | `overlay.Dialog` - `overlay/dialog.go` | Caller-owned open flag with native modal focus, header/body/footer and dismissal. The default backdrop dims black at 32% and blurs with 4 DIP sigma; explicit dim-only and transparent modes are available. Keep constructor installed for retained exit paint. |
-| [Drawer](https://coss.com/ui/docs/components/drawer) | `overlay.Drawer` - `overlay/drawer.go` | Four-edge attached modal with 450 ms native slide, separately fading scrim and optional wider-window Inset. Drag the middle of the inward-facing edge outward to dismiss; native body scrolling remains independent. Handle is optional, ShowClose adds an explicit close button, and PreventDismiss blocks swipe/backdrop/Escape dismissal. No snap points or nested drawer gesture coordination. BottomSheet is a separate floating handle-swipe extension. |
+| [Dialog](https://coss.com/ui/docs/components/dialog) | `overlay.Dialog` - `overlay/dialog.go` | Caller-owned open flag with native modal focus, header/body/footer and dismissal. The default backdrop dims black at 32% and blurs with 4 DIP sigma; explicit dim-only and transparent modes are available. Keep constructor installed for retained exit paint. Footer is full-bleed; build actions directly and choose FullWidth explicitly on narrow layouts. Short panels scroll chrome as needed to keep actions reachable. |
+| [Drawer](https://coss.com/ui/docs/components/drawer) | `overlay.Drawer` - `overlay/drawer.go` | Four-edge attached modal with 450 ms native slide, separately fading scrim and optional wider-window Inset. Drag the middle of the inward-facing edge outward to dismiss; native body scrolling remains independent. Handle is optional, ShowClose adds an explicit close button, and PreventDismiss blocks swipe/backdrop/Escape dismissal. No snap points or nested drawer gesture coordination. BottomSheet is a separate floating handle-swipe API extension, demonstrated within the Drawer Gallery page. |
 | [Empty](https://coss.com/ui/docs/components/empty) | `mygoui.EmptyState` - `empty_state.go` | Empty result with icon, title/description and explicit recovery action; compose richer content in native containers. |
 | [Field](https://coss.com/ui/docs/components/field) | `form.Field / Description / FieldError` - `form/field.go` | Native label/help/error association around exactly one primary control. Application supplies validation and control disabled state; no HTML constraint-validation engine. |
 | [Fieldset](https://coss.com/ui/docs/components/fieldset) | `form.Fieldset` - `form/field.go` | Legend, description, disabled group and native body layout. No DOM legend/fieldset tree is created. |
 | [Form](https://coss.com/ui/docs/components/form) | `form.Form` - `form/field.go` | Adapted: vertical grouping and top-level error only. Submit actions, validation, reset, field collection and persistence belong to the caller; no FormData or automatic validation/submission. |
 | [Frame](https://coss.com/ui/docs/components/frame) | `mygoui.Frame and FramePanel/Header/Title/Description/Footer` - `frame.go` | Muted outer frame with independently composable bordered panels. Options expose padding, gap and label; no compound provider is needed. |
-| [Group](https://coss.com/ui/docs/components/group) | `mygoui.Group / GroupItem` - `frame.go` | Mixed joined controls receive explicit outer corner arrays through Build. Caller applies corners. No automatic descendant border merging, GroupText or GroupSeparator API; ButtonGroup provides specialized joined button behavior. |
+| [Group](https://coss.com/ui/docs/components/group) | `mygoui.Group / GroupItem` - `frame.go` | Mixed controls receive explicit outer corners through Build; caller applies corners. Vertical members share intrinsic width. Group removes adjacent returned-control borders; separators are explicit GroupItem builders. No descendant inspection or GroupText API. |
 | [Input](https://coss.com/ui/docs/components/input) | `form.Input` - `form/input.go` | Native bound editor, labels/help/errors, read-only, disabled and invalid state. Browser input-type/autofill contracts are not implied. |
-| [Input Group](https://coss.com/ui/docs/components/input-group) | `form.InputGroup` - `form/input_group.go` | One native editor plus Prefix/Suffix and BlockPrefix/BlockSuffix callbacks; actions inside addons keep independent activation. |
+| [Input Group](https://coss.com/ui/docs/components/input-group) | `form.InputGroup` - `form/input_group.go` | One native editor fills the remaining inline track, with Prefix/Suffix and horizontal BlockPrefix/BlockSuffix callbacks. Addon actions retain their own focus without lighting the editor shell; Error also marks the shared shell invalid. |
 | [Kbd](https://coss.com/ui/docs/components/kbd) | `mygoui.Kbd` - `kbd.go` | Visual key chord/keycap with accessible text. It displays a shortcut; it does not register the command. |
 | [Label](https://coss.com/ui/docs/components/label) | `form.Label` - `form/field.go` | Standalone label can focus a ui.Handle target. Prefer Field for native control/help/error association. |
 | [Menu](https://coss.com/ui/docs/components/menu) | `navigation.Menu / Dropdown / SubMenu` - `navigation/menu.go` | Typed sections and item actions, checked single/multiple selection, disabled items, nested submenus and keyboard traversal. Dropdown supplies the trigger; context-menu chrome is separately platform-owned. |
@@ -77,7 +77,7 @@ actual docs sidebar and that registry source instead. See the per-component
 | [Spinner](https://coss.com/ui/docs/components/spinner) | `mygoui.Spinner` - `spinner.go` | MyGo loading plugin animation with native size/status options. Geometry is a native adaptation, not the same web SVG animation asset. |
 | [Switch](https://coss.com/ui/docs/components/switch) | `form.Switch` - `form/switch.go` | Native binary switch with explicit value, label, disabled/invalid and change callback. |
 | [Table](https://coss.com/ui/docs/components/table) | `data.Table / TableState` - `data/table.go` | Native virtualized data table with sort/selection/actions, column resize/hide and Footer callback. Upstream Table is a composable HTML table; native header metrics, row tinting and resize grips differ. No colspan/rowspan or expandable rows. |
-| [Tabs](https://coss.com/ui/docs/components/tabs) | `navigation.Tabs` - `navigation/tabs.go` | Typed items and selected index, panels, disabled entries, horizontal/vertical layout, roving focus and selected-indicator motion. No arbitrary React tab part tree. |
+| [Tabs](https://coss.com/ui/docs/components/tabs) | `navigation.Tabs` - `navigation/tabs.go` | Typed items and selected index, panels, disabled entries, horizontal/vertical layout, roving focus and selected-indicator motion. KeepMounted optionally preserves inactive native state using Hidden. No arbitrary React tab part tree. |
 | [Textarea](https://coss.com/ui/docs/components/textarea) | `form.TextArea` - `form/textarea.go` | Native multiline editor with line bounds, selection, read-only/disabled/invalid and field metadata. |
 | [Toast](https://coss.com/ui/docs/components/toast) | `overlay.Toast / ToastState.View` - `overlay/toast.go` | Window-owned notification identities, action, timeout, updates, native queue and animated deck. Call Toast from an action, install View in the build. MyGo caps visible cards at three; no promise helper or arbitrary browser portal. |
 | [Toggle](https://coss.com/ui/docs/components/toggle) | `mygoui.ToggleButton` - `toggle.go` | Native pressed boolean with typed options and explicit change callback. Additional button appearances are library extensions. |
@@ -86,6 +86,13 @@ actual docs sidebar and that registry source instead. See the per-component
 | [Tooltip](https://coss.com/ui/docs/components/tooltip) | `overlay.Tooltip` - `overlay/tooltip.go` | Native pointer-rest/keyboard-focus tooltip with placement and optional arrow. MyGo owns 600 ms rest and 400 ms warm reuse; public options do not expose upstream provider timing or shared viewport transitions. |
 
 ## Hooks and application services
+
+`overlay.NewFlyout` is an additional native window capability, not another
+coss component clone. It can extend outside the parent window, unlike the
+in-window Popover. Explicit dimensions and Parent/Tray, focusability,
+zoom-aware handle anchors and independently rendered coss chrome are covered
+in [flyout.md](flyout.md). The host owns the window and closes/repositions it
+when its anchor disappears or changes; native content has no FitContent.
 
 | coss reference | Native mapping | Boundary |
 | --- | --- | --- |
@@ -102,8 +109,10 @@ Publish worker results through `Window.Update`.
 viewport. `MaskFade` uses a native shader effect to fade the subtree to
 transparency; `ShadowFade` paints shadow ink and `SurfaceFade` blends into the
 supplied opaque surface. Flags select physical edges and fades follow actual
-remaining scroll distance. Native effect layers cap each side at 8192 pixels
-and omit embedded webviews. GPU/platform proof remains pending.
+remaining scroll distance. Native mask effect layers cap each side at 8192 pixels
+and omit embedded webviews. Shadow/surface paint stays inside the viewport
+clip and does not cover its border. Scoped Metal rounded-viewport evidence
+is recorded in `VALIDATION.md`; arbitrary nested clips remain a toolkit limit.
 See [scrollfade.md](scrollfade.md) for signatures, errors and examples.
 
 Use [theme.md](theme.md) for canonical coss roles, per-appearance palette

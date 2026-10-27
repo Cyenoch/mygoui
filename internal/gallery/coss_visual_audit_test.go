@@ -831,6 +831,7 @@ func newAuditRunner(page ComponentPage, title string, dark, reduced bool) (*audi
 	r := &auditRunner{state: s, example: example}
 	r.tester = ui.NewTester(func(c *ui.Context) {
 		applyAppearance(c, s)
+		overlaysStateOf(s).toasts.View(c)
 		palette := theme.Colors(c)
 		ui.Column(c).Fill().Padding(100, 0, 0, 0).
 			Background(palette.Background).TextColor(palette.Foreground).

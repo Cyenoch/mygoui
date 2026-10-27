@@ -10,23 +10,23 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// ColorAreaOptions configures HeroUI's two-dimensional color area. X chooses
+// ColorAreaOptions configures the two-dimensional color area. X chooses
 // saturation and Y chooses brightness, in the hue kept by State.
 type ColorAreaOptions struct {
 	// Label names the area for assistive technology, such as "Fill color".
 	Label string
 	// State is the color edited and shown.
 	State *ColorState
-	// ShowDots overlays HeroUI's subtle dot pattern.
+	// ShowDots overlays the subtle dot pattern.
 	ShowDots bool
 	Disabled bool
-	// Size is the square's side in DIPs. Zero uses HeroUI's 224 DIP maximum.
+	// Size is the square's side in DIPs. Zero uses the 224 DIP maximum.
 	Size float32
 	// OnChange reports that the user picked a new color.
 	OnChange func()
 }
 
-// ColorArea is HeroUI v3's saturation/brightness area: a square gradient with
+// ColorArea is a saturation/brightness area: a square gradient with
 // a draggable thumb. Arrows move saturation and brightness by one percent, ten
 // with Shift; Home and End go to the extremes of saturation.
 func ColorArea(c *ui.Context, o ColorAreaOptions) ui.Element {
@@ -135,7 +135,7 @@ func ColorArea(c *ui.Context, o ColorAreaOptions) ui.Element {
 			p.Clip(r, radius, func() {
 				for y := r.Y; y < r.Y+r.H; y += gap {
 					for x := r.X; x < r.X+r.W; x += gap {
-						// HeroUI's radial dot is 2 DIP across, one pixel of
+						// The radial dot is 2 DIP across, one pixel of
 						// body each side of the 8 DIP grid point.
 						p.Fill(ui.Rect{X: x - 1, Y: y - 1, W: 2, H: 2}, dot, 1)
 					}
@@ -151,7 +151,7 @@ func ColorArea(c *ui.Context, o ColorAreaOptions) ui.Element {
 		scale = 1.25
 	}
 	area.Children(func() {
-		thumb := ui.Box(c).Key(colorAreaThumbKey{}).Absolute().Role(ui.RoleNone).
+		thumb := ui.Box(c.Key(colorAreaThumbKey{})).Absolute().Role(ui.RoleNone).
 			Size(1, 1).LeftPercent(float32(sat * 100)).TopPercent(float32((1 - bright) * 100))
 		thumb.AnimatePose(ui.Pose{Scale: scale},
 			ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut})

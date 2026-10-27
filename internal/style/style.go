@@ -63,55 +63,21 @@ func Background(e ui.Element, radius float32, normal, hover, pressed ui.Color) u
 	case e.Hovered() && hover.A != 0:
 		fill = hover
 	}
-	e = e.Radius(radius).Clip()
-	if fill.A == 0 {
-		return e
-	}
-	return e.Draw(func(p *ui.Painter, r ui.Rect) {
-		p.Fill(r, fill, radius)
-	})
+	return e.Radius(radius).Clip().Background(fill)
 }
 
-// CornerFill paints the same faces as Background on an element whose
-// corners differ, as the outer ends of a joined group do. MyGo's Painter
-// fills only with one radius, and an element's Draw runs before its own
-// clip, so a square Fill in Draw spills past the rounded corners. The
-// state face therefore paints in a single child layer, which the element's
-// per-corner clip shapes exactly; the layer is the element's only child and
-// hugs the content, so the element's padding and Justify place it as the
-// uniform-radius path places its children.
-//
-// The focus ring is inset so adjacent joined controls do not paint over it.
+// CornerFill uses the native per-corner background rather than a square
+// child fill that depends on ancestor clipping. The retained exit copy keeps
+// its face without resolving a handle in a later build.
 func CornerFill(c *ui.Context, e ui.Element, gap float32, corners [4]float32,
 	normal, hover, pressed ui.Color, content, overlay func()) ui.Element {
-	e = e.Radius(corners[0], corners[1], corners[2], corners[3]).Clip().FocusRing(false)
-	var owner ui.Handle
-	e = e.Bind(&owner)
+	e = Background(e, 0, normal, hover, pressed).
+		Radius(corners[0], corners[1], corners[2], corners[3]).FocusRing(false)
+	if e.FocusVisible() {
+		e.Draw(func(p *ui.Painter, r ui.Rect) { insetRing(p, r, corners) })
+	}
 	e.Children(func() {
 		layer := ui.Row(c).Gap(gap).Center().Shrink(0)
-		layer.Draw(func(p *ui.Painter, _ ui.Rect) {
-			// Resolve the face's owner in the pass painting it: a retained
-			// copy of a leaving element paints in a later pass, where the
-			// Element captured at build time has expired.
-			el := c.Resolve(owner)
-			if !el.Valid() {
-				return
-			}
-			fill := normal
-			switch {
-			case el.Pressed() && pressed.A != 0:
-				fill = pressed
-			case el.Hovered() && hover.A != 0:
-				fill = hover
-			}
-			box := el.LayoutBounds()
-			if fill.A != 0 {
-				p.Fill(box, fill, 0)
-			}
-			if el.FocusVisible() {
-				insetRing(p, box, corners)
-			}
-		})
 		layer.Children(content)
 		if overlay != nil {
 			overlay()

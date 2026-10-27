@@ -11,6 +11,66 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
+func TestJoinedExamplesKeepIntrinsicActionWidths(t *testing.T) {
+	for _, tc := range []struct {
+		page, example, action string
+	}{
+		{"group", "Mixed controls", "Find"},
+		{"buttongroup", "Vertical", "Profile"},
+	} {
+		t.Run(tc.page, func(t *testing.T) {
+			page, _ := componentPage(tc.page)
+			var example ComponentExample
+			for _, candidate := range page.Examples {
+				if candidate.Title == tc.example {
+					example = candidate
+				}
+			}
+			if example.Demo == nil {
+				t.Fatal("example missing")
+			}
+			s := New()
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, false)
+				ui.Column(c).Fill().AlignItems(ui.Center).Children(func() { example.Demo(c, s) })
+			}, 800, 240)
+			r, ok := tt.Find(tc.action)
+			if !ok || r.W > 160 {
+				t.Fatalf("action stretched instead of using content width: %+v", r)
+			}
+		})
+	}
+}
+
+func TestPressableIconUsesForegroundInk(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		t.Run(fmt.Sprint(dark), func(t *testing.T) {
+			var ink ui.Color
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, dark)
+				ink = theme.Colors(c).MutedForeground
+				ui.Column(c).Fill().Background(theme.Colors(c).Background).Children(func() {
+					pressableBody(c, &buttonsState{})
+				})
+			}, 400, 150)
+			r, ok := tt.Find("Press feedback icon")
+			if !ok {
+				t.Fatal("press feedback icon missing")
+			}
+			img := tt.Image()
+			for y := int(r.Y); y < int(r.Y+r.H); y++ {
+				for x := int(r.X); x < int(r.X+r.W); x++ {
+					p := img.RGBAAt(x, y)
+					if math.Abs(float64(p.R)-float64(ink.R)) < 12 {
+						return
+					}
+				}
+			}
+			t.Fatal("icon has no legible foreground-colored pixels")
+		})
+	}
+}
+
 func TestDefaultGroupIsCenteredAndInteractive(t *testing.T) {
 	page, ok := componentPage("group")
 	if !ok || len(page.Examples) < 3 || page.Examples[0].Title != "Default" {
@@ -43,7 +103,7 @@ func TestDefaultGroupIsCenteredAndInteractive(t *testing.T) {
 			img := tt.Image()
 			for _, seam := range []float32{media.X, more.X} {
 				y := int(media.Y + media.H/2)
-				line := img.RGBAAt(int(seam)-1, y)
+				line := img.RGBAAt(int(math.Round(float64(seam)))-1, y)
 				face := img.RGBAAt(int(seam)+2, y)
 				if line == face {
 					t.Fatalf("joined outline is missing the separator at x=%v", seam)

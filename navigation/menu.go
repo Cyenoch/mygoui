@@ -134,10 +134,10 @@ func buildMenu(c *ui.Context, o MenuOptions, extra menuExtra, parent *menuScope)
 // buildMenuSection builds a titled group of menu items.
 func buildMenuSection(c *ui.Context, o MenuSectionOptions, sc *menuScope) ui.Element {
 	t := theme.Colors(c)
-	section := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Gap(0).Role(ui.RoleGroup)
 	if o.Key != "" {
-		section.Key(o.Key)
+		c.Key(o.Key)
 	}
+	section := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Gap(0).Role(ui.RoleGroup)
 	if o.Title != "" {
 		section.Label(o.Title)
 	}
@@ -192,13 +192,13 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 	hasIndicator := (inMenu && sc.selection != MenuSelectNone) || o.Checked
 	hasSubmenu := len(o.Submenu) > 0
 	radius := theme.RadiusScale().SM
+	if o.Key != "" {
+		c.Key(o.Key)
+	}
 	el := ui.ButtonBase(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Justify(ui.Start).
 		Gap(scale(c, theme.Space8)).Padding(scale(c, theme.Space4), scale(c, theme.Space8)).
 		MinHeight(scale(c, 28)).Radius(radius).FocusRing(true).
 		Role(role).Label(o.Label).Cursor(ui.CursorPointer)
-	if o.Key != "" {
-		el.Key(o.Key)
-	}
 	el.Checked(on)
 	el = style.Background(el, radius, ui.Transparent, t.Accent, t.Accent)
 	// Upstream's indicator is absolute: the row pads its start by 28 DIP to

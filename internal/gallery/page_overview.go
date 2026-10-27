@@ -51,8 +51,8 @@ func buildOverview(c *ui.Context, s *State) ui.Element {
 func overviewThemeControls(c *ui.Context, s *State) {
 	ui.Column(c).FillWidth().Gap(theme.Space12).Children(func() {
 		ui.Row(c).Wrap().Gap(theme.Space8).Children(func() {
-			mygoui.Button(c, mygoui.ButtonOptions{Label: "Light", Variant: buttonFor(!s.Dark), OnClick: func() { s.Dark = false }})
-			mygoui.Button(c, mygoui.ButtonOptions{Label: "Dark", Variant: buttonFor(s.Dark), OnClick: func() { s.Dark = true }})
+			mygoui.Button(c, mygoui.ButtonOptions{Label: "Light", Variant: buttonFor(!s.Dark), OnClick: func() { s.setDark(false) }})
+			mygoui.Button(c, mygoui.ButtonOptions{Label: "Dark", Variant: buttonFor(s.Dark), OnClick: func() { s.setDark(true) }})
 			for _, radius := range []float32{4, 10, 16} {
 				mygoui.Button(c.Key(radius), mygoui.ButtonOptions{
 					Label: fmt.Sprintf("Radius %d", int(radius)), Variant: buttonFor(s.Radius == radius),

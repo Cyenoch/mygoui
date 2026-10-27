@@ -118,7 +118,7 @@ func TestComponentPageImportStatementDerivesFromCode(t *testing.T) {
 		want []string
 	}{
 		{"input", []string{`"github.com/Cyenoch/mygoui"`, `"github.com/Cyenoch/mygoui/form"`}},
-		{"modal", []string{`"github.com/Cyenoch/mygoui"`, `"github.com/Cyenoch/mygoui/overlay"`}},
+		{"dialog", []string{`"github.com/Cyenoch/mygoui"`, `"github.com/Cyenoch/mygoui/overlay"`}},
 		{"typography", []string{`"github.com/Cyenoch/mygoui"`, `"github.com/Cyenoch/mygoui/theme"`}},
 		{"link", []string{`"github.com/Cyenoch/mygoui"`, `"github.com/Cyenoch/mygoicons/lucide"`}},
 	} {

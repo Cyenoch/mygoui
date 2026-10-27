@@ -68,7 +68,6 @@ type chrome struct {
 	icon                 func()
 	hideClose            bool
 	onClose              func()
-	fullBleedFooter      bool
 	centerHeader         bool
 
 	titleStyle       theme.TextStyle
@@ -79,6 +78,15 @@ type chrome struct {
 	bodyFooter       float32
 	closeInset       float32
 	headingLevel     int
+	maxHeight        float32
+	fillHeight       bool
+	footerCorners    [2]float32
+}
+
+type chromeViewportKey struct{}
+
+type chromeGeometry struct {
+	fixed float32
 }
 
 // fillPanel builds p's sections inside the already styled panel element.
@@ -100,10 +108,7 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 	}
 	bodyFooter := p.bodyFooter
 	if bodyFooter == 0 {
-		bodyFooter = theme.Space20
-		if p.fullBleedFooter {
-			bodyFooter = padding
-		}
+		bodyFooter = padding
 	}
 	closeInset := p.closeInset
 	if closeInset == 0 {
@@ -118,72 +123,108 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 	hasFooter := p.footer != nil
 	hasClose := p.onClose != nil && !p.hideClose
 
-	e.Column().MinWidth(0).Padding(padding)
+	e.Column().MinWidth(0)
 	e.Children(func() {
-		if hasHeader {
-			h := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Gap(headerGap)
-			if p.centerHeader {
-				h.TextAlign(ui.Center)
-			}
-			if hasBody {
-				h.Margin(0, 0, headerBody, 0)
-			} else if hasFooter {
-				gap := bodyFooter
-				if w, _ := c.Size(); p.fullBleedFooter && w < 640 {
-					gap = theme.Space16
+		viewport := ui.Scroll(c.Key(chromeViewportKey{})).FillWidth().Grow(1).MinHeight(0)
+		geometry := ui.Local(viewport, chromeViewportKey{}, func() chromeGeometry { return chromeGeometry{} })
+		height := max(0, p.maxHeight-2*theme.Hairline)
+		var fixed float32
+		viewport.Children(func() {
+			content := ui.Column(c).FillWidth().MinWidth(0).Padding(padding).Shrink(0)
+			content.Children(func() {
+				if hasHeader {
+					h := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Gap(headerGap)
+					if p.centerHeader {
+						h.TextAlign(ui.Center)
+					}
+					if hasBody {
+						h.Margin(0, 0, headerBody, 0)
+					} else if hasFooter {
+						gap := bodyFooter
+						if w, _ := c.Size(); w < 640 {
+							gap = theme.Space16
+						}
+						h.Margin(0, 0, gap, 0)
+					}
+					if hasClose {
+						// Reserve the part of the close button that reaches the header.
+						if overlap := closeInset + theme.Scale(c, closeButtonSize) - padding; overlap > 0 {
+							h.PaddingEnd(overlap)
+						}
+					}
+					h.Children(func() {
+						if p.header != nil {
+							p.header()
+							return
+						}
+						if p.icon != nil {
+							p.icon()
+						}
+						if p.title != "" {
+							title := style.Text(ui.Text(c, p.title), c, p.titleStyle)
+							title.FontWeight(theme.WeightBold).TextColor(t.PopoverForeground).
+								Role(ui.RoleHeading).Level(level)
+						}
+						if p.description != "" {
+							style.Text(ui.Text(c, p.description), c, p.descriptionStyle).TextColor(t.MutedForeground)
+						}
+					})
+					fixed += h.LayoutBounds().H
+					if hasBody {
+						fixed += headerBody
+					} else if hasFooter {
+						gap := bodyFooter
+						if w, _ := c.Size(); w < 640 {
+							gap = theme.Space16
+						}
+						fixed += gap
+					}
 				}
-				h.Margin(0, 0, gap, 0)
-			}
-			if hasClose {
-				// Reserve the part of the close button that reaches the header.
-				if overlap := closeInset + theme.Scale(c, closeButtonSize) - padding; overlap > 0 {
-					h.PaddingEnd(overlap)
+				if hasBody {
+					// Leave room for a child's focus ring inside the scroll clip.
+					b := ui.Scroll(c).FillWidth().Grow(1).MinHeight(0).Padding(bodyBleed).
+						Margin(0, -bodyBleed, 0, -bodyBleed)
+					if hasFooter {
+						b.Margin(0, -bodyBleed, bodyFooter, -bodyBleed)
+					}
+					if p.bodyLabel != "" {
+						b.Label(p.bodyLabel)
+					}
+					b.Children(p.body)
 				}
-			}
-			h.Children(func() {
-				if p.header != nil {
-					p.header()
-					return
-				}
-				if p.icon != nil {
-					p.icon()
-				}
-				if p.title != "" {
-					title := style.Text(ui.Text(c, p.title), c, p.titleStyle)
-					title.FontWeight(theme.WeightBold).TextColor(t.PopoverForeground).
-						Role(ui.RoleHeading).Level(level)
-				}
-				if p.description != "" {
-					style.Text(ui.Text(c, p.description), c, p.descriptionStyle).TextColor(t.MutedForeground)
+				if hasFooter {
+					f := ui.Row(c).Justify(ui.End).AlignItems(ui.Center).Gap(theme.Space8).Shrink(0)
+					f.AlignSelf(ui.Stretch).Margin(ui.Auto, -padding, -padding, -padding).
+						Padding(theme.Space16, theme.Space24).
+						Radius(0, 0, p.footerCorners[0], p.footerCorners[1]).
+						Background(t.MutedBackground.Alpha(0.72)).
+						BorderWidth(theme.Hairline, 0, 0, 0).BorderColor(t.Border)
+					if w, _ := c.Size(); w < 640 {
+						f.Column().Reverse().AlignItems(ui.Stretch)
+					}
+					f.Children(p.footer)
+					fixed += f.LayoutBounds().H
 				}
 			})
-		}
-		if hasBody {
-			// Leave room for a child's focus ring inside the scroll clip.
-			b := ui.Scroll(c).FillWidth().Grow(1).MinHeight(0).Padding(bodyBleed).
-				Margin(0, -bodyBleed, 0, -bodyBleed)
+			// Keep the usual body-only scrolling until chrome itself cannot fit.
+			// In a short panel the outer native viewport reveals focused actions too.
+			if hasBody && hasFooter {
+				fixed += bodyFooter
+			}
+			fixed += 2 * padding
 			if hasFooter {
-				b.Margin(0, -bodyBleed, bodyFooter, -bodyBleed)
+				fixed -= padding
 			}
-			if p.bodyLabel != "" {
-				b.Label(p.bodyLabel)
-			}
-			b.Children(p.body)
-		}
-		if hasFooter {
-			f := ui.Row(c).Justify(ui.End).AlignItems(ui.Center).Gap(theme.Space8).Shrink(0)
-			if p.fullBleedFooter {
-				f.AlignSelf(ui.Stretch).Margin(ui.Auto, -padding, -padding, -padding).
-					Padding(theme.Space16, theme.Space24).
-					Background(t.MutedBackground.Alpha(0.72)).
-					BorderWidth(theme.Hairline, 0, 0, 0).BorderColor(t.Border)
-				if w, _ := c.Size(); w < 640 {
-					f.Column().Reverse().AlignItems(ui.Stretch)
+			if height > 0 {
+				content.MaxHeight(height).MinHeight(fixed)
+				if p.fillHeight {
+					content.Height(height)
 				}
-			} else {
-				f.FillWidth().Background(t.MutedBackground).Radius(theme.RadiusScale().MD).Padding(theme.Space8)
 			}
-			f.Children(p.footer)
+		})
+		if geometry.fixed != fixed {
+			geometry.fixed = fixed
+			c.AnimationFrame()
 		}
 		if hasClose {
 			close := mygoui.CloseButton(c, mygoui.CloseButtonOptions{

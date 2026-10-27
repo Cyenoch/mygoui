@@ -202,7 +202,7 @@ func TestButtonGroupSeparatorsKeepLayoutAndPaintSeams(t *testing.T) {
 	// edge, so match any clear departure from the face.
 	img := tt.Image()
 	face := colors.Secondary.Over(colors.Background)
-	wantPixel(t, img, int(second.X)-12, y, face, "plain face")
+	wantPixel(t, img, int(second.X)-4, y, face, "plain face")
 	found := false
 	for x := int(second.X) - 2; x <= int(second.X)+1; x++ {
 		r, g, b := pixelAt(img, x, y)

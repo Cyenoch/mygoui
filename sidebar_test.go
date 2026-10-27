@@ -1,6 +1,7 @@
 package mygoui_test
 
 import (
+	"bytes"
 	"fmt"
 	"testing"
 
@@ -9,6 +10,38 @@ import (
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
+
+func TestSidebarSelectionRemeasuresWeightedText(t *testing.T) {
+	for _, scale := range []float32{1, 2} {
+		t.Run(fmt.Sprint(scale), func(t *testing.T) {
+			selected, collapsed := "", false
+			build := func(c *ui.Context) {
+				theme.ApplyMode(c, false)
+				mygoui.Sidebar(c, mygoui.SidebarOptions{
+					Selected: &selected, Collapsed: &collapsed, Width: 130,
+					Groups: []mygoui.SidebarGroupOptions{{Items: []mygoui.SidebarItemOptions{
+						{ID: "settings", Label: "Settings and preferences", Icon: lucide.Settings()},
+					}}},
+				})
+			}
+			tt := ui.NewTester(build, 300, 240)
+			tt.SetPreferences(ui.Preferences{TextScale: scale, ReduceMotion: true})
+			before := findRect(t, tt, "Settings and preferences")
+			selected = "settings"
+			tt.Frame()
+			after := findRect(t, tt, "Settings and preferences")
+			if after != before {
+				t.Fatalf("selection resized the sidebar row: before=%+v after=%+v", before, after)
+			}
+			fresh := ui.NewTester(build, 300, 240)
+			fresh.SetPreferences(ui.Preferences{TextScale: scale, ReduceMotion: true})
+			// Cached normal-width text must paint exactly like a fresh selected row.
+			if !bytes.Equal(tt.Image().Pix, fresh.Image().Pix) {
+				t.Fatal("selected text reused unselected font metrics or escaped its row")
+			}
+		})
+	}
+}
 
 func TestSidebarSelectionAndDisabledItems(t *testing.T) {
 	selected, collapsed := "home", false

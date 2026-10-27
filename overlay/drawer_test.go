@@ -436,20 +436,8 @@ func TestDrawerSwipeExitSnapshotIsInert(t *testing.T) {
 	if !ok {
 		t.Fatal("the drawer action is missing")
 	}
-	redX := func() int {
-		img := tt.Image()
-		for px := 0; px < img.Bounds().Max.X; px++ {
-			for py := 0; py < img.Bounds().Max.Y; py++ {
-				pixel := img.RGBAAt(px, py)
-				if int(pixel.R)-int(pixel.G) > 20 && int(pixel.R)-int(pixel.B) > 20 {
-					return px
-				}
-			}
-		}
-		return -1
-	}
-	dragged := redX()
-	if dragged < 0 {
+	dragged := redMarkerBounds(tt.Image())
+	if dragged.W == 0 {
 		t.Fatal("the dragged panel marker was not painted")
 	}
 	tt.Advance(60 * time.Millisecond)
@@ -463,12 +451,12 @@ func TestDrawerSwipeExitSnapshotIsInert(t *testing.T) {
 	}
 	tt.Advance(20 * time.Millisecond)
 	tt.Frame()
-	if departing := redX(); departing <= dragged {
-		t.Fatalf("exit did not continue toward the edge: dragged x=%d departing x=%d", dragged, departing)
+	if departing := redMarkerBounds(tt.Image()); departing.W == 0 || departing.X <= dragged.X {
+		t.Fatalf("exit did not continue toward the edge: dragged=%+v departing=%+v", dragged, departing)
 	}
 	motionSettle(tt, 2*drawerMotionDuration)
-	if remaining := redX(); remaining >= 0 {
-		t.Fatalf("the exiting marker remained at x=%d", remaining)
+	if remaining := redMarkerBounds(tt.Image()); remaining.W != 0 {
+		t.Fatalf("the exiting marker remained: %+v", remaining)
 	}
 }
 

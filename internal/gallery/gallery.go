@@ -21,7 +21,9 @@ const TitleBarHeight = 52
 // View builds the workbench. Theme application happens here so appearance
 // switches affect every specimen immediately.
 func View(c *ui.Context, s *State) {
+	zoom(c, s)
 	applyAppearance(c, s)
+	overlaysStateOf(s).toasts.View(c)
 	t := theme.Colors(c)
 	compact := docsCompact(c)
 	c.OnShortcut(ui.Cmd, ui.KeyK, func() {
@@ -47,7 +49,7 @@ func titleBar(c *ui.Context) {
 	t := theme.Colors(c)
 	bar := c.TitleBar()
 	width, _ := c.Size()
-	height := max(float32(TitleBarHeight), bar.Height)
+	height := max(float32(TitleBarHeight)/c.Zoom(), bar.Height)
 	padding := theme.Scale(c, 16)
 	available := max(0, width-bar.Left-bar.Right-2*padding)
 	heading := theme.H6()
@@ -327,6 +329,9 @@ func search(c *ui.Context, s *State) {
 }
 
 func selectPage(s *State, page Page) {
+	if s.flyout != nil {
+		s.flyout.Close()
+	}
 	s.Selected = page.ID
 	s.OpenGroup = page.Group
 	s.Content.Y = 0
@@ -483,8 +488,8 @@ func appearanceControls(c *ui.Context, s *State) {
 				on    bool
 				set   func()
 			}{
-				{"Light", !s.Dark, func() { s.Dark = false }},
-				{"Dark", s.Dark, func() { s.Dark = true }},
+				{"Light", !s.Dark, func() { s.setDark(false) }},
+				{"Dark", s.Dark, func() { s.setDark(true) }},
 				{"Cal Sans", !s.SystemFont, func() { s.SystemFont = false }},
 				{"System", s.SystemFont, func() { s.SystemFont = true }},
 			} {

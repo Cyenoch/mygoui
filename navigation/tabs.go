@@ -47,9 +47,12 @@ type TabsOptions struct {
 	Orientation     mygoui.Orientation
 	Align           TabsAlign
 	NoListContainer bool
-	MaxListHeight   float32
-	Label           string
-	OnChange        func(index int)
+	// KeepMounted builds inactive panels with Hidden, preserving their native
+	// editor/scroll state without taking layout space or keyboard focus.
+	KeepMounted   bool
+	MaxListHeight float32
+	Label         string
+	OnChange      func(index int)
 }
 
 // tabsIndicator remembers what the indicator was placed from and where: the
@@ -64,6 +67,8 @@ type tabsIndicator struct {
 
 // tabsChannel tells apart the animated values of the indicator.
 type tabsChannel uint8
+
+type tabsPanelKey int
 
 const (
 	tabsX tabsChannel = iota
@@ -343,9 +348,11 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 				o.OnChange(*selected)
 			}
 		}
-		if *selected >= 0 && *selected < len(o.Items) && o.Items[*selected].Content != nil {
-			item := o.Items[*selected]
-			panel := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).
+		for i, item := range o.Items {
+			if item.Content == nil || !o.KeepMounted && i != *selected {
+				continue
+			}
+			panel := ui.Column(c.Key(tabsPanelKey(i))).Hidden(i != *selected).FillWidth().MinWidth(0).Shrink(0).
 				Padding(scale(c, theme.Space8)).Role(ui.RoleGroup)
 			if item.Label != "" {
 				panel.Label(item.Label)

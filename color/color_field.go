@@ -8,7 +8,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// ColorFieldOptions configures HeroUI's hex color field. Its editing buffer
+// ColorFieldOptions configures the hex color field. Its editing buffer
 // lives in State, so one field edits one ColorState.
 type ColorFieldOptions struct {
 	// Label names the input; it defaults to "Hex".
@@ -25,7 +25,7 @@ type ColorFieldOptions struct {
 	OnChange func()
 }
 
-// ColorField is HeroUI v3's hex color field. It accepts #rgb, #rgba, #rrggbb
+// ColorField is a hex color field. It accepts #rgb, #rgba, #rrggbb
 // and #rrggbbaa; text that does not parse keeps the last valid color and shows
 // an error announced with RoleStatus.
 func ColorField(c *ui.Context, o ColorFieldOptions) ui.Element {
@@ -64,7 +64,7 @@ func ColorField(c *ui.Context, o ColorFieldOptions) ui.Element {
 		group = formstyle.Surface(group, c, false, invalid, o.Disabled)
 		group.Children(func() {
 			current := s.Value
-			// HeroUI's ColorField prefix is an XS swatch: 16 DIP, 8 DIP round.
+			// The ColorField prefix is an XS swatch: 16 DIP, 8 DIP round.
 			swatchRadius := theme.RadiusScale().LG
 			swatchSize := theme.Scale(c, 16)
 			ui.Box(c).Size(swatchSize, swatchSize).Shrink(0).

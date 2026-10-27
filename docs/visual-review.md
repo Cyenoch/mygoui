@@ -4,6 +4,34 @@ Review date: 2026-10-27. This records an actual visual inspection, not a
 pixel-diff certification. The source reference is coss ui commit
 `3d8ca28e7d90123e9e0f44665944dc240b026ccb`; the live website may differ.
 
+## Follow-up: Rounded Paint
+
+The 0.7.1 upgrade has additional actual Metal captures in
+`artifacts/coss/mygo-071/`: ScrollFade/Modal/BottomSheet light and dark,
+FlyoutSurface and card Table. The card table's header does not draw its
+square bottom rule across the body's rounded top corners; the body owns
+that boundary. The generic nested rounded-clip discrepancy remains
+reproducible in 0.7.1; see the current section of `VALIDATION.md` for evidence
+and limits.
+
+The subsequent clipping/CI pass is recorded first in `VALIDATION.md`.
+Its final captures are `artifacts/coss/native-audit-clipping-final/` and
+`artifacts/coss/followup-final/`; light/dark GPU specimens are
+`artifacts/coss/rounding-final-<false|true>-metal.png`.
+
+Directly read the pinned Group/Separator/Button sources and `p-group-9.tsx`.
+The Vertical Gallery example now uses the reference's intrinsic-width zoom
+controls, not a stretched text list. Full-width account actions remain an
+additional example with explicit rules between rows. Inspected its rounded
+bottom corner, hovered fill and both separators, plus the last selected table
+row, on actual Metal output.
+
+This pass also exposed a toolkit-level nested-clip discrepancy. It does not
+certify arbitrary Card descendants on GPU: a rectangular inner clip may lose
+the outer rounded mask in MyGo v0.6.3. A blanket texture-layer workaround was
+rejected after reproducing composition and fade regressions. No earlier
+headless visual acceptance claim should be read as disproving that limitation.
+
 ## Evidence and method
 
 - Opened the official documentation in a browser, rendered each of the 56

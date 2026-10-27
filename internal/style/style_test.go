@@ -3,11 +3,43 @@ package style_test
 import (
 	"image/color"
 	"testing"
+	"time"
 
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
+
+func TestCornerFillRetainsItsFaceDuringExit(t *testing.T) {
+	show := true
+	face, surface := ui.RGB(30, 60, 90), ui.RGB(255, 255, 255)
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Fill().Padding(20).Background(surface).Children(func() {
+			if !show {
+				return
+			}
+			e := ui.ButtonBase(c).Size(120, 40).Label("Leaving").Transition(ui.ElementTransition{
+				Duration: 300 * time.Millisecond, Exit: &ui.Motion{Opacity: 0},
+			})
+			style.CornerFill(c, e, 0, [4]float32{10, 0, 0, 10}, face, face, face, nil, nil)
+		})
+	}, 200, 100)
+	r, _ := tt.Find("Leaving")
+	x, y := int(r.X)+12, int(r.Y+r.H/2)
+	if got := tt.Image().RGBAAt(x, y); distance(got, face) > 1 {
+		t.Fatalf("resting face = %v, want %v", got, face)
+	}
+	show = false
+	tt.Frame()
+	tt.Advance(60 * time.Millisecond)
+	if got := tt.Image().RGBAAt(x, y); distance(got, surface) < 20 {
+		t.Fatalf("retained face disappeared before exit completed: %v", got)
+	}
+	tt.Advance(300 * time.Millisecond)
+	if got := tt.Image().RGBAAt(x, y); distance(got, surface) > 1 {
+		t.Fatalf("face remained after exit: %v", got)
+	}
+}
 
 // TestHeadingTrackingTightensTheLine pins tracking-tight on the heading roles:
 // the same text set as an H2 measures narrower than the same 30/36 role

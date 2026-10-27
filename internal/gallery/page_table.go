@@ -187,9 +187,9 @@ func tableExampleFrameHeight(c *ui.Context, options data.TableOptions, height fl
 		ui.Column(c).Height(theme.Scale(c, height)).MinHeight(0).Children(func() {
 			data.Table(c, options).Grow(1)
 		})
-		mygoui.Typography(c, caption(), mygoui.TypographyOptions{
-			Type: theme.TypeBodyXS, Muted: true,
-		})
+		if text := caption(); text != "" {
+			mygoui.Typography(c, text, mygoui.TypographyOptions{Type: theme.TypeBodyXS, Muted: true})
+		}
 	})
 }
 
@@ -314,13 +314,12 @@ func tableDisabledExample(c *ui.Context, st *tableState) {
 	})
 }
 
-// tableSecondaryExample shows the flush variant, whose header is a standalone
-// card over a table with no frame.
+// tableSecondaryExample keeps the header outside the rounded card body.
 func tableSecondaryExample(c *ui.Context, st *tableState) {
 	options := st.tableExampleOptions(c, &st.SecondaryTable, len(st.Rows))
 	options.Variant = data.TableSecondary
 	tableExampleFrame(c, options, func() string {
-		return "Secondary: no card, a standalone header, row separators."
+		return ""
 	})
 }
 

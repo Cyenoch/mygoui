@@ -75,7 +75,7 @@ func TestComplexPageDemosRenderLiveControls(t *testing.T) {
 		{"select", "Current fruit:"},
 		{"listbox", "Fruit: banana"},
 		{"table", "Deployments"},
-		{"modal", "Open Medium modal"},
+
 		{"drawer", "Open Bottom drawer"},
 		{"dialog", "Open dialog"},
 		{"toast", "Default toast"},
@@ -151,10 +151,44 @@ func TestToastPageDismissesWithoutExpiredPaint(t *testing.T) {
 	}
 }
 
+func TestToastKeepsItsRendererAcrossPageNavigation(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		t.Run(fmt.Sprint(dark), func(t *testing.T) {
+			state := New()
+			state.Selected, state.Dark = "toast", dark
+			tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)
+			tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
+			toastPageClick(t, tt, state, "Action toast")
+			before, ok := tt.Find("Invite sent")
+			if !ok {
+				t.Fatal("toast missing")
+			}
+			face := tt.Image().RGBAAt(int(before.X)+8, int(before.Y+before.H/2))
+			page, _ := pageFor("previewcard")
+			selectPage(state, page)
+			tt.Frame()
+			after, ok := tt.Find("Invite sent")
+			if !ok || after != before {
+				t.Fatalf("toast renderer/layout changed on navigation: before=%+v after=%+v", before, after)
+			}
+			if got := tt.Image().RGBAAt(int(after.X)+8, int(after.Y+after.H/2)); got != face {
+				t.Fatalf("toast face changed on navigation: %v -> %v", face, got)
+			}
+			if err := tt.Click("Undo"); err != nil {
+				t.Fatal(err)
+			}
+			if overlaysStateOf(state).toastNote != "undo pressed; invitation revoked" || !tt.HasText("Invitation revoked") {
+				t.Fatal("navigation lost the toast action or its resulting notification")
+			}
+		})
+	}
+}
+
 func TestToastExamplesRepeatedArrivalAndExplicitUpdate(t *testing.T) {
 	st := &overlaysState{}
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.Apply(c)
+		st.toasts.View(c)
 		ui.Column(c).Children(func() {
 			toastVariantsExample(c, st)
 			toastActionsExample(c, st)
@@ -243,7 +277,7 @@ func TestButtonPaintsThroughExitTransition(t *testing.T) {
 		ui.Column(c).Padding(16).Children(func() {
 			ui.Button(c, "Remove").OnClick(func() { show = false })
 			if show {
-				ui.Row(c).Key("leaving").Transition(ui.ElementTransition{
+				ui.Row(c.Key("leaving")).Transition(ui.ElementTransition{
 					Duration: 250 * time.Millisecond,
 					Exit:     &ui.Motion{Opacity: 0},
 				}).Children(func() {

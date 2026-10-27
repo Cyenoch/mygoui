@@ -97,6 +97,9 @@ func Group(c *ui.Context, o GroupOptions, items ...GroupItem) ui.Element {
 				key = item.Key
 			}
 			wrapper := ui.Box(c.Key(key)).MinWidth(0).Shrink(0)
+			if vertical {
+				wrapper.AlignSelf(ui.Stretch)
+			}
 			if o.FullWidth {
 				if vertical {
 					wrapper.FillWidth()
@@ -106,6 +109,9 @@ func Group(c *ui.Context, o GroupOptions, items ...GroupItem) ui.Element {
 			}
 			wrapper.Children(func() {
 				control := item.Build(corners)
+				if vertical {
+					control.FillWidth()
+				}
 				if o.FullWidth {
 					control.FillWidth()
 				}

@@ -8,13 +8,13 @@ interaction and motion in native Go, without a browser or JavaScript runtime.
 
 ## Users And Stack
 
-Go application authors using MyGo v0.6.3. Caller-owned state, typed options and
+Go application authors using MyGo v0.7.1. Caller-owned state, typed options and
 native focus, editing, selection and accessibility are binding constraints.
 
 ## Visual Authority
 
 https://coss.com/ui/docs and the corresponding cosscom/ui source. Previous
-HeroUI tokens and component designs are not design constraints for this branch.
+tokens and component designs are not design constraints for this branch.
 
 ## Capabilities
 

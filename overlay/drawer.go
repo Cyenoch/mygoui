@@ -150,7 +150,24 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 			scrim.Opacity(1 - min(max(moved, -moved)/distance, 1))
 		}
 		if o.Handle && side == DrawerBottom {
-			drawerHandle(c, theme.Space8)
+			drawerHandle(c, theme.Space8).Margin(theme.Space24, 0, 0, 0)
+		}
+		contentHeight := capH
+		footerCorners := [2]float32{}
+		if inset > 0 || side == DrawerTop {
+			footerCorners = [2]float32{radius - theme.Hairline, radius - theme.Hairline}
+		} else if side == DrawerLeft {
+			footerCorners[0] = radius - theme.Hairline
+		} else if side == DrawerRight {
+			footerCorners[1] = radius - theme.Hairline
+		}
+		if side == DrawerLeft || side == DrawerRight {
+			contentHeight = availH
+		} else if o.Height > 0 {
+			contentHeight = min(o.Height, capH)
+		}
+		if o.Handle && (side == DrawerBottom || side == DrawerTop) {
+			contentHeight -= theme.Space24 + theme.Space4 + theme.Space8
 		}
 		fillPanel(c, panel, chrome{
 			title:            o.Title,
@@ -161,18 +178,20 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 			bodyLabel:        o.BodyLabel,
 			hideClose:        !o.ShowClose || o.HideClose,
 			onClose:          close,
-			fullBleedFooter:  true,
 			titleStyle:       theme.H4(),
 			descriptionStyle: theme.SM(),
 			padding:          theme.Space24,
 			headerGap:        theme.Space8,
+			maxHeight:        contentHeight,
+			fillHeight:       side == DrawerLeft || side == DrawerRight || o.Height > 0,
+			footerCorners:    footerCorners,
 		})
 		if o.Handle && side == DrawerTop {
 			// Keep the handle near the edge, below the content.
-			panel.Padding(theme.Space24, theme.Space24, theme.Space8, theme.Space24)
+			panel.Padding(0, 0, theme.Space8, 0)
 			handle := drawerHandle(c, 0)
 			if o.Height > 0 {
-				panel.Padding(theme.Space24, theme.Space24, theme.Space12, theme.Space24)
+				panel.Padding(0, 0, theme.Space12, 0)
 				handle.Absolute().Left(0).Right(0).Bottom(theme.Space8)
 			}
 		}
@@ -277,7 +296,7 @@ type BottomSheetOptions struct {
 
 // BottomSheet shows a floating bottom panel: an overlay
 // surface, 16 DIPs from the left, right and bottom window edges, with all
-// four corners rounded, a centered separator handle and 20 DIP padding. It
+// four corners rounded, a centered separator handle and 24 DIP padding. It
 // slides up from below the window and its handle drags it down to dismiss.
 // It is modal, so the native dialog base keeps and restores the focus.
 func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
@@ -324,9 +343,16 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 			panel.Description(o.Description)
 		}
 		if !o.HideHandle {
-			drawerHandle(c, theme.Space8)
+			drawerHandle(c, theme.Space8).Margin(theme.Space24, 0, 0, 0)
 		}
 		dismiss := ui.Local(panel, sheetDismissKey{}, func() bool { return false })
+		contentHeight := capH
+		if o.Height > 0 {
+			contentHeight = min(o.Height, capH)
+		}
+		if !o.HideHandle {
+			contentHeight -= theme.Space24 + theme.Space4 + theme.Space8
+		}
 		fillPanel(c, panel, chrome{
 			title:       o.Title,
 			description: o.Description,
@@ -345,8 +371,11 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 			},
 			titleStyle:       theme.H4(),
 			descriptionStyle: theme.SM(),
-			padding:          theme.Space20,
+			padding:          theme.Space24,
 			headerGap:        theme.Space8,
+			maxHeight:        contentHeight,
+			fillHeight:       o.Height > 0,
+			footerCorners:    [2]float32{overlayRadius() - theme.Hairline, overlayRadius() - theme.Hairline},
 		})
 		// The sheet arrives from below the window: its first frame shows it
 		// there and the next sends it to its place. Both are translations,

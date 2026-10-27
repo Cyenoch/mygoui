@@ -9,7 +9,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// TestEmptyStateDefaultsToTheLocalePlaceholder pins HeroUI's default copy: an
+// TestEmptyStateDefaultsToTheLocalePlaceholder pins the default copy: an
 // empty state with nothing to say still names what is missing, while caller
 // content replaces it.
 func TestEmptyStateDefaultsToTheLocalePlaceholder(t *testing.T) {

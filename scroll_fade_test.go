@@ -101,6 +101,42 @@ func TestScrollFadeShadowUsesColorAndDepth(t *testing.T) {
 	}
 }
 
+func TestScrollFadeKeepsRoundedViewportCornersAndBorder(t *testing.T) {
+	for _, mode := range []struct {
+		name string
+		mode mygoui.ScrollFadeMode
+	}{
+		{name: "shadow", mode: mygoui.ShadowFade},
+		{name: "surface", mode: mygoui.SurfaceFade},
+	} {
+		t.Run(mode.name, func(t *testing.T) {
+			var state ui.ScrollState
+			page, border := ui.RGB(255, 255, 255), ui.RGB(70, 90, 110)
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, false)
+				ui.Column(c).Fill().Padding(20).Background(page).Children(func() {
+					viewport := ui.ScrollBoth(c).Size(120, 100).TrackScroll(&state)
+					viewport.Children(func() {
+						ui.Box(c).Size(360, 300).Shrink(0).Background(fadeContent)
+					})
+					mygoui.ScrollFade(c, viewport, &state, mygoui.ScrollFadeOptions{
+						Mode: mode.mode, Color: ui.RGB(0, 0, 0), Surface: ui.RGB(150, 160, 170),
+					}).Radius(18).Border(2, border)
+				})
+			}, 170, 150)
+			state.X, state.Y = 48, 48
+			tt.Frame()
+			img := tt.Image()
+			for _, point := range [][2]int{{20, 20}, {139, 20}, {20, 119}, {139, 119}} {
+				wantPixel(t, img, point[0], point[1], page, "outside rounded viewport")
+			}
+			for _, point := range [][2]int{{80, 20}, {80, 119}, {20, 70}, {139, 70}} {
+				wantPixel(t, img, point[0], point[1], border, "viewport border")
+			}
+		})
+	}
+}
+
 func TestScrollFadeRejectsInvalidBoundaryArguments(t *testing.T) {
 	for _, tc := range []struct {
 		name    string

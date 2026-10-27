@@ -23,8 +23,6 @@ func Surface(e ui.Element, c *ui.Context, secondary, invalid, disabled bool) ui.
 // SurfaceMode paints Coss's bordered input and focus or invalid state.
 // Secondary is retained for existing callers; Coss uses the same field face.
 func SurfaceMode(e ui.Element, c *ui.Context, ring RingMode, secondary, invalid, disabled bool) ui.Element {
-	t := theme.Colors(c)
-	radius := theme.RadiusScale().Field
 	focused := false
 	if !disabled {
 		if ring == RingOnKeyboardFocus {
@@ -33,6 +31,14 @@ func SurfaceMode(e ui.Element, c *ui.Context, ring RingMode, secondary, invalid,
 			focused = e.FocusWithin()
 		}
 	}
+	return SurfaceFocused(e, c, focused, invalid, disabled)
+}
+
+// SurfaceFocused styles a compound shell whose editor owns the focus condition.
+func SurfaceFocused(e ui.Element, c *ui.Context, focused, invalid, disabled bool) ui.Element {
+	t := theme.Colors(c)
+	radius := theme.RadiusScale().Field
+	focused = focused && !disabled
 	fill := t.Background
 	if c.Theme().Dark {
 		fill = t.Input.Alpha(0.32)

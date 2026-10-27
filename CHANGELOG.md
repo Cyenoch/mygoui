@@ -2,12 +2,29 @@
 
 ## Unreleased
 
-The `coss` reconstruction replaces the previous unreleased HeroUI appearance
+The `coss` reconstruction replaces the previous unreleased appearance
 and token contract with coss ui references and native Go APIs. Existing extra
 families remain library extensions; the catalog is a capability mapping,
 not a claim of pixel-perfect completion. No release is asserted by this log.
 
 ### Changed
+
+- Upgrade MyGo to v0.7.1 and Go to 1.27.3; the CLI now resolves from the
+  module tool directive instead of an unpinned latest version.
+- Gallery supports native content zoom and Windows caption theme updates.
+  Loading animations use paint-only frames, with skeleton motion capped at
+  60 fps. Short-window alert autofocus reveals the safe action after layout.
+
+- Replace previous reference submodules with `references/coss`, pinned to the
+  documented source commit; retain earlier copyright notices separately.
+- Native per-corner button backgrounds retain their face through exits without
+  allocating persistent handles per frame. Vertical groups share member width;
+  Gallery groups include explicit separators.
+- Progress sweeps and table row states stay inside their rounded bounds.
+  Arbitrary nested rounded clipping remains a documented toolkit limitation;
+  no blanket offscreen-effect workaround changes native content composition.
+- Cross-platform paint tests distinguish synthetic markers from subpixel text
+  edges and use values that genuinely exceed the available API column width.
 
 - Canonical theme roles follow coss: Primary/Secondary, separate muted
   background/foreground, Accent, Card/Popover, Destructive, Input/Ring and
@@ -26,6 +43,12 @@ not a claim of pixel-perfect completion. No release is asserted by this log.
   OFL font sources. Historical references are no longer design authority.
 
 ### Added
+
+- Native `overlay.NewFlyout`, coss `FlyoutSurface`, zoom-aware `FlyoutAnchor`
+  and a Popover Gallery example. Explicit parent/tray and dimensions keep
+  window ownership outside the build; WebAssembly returns an error.
+- Optional `TabsOptions.KeepMounted` preserves hidden panels' native state
+  without layout space or keyboard targets.
 
 - Root Frame with independent panels, mixed Group with explicit segment
   corners, caller-owned collapsible Sidebar, ScrollArea with

@@ -16,9 +16,10 @@ type DialogOptions struct {
 	Width     float32
 	// Inset floats an edge-aligned dialog 16 DIPs from the window on widths
 	// of 640 DIPs or more.
-	Inset                bool
-	Title                string
-	Description          string
+	Inset       bool
+	Title       string
+	Description string
+	// Footer builds actions directly; use ButtonOptions.FullWidth on narrow windows.
 	Header, Body, Footer func()
 	BodyLabel            string
 	HideClose            bool
@@ -79,12 +80,16 @@ func dialog(c *ui.Context, open *bool, o DialogOptions, slide bool) ui.Element {
 		}
 		t := theme.Colors(c)
 		radius := overlayRadius()
+		footerCorners := [2]float32{}
+		contentHeight := max(float32(0), h-theme.Space48)
 		panel.Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border).MinHeight(0)
 		switch side {
 		case mygoui.SideLeft:
+			contentHeight = max(0, h-2*inset)
 			back.Row().Justify(ui.Start).AlignItems(ui.Stretch).Padding(inset)
 			panel.Clip().Width(min(width, max(float32(0), w-2*inset))).Height(max(float32(0), h-2*inset))
 		case mygoui.SideRight:
+			contentHeight = max(0, h-2*inset)
 			back.Row().Justify(ui.End).AlignItems(ui.Stretch).Padding(inset)
 			panel.Clip().Width(min(width, max(float32(0), w-2*inset))).Height(max(float32(0), h-2*inset))
 		case mygoui.SideTop:
@@ -95,6 +100,7 @@ func dialog(c *ui.Context, open *bool, o DialogOptions, slide bool) ui.Element {
 			panel.Clip().FillWidth().MaxHeight(max(float32(0), h-theme.Space48)).Radius(0)
 		default:
 			availW, availH := dialogViewport(back, panel, w, h)
+			contentHeight = availH
 			panel.Clip().Radius(radius).
 				Width(min(width, availW)).MaxWidth(availW).
 				MaxHeight(availH).MinHeight(0)
@@ -107,6 +113,9 @@ func dialog(c *ui.Context, open *bool, o DialogOptions, slide bool) ui.Element {
 		}
 		if inset > 0 {
 			panel.Radius(radius)
+		}
+		if inset > 0 || side == mygoui.SideAuto && w >= 640 {
+			footerCorners = [2]float32{radius - theme.Hairline, radius - theme.Hairline}
 		}
 		if slide {
 			edgeEnter(c, panel, side, theme.Space32, dialogMotionDuration, ui.EaseInOut)
@@ -125,11 +134,13 @@ func dialog(c *ui.Context, open *bool, o DialogOptions, slide bool) ui.Element {
 			bodyLabel:        o.BodyLabel,
 			hideClose:        o.HideClose,
 			onClose:          close,
-			fullBleedFooter:  true,
 			titleStyle:       theme.H4(),
 			descriptionStyle: theme.SM(),
 			padding:          theme.Space24,
 			headerGap:        theme.Space8,
+			maxHeight:        contentHeight,
+			fillHeight:       side == mygoui.SideLeft || side == mygoui.SideRight,
+			footerCorners:    footerCorners,
 		})
 		if !slide && side == mygoui.SideAuto {
 			responsiveDialogMotion(c, back, panel, motionState, w, h)

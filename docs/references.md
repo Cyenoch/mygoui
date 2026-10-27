@@ -5,14 +5,13 @@
 [coss ui documentation](https://coss.com/ui/docs) and the MIT `apps/ui`
 registry at commit **`3d8ca28e7d90123e9e0f44665944dc240b026ccb`** of
 [`cosscom/ui`](https://github.com/cosscom/ui/tree/3d8ca28e7d90123e9e0f44665944dc240b026ccb)
-are the reconstruction reference. Previous HeroUI design and tokens are not
+are the reconstruction reference. Previous design and tokens are not
 constraints for this branch.
 
-The research checkout is `/tmp/mygoui-coss-upstream`. It is temporary and
-not part of the public module or a prerequisite for consuming it. The live
-site was also downloaded to `/tmp/mygoui-coss-docs.html` and its LLM catalog
-to `/tmp/mygoui-coss-llms.txt`. Those local snapshots establish the catalog
-observed during reconstruction, not a promise about future website changes.
+Run `make refs` to populate `references/coss` at the pinned commit. It is
+a source-only development reference, not a runtime dependency or a prerequisite
+for consuming the Go module. Read the registry and MDX examples together when
+translating behavior into native MyGo components.
 
 | Purpose | Path in the pinned upstream checkout |
 | --- | --- |
@@ -94,8 +93,5 @@ not register it or establish browser-equivalent shaping.
 4. Update capability/design/customization docs and the unreleased changelog.
    Record actual verification evidence in `VALIDATION.md`.
 
-The `references/heroui` and `references/heroui-native` submodules and retained
-Apache license are historical reference artifacts. Their presence does not
-make them current visual authority. `docs/mygo-0.6.md` preserves the earlier
-integration record; its historical validation claims do not validate the coss
-reconstruction.
+`docs/mygo-0.7.md` records the current toolkit integration. The older
+`docs/mygo-0.6.md` preserves history, not current validation.

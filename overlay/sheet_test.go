@@ -248,26 +248,7 @@ func TestEdgeSurfacesSlideAndRetainInertExits(t *testing.T) {
 					middleDistance <= 0 || middleDistance >= firstDistance {
 					t.Fatalf("sheet did not slide into place: first=%+v middle=%+v settled=%+v", first, middle, settled)
 				}
-				redBounds := func() ui.Rect {
-					img := tt.Image()
-					minX, minY := img.Bounds().Max.X, img.Bounds().Max.Y
-					maxX, maxY := -1, -1
-					for y := 0; y < img.Bounds().Max.Y; y++ {
-						for x := 0; x < img.Bounds().Max.X; x++ {
-							pixel := img.RGBAAt(x, y)
-							if int(pixel.R)-int(pixel.G) < 20 || int(pixel.R)-int(pixel.B) < 20 {
-								continue
-							}
-							minX, minY = min(minX, x), min(minY, y)
-							maxX, maxY = max(maxX, x), max(maxY, y)
-						}
-					}
-					if maxX < 0 {
-						return ui.Rect{}
-					}
-					return ui.Rect{X: float32(minX), Y: float32(minY), W: float32(maxX - minX + 1), H: float32(maxY - minY + 1)}
-				}
-				painted := redBounds()
+				painted := redMarkerBounds(tt.Image())
 				if painted.W == 0 {
 					t.Fatal("sheet marker is not painted")
 				}
@@ -288,14 +269,14 @@ func TestEdgeSurfacesSlideAndRetainInertExits(t *testing.T) {
 				}
 				tt.Advance(exitStep)
 				tt.Frame()
-				departing := redBounds()
+				departing := redMarkerBounds(tt.Image())
 				travel := (departing.X-painted.X)*tc.dx + (departing.Y-painted.Y)*tc.dy
 				if departing.W == 0 || travel < 5 {
 					t.Fatalf("exit snapshot did not move toward its edge: settled=%+v departing=%+v", painted, departing)
 				}
 				tt.Advance(duration)
 				tt.Frame()
-				if remaining := redBounds(); remaining.W != 0 {
+				if remaining := redMarkerBounds(tt.Image()); remaining.W != 0 {
 					t.Fatalf("exit snapshot remained painted: %+v", remaining)
 				}
 			})

@@ -9,13 +9,13 @@ native editing, selection, focus and scrolling. Components compose through Go
 callbacks and typed collections. Applications run without a JavaScript runtime
 or WebView.
 
-The `coss` branch replaces the previous HeroUI design and tokens. The
+The `coss` branch replaces the previous design and tokens. The
 [capability matrix](docs/components.md) maps every component found across the
 pinned coss catalogs, plus their two documented hooks. A mapping records the
 native implementation and its limits; it does not certify visual or behavioral
 parity. Current verification belongs in [VALIDATION.md](VALIDATION.md).
 
-The module targets **Go 1.27.1** and pins **MyGo v0.6.3** and
+The module targets **Go 1.27.3** and pins **MyGo v0.7.1** and
 **mygoicons v0.2.1**.
 
 ## Try it
@@ -24,8 +24,8 @@ The module targets **Go 1.27.1** and pins **MyGo v0.6.3** and
 go run ./examples/basic
 go run ./examples/gallery
 
-make dev MYGO_VERSION=v0.6.3
-make app MYGO_VERSION=v0.6.3
+make dev
+make app
 ```
 
 The gallery is a native component workbench with a custom title bar, grouped
@@ -137,6 +137,7 @@ See [scroll examples and limits](docs/scrollfade.md).
 
 The visual reference is coss ui commit
 `3d8ca28e7d90123e9e0f44665944dc240b026ccb`.
+Run `make refs` to check out its source at `references/coss`.
 [Reference provenance](docs/references.md) identifies the MIT `apps/ui`
 registry and documentation. The upstream monorepo has mixed licensing;
 `packages/*` is outside that MIT scope, and its source and font assets must

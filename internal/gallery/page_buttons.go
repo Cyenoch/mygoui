@@ -176,26 +176,24 @@ func buttonGroupBody(c *ui.Context, st *buttonsState) {
 	)
 }
 
-// buttonGroupVerticalBody renders a full-width vertical group.
+// buttonGroupVerticalBody keeps the vertical group at its content width.
 func buttonGroupVerticalBody(c *ui.Context, st *buttonsState) {
-	ui.Column(c).FillWidth().MinWidth(theme.Scale(c, 180)).Children(func() {
-		mygoui.ButtonGroup(c, mygoui.ButtonGroupOptions{
-			Orientation: mygoui.GroupVertical, Separators: true, FullWidth: true,
+	mygoui.ButtonGroup(c, mygoui.ButtonGroupOptions{
+		Orientation: mygoui.GroupVertical, Separators: true,
+	},
+		mygoui.ButtonOptions{
+			Label: "Profile", Variant: mygoui.ButtonSecondary,
+			OnClick: func() { st.hit("Group profile") },
 		},
-			mygoui.ButtonOptions{
-				Label: "Profile", Variant: mygoui.ButtonSecondary,
-				OnClick: func() { st.hit("Group profile") },
-			},
-			mygoui.ButtonOptions{
-				Label: "Billing", Variant: mygoui.ButtonSecondary,
-				OnClick: func() { st.hit("Group billing") },
-			},
-			mygoui.ButtonOptions{
-				Label: "Sessions", Variant: mygoui.ButtonSecondary,
-				OnClick: func() { st.hit("Group sessions") },
-			},
-		)
-	})
+		mygoui.ButtonOptions{
+			Label: "Billing", Variant: mygoui.ButtonSecondary,
+			OnClick: func() { st.hit("Group billing") },
+		},
+		mygoui.ButtonOptions{
+			Label: "Sessions", Variant: mygoui.ButtonSecondary,
+			OnClick: func() { st.hit("Group sessions") },
+		},
+	)
 }
 
 // buttonGroupOutlineBody renders outline segments whose shared borders
@@ -397,7 +395,7 @@ func pressableBody(c *ui.Context, st *buttonsState) {
 		ui.Row(c).AlignItems(ui.Center).Gap(theme.Space12).
 			Padding(theme.Space12).MinWidth(theme.Scale(c, 320)).Children(func() {
 			ui.Icon(c, lucide.Sparkles()).Size(theme.Scale(c, theme.IconLG), theme.Scale(c, theme.IconLG)).
-				TextColor(t.Accent).Shrink(0)
+				TextColor(t.MutedForeground).Shrink(0).Label("Press feedback icon")
 			ui.Column(c).Grow(1).Basis(0).MinWidth(0).Children(func() {
 				mygoui.Typography(c, "Press feedback", mygoui.TypographyOptions{Type: theme.TypeBodySM})
 				mygoui.Typography(c, "A 0.985 press scale and surface fade follow the pointer.",

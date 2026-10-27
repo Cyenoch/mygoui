@@ -1,6 +1,7 @@
 package form
 
 import (
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -42,12 +43,11 @@ func InputGroup(c *ui.Context, value *string, o InputGroupOptions) ui.Element {
 		}
 		shell := ui.Grid(c).ColumnTracks(ui.FitContent(), ui.Fr(1), ui.FitContent()).
 			AlignItems(ui.Center).MinHeight(theme.Scale(c, 32)).Shrink(0)
-		if o.FullWidth || o.BlockPrefix != nil || o.BlockSuffix != nil {
+		if o.FullWidth {
 			shell.FillWidth()
 		} else {
 			shell.MinWidth(theme.Scale(c, inputDefaultWidth))
 		}
-		shell = fieldSurface(shell, c, o.Variant, o.Invalid, o.Disabled)
 		shell.Children(func() {
 			paddingStart, paddingEnd := float32(theme.Space12), float32(theme.Space12)
 			if o.Prefix != nil {
@@ -56,7 +56,7 @@ func InputGroup(c *ui.Context, value *string, o InputGroupOptions) ui.Element {
 			if o.Suffix != nil {
 				paddingEnd = theme.Space8
 			}
-			editor = ui.TextInputBase(c, value).MinWidth(0).ColumnStart(2).RowStart(row).FillWidth().
+			editor = ui.TextInputBase(c, value).MinWidth(0).ColumnStart(2).RowStart(row).JustifySelf(ui.Stretch).
 				PaddingStart(paddingStart).PaddingEnd(paddingEnd).PaddingY(theme.Scale(c, 5))
 			editor = fieldText(editor, c)
 			if o.Placeholder != "" {
@@ -75,27 +75,29 @@ func InputGroup(c *ui.Context, value *string, o InputGroupOptions) ui.Element {
 				editor.OnSubmit(o.OnSubmit)
 			}
 			if o.Prefix != nil {
-				prefix := ui.Row(c).AlignItems(ui.Center).Shrink(0).ColumnStart(1).RowStart(row).
+				prefix := ui.Row(c).AlignItems(ui.Center).Gap(theme.Space8).Shrink(0).ColumnStart(1).RowStart(row).
 					PaddingStart(theme.Space12).MinHeight(theme.Scale(c, 32)).TextColor(t.MutedForeground).
 					OnClick(focusEditor)
 				prefix.Children(o.Prefix)
 			}
 			if o.Suffix != nil {
-				suffix := ui.Row(c).AlignItems(ui.Center).Shrink(0).ColumnStart(3).RowStart(row).
+				suffix := ui.Row(c).AlignItems(ui.Center).Gap(theme.Space8).Shrink(0).ColumnStart(3).RowStart(row).
 					PaddingEnd(theme.Space12).MinHeight(theme.Scale(c, 32)).TextColor(t.MutedForeground).
 					OnClick(focusEditor)
 				suffix.Children(o.Suffix)
 			}
 			if o.BlockPrefix != nil {
-				ui.Column(c).FillWidth().MinWidth(0).ColumnStart(1).ColumnSpan(3).RowStart(1).
+				ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Justify(ui.Start).
+					Gap(theme.Space8).ColumnStart(1).ColumnSpan(3).RowStart(1).
 					Padding(theme.Space8, theme.Space12, 0, theme.Space12).OnClick(focusEditor).Children(o.BlockPrefix)
 			}
 			if o.BlockSuffix != nil {
-				ui.Column(c).FillWidth().MinWidth(0).ColumnStart(1).ColumnSpan(3).RowStart(row+1).
+				ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Justify(ui.Start).
+					Gap(theme.Space8).ColumnStart(1).ColumnSpan(3).RowStart(row+1).
 					Padding(0, theme.Space12, theme.Space8, theme.Space12).OnClick(focusEditor).Children(o.BlockSuffix)
 			}
 		})
-		return shell
+		return formstyle.SurfaceFocused(shell, c, editor.Focused(), o.Invalid || o.Error != "", o.Disabled)
 	}
 
 	fieldOptions := InputOptions{

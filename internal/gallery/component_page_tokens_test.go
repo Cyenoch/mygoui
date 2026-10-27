@@ -13,8 +13,8 @@ import (
 // than its column wraps onto more lines inside the pill instead of clipping at
 // a fixed height.
 func TestAPILongValuesWrapInsteadOfClipping(t *testing.T) {
-	const longType = "[]navigation.AccordionItemOptions"
-	const longDefault = "mygoui.ScrollShadowOrientation"
+	const longType = "[]navigation.AccordionItemOptionsWithVeryLongCrossPlatformTypeName"
+	const longDefault = "mygoui.ScrollShadowOrientationWithVeryLongCrossPlatformDefaultName"
 	params := []ComponentParam{
 		{"LongOption", longType, longDefault, "A value longer than its column."},
 	}

@@ -111,6 +111,240 @@ func TestTableVariants(t *testing.T) {
 	}
 }
 
+func TestTableSecondaryRowsKeepCardBoundary(t *testing.T) {
+	rows := fileRows()
+	st := &data.TableState{Selection: data.TableSelection{Mode: data.TableSelectionSingle, Row: -1}}
+	o := fileTable(rows, st, nil)
+	o.Variant = data.TableSecondary
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		ui.Column(c).Fill().Padding(20).Background(ui.RGB(180, 200, 220)).Children(func() {
+			data.Table(c, o).Height(153)
+		})
+	}, 440, 220)
+	tt.Move(2, 2)
+	tt.Frame()
+	table, ok := tt.Find("Files")
+	if !ok {
+		t.Fatal("table missing")
+	}
+	before := tt.Image()
+	wantTablePixel(t, before, int(table.X)+1, int(table.Y+table.H)-2, ui.RGB(180, 200, 220), "rounded corner")
+	if before.RGBAAt(int(table.X+table.W/2), int(table.Y+table.H)-1) ==
+		before.RGBAAt(int(table.X+table.W/2), int(table.Y+table.H)-3) {
+		t.Fatal("card bottom border is missing")
+	}
+	for _, tc := range []struct {
+		name   string
+		points [][2]int
+	}{
+		{"Beta", [][2]int{
+			{int(table.X) + 1, int(table.Y) + 34},
+			{int(table.X+table.W) - 2, int(table.Y) + 34},
+		}},
+		{"Gamma", [][2]int{
+			{int(table.X) + 1, int(table.Y+table.H) - 2},
+			{int(table.X+table.W) - 2, int(table.Y+table.H) - 2},
+			{int(table.X + table.W/2), int(table.Y+table.H) - 1},
+		}},
+	} {
+		row, ok := tt.Find(tc.name)
+		if !ok {
+			t.Fatalf("row %q missing", tc.name)
+		}
+		tt.Move(row.X+row.W/2, row.Y+row.H/2)
+		tt.Frame()
+		hover := tt.Image()
+		for _, point := range tc.points {
+			if got, want := hover.RGBAAt(point[0], point[1]), before.RGBAAt(point[0], point[1]); got != want {
+				t.Errorf("%s hover changed card boundary at %v: got %v, want %v", tc.name, point, got, want)
+			}
+		}
+		x, y := int(table.X+table.W/2), int(row.Y+row.H/2)
+		if hover.RGBAAt(x, y) == before.RGBAAt(x, y) {
+			t.Errorf("%s was not visibly hovered", tc.name)
+		}
+		if err := tt.Click(tc.name); err != nil {
+			t.Fatal(err)
+		}
+		tt.Move(2, 2)
+		tt.Frame()
+		selected := tt.Image()
+		for _, point := range tc.points {
+			if got, want := selected.RGBAAt(point[0], point[1]), before.RGBAAt(point[0], point[1]); got != want {
+				t.Errorf("%s selection changed card boundary at %v: got %v, want %v", tc.name, point, got, want)
+			}
+		}
+		if selected.RGBAAt(x, y) == before.RGBAAt(x, y) {
+			t.Errorf("%s was not visibly selected", tc.name)
+		}
+	}
+}
+
+func TestTableSecondaryLeavesHeaderVisible(t *testing.T) {
+	rows := fileRows()
+	st := &data.TableState{Selection: data.TableSelection{Mode: data.TableSelectionSingle, Row: 0}}
+	o := fileTable(rows, st, nil)
+	o.Variant = data.TableSecondary
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		ui.Column(c).Fill().Padding(20).Children(func() { data.Table(c, o).Height(153) })
+	}, 440, 220)
+	tt.Move(2, 2)
+	tt.Frame()
+	header, ok := tt.Find("Name")
+	if !ok {
+		t.Fatal("header missing")
+	}
+	img := tt.Image()
+	background := img.RGBAAt(int(header.X+header.W)-10, int(header.Y+header.H/2))
+	ink := 0
+	for y := int(header.Y); y < int(header.Y+header.H); y++ {
+		for x := int(header.X); x < int(header.X+80); x++ {
+			if img.RGBAAt(x, y) != background {
+				ink++
+			}
+		}
+	}
+	if ink == 0 {
+		t.Fatal("card clipping hid the header text")
+	}
+	if err := tt.Click("Name"); err != nil {
+		t.Fatal(err)
+	}
+	if st.Sort.Column != "name" {
+		t.Fatalf("header sorting stopped working: %+v", st.Sort)
+	}
+}
+
+func TestTableSecondaryCellSelectionKeepsCardBoundary(t *testing.T) {
+	rows := fileRows()
+	st := &data.TableState{Selection: data.TableSelection{Mode: data.TableSelectionMultiple, Row: -1}}
+	st.List.CellSelect = true
+	o := fileTable(rows, st, nil)
+	o.Variant = data.TableSecondary
+	var colors theme.Palette
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		colors = theme.Colors(c)
+		ui.Column(c).Fill().Padding(20).Background(ui.RGB(180, 200, 220)).Children(func() {
+			data.Table(c, o).Height(153)
+		})
+	}, 440, 220)
+	tt.Move(2, 2)
+	tt.Frame()
+	table, _ := tt.Find("Files")
+	before := tt.Image()
+	if err := tt.Click("Gamma"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Move(2, 2)
+	tt.Frame()
+	after := tt.Image()
+	points := [][2]int{
+		{int(table.X) + 1, int(table.Y+table.H) - 2},
+		{int(table.X+table.W) - 2, int(table.Y+table.H) - 2},
+		{int(table.X + table.W/2), int(table.Y+table.H) - 1},
+	}
+	for _, point := range points {
+		if got, want := after.RGBAAt(point[0], point[1]), before.RGBAAt(point[0], point[1]); got != want {
+			t.Errorf("cell selection changed card boundary at %v: got %v, want %v", point, got, want)
+		}
+	}
+	row, _ := tt.Find("Gamma")
+	wantTablePixel(t, after, int(table.X)+100, int(row.Y+row.H/2), colors.Primary, "selected cell")
+	if !st.List.CellSelected(2, 0) || st.List.CellSelected(2, 1) {
+		t.Fatalf("native cell selection = %+v", st.List.Cells)
+	}
+
+	name, _ := tt.Find("Name")
+	if got := after.RGBAAt(int(name.X+name.W/2), int(row.Y)-11); got.R < 200 {
+		t.Fatalf("selected cell cursor border not visible: %v", got)
+	}
+	tt.Key(ui.Shift, ui.KeyRight)
+	if st.List.Cells.Cursor != "size" || !st.List.CellSelected(2, 1) {
+		t.Fatalf("keyboard cell selection = %+v", st.List.Cells)
+	}
+	selection := tt.Image()
+	size, _ := tt.Find("Size")
+	wantTablePixel(t, selection, int(name.X+name.W/2), int(row.Y+row.H/2), colors.Primary, "first selected cell")
+	wantTablePixel(t, selection, int(size.X+size.W/2), int(row.Y+row.H/2), colors.Primary, "second selected cell")
+	for _, point := range points {
+		if got, want := selection.RGBAAt(point[0], point[1]), before.RGBAAt(point[0], point[1]); got != want {
+			t.Errorf("cell selection changed card boundary at %v: got %v, want %v", point, got, want)
+		}
+	}
+}
+
+func TestTableSecondaryKeepsNativeCellControlsAndVirtualizedRows(t *testing.T) {
+	st := &data.TableState{Selection: data.TableSelection{Mode: data.TableSelectionSingle, Row: -1}}
+	var original ui.Theme
+	var wrongTheme bool
+	o := data.TableOptions{
+		Label:   "Rows",
+		Variant: data.TableSecondary,
+		Columns: []data.TableColumnOptions{{ID: "name", Header: "Name"}},
+		Rows:    100,
+		State:   st,
+		Cell: func(c *ui.Context, cell data.TableCell) ui.Element {
+			if *c.Theme() != original {
+				wrongTheme = true
+			}
+			return ui.Button(c, fmt.Sprintf("Row %d", cell.Row.Index))
+		},
+	}
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		original = *c.Theme()
+		ui.Column(c).Fill().Padding(20).Children(func() {
+			data.Table(c, o).Height(153)
+		})
+	}, 440, 220)
+	if err := tt.Click("Row 0"); err != nil {
+		t.Fatal(err)
+	}
+	if !tt.Focused("Row 0") {
+		t.Fatal("native button did not receive focus")
+	}
+	tt.Scroll(200, 130, 0, 5000)
+	tt.Frame()
+	if wrongTheme {
+		t.Fatal("a cell was built with the internal row theme")
+	}
+	if !tt.HasText("Row 90") {
+		t.Fatalf("scroll did not build later rows: %v", tt.Texts())
+	}
+}
+
+func TestTableSecondaryHoveredRowFollowsScroll(t *testing.T) {
+	st := &data.TableState{Selection: data.TableSelection{Mode: data.TableSelectionSingle, Row: -1}}
+	o := data.TableOptions{
+		Label:   "Rows",
+		Variant: data.TableSecondary,
+		Columns: []data.TableColumnOptions{{ID: "name", Header: "Name"}},
+		Rows:    100,
+		State:   st,
+		Cell: func(c *ui.Context, cell data.TableCell) ui.Element {
+			return ui.Text(c, fmt.Sprintf("Row %d", cell.Row.Index))
+		},
+	}
+	var hover ui.Color
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		hover = c.Theme().SurfaceHover
+		ui.Column(c).Fill().Padding(20).Children(func() { data.Table(c, o).Height(153) })
+	}, 440, 220)
+	table, _ := tt.Find("Rows")
+	x, y := table.X+table.W/2, table.Y+100
+	tt.Move(x, y)
+	tt.Scroll(x, y, 0, 1000)
+	tt.Frame()
+	wantTablePixel(t, tt.Image(), int(x), int(y), hover, "scrolled hovered row")
+	if !tt.HasText("Row 20") && !tt.HasText("Row 21") && !tt.HasText("Row 22") && !tt.HasText("Row 23") {
+		t.Fatalf("table did not scroll to later rows: %v", tt.Texts())
+	}
+}
+
 // TestTableCellAlignment checks column alignment and the vertical centering of
 // cell content in a row made taller by another cell.
 func TestTableCellAlignment(t *testing.T) {
@@ -181,6 +415,73 @@ func TestTableHeaderChrome(t *testing.T) {
 	tt.Frame()
 	wantTablePixel(t, tt.Image(), 200, 16, colors.Background, "header face")
 	wantTablePixel(t, tt.Image(), 200, 32, colors.Border.Over(colors.Background), "header divider")
+}
+
+func TestCardTableHasOneTopBoundaryBelowItsHeader(t *testing.T) {
+	for _, dark := range []bool{false, true} {
+		t.Run(fmt.Sprint(dark), func(t *testing.T) {
+			o := fileTable(fileRows(), &data.TableState{}, nil)
+			o.Variant = data.TableSecondary
+			background := ui.RGB(180, 200, 220)
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, dark)
+				ui.Column(c).Fill().Padding(20).Background(background).Children(func() {
+					data.Table(c, o).Grow(1)
+				})
+			}, 440, 240)
+			head, ok := tt.Find("Name")
+			if !ok {
+				t.Fatal("header missing")
+			}
+			img := tt.Image()
+			// A full-width native divider above the rounded card would make a
+			// second top edge outside its corner, as in the reported screenshot.
+			wantTablePixel(t, img, int(head.X)+2, int(head.Y+head.H), background, "space above card corner")
+		})
+	}
+}
+
+func TestCardTableKeepsHeaderFeedback(t *testing.T) {
+	for _, rows := range []int{0, 3} {
+		t.Run(fmt.Sprint(rows), func(t *testing.T) {
+			o := fileTable(fileRows(), &data.TableState{}, nil)
+			o.Rows, o.Variant = rows, data.TableSecondary
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, false)
+				data.Table(c, o).Grow(1)
+			}, 440, 240)
+			head, _ := tt.Find("Name")
+			x, y := int(head.X)+4, int(head.Y+head.H/2)
+			before := tt.Image().RGBAAt(x, y)
+			tt.Move(head.X+head.W/2, head.Y+head.H/2)
+			if got := tt.Image().RGBAAt(x, y); got == before {
+				t.Fatal("sortable header has no hover feedback")
+			}
+			// The native resize grip is on the first column's trailing edge.
+			edge := int(head.X+head.W) - 1
+			tt.Move(2, 100)
+			before = tt.Image().RGBAAt(edge, y)
+			if tablePixelNear(tt.Image(), edge, y, theme.ColorsForMode(false).Background, 4) {
+				t.Fatal("resize grip is missing at rest")
+			}
+			tt.Move(float32(edge), float32(y))
+			if got := tt.Image().RGBAAt(edge, y); got == before {
+				t.Fatal("resize grip has no hover feedback")
+			}
+			tt.Press(float32(edge), float32(y))
+			tt.Move(float32(edge+24), float32(y))
+			tt.Release(float32(edge+24), float32(y))
+			if width := o.State.List.Columns.Widths["name"]; width != head.W+24 {
+				t.Fatalf("restored grip no longer resizes its native column: %g", width)
+			}
+			if err := tt.Click("Name"); err != nil {
+				t.Fatal(err)
+			}
+			if o.State.Sort.Column != "name" {
+				t.Fatal("restored feedback no longer sorts its native column")
+			}
+		})
+	}
 }
 
 func TestEmptyCardWithoutColumnsStartsAtTop(t *testing.T) {

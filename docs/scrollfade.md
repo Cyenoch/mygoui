@@ -52,7 +52,12 @@ mygoui.ScrollFade(c, viewport, &s.scroll, mygoui.ScrollFadeOptions{
 })
 ```
 
-The viewport must belong to the current build. `MaskFade` reduces the
+The viewport must belong to the current build. Shadow and surface fades paint
+in a non-interactive absolute layer inside its rounded content clip, before
+its border and native scrollbars. Build scrolling content before decorating
+the viewport. Radius and border can still be set on the returned element.
+
+`MaskFade` reduces the
 viewport's own paint and its native descendants to transparency, revealing
 the actual background behind it. Apply it to the layer whose paint should
 fade; an opaque background on that layer fades with the children.
@@ -90,10 +95,10 @@ only against a matching solid color cannot distinguish an alpha mask from
 surface overpainting. Headless fallback tests and real GPU evidence belong
 in separate entries in `VALIDATION.md`.
 
-Native implementation references at the pinned MyGo v0.6.3:
-[`ui/effect.go`](https://github.com/egoist/mygo/blob/v0.6.3/ui/effect.go)
+Native implementation references at the pinned MyGo v0.7.1:
+[`ui/effect.go`](https://github.com/egoist/mygo/blob/v0.7.1/ui/effect.go)
 defines subtree rendering and layer limits;
-[`ui/shader/shader.go`](https://github.com/egoist/mygo/blob/v0.6.3/ui/shader/shader.go)
+[`ui/shader/shader.go`](https://github.com/egoist/mygo/blob/v0.7.1/ui/shader/shader.go)
 defines ColorEffect and native shader execution.
 
 `ScrollShadow` remains an extra convenience viewport over `SurfaceFade`.

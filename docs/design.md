@@ -3,7 +3,7 @@
 `github.com/Cyenoch/mygoui` reconstructs suitable
 [coss ui](https://coss.com/ui/docs) components with native MyGo controls.
 The coss component catalog, MIT registry and published styling documentation
-are the design reference. Previous HeroUI appearance and tokens impose no
+are the design reference. Previous appearance and tokens impose no
 constraint on the `coss` branch.
 
 The [component matrix](components.md) records the complete catalog mapping,
@@ -27,6 +27,11 @@ Composition uses typed Go options, body callbacks for independent content,
 and typed slices for coordinated items. There are no ambient component
 providers or child introspection. `GroupItem.Build` receives its segment's
 corners explicitly; it must apply them to the control it returns.
+Vertical groups own their members' width, including icon-only and explicitly
+sized controls, and match their widest member without filling the parent.
+`FullWidth` fills the parent instead. Explicit separators are ordinary
+`GroupItem` builders, matching the upstream Group examples. Explicit `Corners` changes geometry, not a
+button's elevation; specialized ButtonGroup owns its joined-button styling.
 
 Native input is applied as constructors return. Use handled actions such as
 `OnClick`, `OnChange` and `OnSubmit` for side effects; a view may rebuild
@@ -64,7 +69,23 @@ The gallery is a native workbench consumer, not a web documentation clone. Its
 control insets, keeps draggable content regions, and uses native macOS traffic
 lights. A grouped sidebar, Cmd/Ctrl+K search and Preview/Code/API/Tokens views
 share window-owned component state. Compact layouts preserve focus rather
-than rebuilding a second application shell.
+than rebuilding a second application shell. Dialog owns the Modal size
+examples; Drawer owns the native floating BottomSheet examples. Their Go APIs
+remain available, without duplicate top-level Gallery pages.
+
+Cmd/Ctrl `+`, `-` and `0` use native content zoom, not text-only scaling.
+The system-button strip stays 52 window DIPs high while content breakpoints
+and insets follow the zoom. Windows caption buttons follow the explicit
+Gallery appearance. A separate native Flyout example lives on the Popover
+page; it is not a duplicate overlay catalog entry.
+
+Install `ToastState.View` once at the window root, after theme application and
+before modal views; page navigation must not remove its renderer. Overlay
+footers use a full-bleed muted face and top rule. Footer callbacks build their
+actions directly; set `ButtonOptions.FullWidth` on narrow layouts rather than
+expecting a parent to override a control's explicit alignment. Body scrolling
+keeps actions fixed normally; an outer native viewport makes header and footer
+reachable when short windows or enlarged text cannot fit the chrome.
 
 ## Appearance
 
@@ -93,6 +114,13 @@ for independently licensed host font sources.
 
 ## Native behavior and boundaries
 
+MyGo 0.7.1's GPU path can still drop an ancestor's rounded clip beneath a rectangular
+descendant clip. Headless rendering does not expose that backend limitation.
+State backgrounds use native per-corner fills; progress and table row painting
+apply their final clip directly around the fill. Arbitrary nested content
+still requires a toolkit fix. Do not flatten every container into an effect:
+that would hide embedded WebViews, change fade behavior and impose texture limits.
+
 - Caller-owned values and callbacks express selection, validation, submission
   and external actions. A nil callback does not fabricate a successful action.
 - Labels and help/errors must reach native field and control associations.
@@ -117,8 +145,8 @@ React hooks do not become parallel native infrastructure.
 
 The coss snapshot and licensing boundary are recorded in
 [references.md](references.md). Read affected MIT registry files, their MDX
-examples and published styling before changing behavior. Do not treat the
-remaining historical HeroUI submodules as current design authority.
+examples and published styling before changing behavior. The pinned
+`references/coss` checkout is the only component design reference.
 
 Meaningful tests protect observable editing, activation, focus, selection,
 validation, dismissal and retained paint. `ui.NewTester` can exercise native

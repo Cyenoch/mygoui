@@ -34,7 +34,8 @@ type ModalOptions struct {
 	Description string
 	// Header replaces the generated title/description block.
 	Header func()
-	// Body is the scrollable content; Footer is the action row.
+	// Body is the scrollable content; Footer builds the action row directly.
+	// Set ButtonOptions.FullWidth for full-width actions on narrow windows.
 	Body   func()
 	Footer func()
 	// BodyLabel names the scroll region for assistive technology.
@@ -118,6 +119,9 @@ func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
 			descriptionStyle: theme.SM(),
 			padding:          theme.Space24,
 			headerGap:        theme.Space8,
+			maxHeight:        availH,
+			fillHeight:       full || o.Size == ModalCover,
+			footerCorners:    [2]float32{max(0, radius-theme.Hairline), max(0, radius-theme.Hairline)},
 		})
 	})
 	if wasOpen && !*open && p.Valid() && p.Dismissed() {

@@ -11,44 +11,6 @@ func overlaysStateOf(s *State) *overlaysState {
 }
 
 func init() {
-	RegisterComponent(ComponentPage{
-		ID: "modal", Title: "Modal", Group: "Overlays", Order: 10,
-		Description: "A focus-trapped modal across every size, with a scrollable body and footer actions.",
-		Examples: []ComponentExample{
-			{Title: "Sizes", Description: "Every panel size, from small to full screen, with a two-action footer.",
-				Demo: func(c *ui.Context, s *State) { modalSizesExample(c, overlaysStateOf(s)) }},
-			{Title: "Prevent dismiss", Description: "The backdrop and Escape stay inert while the switch is on.",
-				Demo: func(c *ui.Context, s *State) { modalDismissExample(c, overlaysStateOf(s)) }},
-			{Title: "Backdrop", Description: "A blurred or transparent backdrop changes what stays visible behind the panel.",
-				Demo: func(c *ui.Context, s *State) { modalBackdropExample(c, overlaysStateOf(s)) }},
-		},
-		Code: `open := false
-overlay.Modal(c, &open, overlay.ModalOptions{
-    Size:        overlay.ModalMedium,
-    Title:       "Edit profile",
-    Description: "Changes apply immediately.",
-    Body: func() {
-        mygoui.Paragraph(c, "Focus stays inside the panel.", true)
-    },
-    Footer: func() {
-        mygoui.Button(c, mygoui.ButtonOptions{
-            Label: "Save changes", Variant: mygoui.ButtonPrimary,
-            OnClick: func() { open = false },
-        })
-    },
-})`,
-		Params: []ComponentParam{
-			{"Size", "overlay.ModalSize", "ModalMedium", "Extra small (320) through full screen and cover; the body scrolls when short."},
-			{"Backdrop", "overlay.ModalBackdrop", "ModalBackdropBlur", "Blurred dim, unblurred dim, or transparent backdrop."},
-			{"Title", "string", "required", "Heading and accessible name of the dialog."},
-			{"Body", "func()", "required", "Scrollable content of the panel."},
-			{"Footer", "func()", "nil", "Action row below the body."},
-			{"PreventDismiss", "bool", "false", "Ignores backdrop presses and Escape while set."},
-			{"HideClose", "bool", "false", "Removes the top-right close button."},
-			{"OnDismiss", "func()", "nil", "Runs after a backdrop, Escape or close-button dismissal."},
-		},
-		Tokens: []string{"Overlay", "OverlayForeground", "Muted", "Backdrop"},
-	})
 
 	RegisterComponent(ComponentPage{
 		ID: "alertdialog", Title: "AlertDialog", Group: "Overlays", Order: 20,
@@ -94,6 +56,9 @@ overlay.AlertDialog(c, &open, overlay.AlertDialogOptions{
 				Demo: func(c *ui.Context, s *State) { drawerEdgesExample(c, overlaysStateOf(s)) }},
 			{Title: "Handle and footer", Description: "A bottom drawer with a drag handle and an action.",
 				Demo: func(c *ui.Context, s *State) { drawerDetailExample(c, overlaysStateOf(s)) }},
+			{Title: "Floating bottom panel", Description: "Native BottomSheet extension with a handle-only swipe.",
+				Demo: func(c *ui.Context, s *State) { sheetFooterExample(c, overlaysStateOf(s)) }},
+			{Title: "Fixed height", Demo: func(c *ui.Context, s *State) { sheetTallExample(c, overlaysStateOf(s)) }},
 		},
 		Code: `open := false
 overlay.Drawer(c, &open, overlay.DrawerOptions{
@@ -121,46 +86,15 @@ overlay.Drawer(c, &open, overlay.DrawerOptions{
 	})
 
 	RegisterComponent(ComponentPage{
-		ID: "bottomsheet", Title: "BottomSheet", Group: "Overlays", Order: 40,
-		Description: "A native floating bottom panel with a swipe handle.",
-		Examples: []ComponentExample{
-			{Title: "With footer", Description: "The floating panel, its swipe handle and a footer action.",
-				Demo: func(c *ui.Context, s *State) { sheetFooterExample(c, overlaysStateOf(s)) }},
-			{Title: "Fixed height", Description: "A taller sheet with the handle and its swipe removed.",
-				Demo: func(c *ui.Context, s *State) { sheetTallExample(c, overlaysStateOf(s)) }},
-		},
-		Code: `open := false
-overlay.BottomSheet(c, &open, overlay.BottomSheetOptions{
-    Title: "Quick actions",
-    Body: func() {
-        mygoui.Paragraph(c, "Drag the handle down, press the backdrop or press Escape.", true)
-    },
-    Footer: func() {
-        mygoui.Button(c, mygoui.ButtonOptions{
-            Label: "Close sheet", Variant: mygoui.ButtonPrimary,
-            OnClick: func() { open = false },
-        })
-    },
-})`,
-		Params: []ComponentParam{
-			{"Title", "string", "required", "Heading of the sheet."},
-			{"Height", "float32", "content", "Fixed panel height, capped by 85% of the window or its 16 DIP gutters, whichever is tighter."},
-			{"HideHandle", "bool", "false", "Removes the drag handle and the downward swipe it owns."},
-			{"PreventDismiss", "bool", "false", "Ignores backdrop presses, Escape and the swipe while set."},
-			{"HideClose", "bool", "false", "Removes the top-right close button."},
-			{"OnDismiss", "func()", "nil", "Runs after the sheet is dismissed."},
-		},
-		Tokens: []string{"Overlay", "OverlayForeground", "Muted", "Backdrop"},
-	})
-
-	RegisterComponent(ComponentPage{
-		ID: "dialog", Title: "Dialog", Group: "Overlays", Order: 50,
-		Description: "The shared centered dialog panel with a heading, description and explicit footer.",
+		ID: "dialog", Title: "Dialog", Group: "Overlays", Order: 10,
+		Description: "A focus-trapped dialog with responsive layout, sizes and footer actions.",
 		Examples: []ComponentExample{
 			{Title: "With footer", Description: "The centered panel with a heading, description and actions.",
 				Demo: func(c *ui.Context, s *State) { dialogFooterExample(c, overlaysStateOf(s)) }},
-			{Title: "Edge placement", Description: "A concrete side spans the window edge instead of centering.",
-				Demo: func(c *ui.Context, s *State) { dialogEdgeExample(c, overlaysStateOf(s)) }},
+			{Title: "Sizes", Description: "Native Modal sizes share the dialog chrome.",
+				Demo: func(c *ui.Context, s *State) { modalSizesExample(c, overlaysStateOf(s)) }},
+			{Title: "Prevent dismiss", Demo: func(c *ui.Context, s *State) { modalDismissExample(c, overlaysStateOf(s)) }},
+			{Title: "Backdrop", Demo: func(c *ui.Context, s *State) { modalBackdropExample(c, overlaysStateOf(s)) }},
 		},
 		Code: `open := false
 overlay.Dialog(c, &open, overlay.DialogOptions{
@@ -197,6 +131,7 @@ overlay.Dialog(c, &open, overlay.DialogOptions{
 				Demo: func(c *ui.Context, s *State) { popoverArrowExample(c, overlaysStateOf(s)) }},
 			{Title: "Edge placement", Description: "The panel prefers the right edge and aligns with its trigger's end.",
 				Demo: func(c *ui.Context, s *State) { popoverEdgeExample(c, overlaysStateOf(s)) }},
+			{Title: "Native flyout", Demo: nativeFlyoutExample},
 		},
 		Code: `open := false
 anchor := mygoui.Button(c, mygoui.ButtonOptions{

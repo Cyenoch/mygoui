@@ -292,13 +292,51 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 	st.wire(&o)
 	var table ui.Element
 	root.Children(func() {
-		table = ui.Table(c, &st.List, tl.nativeColumns(), o.Rows, func(row, col int) { tl.buildCell(c, row, col) }).
+		original := c.Theme()
+		cellSelection := st.List.CellSelect && st.Selection.Mode == TableSelectionMultiple
+		if o.Variant == TableSecondary {
+			// Native row fills are square. Paint them per cell inside the card
+			// instead, preserving the toolkit's input and selection state.
+			rowTheme := *original
+			rowTheme.SurfaceHover = ui.Color{}
+			rowTheme.Accent = ui.Color{}
+			// The card already owns its top edge; the native header divider
+			// would draw a second square rule immediately above its corners.
+			rowTheme.Border = ui.Color{}
+			if cellSelection {
+				rowTheme.AccentText = ui.Color{}
+			}
+			c.SetTheme(&rowTheme)
+		}
+		table = ui.Table(c, &st.List, tl.nativeColumns(), o.Rows, func(row, col int) {
+			// Native rows use a transparent theme, but caller widgets keep the
+			// original theme, including when a virtualized row builds later.
+			if o.Variant == TableSecondary {
+				rowTheme := c.Theme()
+				c.SetTheme(original)
+				tl.buildCell(c, row, col)
+				c.SetTheme(rowTheme)
+			} else {
+				tl.buildCell(c, row, col)
+			}
+		}).
 			Grow(1).MinWidth(0).
 			Label(o.Label).
 			// The native header inherits its font size; cells set theirs too.
 			FontSize(theme.Scale(c, 14))
 		if chrome != nil {
-			table.Draw(chrome)
+			table.Draw(func(p *ui.Painter, r ui.Rect) {
+				tl.body = tableBody(r, true)
+				chrome(p, r)
+			})
+		}
+		if o.Variant == TableSecondary {
+			c.SetTheme(original)
+			tl.decorateHeader(c, table)
+			tl.focused = table.Focused()
+			_, y, _ := table.PointerPosition()
+			tl.hovered = table.Hovered()
+			tl.hoverY = table.LayoutBounds().Y + y
 		}
 	})
 
@@ -321,15 +359,19 @@ func tableChrome(o TableOptions, t theme.Palette, hasHeader bool) func(p *ui.Pai
 		return nil
 	}
 	radius := theme.RadiusScale().XL
+	return func(p *ui.Painter, r ui.Rect) {
+		body := tableBody(r, hasHeader)
+		p.Fill(body, t.Card, radius)
+		p.Stroke(body, t.Border, radius, theme.Hairline)
+	}
+}
+
+func tableBody(r ui.Rect, hasHeader bool) ui.Rect {
 	var top float32
 	if hasHeader {
 		top = theme.Space(8) + theme.Hairline
 	}
-	return func(p *ui.Painter, r ui.Rect) {
-		body := ui.Rect{X: r.X, Y: r.Y + top, W: r.W, H: max(0, r.H-top)}
-		p.Fill(body, t.Card, radius)
-		p.Stroke(body, t.Border, radius, theme.Hairline)
-	}
+	return ui.Rect{X: r.X, Y: r.Y + top, W: r.W, H: max(0, r.H-top)}
 }
 
 // mixColor returns t of the way from a to b.
@@ -373,9 +415,15 @@ type tableLayout struct {
 	row    TableRow
 	rowOK  bool
 
-	// The row paints are built once per pass, so attaching one to a cell
-	// allocates nothing per cell in paint callbacks.
-	paintRow, paintSelected, paintSelectedFirst func(p *ui.Painter, box ui.Rect)
+	// Row paint callbacks are built once per pass and shared by the cells.
+	paintFirst, paintRow, paintSelected, paintSelectedFirst func(p *ui.Painter, box ui.Rect)
+	paintCellSelected, paintCellSelectedFirst               func(p *ui.Painter, box ui.Rect)
+	body                                                    ui.Rect
+	hovered                                                 bool
+	hoverY                                                  float32
+	hoverColor                                              ui.Color
+	focused                                                 bool
+	headers                                                 []ui.Rect
 }
 
 func newTableLayout(c *ui.Context, o TableOptions, st *TableState, t theme.Palette) *tableLayout {
@@ -407,6 +455,7 @@ func newTableLayout(c *ui.Context, o TableOptions, st *TableState, t theme.Palet
 	if o.RowActions != nil {
 		tl.actions = len(tl.columns)
 	}
+	tl.headers = make([]ui.Rect, len(tl.nativeColumns()))
 	// The toolkit pads every table cell by 6 DIP vertically and 10 DIP
 	// horizontally. A cell's content box is inset by that padding, so a row
 	// tint painted on the content box alone leaves seams of the native
@@ -417,15 +466,21 @@ func newTableLayout(c *ui.Context, o TableOptions, st *TableState, t theme.Palet
 	base := t.Background
 	if o.Variant == TableSecondary {
 		base = t.Card
+		tl.hoverColor = c.Theme().SurfaceHover
 	}
 	tint := ui.RGB(0, 0, 0)
 	if c.Theme().Dark {
 		tint = ui.RGB(255, 255, 255)
 	}
 	selected := mixColor(base, tint, 0.04)
-	tl.paintRow = cellPaint(ui.Color{}, line, padX, padY)
-	tl.paintSelected = cellPaint(selected, line, padX, padY)
-	tl.paintSelectedFirst = cellPaint(selected, ui.Color{}, padX, padY)
+	tl.paintFirst = tl.cellPaint(ui.Color{}, ui.Color{}, padX, padY)
+	tl.paintRow = tl.cellPaint(ui.Color{}, line, padX, padY)
+	tl.paintSelected = tl.cellPaint(selected, line, padX, padY)
+	tl.paintSelectedFirst = tl.cellPaint(selected, ui.Color{}, padX, padY)
+	if o.Variant == TableSecondary {
+		tl.paintCellSelected = tl.cellPaint(c.Theme().Accent, line, padX, padY)
+		tl.paintCellSelectedFirst = tl.cellPaint(c.Theme().Accent, ui.Color{}, padX, padY)
+	}
 	return tl
 }
 
@@ -433,18 +488,38 @@ func newTableLayout(c *ui.Context, o TableOptions, st *TableState, t theme.Palet
 // optional separator on the row's top edge, both reaching the native cell
 // padding. The separator belongs to the lower row so that row's fill, painted
 // later, cannot cover it.
-func cellPaint(tint, line ui.Color, padX, padY float32) func(p *ui.Painter, box ui.Rect) {
-	if tint.A == 0 && line.A == 0 {
+func (tl *tableLayout) cellPaint(tint, line ui.Color, padX, padY float32) func(p *ui.Painter, box ui.Rect) {
+	if tint.A == 0 && line.A == 0 && tl.o.Variant != TableSecondary {
 		return nil
 	}
 	return func(p *ui.Painter, box ui.Rect) {
-		if tint.A != 0 {
-			p.Fill(ui.Rect{X: box.X - padX, Y: box.Y - padY, W: box.W + 2*padX, H: box.H + 2*padY}, tint, 0)
+		row := ui.Rect{X: box.X - padX, Y: box.Y - padY, W: box.W + 2*padX, H: box.H + 2*padY}
+		fill := tint
+		if fill.A == 0 && tl.hovered && tl.hoverY >= row.Y && tl.hoverY < row.Y+row.H {
+			fill = tl.hoverColor
 		}
-		if line.A != 0 {
-			p.Fill(ui.Rect{X: box.X - padX, Y: box.Y - padY, W: box.W + 2*padX, H: theme.Hairline}, line, 0)
+		draw := func() {
+			if fill.A != 0 {
+				p.Fill(row, fill, 0)
+			}
+			if line.A != 0 {
+				p.Fill(ui.Rect{X: row.X, Y: row.Y, W: row.W, H: theme.Hairline}, line, 0)
+			}
 		}
+		if tl.o.Variant != TableSecondary {
+			draw()
+			return
+		}
+		tl.clipBody(p, draw)
 	}
+}
+
+func (tl *tableLayout) clipBody(p *ui.Painter, draw func()) {
+	inset := float32(theme.Hairline)
+	body := ui.Rect{X: tl.body.X + inset, Y: tl.body.Y + inset,
+		W: max(0, tl.body.W-2*inset), H: max(0, tl.body.H-2*inset)}
+	// Keep this the innermost clip: MyGo 0.7.1's GPU shapes only that clip.
+	p.Clip(body, max(0, theme.RadiusScale().XL-inset), draw)
 }
 
 // cellColumn returns the column description a cell of col shows, or an empty
@@ -513,7 +588,8 @@ func (tl *tableLayout) buildCell(c *ui.Context, row, col int) {
 		ink = t.CardForeground
 	}
 	cellSelection := tl.st.List.CellSelect && tl.st.Selection.Mode == TableSelectionMultiple
-	if cellSelection && tl.st.List.CellSelected(row, col) {
+	cellSelected := cellSelection && tl.st.List.CellSelected(row, col)
+	if cellSelected {
 		ink = t.PrimaryForeground
 	}
 	cell := ui.Box(c).FillWidth().FillHeight().MinWidth(0).TextColor(ink).
@@ -526,6 +602,12 @@ func (tl *tableLayout) buildCell(c *ui.Context, row, col int) {
 		// here rather than in the toolkit's cell, and the content stays
 		// vertically centered as align-middle does.
 		Justify(ui.Center)
+	if tl.o.Variant == TableSecondary && col >= 0 && col < len(tl.headers) && tl.headers[col].W == 0 {
+		bounds := cell.LayoutBounds()
+		if bounds.W > 0 {
+			tl.headers[col] = ui.Rect{X: bounds.X - theme.Space10, W: bounds.W + 2*theme.Space10}
+		}
+	}
 	switch column := cellColumn(tl, col); column.Align {
 	case ui.Center:
 		cell.AlignItems(ui.Center)
@@ -534,12 +616,18 @@ func (tl *tableLayout) buildCell(c *ui.Context, row, col int) {
 	}
 	first := row == 0
 	switch {
+	case cellSelected && tl.o.Variant == TableSecondary && first:
+		cell.Draw(tl.paintCellSelectedFirst)
+	case cellSelected && tl.o.Variant == TableSecondary:
+		cell.Draw(tl.paintCellSelected)
 	case r.Selected && first && !cellSelection:
 		cell.Draw(tl.paintSelectedFirst)
 	case r.Selected && !cellSelection:
 		cell.Draw(tl.paintSelected)
 	case !first:
 		cell.Draw(tl.paintRow)
+	case tl.o.Variant == TableSecondary:
+		cell.Draw(tl.paintFirst)
 	}
 	cell.Children(func() {
 		var e ui.Element
@@ -562,4 +650,20 @@ func (tl *tableLayout) buildCell(c *ui.Context, row, col int) {
 			style.Disabled(e, true)
 		}
 	})
+	if tl.o.Variant == TableSecondary && cellSelection && tl.st.Selection.Row == row &&
+		tl.st.List.Cells.Cursor == cellColumn(tl, col).ID && !cell.FocusWithin() {
+		border := c.Theme().Accent
+		if cellSelected {
+			border = c.Theme().AccentText
+		}
+		cell.DrawOver(func(p *ui.Painter, box ui.Rect) {
+			if !tl.focused {
+				return
+			}
+			tl.clipBody(p, func() {
+				p.Stroke(ui.Rect{X: box.X - theme.Space10, Y: box.Y - theme.Space6,
+					W: box.W + 2*theme.Space10, H: box.H + 2*theme.Space6}, border, 0, theme.Hairline)
+			})
+		})
+	}
 }

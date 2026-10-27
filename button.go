@@ -403,6 +403,9 @@ func ButtonGroup(c *ui.Context, o ButtonGroupOptions, buttons ...ButtonOptions) 
 				b.FullWidth = true
 			}
 			item := buttonView(c, b, adj)
+			if vertical {
+				item.FillWidth()
+			}
 			if o.FullWidth && !vertical {
 				item.Grow(1).Basis(0).MinWidth(0)
 			}

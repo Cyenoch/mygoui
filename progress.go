@@ -108,7 +108,9 @@ func ProgressBar(c *ui.Context, o ProgressOptions) ui.Element {
 				const period = 1500 * time.Millisecond
 				phase := float32(p.Now().Sub(*start)%period) / float32(period)
 				x := r.X - band + ui.EaseInOut(phase)*(band*4.5)
-				p.Fill(ui.Rect{X: x, Y: r.Y, W: band, H: r.H}, fill, radius)
+				p.Clip(r, radius, func() {
+					p.Fill(ui.Rect{X: x, Y: r.Y, W: band, H: r.H}, fill, radius)
+				})
 				p.AnimationFrame()
 			})
 		} else {

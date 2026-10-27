@@ -3,10 +3,87 @@ package mygoui_test
 import (
 	"testing"
 
+	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
+
+func TestVerticalGroupsMatchTheirWidestControl(t *testing.T) {
+	for _, kind := range []string{"buttons", "toggles", "mixed"} {
+		t.Run(kind, func(t *testing.T) {
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, false)
+				ui.Column(c).Fill().Padding(20).Children(func() {
+					switch kind {
+					case "buttons":
+						mygoui.ButtonGroup(c, mygoui.ButtonGroupOptions{Orientation: mygoui.GroupVertical},
+							mygoui.ButtonOptions{Label: "A"}, mygoui.ButtonOptions{Label: "Very long item"})
+					case "toggles":
+						mygoui.ToggleButtonGroup(c, mygoui.ToggleButtonGroupOptions{Orientation: mygoui.Vertical},
+							mygoui.ToggleButtonOptions{Label: "A", Variant: mygoui.ToggleOutline},
+							mygoui.ToggleButtonOptions{Label: "Very long item", Variant: mygoui.ToggleOutline})
+					case "mixed":
+						items := make([]mygoui.GroupItem, 0, 2)
+						for _, label := range []string{"A", "Very long item"} {
+							items = append(items, mygoui.GroupItem{Build: func(corners [4]float32) ui.Element {
+								return mygoui.Button(c, mygoui.ButtonOptions{Label: label, Corners: &corners})
+							}})
+						}
+						mygoui.Group(c, mygoui.GroupOptions{Orientation: mygoui.Vertical}, items...)
+					}
+				})
+			}, 300, 160)
+			a, b := findRect(t, tt, "A"), findRect(t, tt, "Very long item")
+			if a.W != b.W || a.X != b.X {
+				t.Fatalf("vertical controls do not join: short=%+v long=%+v", a, b)
+			}
+			if b.W >= 260 {
+				t.Fatalf("intrinsic group unexpectedly fills its parent: %+v", b)
+			}
+		})
+	}
+}
+
+func TestVerticalGroupsJoinFixedWidthAndTextControls(t *testing.T) {
+	for _, kind := range []string{"buttons", "toggles", "mixed"} {
+		t.Run(kind, func(t *testing.T) {
+			calls := 0
+			selected := false
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.Apply(c)
+				ui.Column(c).Fill().Padding(20).Children(func() {
+					switch kind {
+					case "buttons":
+						mygoui.ButtonGroup(c, mygoui.ButtonGroupOptions{Orientation: mygoui.GroupVertical},
+							mygoui.ButtonOptions{Label: "Short", IconOnly: true, Icon: lucide.Plus(), OnClick: func() { calls++ }},
+							mygoui.ButtonOptions{Label: "Very long item"})
+					case "toggles":
+						mygoui.ToggleButtonGroup(c, mygoui.ToggleButtonGroupOptions{Orientation: mygoui.Vertical},
+							mygoui.ToggleButtonOptions{Label: "Short", Selected: &selected, Variant: mygoui.ToggleOutline, IconOnly: true, Icon: lucide.Plus(), OnChange: func(bool) { calls++ }},
+							mygoui.ToggleButtonOptions{Label: "Very long item", Variant: mygoui.ToggleOutline})
+					case "mixed":
+						mygoui.Group(c, mygoui.GroupOptions{Orientation: mygoui.Vertical},
+							mygoui.GroupItem{Build: func(corners [4]float32) ui.Element {
+								return mygoui.Button(c, mygoui.ButtonOptions{Label: "Short", Corners: &corners, OnClick: func() { calls++ }}).Width(80)
+							}},
+							mygoui.GroupItem{Build: func(corners [4]float32) ui.Element {
+								return mygoui.Button(c, mygoui.ButtonOptions{Label: "Very long item", Corners: &corners})
+							}})
+					}
+				})
+			}, 300, 160)
+			short, long := findRect(t, tt, "Short"), findRect(t, tt, "Very long item")
+			if short.X != long.X || short.W != long.W || long.W >= 260 {
+				t.Fatalf("fixed-width control breaks intrinsic vertical group: short=%+v long=%+v", short, long)
+			}
+			tt.ClickAt(short.X+short.W-8, short.Y+short.H/2)
+			if calls != 1 {
+				t.Fatal("expanded face is not interactive")
+			}
+		})
+	}
+}
 
 func TestFramePanelsKeepInsetsAndIndependentActions(t *testing.T) {
 	calls := 0

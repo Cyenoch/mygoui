@@ -74,7 +74,7 @@ func Skeleton(c *ui.Context, o SkeletonOptions) ui.Element {
 				p.FillGradient(box, ui.LinearGradient{Angle: 120, Stops: stops}, 0)
 			})
 		}
-		p.AnimationFrame()
+		p.AnimationFrameRate(60)
 	})
 	return e
 }
@@ -168,5 +168,5 @@ func (fx *skeletonGroupEffect) PaintEffect(p *ui.Painter, box ui.Rect, content *
 	fx.values.Vec4(fx.window, box.X, box.Y, fx.width, fx.height)
 	fx.values.Vec3(fx.motion, skeletonPhase(p.Now()), fx.peak, mode)
 	fx.effect.PaintEffect(p, box, content, inset)
-	p.AnimationFrame()
+	p.AnimationFrameRate(60)
 }

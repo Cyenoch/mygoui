@@ -8,6 +8,13 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
+type alertCancelFocusKey struct{}
+
+type alertCancelGeometry struct {
+	panel ui.Rect
+	set   bool
+}
+
 // AlertDialogOptions configures an explicit-choice alert dialog. Backdrop
 // presses and Escape do not dismiss it.
 type AlertDialogOptions struct {
@@ -100,6 +107,7 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 			Radius(radius).Clip().
 			Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border)
 		if w < 640 {
+			radius = 0
 			panel.Radius(0).BorderWidth(theme.Hairline, 0, 0, 0)
 		}
 		panel = panelElevation(c, panel)
@@ -123,12 +131,13 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 			icon:             icon,
 			hideClose:        !o.ShowClose || o.HideClose,
 			onClose:          cancel,
-			fullBleedFooter:  true,
 			centerHeader:     w < 640,
 			titleStyle:       theme.H4(),
 			descriptionStyle: theme.SM(),
 			padding:          theme.Space24,
 			headerGap:        theme.Space8,
+			maxHeight:        availH,
+			footerCorners:    [2]float32{max(0, radius-theme.Hairline), max(0, radius-theme.Hairline)},
 			footer: func() {
 				cancelButton = mygoui.Button(c, mygoui.ButtonOptions{
 					Label:     cancelLabel,
@@ -156,6 +165,14 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 	// DialogBase records the opener after its callback. Focus Cancel only
 	// after that capture, or the dialog would try to restore its own button.
 	cancelButton.AutoFocus()
+	if cancelButton.Valid() {
+		last := ui.Local(cancelButton, alertCancelFocusKey{}, func() alertCancelGeometry { return alertCancelGeometry{} })
+		bounds := p.LayoutBounds()
+		if !last.set || last.panel != bounds && cancelButton.Focused() {
+			cancelButton.ScrollIntoView()
+			last.panel, last.set = bounds, true
+		}
+	}
 	if wasOpen && !*open && p.Valid() && p.Dismissed() {
 		// Alert dialogs require an explicit choice: restore the caller's
 		// state instead of accepting a backdrop press or Escape.

@@ -1,6 +1,141 @@
 # Validation
 
-Validated on 2026-10-27 in the uncommitted `coss` worktree based on
+## MyGo 0.7.1 follow-up
+
+2026-10-27, `coss`, based on `a8cd38e99fa564e4b162620d6313085e5476de3a`.
+MyGo is now v0.7.1 and the minimum Go version is 1.27.3. This section
+supersedes the older pinned-version statements below, not their historical
+measurements. Remote CI and merge are tracked separately by PR #3.
+
+- `make check`: pass. Full headless suite, build, Go vet, MyGo lifetime vet,
+  formatting and module integrity. Final review-fix run:
+  `/tmp/mygoui-071-check-reviewed.log`.
+- `make race`: pass. Gallery 261.531 s and overlay 247.393 s;
+  `/tmp/mygoui-071-race.log`. Subsequent data/navigation/overlay race passes
+  are in `/tmp/mygoui-071-race-final.log`; final header-fix data race is in
+  `/tmp/mygoui-071-data-race-reviewed.log`.
+- `golangci-lint run ./...`: pass, zero issues;
+  `/tmp/mygoui-071-lint-reviewed.log`.
+- WASM and Windows/amd64 headless cross-builds: pass. `make workflows`: pass.
+- Linux Docker full shuffled headless suite: pass;
+  `/tmp/mygoui-071-linux-final.log`. The final header-fix data/Gallery
+  shuffled recheck is in `/tmp/mygoui-071-linux-reviewed.log`.
+- `govulncheck@v1.9.0 ./...`: no reachable vulnerabilities found;
+  `/tmp/mygoui-071-vuln.log`.
+- Native app build/sign with the pinned CLI: pass;
+  `/tmp/mygoui-071-app-final.log`. Output:
+  `artifacts/coss/mygo-071/app/darwin-arm64/Coss UI Gallery.app`.
+
+New tests cover zoomed search/input and compact layout, native title-bar
+insets, per-window zoom, inactive tab state/focus, loading paint without view
+rebuilds, flyout option boundaries/anchors/surface, and initially visible
+Cancel in a short 2x-text AlertDialog. `go tool mygo migrate-ui -write .`
+moves safe constructor keys; its remaining Popover/Tooltip notices refer to
+native base callback elements, which cannot be constructed by this layer.
+MyGo lifetime vet passes without stored frame values.
+
+Actual Metal offscreen scenes were rendered using the v0.7.1 module, not the
+headless rasterizer: `artifacts/coss/mygo-071/`. Light/dark ScrollFade,
+Modal and BottomSheet corners pass scoped pixel checks. Light ScrollFade,
+dark BottomSheet, light FlyoutSurface and light card Table were inspected.
+The card Table no longer draws a square header bottom border across the
+rounded body's top corners. A red-first regression and selected-row/card
+boundary tests cover that change. Gallery labels now call this the card
+variant. The plain variant keeps its separate header rule and square body.
+
+Independent pre-merge review identified that the card's transparent row
+theme also hid header hover and resize grips. Card headers now restore those
+affordances from committed native cell geometry while native sorting,
+resizing/reordering and keyboard input remain untouched. Empty card headers
+clip only their bottom divider and retain the native theme. A red-first
+regression covers hover, resting/hovered grips, resizing and sorting in empty
+and populated tables. No backdrop repaint or whole-table bitmap effect is
+used to erase the rule.
+Reviewed Metal captures include `table-grip-hover-false-metal.png` and
+`table-card-true-metal.png`: header feedback remains outside the rounded body.
+
+A separate nested-clip probe **still fails on Metal in 0.7.1**:
+`rounded ancestor -> rectangular Clip -> red fill` paints a red corner where
+the CPU image is white (`nested-clip-metal.png`). The explicit final-fill
+clips/corner fills in changed components remain necessary. This is not a
+claim that arbitrary rounded-container descendants are fixed; blanket
+Effect/Cache remains rejected because it hides embedded WebViews and adds
+texture-size/fade regressions.
+
+macOS live accessibility observed the rebuilt Gallery and a separate native
+flyout dialog with its heading, Name editor and Done action. The automation
+then returned to the parent; no completed editor/dismissal sequence is
+claimed. Windows caption appearance, Linux desktop flyout placement, native
+gestures and actual screen-reader operation remain unverified locally.
+
+## Clipping and CI follow-up
+
+Follow-up on 2026-10-27 is based on `a8cd38e99fa564e4b162620d6313085e5476de3a`
+on `coss`. Changes remain uncommitted; no push or remote CI rerun is asserted.
+The older reconstruction record follows this section and does not override it.
+
+- `references/coss` is checked out at
+  `3d8ca28e7d90123e9e0f44665944dc240b026ccb`. Previous reference submodules
+  are removed. Repository text outside the upstream checkout has no old-brand
+  matches; original NextUI copyright remains in the retained Apache notice.
+- Added red-first regressions for exiting per-corner button faces, vertical
+  intrinsic group widths and the indeterminate progress band's paint bounds.
+  The old CornerFill probe grew window references every rebuild and lost its
+  fill on exit; the revised native background probe retains zero new handles
+  and fades the face through intermediate frames.
+- TableSecondary row/hover/cell-selection fills now respect the body's rounded
+  boundary without clipping the header. Focus, virtualized controls and
+  scroll-hover tests pass. Group examples use explicit separators; Vertical
+  reproduces upstream `p-group-9.tsx`, with full-width actions a separate example.
+- Actual Metal offscreen captures in
+  `artifacts/coss/rounding-final-<false|true>-metal.png` cover light/dark Group,
+  hovered Billing, vertical zoom controls and selected Table last row. Both
+  images were inspected. These are GPU-rendered scenes, not window/OS input.
+- The native audit was re-collected into
+  `artifacts/coss/native-audit-clipping-final/manifest.json`: 57 subjects,
+  114 appearance entries, 550 captures and 102 contact sheets. Capture count
+  is evidence inventory, not a claim that every state matches the website.
+- Browser reopened the official Group page and read live segment radius,
+  borders, separators and size; two screenshot operations timed out. The
+  earlier saved official vertical zoom example was inspected alongside the
+  pinned source. Native app automation also timed out; no new OS-input claim.
+
+### Known renderer boundary
+
+An actual Metal probe confirms MyGo v0.6.3 can lose an outer rounded clip under
+a rectangular descendant clip (`Card -> Clip -> fill`), while the CPU renderer
+clips correctly. Native per-corner button fills and innermost progress/table
+clips fix those concrete paths, not arbitrary consumer subtrees.
+
+A blanket offscreen-effect workaround was tried and rejected: independent
+review reproduced unsynchronized arrow/shadow fades, hidden embedded WebViews
+and missing shadows beyond the effect size limit. Its race suite also timed
+out. That workaround is **not in the final source**. The generic nested-clip
+backend issue remains unresolved and must not be reported as fixed.
+
+### Follow-up checks
+
+- `make check MYGO_VERSION=v0.6.3`: pass;
+  `/tmp/mygoui-coss-check-final-followup.log`.
+- `make race`: pass, all packages, no reported races;
+  `/tmp/mygoui-coss-race-final-followup.log` (Gallery 260.755 s,
+  overlay 246.017 s). The earlier rejected-workaround timeout is not this run.
+- Linux/arm64 Docker, Go 1.27.3, full
+  `CGO_ENABLED=0 go test -shuffle=on ./... -count=1 -timeout=180s`: pass;
+  `/tmp/mygoui-coss-linux-final-followup.log`. This is actual Linux test
+  execution, not a cross-build.
+- `make wasm`, Windows/amd64 cross-build, `golangci-lint run ./...`: pass.
+- Remote run `40493219365` failed on the base commit. Its Linux/Windows logs
+  identified a font-width-dependent fixture and paint samplers that can pick
+  up glyph ink/subpixel color fringes. Tests now use a genuinely overwide
+  fixture, ink-free sample and shared synthetic-marker detector. Windows
+  runtime verification still requires remote CI; no platform skip was added.
+- Native Gallery app/DMG rebuilt locally; no release, notarization or fresh
+  full-window interaction acceptance is claimed.
+
+## Earlier Reconstruction
+
+Validated on 2026-10-27 in the then-uncommitted `coss` worktree based on
 `8d1d2a336da159998edbedf2d12bd505b5f8cebe`. No commit, push or release is
 asserted. These results apply to this reconstruction, not the previous design.
 

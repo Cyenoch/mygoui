@@ -401,7 +401,7 @@ func buildDayGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel
 	}
 	rowH := cellH + 2*rowInset
 
-	grid := ui.Column(c).Key(dayGridKey{}).Shrink(0).Focusable().FocusRing(false).
+	grid := ui.Column(c.Key(dayGridKey{})).Shrink(0).Focusable().FocusRing(false).
 		Role(ui.RoleTable).Label(label)
 	if spec.autofocus {
 		grid = grid.AutoFocus()
@@ -516,7 +516,7 @@ func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cell
 			tr, br = bandEdge, bandEdge
 		}
 	}
-	cell := ui.Box(c).Key(dayKey{day.Year(), day.Month(), day.Day()}).
+	cell := ui.Box(c.Key(dayKey{day.Year(), day.Month(), day.Day()})).
 		Size(cellW, rowH).Center().Shrink(0).Radius(radius).
 		Role(ui.RoleButton).Label(spec.dayText(day)).
 		Checked(isSelected || inRange)
@@ -697,7 +697,7 @@ func buildYearGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, mo
 	radius := theme.RadiusScale().LG
 	itemH := cellH + theme.Space4
 
-	scroll := ui.Scroll(c).Key(yearGridKey{}).Height(height).Shrink(0)
+	scroll := ui.Scroll(c.Key(yearGridKey{})).Height(height).Shrink(0)
 	scroller := ui.Local(scroll, yearScrollKey{}, func() ui.ScrollState { return ui.ScrollState{} })
 	scroll.TrackScroll(scroller)
 	scrolled := ui.Local(scroll, yearScrollInitKey{}, func() bool { return false })
@@ -717,7 +717,7 @@ func buildYearGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, mo
 			for y := lo; y <= hi; y++ {
 				year := y
 				label := strconv.Itoa(year)
-				cell := ui.Box(c).Key(yearKey(year)).Height(cellH).Center().
+				cell := ui.Box(c.Key(yearKey(year))).Height(cellH).Center().
 					Radius(radius).Role(ui.RoleButton).Label(label).
 					Selected(year == selectedYear).Cursor(ui.CursorPointer)
 				cell = cell.OnClick(func() { chooseYear(view, month, cursor, year, focusHeading) })

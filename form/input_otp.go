@@ -106,7 +106,7 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 				if index < n {
 					char = string(runes[index])
 				}
-				slot := ui.Box(c).Key(index).Width(slotHeight).Height(slotHeight).
+				slot := ui.Box(c.Key(index)).Width(slotHeight).Height(slotHeight).
 					Center().Radius(radius).Clip()
 				if o.Variant == ControlPrimary {
 					slot = style.Shadow(slot, c, slotShadows)

@@ -187,13 +187,13 @@ func tagView(c *ui.Context, o TagOptions, r tagResolved) ui.Element {
 	if r.Selected {
 		bg, fg, hover = t.AccentSoft, t.AccentSoftForeground, t.AccentSoftHover
 	}
+	if o.Key != "" {
+		c.Key(o.Key)
+	}
 	e := ui.Row(c).Shrink(0).Center().AlignSelf(ui.Start).Gap(theme.Space4).
 		Padding(paddingY, paddingX, paddingY, paddingX).
 		Radius(radius).Label(o.Label).
 		Role(ui.RoleListItem).Selected(r.Selected)
-	if o.Key != "" {
-		e.Key(o.Key)
-	}
 	// Disable before the face reads the pointer, so a disabled tag never
 	// paints its hover face.
 	e = style.Disabled(e, o.Disabled)
