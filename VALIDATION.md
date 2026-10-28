@@ -1,5 +1,41 @@
 # Validation
 
+## Main CI dependency download follow-up
+
+2026-10-28, based on main `26e320f`, with the previously validated race
+budget fix cherry-picked as `3544386`. Main run `40530517066` passed all
+three OS test jobs and analysis. Its race job never reached tests: the
+61.2 MB `fonts-noto-cjk` download stalled at the Azure Ubuntu mirror until
+the 15-minute job deadline. Check annotations confirm the job timeout;
+`/tmp/mygoui-main-40530517066-race.log`.
+
+Both Linux dependency steps now remove Azure from the hosted runner's
+mirror list, retaining its official Ubuntu archive/security alternatives.
+APT uses three retries and 30-second HTTP/HTTPS inactivity timeouts; each
+installation step has a five-minute overall limit. Failure still stops
+the job. The race package/job budgets are 600 seconds and 25 minutes.
+No production code, dependencies or tests change.
+
+- Exact workflow shell extracted for both jobs: identical; Bash syntax,
+  `actionlint` and `git diff --check` pass.
+- Ubuntu 24.04/amd64 Docker with the runner's mirror-list/source layout:
+  the exact installation shell passes. Both official mirrors remain, APT
+  reads all three settings, and all required Pango/CJK/emoji packages are
+  installed. The CJK download uses `https://archive.ubuntu.com/ubuntu`;
+  `/tmp/mygoui-main-ci-apt-install.log`. The minimal image needed a mounted
+  CA trust bundle for this check; TLS verification was not disabled.
+- `GOWORK=off make check`: pass; `/tmp/mygoui-main-ci-check.log`.
+- `GOWORK=off golangci-lint run ./...`: zero issues;
+  `/tmp/mygoui-main-ci-lint.log`.
+- `GOWORK=off make wasm workflows`: pass;
+  `/tmp/mygoui-main-ci-builds.log`.
+- Independent read-only review found no actionable issue; its actionlint,
+  Bash syntax, ShellCheck and mirror-filter fixture checks pass.
+
+The earlier full Linux race replay below covers the unchanged production
+and test source; it is not rerun for the apt-only change. Hosted CI on the
+new main revision remains pending. No native desktop verification is claimed.
+
 ## Race timeout budget follow-up
 
 2026-10-27, uncommitted follow-up to `cfb0515`. CI run `40529194388`
