@@ -3,9 +3,11 @@
   "private": true,
   "description": "Pinned agent workflow tools for the native Go library.",
   "scripts": {
-    "openspec": "openspec",
-    "spec:check": "openspec validate --all --strict --no-interactive",
-    "spec:check-archive": "openspec validate --archived --no-interactive"
+    "openspec": "node scripts/openspec.mjs",
+    "agents:setup": "node scripts/setup-agents.mjs",
+    "spec:check": "node scripts/openspec.mjs validate --all --strict --no-interactive",
+    "spec:check-archive": "node scripts/openspec.mjs validate --archived --no-interactive",
+    "test": "node --test scripts/*.test.mjs"
   },
   "devDependencies": {
     "@fission-ai/openspec": "1.15.0",

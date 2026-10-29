@@ -1,6 +1,6 @@
 # The tool directive resolves the same MyGo version as the library.
 MYGO = go tool mygo
-OPENSPEC = env OPENSPEC_TELEMETRY=0 XDG_CONFIG_HOME="$(CURDIR)/.agents/config" npm exec --no -- openspec
+OPENSPEC = node scripts/openspec.mjs
 IMPECCABLE = .agents/skills/impeccable/scripts/impeccable
 
 .PHONY: check test race vet build lint wasm workflows gallery basic dev app refs agents agents-update spec-check design-context design-doctor design-artifacts
@@ -49,12 +49,16 @@ refs:
 # Agent tooling is optional for Go library consumers.
 agents:
 	npm ci --ignore-scripts --no-audit --no-fund
+	npm run agents:setup
 	$(OPENSPEC) update --force
 	$(IMPECCABLE) hooks on
 
 agents-update:
-	npm exec --no -- impeccable update --project --yes
+	npm exec --no -- impeccable update --project --yes --no-hooks
+	npm exec --no -- impeccable install --providers=codex --scope=project --yes --force --no-hooks
+	npm run agents:setup
 	$(OPENSPEC) update --force
+	$(IMPECCABLE) hooks on
 
 spec-check:
 	$(OPENSPEC) validate --all --strict --no-interactive

@@ -21,6 +21,46 @@ these tools to import or build the Go library.
   integration are available
 - **AND** the contributor's global OpenSpec profile is unchanged
 
+#### Scenario: A contributor refreshes skills through npm with a global core profile
+
+- **WHEN** the contributor runs `npm run openspec -- update --force`
+  while their global profile selects only core workflows
+- **THEN** the project still exposes all twelve selected workflows
+- **AND** their global configuration remains unchanged
+
+#### Scenario: A contributor already has an older global design engine
+
+- **WHEN** the contributor runs the documented setup and then a design command
+- **THEN** the launcher uses the npm-installed engine verified against the
+  committed version and checksum ahead of the older global engine
+- **AND** a release mismatch fails setup explicitly
+
+### Requirement: Claude and Codex share maintained project integrations
+
+Claude Code and Codex SHALL load the same canonical project skills and
+project instructions. Each harness SHALL have its native hook configuration
+and official Impeccable agent profiles. Setup and documented refresh commands
+SHALL preserve shared directory links without replacing conflicting user content.
+
+#### Scenario: Either harness starts in the project
+
+- **WHEN** Claude Code or Codex loads the configured project integrations
+- **THEN** its skill paths resolve to `.agents/skills`
+- **AND** it receives the same AGENTS.md rules and the twelve OpenSpec workflows
+- **AND** its hooks resolve to the same verified project engine
+
+#### Scenario: A contributor refreshes the shared integrations
+
+- **WHEN** the contributor runs `make agents-update`
+- **THEN** both harnesses retain their skill and agent directory links
+- **AND** the shared skills retain invocation guidance usable by both harnesses
+
+#### Scenario: A conflicting Claude skills directory already exists
+
+- **WHEN** setup encounters an existing directory at the intended shared link
+- **THEN** setup fails with the conflicting path
+- **AND** it leaves the existing content untouched
+
 ### Requirement: Substantive changes have one current behavior record
 
 New capabilities, public behavior/API changes, architectural changes and

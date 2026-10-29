@@ -19,7 +19,8 @@ The module targets **Go 1.27.3** and pins **MyGo v0.7.2** and
 **mygoicons v0.2.1**.
 
 Development uses [OpenSpec and Impeccable](docs/agent-workflow.md) for
-requirements, scoped changes and native design review. Start with
+requirements, scoped changes and native design review in Claude Code and
+Codex, sharing `.agents/skills` through `.claude/skills`. Start with
 `make agents`; these tools are optional development dependencies.
 
 ## Try it

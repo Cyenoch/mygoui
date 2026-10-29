@@ -11,6 +11,8 @@ Matt Pocock skill workflow for this repository.
 
 - Install the complete OpenSpec skill set and a project-scoped profile.
 - Pin development CLIs, document setup and validate specs in CI.
+- Share canonical skills and rules between Claude Code and Codex, register
+  official agent profiles and hooks, and verify the project engine at setup.
 - Record native project context, per-artifact rules and operation guidance.
 - Capture the existing visual system and gallery surface context for Impeccable.
 - Route design review and verification to native evidence with explicit

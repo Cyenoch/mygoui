@@ -31,6 +31,8 @@ jobs:
           node-version: '24'
           cache: npm
       - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run agents:setup
+      - run: npm test
       - run: make spec-check
 
   test:

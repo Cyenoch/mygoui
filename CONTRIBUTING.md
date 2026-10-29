@@ -11,8 +11,10 @@ older visual-reference wording in the MyGo migration notes.
 Use [OpenSpec and Impeccable](docs/agent-workflow.md) for requirements,
 implementation tracking and design work. `make agents` installs the pinned
 development tools and refreshes all twelve OpenSpec skills without changing
-your global OpenSpec profile. It also enables Impeccable's project hooks;
-Codex still requires its own hook trust approval.
+your global OpenSpec profile. Claude and Codex share `.agents/skills` through
+`.claude/skills`; each has its own committed hooks and official agent profiles.
+Setup verifies and installs the pinned project engine. Harness hook trust
+still applies.
 
 Read `PRODUCT.md`, root `DESIGN.md` and the relevant `openspec/specs/`
 contracts. Public behavior changes need a scoped OpenSpec change, meaningful

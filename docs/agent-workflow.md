@@ -16,23 +16,49 @@ make design-doctor
 ```
 
 `package.json` and `package-lock.json` pin the CLI dependencies.
-The generated skills and Codex hook manifest are committed. Impeccable's
-engine binary is ignored; its version and checksums ship with the launcher,
-which resolves or downloads the matching platform binary when needed.
+The generated skills, agent profiles and both harnesses' hook manifests are
+committed. Setup verifies the npm platform engine against the skill's
+committed version and SHA256 manifest, then copies it into the launcher's
+ignored project binary directory. Commands and hooks use this binary ahead
+of an unversioned home installation. Run setup before using design commands.
 Node and these tools are not required to import or build the Go library.
 
 OpenSpec's twelve workflows are installed as skills in `.agents/skills/`.
 The project uses skills-only delivery, so setup does not write prompts to
-your home directory. The Makefile scopes `XDG_CONFIG_HOME` to
-`.agents/config/` for OpenSpec commands; its checked-in profile selects the
-complete workflow set without changing your global preferences.
+your home directory. Both npm and Make call `scripts/openspec.mjs`, which
+scopes `XDG_CONFIG_HOME` to `.agents/config/`; its checked-in profile selects
+the complete workflow set without changing your global preferences.
+Use `npm run openspec -- <arguments>` for the bare `openspec` examples in
+upstream skills so they use this project configuration.
+
+Claude and Codex share physical files:
+
+| Entry | Canonical source |
+| --- | --- |
+| Codex skills | `.agents/skills/` |
+| `.claude/skills` | Symlink to `../.agents/skills` |
+| `.claude/agents` | Symlink to `../.agents/claude-agents` (official Claude profiles) |
+| `.codex/agents` | Symlink to `../.agents/skills/impeccable/agents` (official Codex profiles) |
+| `CLAUDE.md` | Imports `AGENTS.md`; Codex reads `AGENTS.md` directly |
+
+Edit the canonical source; preserve the links. Setup creates missing links
+and refuses conflicting directories without replacing user content.
+Windows checkouts need directory-symlink support and Git symlink preservation;
+plain files containing a link target cannot supply shared skills.
+
 Use `make agents-update` to intentionally refresh generated integrations.
 Review the resulting diff: Impeccable's updater fetches the current skill
-distribution, independently of the pinned npm CLI.
+distribution, independently of the pinned npm CLI. It refreshes the Claude
+profiles, then reinstalls the Codex skill variant as the canonical shared
+version; this variant includes both harnesses' invocation guidance.
+If the refreshed engine version changes, align the pinned npm dependencies
+before setup can pass its checksum verification.
 
-The installer wires Codex `PostToolUse` and `Stop` hooks. Codex requires a
-separate trust decision in `/hooks` before executing them. Enabling a hook
-in project configuration does not establish that the harness has trusted it.
+Both `.claude/settings.json` and `.codex/hooks.json` wire `PostToolUse` and
+`Stop` to the shared launcher. Claude's project-local settings remain ignored.
+Codex requires a separate trust decision in `/hooks` before executing them;
+Claude also applies its own project trust. Enabling a hook in project
+configuration does not establish that the harness has trusted it.
 The hook scans supported web files; it does not scan Go UI code.
 
 ## Sources of truth
@@ -75,22 +101,23 @@ is not the project workflow.
 ## OpenSpec workflows
 
 These are agent skills, not terminal subcommands. Codex uses `$skill-name`;
-other tools may expose the `/opsx:` spelling after their own integration.
+Claude uses `/skill-name`. This shared skills-only setup does not install
+the separate `/opsx:` command aliases.
 
-| Intent | Codex skill |
-| --- | --- |
-| Investigate an uncertain problem | `$openspec-explore` |
-| Produce a complete proposal | `$openspec-propose` |
-| Start with a scaffold | `$openspec-new-change` |
-| Build artifacts incrementally | `$openspec-continue-change` |
-| Generate the planning artifacts together | `$openspec-ff-change` |
-| Implement tracked tasks | `$openspec-apply-change` |
-| Revise an existing change as understanding improves | `$openspec-update-change` |
-| Check completeness, correctness and consistency | `$openspec-verify-change` |
-| Merge deltas into current specs before archive | `$openspec-sync-specs` |
-| Complete and archive one change | `$openspec-archive-change` |
-| Archive several completed changes with conflict review | `$openspec-bulk-archive-change` |
-| Learn the workflow through a real scoped task | `$openspec-onboard` |
+| Intent | Codex | Claude |
+| --- | --- | --- |
+| Investigate an uncertain problem | `$openspec-explore` | `/openspec-explore` |
+| Produce a complete proposal | `$openspec-propose` | `/openspec-propose` |
+| Start with a scaffold | `$openspec-new-change` | `/openspec-new-change` |
+| Build artifacts incrementally | `$openspec-continue-change` | `/openspec-continue-change` |
+| Generate the planning artifacts together | `$openspec-ff-change` | `/openspec-ff-change` |
+| Implement tracked tasks | `$openspec-apply-change` | `/openspec-apply-change` |
+| Revise an existing change as understanding improves | `$openspec-update-change` | `/openspec-update-change` |
+| Check completeness, correctness and consistency | `$openspec-verify-change` | `/openspec-verify-change` |
+| Merge deltas into current specs before archive | `$openspec-sync-specs` | `/openspec-sync-specs` |
+| Complete and archive one change | `$openspec-archive-change` | `/openspec-archive-change` |
+| Archive several completed changes with conflict review | `$openspec-bulk-archive-change` | `/openspec-bulk-archive-change` |
+| Learn the workflow through a real scoped task | `$openspec-onboard` | `/openspec-onboard` |
 
 A typical substantive change uses propose, apply, verify and archive.
 Explore first when the problem is uncertain; use new/continue instead of
@@ -103,10 +130,13 @@ Agents execute the pinned CLI with:
 ```sh
 npm run openspec -- list --specs
 npm run openspec -- list
-npm run openspec -- status --change <name>
-npm run openspec -- instructions apply --change <name> --json
+npm run --silent openspec -- status --change <name> --json
+npm run --silent openspec -- instructions apply --change <name> --json
 make spec-check
 ```
+
+Use npm's `--silent` flag when parsing JSON output so npm does not prepend
+its script banner.
 
 `openspec/config.yaml` injects native constraints, per-artifact rules and
 apply/archive guidance. Keep project customization there and in `AGENTS.md`;
@@ -133,7 +163,8 @@ For new flows, use `$impeccable shape <target>`. For existing interfaces,
 start with `$impeccable critique <target>` for UX or
 `$impeccable audit <target>` for technical quality. Put actionable findings,
 decisions and checks in the active change. Preserve the coss system during
-refinement; a redesign requires a redesign request.
+refinement; a redesign requires a redesign request. In Claude, use
+`/impeccable` with the same arguments.
 
 Choose the playbook that answers the finding:
 

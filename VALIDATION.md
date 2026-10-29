@@ -1,5 +1,65 @@
 # Validation
 
+## Impeccable and OpenSpec adoption
+
+2026-10-29, macOS/arm64, adoption at `6dd9502` plus local review fixes and
+Claude/Codex integration. These changes configure development workflows;
+the existing Go/MyGo implementation remains outside their ownership.
+
+- `make agents` and `make agents-update`: pass, including lockfile install,
+  all twelve OpenSpec workflows, both hook manifests and verified engine
+  0.1.18. The skill and agent links survive both commands. Logs:
+  `/tmp/mygoui-agent-dual-setup.log` and
+  `/tmp/mygoui-agent-dual-update.log`.
+- `npm test`: four regressions pass after refresh. A global core profile
+  cannot prune the project's workflows; both launchers bypass a stale home
+  engine; conflicting Claude content remains untouched; a skill/engine
+  release mismatch fails before an engine is installed. Log:
+  `/tmp/mygoui-agent-dual-tests.log`.
+- Claude and Codex each have four official agent profiles. Directory
+  realpaths resolve to their canonical `.agents` targets; Codex TOML
+  required fields and Claude frontmatter were inspected. `CLAUDE.md`
+  imports the same AGENTS.md used by Codex.
+- Both configured hook commands were exercised with synthetic
+  `PostToolUse` and `Stop` payloads in a temporary CSS fixture. All four
+  invocations exit successfully with valid JSON; Stop reports the intended
+  fixture finding. This verifies command/protocol behavior, not harness
+  trust or automatic events. Log: `/tmp/mygoui-agent-dual-hook-smoke.log`.
+- `GOWORK=off make check`: pass after review fixes, covering the headless
+  suite, ordinary build, vet/lifetime vet, formatting and module integrity.
+  Log: `/tmp/mygoui-agent-dual-go-check.log`. Earlier adoption checks also
+  passed `GOWORK=off make wasm workflows` and `make design-artifacts`;
+  `/tmp/mygoui-agent-builds.log` and
+  `/tmp/mygoui-agent-design-artifacts.log`. The button contact sheet under
+  `artifacts/design-review/` was inspected as collector evidence.
+- Strict current-spec/active-delta validation and `actionlint`: pass.
+  Impeccable resolves PRODUCT.md, DESIGN.md and the gallery Operate brief.
+  Doctor has one informational `config-build-path-unset` finding: a future
+  Persuade/Experience build preference has not been chosen. No preference
+  was invented. Logs: `/tmp/mygoui-agent-dual-specs.log`,
+  `/tmp/mygoui-agent-dual-context.log`,
+  `/tmp/mygoui-agent-dual-doctor.log`.
+- `adopt-impeccable-openspec` was synchronized and archived as
+  `2026-10-29-adopt-impeccable-openspec`, creating the six-requirement
+  agent-workflow main spec. Final `make spec-check` passes all four main
+  specs and the archive's fourteen completed tasks; no active changes
+  remain. Logs: `/tmp/mygoui-agent-dual-archive.log` and
+  `/tmp/mygoui-agent-dual-specs-final.log`.
+
+Independent read-only review identified two reproducibility defects:
+the npm OpenSpec entry used the user's global profile, and the design
+launcher could select a stale global engine. One project-scoped CLI entry
+and a checksummed sibling engine fix them; focused tests reproduce both
+failure conditions. The shared-directory refresh was also exercised:
+upstream Claude updates are followed by the canonical Codex variant, so
+both invocation forms remain available without changing upstream skills.
+
+The web detector and browser Live Mode do not validate native Go controls.
+Actual Claude/Codex session loading, hook trust/automatic firing,
+Windows/Linux execution, GPU and screen-reader operation were not exercised
+by this tooling follow-up. No new race-sensitive Go behavior was introduced.
+No commit, push or release was performed by this work.
+
 ## MyGo 0.7.2 integration
 
 2026-10-29, uncommitted changes based on `674e53d`, macOS 27.0.1/arm64,

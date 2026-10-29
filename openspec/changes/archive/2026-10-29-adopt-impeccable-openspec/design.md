@@ -20,8 +20,8 @@ runtime or manufacture validation of existing uncommitted code.
    adding Go dependencies. Impeccable's update distribution is a separate
    refresh and its resulting diff must be reviewed.
 2. Select all twelve OpenSpec workflows using its official custom profile
-   and skills-only delivery. Scope XDG_CONFIG_HOME in Makefile commands to
-   a checked-in project configuration. This avoids mutating global settings
+   and skills-only delivery. Scope XDG_CONFIG_HOME in one Node entry point
+   used by npm and Make to a checked-in project configuration. This avoids mutating global settings
    or generating home-directory prompts.
 3. Keep the standard spec-driven schema. Project context, artifact rules
    and operation guidance provide native constraints without a forked workflow.
@@ -36,12 +36,22 @@ runtime or manufacture validation of existing uncommitted code.
    design scores and unsupported source scans out of blocking gates.
 7. Preserve upstream skill files, licenses and provenance. Project rules
    live in AGENTS.md/config.yaml so integrations can be regenerated.
+8. Share `.agents/skills` with Claude through `.claude/skills`, import
+   AGENTS.md from CLAUDE.md, and link each harness's official agent profiles
+   from canonical files under `.agents`. Keep native hooks in each harness's
+   committed manifest. Refresh Claude profiles before restoring the Codex
+   variant as the common skill so the updater cannot leave a Claude-only
+   skill in the shared directory.
+9. Verify the npm platform engine against the committed skill version and
+   SHA256 manifest, then install it into the ignored sibling binary directory.
+   This keeps hooks and CLI commands ahead of stale global installations
+   without forking the upstream launcher.
 
 ## Risks / Trade-offs
 
 - Web-oriented tooling misses native sources: document the boundary, use
   native review playbooks and actual rendering evidence.
-- Codex hooks need harness trust: record that configuration alone is not
+- Claude and Codex hooks need harness trust: record that configuration alone is not
   execution, and do not claim native detector coverage.
 - Generated integrations can drift: keep the full profile in the repository,
   provide explicit refresh commands and inspect doctor/dry-run output.

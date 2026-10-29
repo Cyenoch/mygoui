@@ -55,6 +55,13 @@ All twelve OpenSpec workflows are installed as project skills, including
 verify, sync and bulk archive. Run the pinned CLI with
 `npm run openspec -- <arguments>`; run `make agents` after cloning and
 `make agents-update` when intentionally refreshing generated integrations.
+Use this project entry point instead of a bare `openspec` command in generated
+examples: it applies the shared profile on both Claude and Codex.
+`.claude/skills` links to `.agents/skills`; `.claude/agents` links to
+`.agents/claude-agents`. Codex agent profiles link from `.codex/agents` to
+the upstream Impeccable skill's `agents` directory.
+Edit the canonical targets, preserving the links.
+Claude loads these rules through `CLAUDE.md`; Codex reads this file directly.
 Do not edit generated upstream skills for project-specific rules; keep those
 in this file and `openspec/config.yaml`.
 

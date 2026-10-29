@@ -90,7 +90,8 @@ retain their declared MIT license and source metadata. These development
 files do not become application dependencies.
 
 The project installs Impeccable through the official `impeccable` CLI
-v4.8.0. The copied skill, command references and helpers are from
+v4.8.0. The copied skill, command references, helpers and Claude profiles in
+`.agents/claude-agents` are from
 [pbakaus/impeccable](https://github.com/pbakaus/impeccable), Apache 2.0,
 copyright 2025 Paul Bakaus. The complete
 [license](licenses/impeccable-LICENSE) is retained from the installed npm
