@@ -9,6 +9,10 @@ native editing, selection, focus and scrolling. Components compose through Go
 callbacks and typed collections. Applications run without a JavaScript runtime
 or WebView.
 
+The native [`chart` family](docs/charts.md) adds the 19 Bklit chart subjects and
+composable axes, legends, brush and annotations, using the same coss theme.
+Its capability matrix records native subsets rather than full React parity.
+
 The `coss` branch replaces the previous design and tokens. The
 [capability matrix](docs/components.md) maps every component found across the
 pinned coss catalogs, plus their two documented hooks. A mapping records the

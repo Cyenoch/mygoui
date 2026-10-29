@@ -30,6 +30,10 @@ tokens and component designs are not design constraints for this branch.
 
 ## Capabilities
 
+Native charts use Bklit's public chart catalog as capability reference and the
+existing coss visual system. The chart matrix records supported native subsets;
+the library does not embed Studio, a browser runtime or background data services.
+
 Customizable semantic theme tokens in both appearances; independently composed
 components; a generic scroll fade using shadow, surface blending or a native
 subtree alpha mask. Web-only

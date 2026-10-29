@@ -1,3 +1,6 @@
 [submodule "references/coss"]
 	path = references/coss
 	url = https://github.com/cosscom/ui.git
+[submodule "references/bklit"]
+	path = references/bklit
+	url = https://github.com/bklit/bklit-ui.git

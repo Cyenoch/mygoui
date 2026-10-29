@@ -66,7 +66,9 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 			"colorarea", "colorslider", "colorfield", "colorswatch",
 			"colorswatchpicker", "colorpicker",
 		},
-		"Data": {"table"},
+		"Data":            {"table"},
+		"Charts":          {"areachart", "barchart", "candlestickchart", "choroplethchart", "composedchart", "funnelchart", "gaugechart", "heatmapchart", "linechart", "profitlossline", "livelinechart", "piechart", "radarchart", "radialchart", "ringchart", "scatterchart", "sankeychart", "sparkline", "sunburstchart"},
+		"Chart Utilities": {"chartlegend", "chartgrid", "chartbackground", "referencearea", "projectionline", "chartband", "chartweekends", "chartdeadline", "trendline", "chartmarkers", "charttooltip", "chartbrush", "chartxaxis", "chartyaxis", "chartcontext", "customindicator"},
 	}
 	expected := map[string]string{}
 	for group, ids := range want {

@@ -157,7 +157,7 @@ type pageGroup struct {
 var groupRank = map[string]int{
 	"Overview": 0, "Foundations": 1, "Actions": 2, "Display": 3,
 	"Forms": 4, "Collections": 5, "Navigation": 6, "Overlays": 7,
-	"Dates": 8, "Color": 9, "Data": 10,
+	"Dates": 8, "Color": 9, "Data": 10, "Charts": 11, "Chart Utilities": 12,
 }
 
 // navRankOf returns a group's navigation position; unknown groups sort last.

@@ -51,7 +51,7 @@ type ComponentPage struct {
 
 // codeImportQualifier matches a package qualifier in a usage snippet, so the
 // bar can name the packages the snippet actually uses.
-var codeImportQualifier = regexp.MustCompile(`\b(mygoui|form|list|navigation|overlay|date|color|data|theme|lucide)\.`)
+var codeImportQualifier = regexp.MustCompile(`\b(mygoui|form|list|navigation|overlay|date|color|data|chart|theme|lucide)\.`)
 
 // qualifierImports maps a snippet qualifier to its module path.
 var qualifierImports = map[string]string{
@@ -63,6 +63,7 @@ var qualifierImports = map[string]string{
 	"date":       mygouiImportPath + "/date",
 	"color":      mygouiImportPath + "/color",
 	"data":       mygouiImportPath + "/data",
+	"chart":      mygouiImportPath + "/chart",
 	"theme":      mygouiImportPath + "/theme",
 	"lucide":     "github.com/Cyenoch/mygoicons/lucide",
 }
@@ -155,7 +156,7 @@ func buildComponentPage(c *ui.Context, s *State, p ComponentPage) ui.Element {
 					if url := sourceURL(p.ID); url != "" {
 						services := c.Services()
 						mygoui.Link(c, mygoui.LinkOptions{
-							Label: "Coss source", Icon: lucide.ExternalLink(),
+							Label: referenceLabel(p.ID), Icon: lucide.ExternalLink(),
 							OnClick: func() { services.OpenURL(url) },
 						})
 					}
@@ -271,7 +272,7 @@ func markdownDoc(p ComponentPage) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "# %s\n\n%s\n", p.Title, p.Description)
 	if url := sourceURL(p.ID); url != "" {
-		fmt.Fprintf(&b, "\n[Coss source](%s)\n", url)
+		fmt.Fprintf(&b, "\n[%s](%s)\n", referenceLabel(p.ID), url)
 	} else {
 		b.WriteString("\nNative addition.\n")
 	}

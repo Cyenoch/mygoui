@@ -197,7 +197,7 @@ func TestEveryPageRoutesThroughNativeNavigation(t *testing.T) {
 					if sourceURL(page.ID) != "" {
 						s.Panel = 1
 						tt.Frame()
-						if !tt.HasText("Coss source") {
+						if !tt.HasText(referenceLabel(page.ID)) {
 							t.Fatal("source component lost its upstream reference")
 						}
 					}

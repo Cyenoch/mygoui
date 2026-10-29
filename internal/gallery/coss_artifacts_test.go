@@ -42,6 +42,7 @@ func TestCossVisualArtifacts(t *testing.T) {
 		{"scrollarea", "Activity", "scrollarea"}, {"scrollfade", "Masked activity", "scrollfade"},
 		{"scrollfade", "Surface feed", "scrollfade-surface"},
 		{"scrollfade", "Shadow feed", "scrollfade-shadow"},
+		{"emptystate", "Create search", "emptystate-action"},
 		{"sheet", "Open right sheet", "sheet"}, {"previewcard", "Ada Lovelace", "previewcard"},
 	} {
 		sheet := image.NewRGBA(image.Rect(0, 0, 2360, 1800))

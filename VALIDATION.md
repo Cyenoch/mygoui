@@ -1,5 +1,71 @@
 # Validation
 
+## Bklit native charts and EmptyState alignment
+
+2026-10-29, uncommitted native-library/Gallery changes, macOS 27.0.1
+(26A434)/arm64, Go 1.27.3, MyGo 0.7.2. Bklit source is pinned at
+`ec5a9705ee973f95fd0ef2d974e9d00ae3fda011`; coss remains the visual authority.
+The chart and utility matrix in `docs/charts.md` states native subsets and gaps,
+not full React, decorative-preset, Studio or export parity.
+
+- Final `make check`: pass, including all headless tests, Gallery public snippet
+  type checks, ordinary build, Go vet, MyGo lifetime vet, formatting and module
+  integrity; `/tmp/mygoui-charts-reviewed-check.log`.
+- Full `make race`: pass, no reported race; Gallery 169.945 s, overlay 248.975 s;
+  `/tmp/mygoui-charts-final-race.log`. This run precedes the small Enter-action
+  follow-up; the subsequent `CGO_ENABLED=1 go test -race -p 1 ./chart
+  ./internal/gallery -count=1 -timeout=600s` also passes (Gallery 230.809 s),
+  `/tmp/mygoui-charts-reviewed-race.log`.
+- Final `golangci-lint run ./...`: zero issues;
+  `/tmp/mygoui-charts-reviewed-lint.log`. Final `make wasm`: pass;
+  `/tmp/mygoui-charts-reviewed-wasm.log`. No runtime module dependency is added.
+- Native Tester covers keyboard/readout, pointer and disabled ancestors including
+  trailing modifiers, activation counts, legend filtering, brush domain, live
+  sample replacement without mutation, signed stacks, malformed numeric/geometry/
+  graph/hierarchy input, huge finite angles, aggregate overflow, bounded weekend
+  shading, long forward flows, theme overrides and custom plot/indicator context.
+  All 35 chart/utility Gallery pages render and their Go snippets compile.
+- `MYGOUI_CHART_ARTIFACT_DIR=... CGO_ENABLED=0 go test ./internal/gallery -run
+  '^TestChartVisualArtifacts$' -count=1 -timeout=60s`: pass. Thirteen representative
+  subjects have wide/compact, light/dark captures under `artifacts/charts/`;
+  compact dark uses text scale 1.3. Headless contact sheets were inspected.
+- EmptyState action alignment is checked at widths 280/640 and text scales 1/1.3,
+  with exactly one callback per click. Its headless contact sheet is
+  `artifacts/empty-state-fix/emptystate-action-contact.png`.
+- Final `e2e` Gallery binary runs in a real macOS native window. Automation reads
+  the native element tree, focuses Line Chart and presses End (value: Day 6,
+  Sales 80), drills Sunburst with Home/Enter (Product breadcrumb), and activates
+  Create search (one created search). Transcript:
+  `/tmp/mygoui-charts-native/reviewed-verification.json`. Three inspected captures
+  are `artifacts/charts/native-macos-{line-inspected,sunburst-drilled,empty-state}.png`.
+  The EmptyState capture shows the button, icon, title and footer on one centerline.
+- `make design-doctor`: only the existing informational
+  `config-build-path-unset`; `/tmp/mygoui-charts-doctor.log`. It concerns future
+  Persuade/Experience surfaces, not this native Operate workbench. No browser
+  detector result is counted as Go UI validation.
+- Strict `make spec-check` and `git diff --check`: pass;
+  `/tmp/mygoui-charts-reviewed-spec.log`. Semantic verification maps all five
+  requirements and six scenarios to source and behavior evidence. The new
+  `native-charts` main spec preserves the delta Purpose and requirement blocks.
+- `add-bklit-charts` is synchronized and archived as
+  `2026-10-29-add-bklit-charts`, with all ten tasks complete. Post-archive
+  `make spec-check` passes five main specs and both completed archives;
+  `/tmp/mygoui-charts-archived-spec.log`. No active change remains.
+
+Independent source, code and finish-design reviews were performed. Code findings
+include overflow/arc hangs, calendar bounds, readout/axis displacement, ancestor
+disabled routing, missing stacked gaps, angular selection and long-flow geometry;
+all were resolved. Six material finish-design findings were fixed and recaptured;
+the reviewer's follow-up accepts those six fixes, not all possible states.
+The final Enter/disabled finding was fixed locally with a focused regression.
+Read-only design documentation review found no durable system drift; DESIGN.md
+and its sidecar remain unchanged. The archived change retains the detailed
+requirement/scenario map and review resolutions.
+
+Actual Windows/Linux execution, other GPU backends, IME and physical screen-reader
+operation are not verified. macOS element-tree metadata is not a VoiceOver test.
+No branch, commit, push or release is performed by this work.
+
 ## Impeccable and OpenSpec adoption
 
 2026-10-29, macOS/arm64, adoption at `6dd9502` plus local review fixes and

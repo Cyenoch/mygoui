@@ -1,5 +1,10 @@
 # Component capability matrix
 
+The additional [chart matrix](charts.md) maps all 19 Bklit chart subjects and
+the utility/axis catalog to native APIs. Bklit supplies chart capabilities;
+the visual system remains coss. The matrix states missing variants explicitly,
+not React feature parity.
+
 This maps the coss ui catalog to the native Go APIs observed in this checkout.
 The reference is commit `3d8ca28e7d90123e9e0f44665944dc240b026ccb`;
 see [sources and licensing](references.md).

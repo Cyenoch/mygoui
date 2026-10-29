@@ -56,6 +56,7 @@ jobs. Application startup owns those policies.
 | `overlay` | Dialogs, sheets, drawers, popovers, previews, tooltips and toast state |
 | `date` | Gregorian calendars, date/range pickers and time editing |
 | `data` | Native virtualized table and column/selection state |
+| `chart` | Native charts, axes, legends, brush, annotations and caller-owned inspection |
 | `color` | Additional native color editing components |
 | `locale` | Library messages; application language registration remains outside the library |
 | `fonts` | Opt-in embedded Cal Sans and explicit startup registration; no import-side registration |

@@ -26,6 +26,9 @@ var cossSources = map[string]string{
 }
 
 func sourceURL(id string) string {
+	if url := chartSource(id); url != "" {
+		return url
+	}
 	if id == "theming" {
 		return cossSourceRoot + "content/docs/(root)/styling.mdx"
 	}
@@ -37,6 +40,13 @@ func sourceURL(id string) string {
 		return cossSourceRoot + "registry/default/ui/sidebar.tsx"
 	}
 	return cossSourceRoot + "content/docs/components/" + slug + ".mdx"
+}
+
+func referenceLabel(id string) string {
+	if chartSource(id) != "" {
+		return "Bklit source"
+	}
+	return "Coss source"
 }
 
 // Coss names are the public semantic roles. Native derived colors remain

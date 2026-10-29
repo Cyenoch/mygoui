@@ -1,5 +1,22 @@
 # Reference provenance
 
+## Bklit chart capability reference
+
+[`bklit/bklit-ui`](https://github.com/bklit/bklit-ui/tree/ec5a9705ee973f95fd0ef2d974e9d00ae3fda011)
+is pinned at `ec5a9705ee973f95fd0ef2d974e9d00ae3fda011` in `references/bklit`.
+Run `make refs` to populate it. Read public chart/utility/axis metadata under
+`apps/web/content/docs`, MDX and `packages/ui/src/charts/index.ts` together:
+19 chart subjects, 14 non-axis utility subjects, and Axis (overview, X and Y).
+README and generated llms lists omit some subjects.
+
+Bklit supplies chart capabilities; coss remains the visual authority.
+[charts.md](charts.md) maps every subject and supported native subset. Chart
+components/registry are MIT; preserve the 2026 uixmat notice. Studio has a
+separate proprietary license; do not copy `packages/studio` or editor-only
+Studio docs/controls. `packages/icons` is UNLICENSED; use mygoicons. Fonts,
+geography and vendored patterns need independent provenance; none are copied.
+[Bklit notice](../licenses/bklit-ui-NOTICE.md) retains the exact MIT text.
+
 ## Current visual reference
 
 [coss ui documentation](https://coss.com/ui/docs) and the MIT `apps/ui`

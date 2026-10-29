@@ -53,7 +53,8 @@ func EmptyState(c *ui.Context, o EmptyStateOptions) ui.Element {
 			})
 		}
 		if o.Action != nil {
-			o.Action()
+			ui.Row(c).FillWidth().MinWidth(0).Wrap().Gap(theme.Space8).
+				Justify(ui.Center).Children(o.Action)
 		}
 	})
 	return e

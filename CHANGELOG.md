@@ -9,6 +9,8 @@ not a claim of pixel-perfect completion. No release is asserted by this log.
 
 ### Changed
 
+- EmptyState action rows center recovery buttons with the icon and title,
+  including narrow layouts and increased text scale.
 - Upgrade MyGo to v0.7.2 and Go to 1.27.3; the CLI now resolves from the
   module tool directive instead of an unpinned latest version.
 - Avatar uses native `ImageSize`, including typed-nil and empty image fallback;
@@ -46,6 +48,12 @@ not a claim of pixel-perfect completion. No release is asserted by this log.
   OFL font sources. Historical references are no longer design authority.
 
 ### Added
+
+- Native `chart` family covering the 19 documented Bklit chart subjects with
+  coss chart roles, caller-owned inspection, legends, brush, axes and annotations.
+  Gallery adds Charts and Chart Utilities with public Go examples. The source
+  reference and MIT notice are pinned; `docs/charts.md` records native subsets
+  and missing upstream variants. Proprietary Studio is not reused.
 
 - `navigation.PopoverMenu` opts into MyGo's themed in-window context menu
   while `ContextMenu` keeps its OS-owned default. Both share selection and
