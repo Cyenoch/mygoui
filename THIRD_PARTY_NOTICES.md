@@ -51,7 +51,7 @@ not download, install or register the corresponding fonts.
 
 ## MyGo
 
-`github.com/egoist/mygo v0.7.1` is a module dependency under MIT, copyright
+`github.com/egoist/mygo v0.7.2` is a module dependency under MIT, copyright
 2026 MyGo contributors. Its full [license](licenses/MyGo-LICENSE) is retained.
 
 Spinner uses MyGo's `plugins/loading`, whose shapes and motion follow Jakub
@@ -88,3 +88,24 @@ Copied `golang-*` skills identify samber's cc-skills-golang in their metadata
 and retain their declared MIT license/attribution. Ponytail instructions
 retain their declared MIT license and source metadata. These development
 files do not become application dependencies.
+
+The project installs Impeccable through the official `impeccable` CLI
+v4.8.0. The copied skill, command references and helpers are from
+[pbakaus/impeccable](https://github.com/pbakaus/impeccable), Apache 2.0,
+copyright 2025 Paul Bakaus. The complete
+[license](licenses/impeccable-LICENSE) is retained from the installed npm
+package. The retained [upstream notice](licenses/impeccable-NOTICE.md)
+identifies native platform guidance derived from ehmo's
+`platform-design-skills`; its [MIT license](licenses/platform-design-skills-LICENSE)
+is retained as well. The notice was retrieved from upstream revision
+`5e745ace7e151feb2a93d360d0281fe39448b857`. The installed engine version
+and download digests are recorded in the skill's `scripts/VERSION` and
+`scripts/engine-checksums.txt`; platform binaries are not committed.
+
+OpenSpec CLI v1.15.0 generates the copied `openspec-*` skills. Their metadata
+identifies OpenSpec and the generating version. The complete
+[MIT license](licenses/openspec-LICENSE), copyright 2024 OpenSpec
+Contributors, is retained from the installed `@fission-ai/openspec` package.
+Both CLIs and their transitive dependencies are development tools;
+`package-lock.json` records the npm dependency graph. They are not Go
+module dependencies or application runtime components.

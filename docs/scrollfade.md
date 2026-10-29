@@ -95,10 +95,10 @@ only against a matching solid color cannot distinguish an alpha mask from
 surface overpainting. Headless fallback tests and real GPU evidence belong
 in separate entries in `VALIDATION.md`.
 
-Native implementation references at the pinned MyGo v0.7.1:
-[`ui/effect.go`](https://github.com/egoist/mygo/blob/v0.7.1/ui/effect.go)
+Native implementation references at the pinned MyGo v0.7.2:
+[`ui/effect.go`](https://github.com/egoist/mygo/blob/v0.7.2/ui/effect.go)
 defines subtree rendering and layer limits;
-[`ui/shader/shader.go`](https://github.com/egoist/mygo/blob/v0.7.1/ui/shader/shader.go)
+[`ui/shader/shader.go`](https://github.com/egoist/mygo/blob/v0.7.2/ui/shader/shader.go)
 defines ColorEffect and native shader execution.
 
 `ScrollShadow` remains an extra convenience viewport over `SurfaceFade`.

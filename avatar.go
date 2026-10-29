@@ -105,19 +105,8 @@ type avatarState struct {
 }
 
 func hasImage(source ui.ImageSource) bool {
-	switch image := source.(type) {
-	case *ui.Bitmap:
-		if image != nil {
-			w, h := image.Size()
-			return w > 0 && h > 0
-		}
-	case *ui.SVG:
-		if image != nil {
-			w, h := image.Size()
-			return w > 0 && h > 0
-		}
-	}
-	return false
+	w, h := ui.ImageSize(source)
+	return w > 0 && h > 0
 }
 
 func avatarInitials(name string) string {

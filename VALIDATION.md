@@ -1,5 +1,70 @@
 # Validation
 
+## MyGo 0.7.2 integration
+
+2026-10-29, uncommitted changes based on `674e53d`, macOS 27.0.1/arm64,
+Go 1.27.3 with `GOWORK=off`. The library and module-pinned CLI resolve
+MyGo v0.7.2. This section supersedes earlier current-version statements,
+not their historical measurements.
+
+- `make check`: pass; `/tmp/mygoui-072-check-final.log`. Full headless suite,
+  ordinary build, Go vet, MyGo lifetime vet, formatting and module integrity.
+- `make race`: pass, no reported races; `/tmp/mygoui-072-race.log`.
+  Gallery 165.004 s, overlay 248.209 s; serial package execution and the
+  existing 600-second package timeout remain unchanged.
+- `golangci-lint run ./...`: zero issues;
+  `/tmp/mygoui-072-lint-final.log`. `make wasm workflows`: pass;
+  `/tmp/mygoui-072-builds-final.log`.
+- Windows/amd64 and Linux/amd64 ordinary cross-builds, plus an `e2e` WASM
+  cross-build: pass; `/tmp/mygoui-072-cross-builds.log`. Native execution on
+  those platforms is not established by cross-compilation.
+- `go test -tags e2e ./examples/gallery`, normal `e2e` native build and
+  `e2e mygo_noinspector` build: pass. Dependency listing confirms normal
+  Gallery builds exclude `plugins/automation`, while `e2e` includes it.
+- `govulncheck@v1.9.0 ./...`: no vulnerabilities found;
+  `/tmp/mygoui-072-vuln.log`. `go mod tidy -diff` is empty; all 18 modules
+  have no replacements. Retained MyGo license matches v0.7.2 verbatim.
+- Pinned `go tool mygo build -skip-dmg`: native compilation and ad-hoc
+  signing pass; `/tmp/mygoui-072-app-final.log`. Output:
+  `artifacts/coss/mygo-072/app/darwin-arm64/Coss UI Gallery.app`.
+- `go tool mygo migrate-ui .` preview only reports the existing native
+  callback element key notices in `overlay/popover.go` and `overlay/tooltip.go`;
+  those callback elements cannot be constructed by this layer. Lifetime
+  vet passes. No broad rewrite or local dependency replacement is applied.
+
+New headless tests exercise drawn-menu keyboard selection, disabled-item
+skipping, callback counts, focus restoration, submenu pointer activation and
+Escape dismissal. Existing OS-menu tests remain in place. Avatar tests cover
+loaded PNG/SVG paint via `DecodeImage`, plus absent, typed-nil and empty
+images retaining initials. Context-menu tests also pass three shuffled runs.
+
+Real macOS verification uses the `e2e` binary inside a separate, ad-hoc-signed
+copy of the built `.app`, launched normally so the window is focused. The
+private automation socket is mode `0600`. Through the 0.7.2 protocol:
+component search and navigation, Shift+F10 opening, radio roles/checked state,
+selection persistence, Enter/Escape focus restoration, secondary click and
+outside dismissal pass. Light/dark window captures are inspected at
+`artifacts/coss/mygo-072/contextmenu-<light|dark>-open.png` (2360 x 1720).
+The interaction transcript is `/tmp/mygoui-072-bundle-automation.json`.
+The test app quits and removes its socket. A bare, unfocused CLI launch did
+not expose an accessibility focus ID; it is not used as focus evidence.
+
+Independent read-only review found a Gallery state mismatch: its themed
+menu used anchor-local selection but displayed window-owned result text.
+The example now uses one window-owned selection for both. A red-first
+regression confirms the selected radio mark survives Code/Preview remounts;
+the final macOS automation transcript also checks its accessible radio role
+and checked state after that round trip. The review's suggested radio semantic
+check is covered by this real-window transcript; headless Tester does not
+expose its accessibility tree publicly. The full Gallery race suite is rerun
+after this fix and passes in 156.512 s;
+`/tmp/mygoui-072-race-reviewed.log`.
+
+Actual screen-reader operation, Windows/Linux desktop behavior, remote CI
+and the previous arbitrary nested rounded-clip GPU limitation are not
+revalidated. Existing clipping workarounds remain. No commit, push or release
+is performed.
+
 ## Main CI dependency download follow-up
 
 2026-10-28, based on main `26e320f`, with the previously validated race

@@ -1,7 +1,9 @@
 # The tool directive resolves the same MyGo version as the library.
 MYGO = go tool mygo
+OPENSPEC = env OPENSPEC_TELEMETRY=0 XDG_CONFIG_HOME="$(CURDIR)/.agents/config" npm exec --no -- openspec
+IMPECCABLE = .agents/skills/impeccable/scripts/impeccable
 
-.PHONY: check test race vet build lint wasm workflows gallery basic dev app refs
+.PHONY: check test race vet build lint wasm workflows gallery basic dev app refs agents agents-update spec-check design-context design-doctor design-artifacts
 
 check: vet test build
 	@test -z "$$(gofmt -l .)"
@@ -43,3 +45,26 @@ app:
 
 refs:
 	git submodule update --init --depth 1
+
+# Agent tooling is optional for Go library consumers.
+agents:
+	npm ci --ignore-scripts --no-audit --no-fund
+	$(OPENSPEC) update --force
+	$(IMPECCABLE) hooks on
+
+agents-update:
+	npm exec --no -- impeccable update --project --yes
+	$(OPENSPEC) update --force
+
+spec-check:
+	$(OPENSPEC) validate --all --strict --no-interactive
+	$(OPENSPEC) validate --archived --no-interactive
+
+design-context:
+	$(IMPECCABLE) context $(if $(TARGET),--target "$(TARGET)")
+
+design-doctor:
+	$(IMPECCABLE) doctor --json
+
+design-artifacts:
+	MYGOUI_COSS_ARTIFACT_DIR="$(CURDIR)/artifacts/design-review" CGO_ENABLED=0 go test ./internal/gallery -run '^TestCossVisualArtifacts$$' -count=1 -timeout=180s

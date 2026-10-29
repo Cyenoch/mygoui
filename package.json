@@ -1,0 +1,17 @@
+{
+  "name": "mygoui-development-tools",
+  "private": true,
+  "description": "Pinned agent workflow tools for the native Go library.",
+  "scripts": {
+    "openspec": "openspec",
+    "spec:check": "openspec validate --all --strict --no-interactive",
+    "spec:check-archive": "openspec validate --archived --no-interactive"
+  },
+  "devDependencies": {
+    "@fission-ai/openspec": "1.15.0",
+    "impeccable": "4.8.0"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  }
+}

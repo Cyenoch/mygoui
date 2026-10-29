@@ -1,10 +1,92 @@
 package navigation
 
 import (
+	"slices"
 	"testing"
 
+	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
+
+func TestPopoverMenuKeyboardSelectionAndFocus(t *testing.T) {
+	selected := []string{"name"}
+	var calls int
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		anchor := ui.ButtonBase(c).Label("Document").Size(140, 40)
+		PopoverMenu(anchor, MenuOptions{
+			Selection: MenuSelectSingle, Selected: &selected,
+			Sections: []MenuSectionOptions{{Items: []MenuItemOptions{
+				{Key: "name", Label: "Name"},
+				{Label: "Locked", Disabled: true, OnSelect: func() { t.Error("disabled item activated") }},
+				{Key: "date", Label: "Date", OnSelect: func() { calls++ }},
+			}}},
+			OnSelect: func(string) { calls++ },
+		})
+	}, 400, 260)
+	if err := tt.Click("Document"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(ui.Shift, ui.KeyF10)
+	if !tt.HasText("Date") {
+		t.Fatal("keyboard did not open the drawn menu")
+	}
+	tt.Key(0, ui.KeyDown)
+	tt.Key(0, ui.KeyEnter)
+	if !slices.Equal(selected, []string{"date"}) || calls != 2 {
+		t.Fatalf("selection %v, callbacks %d; want [date] and one callback per scope", selected, calls)
+	}
+	if tt.HasText("Date") || !tt.Focused("Document") {
+		t.Fatal("choosing an item did not close the menu and restore anchor focus")
+	}
+	tt.Key(0, ui.KeyContextMenu)
+	tt.Key(0, ui.KeyDown)
+	tt.Key(0, ui.KeyEnter)
+	if !slices.Equal(selected, []string{"date"}) || calls != 4 {
+		t.Fatalf("reselecting a single choice: selection %v, callbacks %d", selected, calls)
+	}
+}
+
+func TestPopoverMenuPointerSubmenuAndDismissal(t *testing.T) {
+	var chosen []string
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		anchor := ui.ButtonBase(c).Label("Document").Size(140, 40)
+		PopoverMenu(anchor, MenuOptions{
+			Selection: MenuSelectMultiple,
+			Sections: []MenuSectionOptions{{Items: []MenuItemOptions{
+				{Label: "Move", Submenu: []MenuItemOptions{{Key: "folder", Label: "Folder"}}},
+				{Label: "Unavailable", Disabled: true},
+			}}},
+			OnSelect: func(key string) { chosen = append(chosen, key) },
+		})
+	}, 500, 300)
+	if err := tt.RightClick("Document"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("Unavailable"); err != nil {
+		t.Fatal(err)
+	}
+	if len(chosen) != 0 || !tt.HasText("Move") {
+		t.Fatalf("disabled item changed the menu: choices %v", chosen)
+	}
+	if err := tt.Click("Move"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("Folder"); err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(chosen, []string{"folder"}) || tt.HasText("Move") {
+		t.Fatalf("submenu choice %v; menu visible %v", chosen, tt.HasText("Move"))
+	}
+	if err := tt.RightClick("Document"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(0, ui.KeyEscape)
+	if tt.HasText("Move") || len(chosen) != 1 {
+		t.Fatal("Escape did not dismiss without another activation")
+	}
+}
 
 func TestContextMenuOpensAtNativeTriggerAndActivates(t *testing.T) {
 	var chosen []string

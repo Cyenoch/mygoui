@@ -2,6 +2,7 @@ package gallery
 
 import (
 	"fmt"
+	"image/color"
 	"math"
 	"reflect"
 	"testing"
@@ -405,5 +406,48 @@ func TestThemeOverridesReachEverySpecimen(t *testing.T) {
 	tt.Frame()
 	if got := theme.ColorsForMode(true).Primary; got != primarySwatches[1] {
 		t.Fatalf("new page lost primary override: %v", got)
+	}
+}
+
+func TestThemedMenuSelectionSurvivesWorkbenchViews(t *testing.T) {
+	state := New()
+	state.Selected = "contextmenu"
+	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)
+	if err := tt.Click("Themed document actions"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(ui.Shift, ui.KeyF10)
+	tt.Key(0, ui.KeyDown)
+	tt.Key(0, ui.KeyEnter)
+	if !tt.HasText("Sort: date") {
+		t.Fatal("choosing a sort order did not update the result")
+	}
+	tt.Key(ui.Shift, ui.KeyF10)
+	selectionMark := func() color.RGBA {
+		t.Helper()
+		row, ok := tt.Find("Sort by date")
+		if !ok {
+			t.Fatal("missing selected menu item")
+		}
+		// The native radio mark is centered in the leading 16 DIP slot.
+		return tt.Image().RGBAAt(int(row.X+16), int(row.Y+row.H/2))
+	}
+	before := selectionMark()
+	tt.Key(0, ui.KeyEscape)
+	if err := tt.Click("Code"); err != nil {
+		t.Fatal(err)
+	}
+	if err := tt.Click("Preview"); err != nil {
+		t.Fatal(err)
+	}
+	if !tt.HasText("Sort: date") {
+		t.Fatal("workbench navigation lost the sort result")
+	}
+	if err := tt.Click("Themed document actions"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(ui.Shift, ui.KeyF10)
+	if after := selectionMark(); after != before {
+		t.Fatalf("selected radio mark changed after remount: %v, want %v", after, before)
 	}
 }

@@ -1,19 +1,24 @@
-# MyGo 0.7.1 integration
+# MyGo 0.7.2 integration
 
-The library and `go tool mygo` both resolve `github.com/egoist/mygo v0.7.1`.
+The library and `go tool mygo` both resolve `github.com/egoist/mygo v0.7.2`.
 The minimum Go version is 1.27.3, following upstream's 0.6.4 security update.
 `make check`, `make dev` and `make app` use the module's tool directive;
 they no longer resolve an unrelated `latest` CLI.
 
 Upstream release notes: [0.6.4](https://github.com/egoist/mygo/releases/tag/v0.6.4),
 [0.7.0](https://github.com/egoist/mygo/releases/tag/v0.7.0),
-[0.7.1](https://github.com/egoist/mygo/releases/tag/v0.7.1).
+[0.7.1](https://github.com/egoist/mygo/releases/tag/v0.7.1),
+[0.7.2](https://github.com/egoist/mygo/releases/tag/v0.7.2).
 The [0.6 integration record](mygo-0.6.md) is historical.
 
 ## Adopted capabilities
 
 | Toolkit change | Native integration |
 | --- | --- |
+| Themed context menus (0.7.2) | `navigation.PopoverMenu(anchor, MenuOptions)` reuses the toolkit's in-window context menu, including pointer/menu-key/Shift+F10 triggers, type-ahead, disabled-item skipping, submenus, dismissal and focus restoration. `navigation.ContextMenu` remains OS-owned by default. Both share selection/callback wiring; single choice uses `MenuItem.Radio` instead of checkbox semantics. The Gallery ContextMenu page demonstrates both. |
+| Unified images (0.7.2) | Avatar uses `ui.ImageSize` instead of a bitmap/SVG type switch, preserving initials for nil, typed-nil and empty images. Hosts can decode loaded bytes with `ui.DecodeImage` and supply the resulting `ui.ImageSource` directly; the library still performs no fetching. |
+| Native app automation (0.7.2) | Gallery's `e2e` build tag imports `plugins/automation`. An explicit `MYGO_AUTOMATION` socket enables real-window accessibility, input and capture tests; ordinary builds do not import it. The reusable library never installs a plugin. |
+| Native fixes (0.7.2) | Existing controls inherit improved accessible row names, overlay opening-press handling, diff-view scrolling/painting and platform resize/redraw fixes without parallel implementations. Headless tests and real-window evidence are recorded separately. |
 | Content zoom (0.7.0) | Gallery Cmd/Ctrl `+`, `-`, `0` uses `Context.SetZoom`, with window-owned steps from 50% to 300%. Native text, input, IME, accessibility and menus scale together. Responsive breakpoints use content DIPs, not the physical window width. |
 | Zoom-aware geometry | Gallery keeps its system title-bar strip 52 window DIPs high and respects the zoom-adjusted native button insets. `overlay.FlyoutAnchor` converts committed handle bounds back to parent-window DIPs. |
 | Native flyout windows | `overlay.NewFlyout` composes a coss popover surface in a separate native window. Explicit parent/tray, dimensions, focusability, theme and lifecycle replace browser portals. The Popover Gallery page includes a native example. See [flyout.md](flyout.md). |
@@ -29,15 +34,43 @@ The [0.6 integration record](mygo-0.6.md) is historical.
   WebViews, have an 8192-pixel side limit and trade GPU memory/text rendering
   behavior for drawing work. There is no measured expensive static subtree
   requiring a new blanket cache in this component library.
-- Menu icons are available on `mygo.MenuItem`, not `ui.MenuItem` in 0.7.1.
-  `navigation.ContextMenu` preserves the latter's native input lifecycle;
-  its SVG item icon cannot honestly be wired to an unavailable method.
+- Menu icons remain available on `mygo.MenuItem`, not `ui.MenuItem` in 0.7.2.
+  `navigation.ContextMenu` and `PopoverMenu` preserve the latter's input
+  lifecycle; neither renders item icons, descriptions, danger styling or
+  section headings. `MenuItemOptions.Shortcut` remains a display string for
+  the custom `Menu`/`Dropdown` path, not a typed native accelerator.
 - `Font.LineHeight` is available to custom `ShapeText`/`ShapeRichText` consumers.
   Components use native text elements with `FixedLineHeight` already; there
-  is no reason to replace them with manually painted text.
-- Audio, web-page windows, installers and auto-updaters are application services,
-  not generic component dependencies. No import-time app initialization,
-  extra network service or browser UI is added.
+  is no reason to replace them with manually painted text. Paragraph
+  justification, indentation, baseline shifts and stable rich-document IDs
+  are available directly to host editors; Composer remains plain text.
+- `ui.Video`, `VideoPlayer` and `NewGIFDecoder` are available directly for
+  host-owned media. The library has no media-player contract or existing
+  animated avatar; no duplicate wrapper, decoder or playback loop is added.
+- Audio, page sessions/security/context menus, system proxy routing,
+  installers and auto-updaters are application services, not generic component
+  dependencies. No import-time app initialization, extra network service or
+  browser UI is added. The 0.7.2 page pinch/swipe defaults do not affect this
+  native Gallery.
+
+## External Gallery automation
+
+Use a private socket directory, and keep the test binary out of distribution:
+
+```sh
+go build -tags e2e -o /tmp/mygoui-gallery-e2e ./examples/gallery
+socket_dir=$(mktemp -d)
+MYGO_AUTOMATION="$socket_dir/gallery.sock" /tmp/mygoui-gallery-e2e
+```
+
+The plugin speaks newline-delimited JSON; `windows`, `tree`, `act`, `input`,
+`capture` and `idle` drive the built native app. Wait for `idle` between
+dependent actions rather than sleeping. OS context menus can enter a native
+menu loop; test those with `ui.NewTester`, not external right-click automation.
+The in-window `PopoverMenu` can be driven through normal input and its
+accessible tree. Importing the plugin alone does not listen without the
+environment variable, and `mygo_noinspector` builds omit it. See the pinned
+[automation protocol](https://github.com/egoist/mygo/blob/v0.7.2/docs/plugins/automation.md).
 
 ## Layout and ownership
 

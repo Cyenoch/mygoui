@@ -1,6 +1,6 @@
 # MyGo 0.6.3 integration (historical)
 
-Current integration: [MyGo 0.7.1](mygo-0.7.md). The results below describe
+Current integration: [MyGo 0.7.2](mygo-0.7.md). The results below describe
 the earlier version, not current validation.
 
 Pinned toolkit: `github.com/egoist/mygo v0.6.3`. The earlier dependency upgrade

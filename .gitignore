@@ -10,3 +10,8 @@
 /basic
 /gallery
 /*.wasm
+/node_modules/
+/.impeccable/config.local.json
+/.impeccable/cache/
+/.impeccable/live/
+/.agents/skills/impeccable/scripts/bin/

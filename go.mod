@@ -4,7 +4,7 @@ go 1.27.3
 
 require (
 	github.com/Cyenoch/mygoicons v0.2.1
-	github.com/egoist/mygo v0.7.1
+	github.com/egoist/mygo v0.7.2
 )
 
 require (

@@ -1,0 +1,18 @@
+{
+  "profile": "custom",
+  "delivery": "skills",
+  "workflows": [
+    "propose",
+    "explore",
+    "new",
+    "continue",
+    "apply",
+    "update",
+    "ff",
+    "sync",
+    "archive",
+    "bulk-archive",
+    "verify",
+    "onboard"
+  ]
+}

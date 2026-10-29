@@ -1,0 +1,68 @@
+schema: spec-driven
+
+context: |
+  Language: English
+  All artifacts must be written in English.
+  Keep OpenSpec structural headings and SHALL/MUST keywords in English.
+  Project: github.com/Cyenoch/mygoui, a native Go/MyGo component library.
+  Read AGENTS.md and docs/agent-workflow.md for workflow and scope.
+  Read go.mod for the current Go, MyGo and mygoicons versions.
+  Public APIs live at the module root and in coherent family packages.
+  internal/gallery and examples are consumers. State belongs to the caller.
+  ui.Element, custom parts and *ui.Context are build-scoped; retain ui.Handle
+  and widget state per window. Background results use Window.Update.
+  Imports must not initialize apps, register app fonts/languages, perform I/O,
+  use persistent storage or start background jobs.
+  PRODUCT.md owns product truth. Root DESIGN.md owns the recorded visual
+  system. docs/design.md owns native engineering contracts; docs/components.md
+  records supported subsets and gaps; docs/theme.md owns token provenance.
+  coss commit 3d8ca28e7d90123e9e0f44665944dc240b026ccb is the pinned visual
+  reference. Read docs/references.md for its MIT/AGPL boundary.
+  Use Impeccable for UI/UX work and mygo-maintenance for native correctness.
+  This is adaptive native desktop UI, not a mobile or DOM implementation.
+  Browser live/generate and HTML/CSS detectors do not validate Go controls.
+  Use existing semantic tokens, native editing/focus/accessibility and concise
+  labels. Respect reduced motion, window resizing and OS text scaling.
+  OpenSpec replaces the Matt Pocock skill workflow. Keep one change record,
+  not parallel PRDs or mandatory interview/TDD rituals.
+  Tests protect current consumer-visible contracts, not implementation details
+  or numeric coverage/visual-score gates. VALIDATION.md records actual evidence
+  and limits; headless paint does not establish GPU or screen-reader behavior.
+
+rules:
+  proposal:
+    - Identify the consumer-visible problem, affected capability paths and scope.
+    - Reuse existing contracts; distinguish new behavior from existing gaps.
+  specs:
+    - Each requirement uses SHALL or MUST and at least one WHEN/THEN scenario.
+    - Specify observable behavior, ownership and relevant failure boundaries.
+    - Preserve requirement names for modified contracts; keep unchanged requirements.
+    - Do not turn unverified platform behavior into a supported guarantee.
+  design:
+    - Read existing code and docs/design.md before choosing an implementation.
+    - For UI changes, apply the relevant Impeccable playbook and root DESIGN.md;
+      record interaction, accessibility, appearance, compact-layout and motion
+      decisions that actually change. Link the surface brief when applicable.
+    - Reuse native MyGo facilities; explain real toolkit limits and tradeoffs.
+  tasks:
+    - List concrete implementation, documentation and risk-appropriate verification
+      work. Check a task only after doing it; leave unavailable checks pending.
+    - For changed UI behavior, include ui.NewTester scenarios and inspection of
+      relevant native states; distinguish headless and actual OS/GPU evidence.
+
+operations:
+  apply:
+    guidance:
+      - Preserve existing uncommitted work and do not create branches unless asked.
+      - Follow the user's authorized scope; resolve routine choices without
+        inventing approval rounds. Keep explicit planning-only requests at planning.
+      - Run focused checks first. For UI edits, load Impeccable context and craft
+        floor, preserve native semantics and inspect the rendered result.
+      - Keep delta specs, tasks and relevant public documentation aligned with code.
+  archive:
+    guidance:
+      - Read the current specs rules before syncing deltas. Preserve unrelated
+        requirements and existing capabilities when merging.
+      - Verify implementation against scenarios and report unavailable evidence
+        honestly. Do not equate structural validation with behavioral correctness.
+      - Record commands, results and review findings before archiving completed work.

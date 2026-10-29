@@ -2,6 +2,7 @@ package gallery
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
@@ -18,6 +19,7 @@ type cossState struct {
 	Draft       string
 	Last        string
 	Name        string
+	Selected    []string
 	Checked     bool
 	Open        [4]bool
 	Scroll      [5]ui.ScrollState
@@ -374,6 +376,19 @@ mygoui.ScrollFade(c, viewport, &scroll, mygoui.ScrollFadeOptions{
 			{Title: "Disabled and nested actions", Demo: func(c *ui.Context, s *State) {
 				contextSpecimen(c, cossStateOf(s, "contextmenu"), true)
 			}},
+			{Title: "Themed menu", Demo: func(c *ui.Context, s *State) {
+				st := cossStateOf(s, "contextmenu-themed")
+				anchor := mygoui.Button(c, mygoui.ButtonOptions{Label: "Themed document actions", Variant: mygoui.ButtonOutline})
+				navigation.PopoverMenu(anchor, navigation.MenuOptions{
+					Selection: navigation.MenuSelectSingle, Selected: &st.Selected,
+					Sections: []navigation.MenuSectionOptions{{Items: []navigation.MenuItemOptions{
+						{Key: "name", Label: "Sort by name"},
+						{Key: "date", Label: "Sort by date"},
+						{Label: "Delete", Disabled: true},
+					}}},
+				})
+				ui.Text(c, "Sort: "+strings.Join(st.Selected, ", "))
+			}},
 		},
 		Code: `anchor := mygoui.Button(c, mygoui.ButtonOptions{
     Label: "Document actions", Variant: mygoui.ButtonOutline,
@@ -387,7 +402,7 @@ navigation.ContextMenu(anchor, navigation.MenuOptions{
 })`,
 		Params: []ComponentParam{
 			{"anchor", "ui.Element", "required", "Current-build target for secondary click or the menu key."},
-			{"Sections", "[]navigation.MenuSectionOptions", "nil", "Native menu items, separators and submenus."},
+			{"Sections", "[]navigation.MenuSectionOptions", "nil", "Menu items, separators and submenus; PopoverMenu draws them in the current theme."},
 			{"Selection / Selected", "MenuSelection / *[]string", "none", "Optional checked item state."},
 			{"OnSelect", "func(string)", "nil", "Receives the activated item key."},
 		},

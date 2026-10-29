@@ -102,7 +102,7 @@ The basic and gallery application entry points explicitly call `Register`;
 the gallery configures body/headings with `fonts.Family`. That application
 choice does not change the theme's native-system default for other consumers.
 
-For other host fonts, MyGo v0.7.1 exposes
+For other host fonts, MyGo v0.7.2 exposes
 `ui.RegisterFont(data []byte, family string) error` for TrueType/OpenType data.
 Load/embed the selected files and register them explicitly; there is no
 import-side font I/O or registration.

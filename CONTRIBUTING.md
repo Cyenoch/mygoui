@@ -6,7 +6,28 @@ The `coss` branch reconstructs coss ui with native Go/MyGo controls. Read
 before changing public behavior. The current coss contract supersedes the
 older visual-reference wording in the MyGo migration notes.
 
-Use the module's Go 1.27.3 target and pinned MyGo v0.7.1/mygoicons v0.2.1.
+## Agent workflow
+
+Use [OpenSpec and Impeccable](docs/agent-workflow.md) for requirements,
+implementation tracking and design work. `make agents` installs the pinned
+development tools and refreshes all twelve OpenSpec skills without changing
+your global OpenSpec profile. It also enables Impeccable's project hooks;
+Codex still requires its own hook trust approval.
+
+Read `PRODUCT.md`, root `DESIGN.md` and the relevant `openspec/specs/`
+contracts. Public behavior changes need a scoped OpenSpec change, meaningful
+scenarios and verification evidence. Keep delta specs and tasks current,
+then sync and archive completed work. Small corrections that preserve the
+contract can proceed directly. The project no longer uses Matt Pocock's
+skill workflow.
+
+For UI work, use the applicable Impeccable playbook alongside MyGo
+maintenance, then inspect native output. Browser Live Mode and the web
+detector do not cover Go controls. `make design-artifacts` renders the
+existing compact/wide, light/dark gallery specimens for inspection;
+`make design-doctor` reports context drift, not visual correctness.
+
+Use the module's Go 1.27.3 target and pinned MyGo v0.7.2/mygoicons v0.2.1.
 Published module metadata must have no local replacements. Use a private
 development workspace when testing local dependencies.
 
@@ -56,6 +77,7 @@ make race
 golangci-lint run ./...
 make wasm
 make workflows
+make spec-check
 ```
 
 `make check` runs headless tests, ordinary build, Go vet, MyGo lifetime vet,

@@ -15,8 +15,12 @@ pinned coss catalogs, plus their two documented hooks. A mapping records the
 native implementation and its limits; it does not certify visual or behavioral
 parity. Current verification belongs in [VALIDATION.md](VALIDATION.md).
 
-The module targets **Go 1.27.3** and pins **MyGo v0.7.1** and
+The module targets **Go 1.27.3** and pins **MyGo v0.7.2** and
 **mygoicons v0.2.1**.
+
+Development uses [OpenSpec and Impeccable](docs/agent-workflow.md) for
+requirements, scoped changes and native design review. Start with
+`make agents`; these tools are optional development dependencies.
 
 ## Try it
 
@@ -33,6 +37,10 @@ sidebar, Cmd/Ctrl+K search, appearance controls, and Preview / Go / API / Tokens
 views. It reserves the platform's actual window-control insets rather than
 drawing replacement window buttons. Examples and snippets are consumers of the
 public API; the capability matrix records native adaptations and limits.
+
+For external native-app tests, build the Gallery with `-tags e2e` and set
+`MYGO_AUTOMATION` to a socket path in a private directory. Normal builds do not
+import the automation plugin. See [MyGo integration](docs/mygo-0.7.md).
 
 ## Use
 

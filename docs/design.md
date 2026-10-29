@@ -114,8 +114,9 @@ for independently licensed host font sources.
 
 ## Native behavior and boundaries
 
-MyGo 0.7.1's GPU path can still drop an ancestor's rounded clip beneath a rectangular
-descendant clip. Headless rendering does not expose that backend limitation.
+The GPU path was observed to drop an ancestor's rounded clip beneath a
+rectangular descendant clip on MyGo 0.7.1; the 0.7.2 upgrade does not establish
+that it is fixed. Headless rendering does not expose that backend limitation.
 State backgrounds use native per-corner fills; progress and table row painting
 apply their final clip directly around the fill. Arbitrary nested content
 still requires a toolkit fix. Do not flatten every container into an effect:
@@ -130,8 +131,11 @@ that would hide embedded WebViews, change fade behavior and impose texture limit
 - Anchors and overlay parts are consumed in the same build. Keep overlay
   constructors installed while closed when native retained exits require it.
   Exit snapshots are inert and must not rebuild consumer content.
-- Native menus, tooltip timing, clipboard services, scrollbars and input
-  methods keep toolkit/platform behavior. The matrix names adaptations such
+- `navigation.ContextMenu` keeps the OS menu by default; `PopoverMenu` opts
+  into MyGo's themed in-window menu with toolkit-owned focus, keyboard and
+  selection semantics. Neither rebuilds custom pointer-only menu routing.
+- Tooltip timing, clipboard services, scrollbars and input methods keep
+  toolkit/platform behavior. The matrix names adaptations such
   as plain-text Composer and Drawer without snap points.
 - `ScrollFade` offers true subtree alpha masking through `MaskFade`, alongside
   shadow and opaque-surface edge treatments. Native effect layers have an

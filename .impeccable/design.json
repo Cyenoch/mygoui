@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-29T02:38:20+00:00",
+  "title": "Design System: mygoui",
+  "extensions": {
+    "motion": [
+      {
+        "name": "button-press",
+        "value": "250ms, ui.EaseOut",
+        "purpose": "Native button color/shadow feedback in button.go; no press scale."
+      },
+      {
+        "name": "dialog",
+        "value": "200ms, ui.EaseInOut",
+        "purpose": "Dialog entry/exit and scrim in overlay/motion.go; reduced motion takes precedence."
+      },
+      {
+        "name": "drawer",
+        "value": "450ms",
+        "purpose": "Drawer duration in overlay/motion.go; native motion helpers own easing."
+      },
+      {
+        "name": "popup",
+        "value": "150ms, ui.EaseOut",
+        "purpose": "Popup motion in overlay/motion.go."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "gallery-compact",
+        "value": "760 native DIPs, scaled by theme.Scale"
+      }
+    ]
+  }
+}

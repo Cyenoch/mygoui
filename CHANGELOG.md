@@ -9,8 +9,11 @@ not a claim of pixel-perfect completion. No release is asserted by this log.
 
 ### Changed
 
-- Upgrade MyGo to v0.7.1 and Go to 1.27.3; the CLI now resolves from the
+- Upgrade MyGo to v0.7.2 and Go to 1.27.3; the CLI now resolves from the
   module tool directive instead of an unpinned latest version.
+- Avatar uses native `ImageSize`, including typed-nil and empty image fallback;
+  loaded bitmap/SVG bytes can be decoded with MyGo's `DecodeImage` directly.
+- Single-choice context menus use native radio semantics, not checkboxes.
 - Gallery supports native content zoom and Windows caption theme updates.
   Loading animations use paint-only frames, with skeleton motion capped at
   60 fps. Short-window alert autofocus reveals the safe action after layout.
@@ -44,6 +47,11 @@ not a claim of pixel-perfect completion. No release is asserted by this log.
 
 ### Added
 
+- `navigation.PopoverMenu` opts into MyGo's themed in-window context menu
+  while `ContextMenu` keeps its OS-owned default. Both share selection and
+  callback wiring; the Gallery demonstrates the themed variant.
+- Gallery-only `e2e` automation import for opt-in real-window tests over a
+  private socket; ordinary builds and library imports do not enable it.
 - Native `overlay.NewFlyout`, coss `FlyoutSurface`, zoom-aware `FlyoutAnchor`
   and a Popover Gallery example. Explicit parent/tray and dimensions keep
   window ownership outside the build; WebAssembly returns an error.
