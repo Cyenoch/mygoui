@@ -10,8 +10,8 @@
     "test": "node --test scripts/*.test.mjs"
   },
   "devDependencies": {
-    "@fission-ai/openspec": "1.15.0",
-    "impeccable": "4.8.0"
+    "@fission-ai/openspec": "1.16.1",
+    "impeccable": "4.8.1"
   },
   "engines": {
     "node": ">=20.19.0"
