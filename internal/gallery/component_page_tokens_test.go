@@ -58,8 +58,6 @@ func TestAPILongValuesWrapInStackedLayout(t *testing.T) {
 func TestThemeTokenCardsShowValuesAndRoles(t *testing.T) {
 	cp, _ := componentPage("button")
 	tokens := cp.Tokens
-	light := theme.ColorsForMode(false)
-	dark := theme.ColorsForMode(true)
 	for _, size := range []struct{ width, height int }{{1100, 900}, {640, 900}} {
 		state := New()
 		state.Selected = "button"
@@ -70,6 +68,9 @@ func TestThemeTokenCardsShowValuesAndRoles(t *testing.T) {
 			View(c, state)
 		}, size.width, size.height)
 		tt.Frame()
+		// View publishes the gallery's preferences; read the palettes it shows.
+		light := theme.ColorsForMode(false)
+		dark := theme.ColorsForMode(true)
 
 		cards := 0
 		for _, text := range tt.Texts() {

@@ -22,7 +22,13 @@ Go 1.27.3, MyGo 0.9.0.
   600 s with no race reported; Gallery took 412.581 s there. Locally overlay
   takes 329.5 s under race across 93 tests (slowest 41 s), so the package
   race timeout is now 900 s in CI and `make race`, and the job allows 35
-  minutes. Tests and race instrumentation are unchanged.
+  minutes. Tests and race instrumentation are unchanged; the next main run
+  passed race with overlay at 611.850 s.
+- `TestThemeTokenCardsShowValuesAndRoles` failed on Windows CI with shuffle
+  seed `1794474677344610600` (and earlier on Linux): it read the palettes
+  before the gallery published its preferences, so an earlier test's accent
+  leaked in. It now reads them after the first frame and passes with that
+  seed locally.
 
 Not verified: the motion in a real window, the preview card exit shrink by
 pixels (it reuses the tested tooltip exit), GPU and screen readers.
