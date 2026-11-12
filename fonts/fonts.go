@@ -11,8 +11,11 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// Family is the name to use when selecting Cal Sans in MyGo.
-const Family = "Cal Sans"
+// Family is the name to use when selecting Cal Sans in MyGo. It differs
+// from the font's own name so it never resolves to a system-installed Cal
+// Sans; on Windows, MyGo 0.9 also renders a font registered under its own
+// name with different metrics.
+const Family = "Cal Sans (mygoui)"
 
 //go:embed CalSansVF.ttf CalSansVF-Italic.ttf OFL.txt
 var assets embed.FS

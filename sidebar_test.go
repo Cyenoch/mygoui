@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
@@ -128,6 +129,7 @@ func TestSidebarCollapseAndSlots(t *testing.T) {
 			OnCollapseChange: func(value bool) { changes = append(changes, value) },
 		})
 	}, 400, 320)
+	tt.SetPreferences(ui.Preferences{TextScale: 1, ReduceMotion: true})
 
 	box, ok := tt.Find("Navigation")
 	workspaceLabels := 0
@@ -407,5 +409,40 @@ func TestSidebarTabRevealsOffscreenItem(t *testing.T) {
 	tt.Key(0, ui.KeyEnter)
 	if selected != "9" {
 		t.Fatalf("keyboard selected %q", selected)
+	}
+}
+
+// TestSidebarCollapseMovesThroughWidths pins the coss width transition and
+// its reduced-motion snap.
+func TestSidebarCollapseMovesThroughWidths(t *testing.T) {
+	for _, reduced := range []bool{false, true} {
+		collapsed, selected := false, ""
+		tt := ui.NewTester(func(c *ui.Context) {
+			theme.ApplyMode(c, false)
+			ui.Row(c).FillWidth().FillHeight().Children(func() {
+				mygoui.Sidebar(c, mygoui.SidebarOptions{
+					Label: "Navigation", Selected: &selected, Collapsed: &collapsed, Width: 200, CollapsedWidth: 48,
+					Groups: []mygoui.SidebarGroupOptions{{Items: []mygoui.SidebarItemOptions{
+						{ID: "home", Label: "Home", Icon: lucide.House()},
+					}}},
+				})
+			})
+		}, 400, 240)
+		tt.SetPreferences(ui.Preferences{TextScale: 1, ReduceMotion: reduced})
+		width := func() float32 { return findRect(t, tt, "Navigation").W }
+		if w := width(); w != 200 {
+			t.Fatalf("expanded width %v, want 200", w)
+		}
+		collapsed = true
+		tt.Frame()
+		tt.Advance(100 * time.Millisecond)
+		mid := width()
+		tt.Advance(300 * time.Millisecond)
+		if end := width(); end != 48 {
+			t.Fatalf("reduced=%v: collapsed width %v, want 48", reduced, end)
+		}
+		if moving := mid > 48 && mid < 200; moving == reduced {
+			t.Fatalf("reduced=%v: width after 100 ms is %v", reduced, mid)
+		}
 	}
 }

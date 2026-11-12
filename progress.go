@@ -111,7 +111,7 @@ func ProgressBar(c *ui.Context, o ProgressOptions) ui.Element {
 				p.Clip(r, radius, func() {
 					p.Fill(ui.Rect{X: x, Y: r.Y, W: band, H: r.H}, fill, radius)
 				})
-				p.AnimationFrame()
+				p.AnimationFrameRate(60)
 			})
 		} else {
 			pct := progressFraction(o.Value, lo, hi)

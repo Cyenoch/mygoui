@@ -14,9 +14,9 @@ const (
 	menuCheckMotion     = 100 * time.Millisecond
 )
 
-// slideMotion returns an indicator animation over d.
+// slideMotion returns an indicator animation over d, ease-in-out as in coss.
 func slideMotion(d time.Duration) ui.Animation {
-	return ui.Animation{Duration: d, Ease: ui.EaseOut}
+	return ui.Animation{Duration: d, Ease: ui.EaseInOut}
 }
 
 // fadePanel fades a collapsible's growing panel with its progress, so the

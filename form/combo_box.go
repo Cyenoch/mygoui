@@ -269,7 +269,7 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 					ui.Box(c).Width(theme.Scale(c, 20)).Height(theme.Scale(c, 20)).Shrink(0)
 				}
 			}
-			selectIndicator(c, s.Open)
+			selectIndicator(c)
 		})
 		if input.Valid() {
 			focused := input.Focused() || s.Input.FocusWithin(c)

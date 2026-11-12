@@ -91,7 +91,9 @@ func configureFonts() error {
 }
 ```
 
-`fonts.Family` is `"Cal Sans"`. `Register() error` registers regular and italic
+`fonts.Family` is `"Cal Sans (mygoui)"`: a name distinct from the font's own,
+so it never resolves to a system-installed Cal Sans, and Windows renders it
+with the same metrics as other platforms. `Register() error` registers regular and italic
 faces once; subsequent calls return the same result. Failure to register the
 italic face leaves the regular face registered. Propagate that error explicitly.
 Browser builds return an error because MyGo's browser registration path cannot
@@ -111,14 +113,15 @@ Once faces are registered under the chosen family names:
 
 ```go
 theme.Configure(theme.Preferences{
-    FontFamily: "Cal Sans",
-    HeadingFontFamily: "Cal Sans",
+    FontFamily: "Brand Sans",
+    HeadingFontFamily: "Brand Sans",
     MonoFontFamily: "Paper Mono",
 })
 ```
 
 This second snippet configures family resolution; it does not register either font.
-Use the family alias actually supplied to `ui.RegisterFont`. If only Cal Sans
+Use the family alias actually supplied to `ui.RegisterFont`, preferably one
+that differs from the font's own family name. If only one family
 is registered, leave `MonoFontFamily` empty to keep native monospace fallbacks.
 Changing the configured family cannot supply missing weights or glyphs.
 

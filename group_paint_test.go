@@ -434,7 +434,9 @@ func TestGroupedFocusRingIsInset(t *testing.T) {
 	selected := colors.Input.Alpha(0.64).Over(colors.Background)
 	wantPixel(t, img, int(rect.X)+2, mid, colors.Focus, "inset ring")
 	wantPixel(t, img, int(rect.X)-2, mid, colors.Background, "outward ring")
-	wantPixel(t, img, int(rect.X+rect.W)-2, mid, colors.Focus, "shared-edge ring")
+	// The 2 DIP ring sits 2 DIPs inside the edge, mirroring the leading side.
+	edge := int(math.Round(float64(rect.X + rect.W)))
+	wantPixel(t, img, edge-3, mid, colors.Focus, "shared-edge ring")
 	wantPixel(t, img, int(rect.X)+6, mid, selected, "fill inside the ring")
 
 	tt.Key(0, ui.KeyTab)

@@ -2,7 +2,6 @@ package form
 
 import (
 	"strings"
-	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
@@ -352,7 +351,7 @@ func Select(c *ui.Context, o SelectOptions) ui.Element {
 					ui.Box(c).Width(theme.Scale(c, 20)).Height(theme.Scale(c, 20)).Shrink(0)
 				}
 			}
-			selectIndicator(c, s.Open)
+			selectIndicator(c)
 		})
 		selectPopup(c, o, s, trigger, mode)
 		if o.Description != "" && !invalid {
@@ -515,24 +514,16 @@ func selectClearButton(c *ui.Context, clear func()) {
 	})
 }
 
-// selectIndicator is the popup chevron, turning over 150 ms as it opens and
-// closes. Reduced motion settles the turn at once.
-func selectIndicator(c *ui.Context, open bool) ui.Element {
+// selectIndicator is the trigger's static up-down chevron, as in coss.
+func selectIndicator(c *ui.Context) ui.Element {
 	t := theme.Colors(c)
-	angle := float32(0)
-	if open {
-		angle = 180
-	}
 	return ui.Icon(c, selectChevron).
 		Size(theme.Scale(c, 16), theme.Scale(c, 16)).Shrink(0).
-		TextColor(t.FieldPlaceholder).
-		AnimatePose(ui.Pose{Rotate: angle}, ui.Animation{
-			Duration: 150 * time.Millisecond, Ease: ui.EaseOut,
-		})
+		TextColor(t.FieldPlaceholder)
 }
 
 var (
-	selectChevron   = lucide.ChevronDown()
+	selectChevron   = lucide.ChevronsUpDown()
 	selectClearIcon = lucide.X()
 )
 

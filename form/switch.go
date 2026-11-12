@@ -141,22 +141,29 @@ func switchIndicator(c *ui.Context, on *bool, size SwitchSize, disabled bool, ow
 	if *on {
 		fill = t.Primary
 	}
+	// A held thumb stretches 10% toward the centre after 100 ms, as coss does.
+	var stretch float32
+	if pressed && !disabled {
+		stretch = 0.1
+	}
 	if !theme.ReduceMotion(c) {
 		fill = track.AnimateColor("switch-track", fill, ui.Animation{Duration: 200 * time.Millisecond, Ease: ui.EaseOut})
 	}
+	// Settles at once under reduced motion, keeping the value in step.
+	stretch = track.AnimateTo("switch-press", stretch, ui.Animation{
+		Duration: 100 * time.Millisecond, Delay: 100 * time.Millisecond, Ease: ui.EaseOut,
+	})
 	track.Draw(func(p *ui.Painter, r ui.Rect) {
 		p.Fill(r, fill, m.radius)
 		off, end := m.inset, r.W-m.inset-m.thumbW
 		if rtl {
 			off, end = end, off
 		}
-		w := m.thumbW
-		if pressed && !disabled {
-			w *= 1.1
-		}
-		x := off + (end-off)*pos
-		if *on && !rtl || !*on && rtl {
-			x -= w - m.thumbW
+		// The thumb grows from the edge it rests against, following its slide.
+		w := m.thumbW * (1 + stretch)
+		x := off + (end-off)*pos - (w-m.thumbW)*pos
+		if rtl {
+			x = off + (end-off)*pos - (w-m.thumbW)*(1-pos)
 		}
 		thumb := ui.Rect{X: r.X + x, Y: r.Y + m.inset, W: w, H: m.thumbH}
 		p.Shadow(thumb, m.thumbRadius, 0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.05))

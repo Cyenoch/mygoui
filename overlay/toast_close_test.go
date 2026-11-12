@@ -119,7 +119,9 @@ func assertSingleX(t *testing.T, img *image.RGBA, r ui.Rect, bg color.RGBA, pad 
 	ink := func(x, y int) bool {
 		c := img.RGBAAt(x, y)
 		diff := abs(int(c.R)-int(bg.R)) + abs(int(c.G)-int(bg.G)) + abs(int(c.B)-int(bg.B))
-		return diff > 120
+		// Stroke cores only: anti-aliased edges and the card corner behind
+		// the button stay well below this.
+		return diff > 200
 	}
 	minX, minY, maxX, maxY := 1<<30, 1<<30, -1, -1
 	for y := int(r.Y) + pad; y < int(r.Y+r.H)-pad; y++ {

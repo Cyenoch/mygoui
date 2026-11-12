@@ -2,7 +2,9 @@ package form
 
 import (
 	"testing"
+	"time"
 
+	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -86,5 +88,45 @@ func TestSwitchGroup(t *testing.T) {
 	}
 	if !a {
 		t.Fatal("a group switch did not toggle")
+	}
+}
+
+// TestSwitchThumbStretchesWhilePressed pins coss press feedback: a held
+// switch widens its thumb over the track, and reduced motion still shows the
+// held state without animating it.
+func TestSwitchThumbStretchesWhilePressed(t *testing.T) {
+	for _, reduced := range []bool{false, true} {
+		on := false
+		tt := ui.NewTester(func(c *ui.Context) {
+			theme.ApplyMode(c, false)
+			ui.Column(c).Padding(20).Children(func() {
+				Switch(c, SwitchOptions{On: &on, Label: "Wi-Fi"})
+			})
+		}, 280, 120)
+		tt.SetPreferences(ui.Preferences{TextScale: 1, ReduceMotion: reduced})
+		r, ok := tt.Find("Wi-Fi")
+		if !ok {
+			t.Fatal("switch not found")
+		}
+		y := r.Y + r.H/2
+		// Track pixels visible beside the thumb shrink as the thumb widens.
+		trackPixels := func() int {
+			img, n := tt.Image(), 0
+			for x := int(r.X); x < int(r.X)+40; x++ {
+				if v := img.RGBAAt(x, int(y)).R; v > 200 && v < 240 {
+					n++
+				}
+			}
+			return n
+		}
+		rest := trackPixels()
+		tt.Press(r.X+8, y)
+		tt.Advance(300 * time.Millisecond)
+		held := trackPixels()
+		tt.Release(r.X+8, y)
+		tt.Advance(300 * time.Millisecond)
+		if held >= rest {
+			t.Fatalf("reduced=%v: held thumb did not widen: track pixels rest=%d held=%d", reduced, rest, held)
+		}
 	}
 }

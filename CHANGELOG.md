@@ -9,6 +9,14 @@ not a claim of pixel-perfect completion. No release is asserted by this log.
 
 ### Changed
 
+- Motion follows coss more closely: a held switch thumb stretches after
+  100 ms, Select and ComboBox show a static up-down chevron,
+  preview cards shrink as they fade out, Sidebar collapses over 200 ms, the
+  tabs indicator uses ease-in-out and BottomSheet the drawer curve. The
+  indeterminate progress sweep redraws at most 60 times a second.
+- `fonts.Family` is now `"Cal Sans (mygoui)"`, distinct from the font's own
+  name, so it never resolves to an installed Cal Sans and renders with the
+  same metrics on Windows as elsewhere.
 - Gallery: one title bar beside a full-height sidebar, flat grouped
   navigation, an appearance popover and a compact navigation sheet, so opening
   controls no longer moves the page. Pages lead with their title and view

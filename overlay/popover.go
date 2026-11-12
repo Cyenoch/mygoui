@@ -30,6 +30,8 @@ type PopoverOptions struct {
 	// can extend beyond the window. The flyout has no arrow and no motion of
 	// its own; without a fixed Width it is at most 400 DIPs wide.
 	Flyout *mygoui.FlyoutHost
+	// shrinkOnExit also shrinks the panel to 98% as it fades out.
+	shrinkOnExit bool
 }
 
 // flyoutMaxWidth caps a content-sized flyout popover, which has no window
@@ -79,7 +81,7 @@ func Popover(c *ui.Context, anchor ui.Element, open *bool, o PopoverOptions) ui.
 		// its anchor, and both the arrow and the zoom follow that side.
 		panel = panel.Key(popoverKey{open})
 		side := arrowSide(panel, anchor, want)
-		panel = anchored.Motion(c, panel, side, false)
+		panel = anchored.Motion(c, panel, side, o.shrinkOnExit)
 		panel = anchored.Surface(c, panel, radius)
 		panel.MaxWidth(availableWidth).MaxHeight(availableHeight).MinHeight(0)
 		if o.Width > 0 {

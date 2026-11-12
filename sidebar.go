@@ -1,6 +1,8 @@
 package mygoui
 
 import (
+	"time"
+
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
@@ -53,7 +55,10 @@ type SidebarOptions struct {
 }
 
 // sidebarScrollKey retains the content scroll position that drives its edge fade.
-type sidebarScrollKey struct{}
+type (
+	sidebarScrollKey   struct{}
+	sidebarCollapseKey struct{}
+)
 
 type sidebarGroupKey struct {
 	name  string
@@ -78,18 +83,31 @@ func Sidebar(c *ui.Context, o SidebarOptions) ui.Element {
 		collapsedWidth = 48
 	}
 	collapsed := *o.Collapsed
-	if collapsed {
-		width = collapsedWidth
-	}
 	label := o.Label
 	if label == "" {
 		label = "Sidebar"
 	}
 	t := theme.Colors(c)
-	root := ui.Column(c).Width(theme.Scale(c, width)).FillHeight().Shrink(0).
+	root := ui.Column(c).FillHeight().Shrink(0).
 		MinWidth(0).Background(t.Sidebar).TextColor(t.SidebarForeground).
 		BorderEndWidth(theme.Hairline).BorderColor(t.SidebarBorder).
 		Role(ui.RoleGroup).Label(label)
+	// Collapsing moves between the widths over 200 ms, as coss does; a text
+	// scale change resizes at once. Labels shown on expand are clipped.
+	var progress float32
+	if collapsed {
+		progress = 1
+	}
+	// AnimateTo settles at once under reduced motion and keeps its value in
+	// step, so turning motion back on does not replay an old change.
+	progress = root.AnimateTo(sidebarCollapseKey{}, progress, ui.Animation{
+		Duration: 200 * time.Millisecond, Ease: ui.Linear,
+	})
+	full, narrow := theme.Scale(c, width), theme.Scale(c, collapsedWidth)
+	root.Width(full + (narrow-full)*progress)
+	if progress > 0 && progress < 1 {
+		root.Clip()
+	}
 	root.Children(func() {
 		ui.Column(c.Key("sidebar-header")).Padding(theme.Space8).Gap(theme.Space8).Shrink(0).
 			MinWidth(0).Children(func() {

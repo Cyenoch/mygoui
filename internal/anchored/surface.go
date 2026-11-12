@@ -30,7 +30,7 @@ func Warm(c *ui.Context) {
 
 // Motion fades a popup in from 98% around the edge facing its anchor and
 // fades it out, as coss popovers do; zoomOut also shrinks it on exit, as coss
-// tooltips do. The caller keys the panel before building its content and
+// tooltips and preview cards do. The caller keys the panel before building its content and
 // calls Warm every frame. Reduced motion shows and hides it at once.
 func Motion(c *ui.Context, panel ui.Element, side mygoui.Side, zoomOut bool) ui.Element {
 	if theme.ReduceMotion(c) {

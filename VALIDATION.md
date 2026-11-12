@@ -1,5 +1,26 @@
 # Validation
 
+## Component motion and cross-platform test fixes
+
+2026-11-12, uncommitted change `component-motion` on d8f83f7, macOS arm64,
+Go 1.27.3, MyGo 0.9.0.
+
+- `make check`, `golangci-lint run ./...` (zero issues), `make wasm` and
+  `make spec-check` pass; rerun of `form` and root packages after the review
+  fixes (reduced-motion values stay in step). `make race`: pass, no reported race (Gallery
+  247.253 s, overlay 330.594 s); it ran before the review fixes.
+- CI failures on d8f83f7 were reproduced and fixed: the grouped focus-ring
+  sample point, the toast close-glyph ink threshold, and `fonts.Family`, which
+  on Windows rendered with different metrics when registered under the
+  font's own name. The full suite passes in a Linux CI image (Docker, Noto
+  fonts) and on a Windows 11 VM.
+- Headless: a held switch thumb stretches after 100 ms; the sidebar passes
+  through intermediate widths while collapsing. Both fail with the motion
+  removed.
+
+Not verified: the motion in a real window, the preview card exit shrink by
+pixels (it reuses the tested tooltip exit), GPU and screen readers.
+
 ## Optional anchored-popup flyouts
 
 2026-11-12, uncommitted change `overlay-flyouts`, macOS arm64, Go 1.27.3,

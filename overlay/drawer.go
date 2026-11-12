@@ -425,8 +425,8 @@ type (
 )
 
 // sheetEnterAnimation slides the sheet up from below the window, over the
-// drawer backdrop's duration.
-var sheetEnterAnimation = ui.Animation{Duration: drawerMotionDuration, Ease: ui.EaseOut}
+// drawer backdrop's duration and curve.
+var sheetEnterAnimation = ui.Animation{Duration: drawerMotionDuration, Ease: drawerEase}
 
 const (
 	// sheetGrabHeight is the strip that drags the sheet: the panel's 20 DIP
