@@ -105,3 +105,25 @@ func TestInputReadOnlyKeepsValue(t *testing.T) {
 		t.Fatalf("read-only input committed %q", value)
 	}
 }
+
+func TestInputErrorPaintsInvalidBorder(t *testing.T) {
+	var errorValue, invalidValue string
+	tester := formTextTester(t, func(c *ui.Context) {
+		Input(c, &errorValue, InputOptions{AriaLabel: "Error input", Error: "Required", FullWidth: true})
+		Input(c, &invalidValue, InputOptions{AriaLabel: "Invalid input", Invalid: true, FullWidth: true})
+	})
+	errorInput, ok := tester.Find("Error input")
+	if !ok {
+		t.Fatal("error input missing")
+	}
+	invalidInput, ok := tester.Find("Invalid input")
+	if !ok {
+		t.Fatal("invalid input missing")
+	}
+	img := tester.Image()
+	errorBorder := img.RGBAAt(int(errorInput.X), int(errorInput.Y+errorInput.H/2))
+	invalidBorder := img.RGBAAt(int(invalidInput.X), int(invalidInput.Y+invalidInput.H/2))
+	if errorBorder != invalidBorder {
+		t.Fatalf("error without Invalid shows a different border: error %v, invalid %v", errorBorder, invalidBorder)
+	}
+}

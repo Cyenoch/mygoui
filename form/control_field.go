@@ -1,6 +1,7 @@
 package form
 
 import (
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -35,6 +36,8 @@ type ControlFieldOptions struct {
 // ControlField is a single native toggle whose whole row—label, description
 // and indicator—is the target.
 func ControlField(c *ui.Context, o ControlFieldOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	checked := o.Checked
 	if checked == nil {
 		var off bool
@@ -43,7 +46,7 @@ func ControlField(c *ui.Context, o ControlFieldOptions) ui.Element {
 	}
 	t := theme.Colors(c)
 	disabled := o.Disabled
-	errText := choiceErrorText(o.Invalid, o.Error)
+	errText := formstyle.ErrorText(o.Invalid, o.Error)
 
 	root := ui.Column(c).MinWidth(0).Gap(theme.Space4)
 	root.Children(func() {

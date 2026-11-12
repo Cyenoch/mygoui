@@ -61,7 +61,9 @@ test("npm OpenSpec refresh retains all workflows despite a global core profile",
   );
   assert.equal(available.length, 12);
   const shared = readFileSync(path.join(skills, "openspec-apply-change/SKILL.md"), "utf8");
-  assert.match(shared, /\$openspec-apply-change \(Codex\) or \/openspec-apply-change/);
+  // One shared copy names workflows by skill, not a single harness's alias.
+  assert.match(shared, /`openspec-archive-change`/);
+  assert.doesNotMatch(shared, /\/opsx:/);
   assert.equal(realpathSync(path.join(context.root, ".claude/skills")), realpathSync(skills));
   assert.equal(readFileSync(globalConfig, "utf8"), original);
 });

@@ -38,6 +38,8 @@ type overlaysState struct {
 
 	popoverOpen     bool
 	popoverEdgeOpen bool
+	flyoutOpen      bool
+	flyoutName      string
 
 	toasts    overlay.ToastState
 	toastTop  bool
@@ -439,14 +441,14 @@ func popoverArrowExample(c *ui.Context, st *overlaysState) {
 			Arrow:       true,
 			Width:       theme.Scale(c, 320),
 			Placement:   mygoui.Placement{Side: mygoui.SideBottom, Align: mygoui.AlignStart},
-			Body: func() {
+			Body: func(c *ui.Context) {
 				ui.Column(c).Gap(theme.Space6).Children(func() {
 					shortcutRow(c, "Open command menu", "\u2318K")
 					shortcutRow(c, "Toggle sidebar", "\u2318B")
 					shortcutRow(c, "Close popover", "Esc")
 				})
 			},
-			Footer: func() {
+			Footer: func(c *ui.Context) {
 				mygoui.Button(c, mygoui.ButtonOptions{
 					Label: "Got it", Variant: mygoui.ButtonPrimary, Size: theme.ButtonSmall,
 					OnClick: func() { st.popoverOpen = false },
@@ -468,7 +470,7 @@ func popoverEdgeExample(c *ui.Context, st *overlaysState) {
 		Arrow:     false,
 		Width:     theme.Scale(c, 260),
 		Placement: mygoui.Placement{Side: mygoui.SideRight, Align: mygoui.AlignEnd},
-		Body: func() {
+		Body: func(c *ui.Context) {
 			mygoui.Paragraph(c, "The panel prefers the right edge and aligns its end with the trigger.", true)
 		},
 	})

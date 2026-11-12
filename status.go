@@ -3,6 +3,7 @@ package mygoui
 import (
 	"math"
 
+	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -75,4 +76,18 @@ func solidForeground(fill, background ui.Color) ui.Color {
 		return ui.RGB(0, 0, 0)
 	}
 	return ui.RGB(255, 255, 255)
+}
+
+// StatusIcon is the coss icon for a status: info, check, triangle alert, or
+// circle alert for danger.
+func StatusIcon(color StatusColor) *ui.SVG {
+	switch color {
+	case ColorSuccess:
+		return lucide.CircleCheck()
+	case ColorWarning:
+		return lucide.TriangleAlert()
+	case ColorDanger:
+		return lucide.CircleAlert()
+	}
+	return lucide.Info()
 }

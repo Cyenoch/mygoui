@@ -3,6 +3,7 @@ package formstyle
 
 import (
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -34,39 +35,45 @@ func SurfaceMode(e ui.Element, c *ui.Context, ring RingMode, secondary, invalid,
 	return SurfaceFocused(e, c, focused, invalid, disabled)
 }
 
-// SurfaceFocused styles a compound shell whose editor owns the focus condition.
-func SurfaceFocused(e ui.Element, c *ui.Context, focused, invalid, disabled bool) ui.Element {
+// Face holds the coss field colors for one state. Ring is transparent
+// unless the field is focused.
+type Face struct{ Fill, Border, Ring ui.Color }
+
+// FieldFace resolves the coss field face for the current appearance.
+func FieldFace(c *ui.Context, focused, invalid bool) Face {
 	t := theme.Colors(c)
-	radius := theme.RadiusScale().Field
-	focused = focused && !disabled
-	fill := t.Background
-	if c.Theme().Dark {
-		fill = t.Input.Alpha(0.32)
+	dark := c.Theme().Dark
+	f := Face{Fill: t.Background, Border: t.Input}
+	if dark {
+		f.Fill = t.Input.Alpha(0.32)
 	}
-	border := t.Input
 	if invalid {
-		border = t.Destructive.Alpha(0.36)
+		f.Border = t.Destructive.Alpha(0.36)
 	}
 	if focused {
-		border = t.Ring
+		f.Border, f.Ring = t.Ring, t.Ring.Alpha(0.24)
 		if invalid {
-			border = t.Destructive.Alpha(0.64)
-		}
-	}
-	e = e.Radius(radius).Clip()
-	e.Draw(func(p *ui.Painter, r ui.Rect) {
-		p.Fill(r, fill, radius)
-		p.Stroke(r, border, radius, theme.Hairline)
-	})
-	if focused {
-		ink := t.Ring.Alpha(0.24)
-		if invalid {
-			ink = t.Destructive.Alpha(0.16)
-			if c.Theme().Dark {
-				ink = t.Destructive.Alpha(0.24)
+			f.Border, f.Ring = t.Destructive.Alpha(0.64), t.Destructive.Alpha(0.16)
+			if dark {
+				f.Ring = t.Destructive.Alpha(0.24)
 			}
 		}
-		e.DrawOver(func(p *ui.Painter, r ui.Rect) { FieldRing(p, r, radius, ink) })
+	}
+	return f
+}
+
+// SurfaceFocused styles a compound shell whose editor owns the focus condition.
+func SurfaceFocused(e ui.Element, c *ui.Context, focused, invalid, disabled bool) ui.Element {
+	radius := theme.RadiusScale().Field
+	focused = focused && !disabled
+	face := FieldFace(c, focused, invalid)
+	e = e.Radius(radius).Clip()
+	e.Draw(func(p *ui.Painter, r ui.Rect) {
+		p.Fill(r, face.Fill, radius)
+		p.Stroke(r, face.Border, radius, theme.Hairline)
+	})
+	if focused {
+		e.DrawOver(func(p *ui.Painter, r ui.Rect) { FieldRing(p, r, radius, face.Ring) })
 	} else if !disabled && !invalid {
 		e.Shadow(0, 1, 2, 0, ui.RGBA(0, 0, 0, 0.05))
 	}
@@ -83,4 +90,13 @@ func FieldRing(p *ui.Painter, r ui.Rect, radius float32, color ui.Color) {
 // Text applies Coss desktop field typography.
 func Text(e ui.Element, c *ui.Context) ui.Element {
 	return style.Text(e, c, theme.SM()).TextColor(theme.Colors(c).Foreground)
+}
+
+// ErrorText is a field's visible error: the caller's text, or the localized
+// invalid message when the field is invalid without one.
+func ErrorText(invalid bool, text string) string {
+	if text == "" && invalid {
+		return locale.M().Invalid
+	}
+	return text
 }

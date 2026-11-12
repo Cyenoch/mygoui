@@ -1,6 +1,7 @@
 package form
 
 import (
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -77,7 +78,9 @@ type CheckboxGroupOptions struct {
 // CheckboxGroup renders a labelled group of check boxes built by body, in a
 // vertical or horizontal layout.
 func CheckboxGroup(c *ui.Context, o CheckboxGroupOptions, body func()) ui.Element {
-	errText := choiceErrorText(o.Invalid, o.Error)
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
+	errText := formstyle.ErrorText(o.Invalid, o.Error)
 	disabled := o.Disabled
 
 	root := ui.Column(c).MinWidth(0).FillWidth().Gap(theme.Space4).

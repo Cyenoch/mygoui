@@ -52,6 +52,9 @@ type SidebarOptions struct {
 	OnCollapseChange func(collapsed bool)
 }
 
+// sidebarScrollKey retains the content scroll position that drives its edge fade.
+type sidebarScrollKey struct{}
+
 type sidebarGroupKey struct {
 	name  string
 	index int
@@ -95,8 +98,10 @@ func Sidebar(c *ui.Context, o SidebarOptions) ui.Element {
 				o.Header()
 			}
 		})
-		ui.Scroll(c.Key("sidebar-content")).Column().FillWidth().Grow(1).Basis(0).
-			MinWidth(0).MinHeight(0).Gap(theme.Space8).Children(func() {
+		scroll := ui.Local(root, sidebarScrollKey{}, func() ui.ScrollState { return ui.ScrollState{} })
+		content := ui.Scroll(c.Key("sidebar-content")).Column().FillWidth().Grow(1).Basis(0).
+			MinWidth(0).MinHeight(0).Gap(theme.Space8).TrackScroll(scroll)
+		content.Children(func() {
 			for i, group := range o.Groups {
 				key := sidebarGroupKey{index: i}
 				if group.Key != "" {
@@ -120,6 +125,9 @@ func Sidebar(c *ui.Context, o SidebarOptions) ui.Element {
 					}
 				})
 			}
+		})
+		ScrollFade(c, content, scroll, ScrollFadeOptions{
+			Mode: SurfaceFade, Edges: FadeTop | FadeBottom, Surface: t.Sidebar,
 		})
 		if o.Footer != nil {
 			ui.Column(c.Key("sidebar-footer")).Padding(theme.Space8).Gap(theme.Space8).

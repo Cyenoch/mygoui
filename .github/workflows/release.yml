@@ -1,0 +1,63 @@
+name: Release
+
+# Attaches the gallery for every platform to the tag's GitHub release under
+# stable names, so .../releases/latest/download/<name> always resolves.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CGO_ENABLED: '0'
+  GOWORK: 'off'
+
+jobs:
+  gallery:
+    # MyGo cross-compiles every target; the disk image needs macOS.
+    runs-on: macos-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version: '1.27.x'
+          check-latest: true
+      - name: Build
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          jq --arg v "$version" '.version = $v' mygo.json > mygo.json.tmp
+          mv mygo.json.tmp mygo.json
+          go tool mygo build -platform darwin/arm64,windows/amd64,linux/amd64 \
+            -skip-installer -skip-notarize -o dist
+          go tool mygo build -platform web -o dist
+      - name: Name assets
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          mkdir assets
+          cp "dist/darwin-arm64/coss-ui-gallery-${version}-arm64.dmg" assets/coss-ui-gallery-macos-arm64.dmg
+          cp "dist/windows-amd64/Coss UI Gallery.exe" assets/coss-ui-gallery-windows-amd64.exe
+          cp "dist/linux-amd64/coss-ui-gallery-${version}-linux-amd64.tar.gz" assets/coss-ui-gallery-linux-amd64.tar.gz
+          cp dist/linux-amd64/*.deb assets/coss-ui-gallery-linux-amd64.deb
+          cp dist/linux-amd64/*.rpm assets/coss-ui-gallery-linux-amd64.rpm
+          (cd dist/web && zip -qr ../../assets/coss-ui-gallery-web.zip .)
+      - name: Upload
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" assets/* --clobber
+          else
+            prerelease=()
+            [[ "$GITHUB_REF_NAME" == *-* ]] && prerelease=(--prerelease)
+            gh release create "$GITHUB_REF_NAME" assets/* --verify-tag --generate-notes "${prerelease[@]}"
+          fi

@@ -17,6 +17,21 @@ Studio docs/controls. `packages/icons` is UNLICENSED; use mygoicons. Fonts,
 geography and vendored patterns need independent provenance; none are copied.
 [Bklit notice](../licenses/bklit-ui-NOTICE.md) retains the exact MIT text.
 
+## Lobe MyGo component capability reference
+
+[`lobehub/lobe-mygo`](https://github.com/lobehub/lobe-mygo/tree/5e5fea5ef9e225f79564770ef18f6d293a2e5d4a)
+is pinned at `5e5fea5ef9e225f79564770ef18f6d293a2e5d4a` in `references/lobe-mygo`.
+Run `make refs` to populate it. Read `pkg/<family>/*.go` with the matching
+`catalog/<slug>` example for behavior, options and MyGo usage.
+
+Lobe MyGo supplies native component capabilities; coss remains the visual
+authority. An absorbed component is rebuilt with coss anatomy, this module's
+semantic theme tokens, typed options and caller-owned state. Do not copy its
+Lobe UI tokens (`pkg/theme/tokens_gen.go`), shadows, motion presets or brand
+assets such as agent avatars. Use mygoicons instead of its `pkg/lucide`.
+It is MIT, copyright 2026 LobeHub; the
+[notice](../licenses/lobe-mygo-NOTICE.md) retains the exact text.
+
 ## Current visual reference
 
 [coss ui documentation](https://coss.com/ui/docs) and the MIT `apps/ui`
@@ -110,5 +125,5 @@ not register it or establish browser-equivalent shaping.
 4. Update capability/design/customization docs and the unreleased changelog.
    Record actual verification evidence in `VALIDATION.md`.
 
-`docs/mygo-0.7.md` records the current toolkit integration. The older
+`docs/mygo-0.9.md` records the current toolkit integration. The older
 `docs/mygo-0.6.md` preserves history, not current validation.

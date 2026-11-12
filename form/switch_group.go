@@ -1,6 +1,7 @@
 package form
 
 import (
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -21,7 +22,9 @@ type SwitchGroupOptions struct {
 // SwitchGroup lays out caller-owned switches built by body, vertically or in
 // a wrapped row.
 func SwitchGroup(c *ui.Context, o SwitchGroupOptions, body func()) ui.Element {
-	errText := choiceErrorText(o.Invalid, o.Error)
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
+	errText := formstyle.ErrorText(o.Invalid, o.Error)
 	disabled := o.Disabled
 
 	root := ui.Column(c).MinWidth(0).Gap(theme.Space24).

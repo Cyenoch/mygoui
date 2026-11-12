@@ -113,7 +113,7 @@ func calendarBoundedExample(c *ui.Context, st *datesState) {
 			DisabledDates:  datesWeekend,
 			ShowYearPicker: true,
 		}, &st.Cal)
-		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+		datesAside(c).Children(func() {
 			mygoui.Typography(c, "Selected day", mygoui.TypographyOptions{Type: theme.TypeH6})
 			mygoui.Typography(c, datesDayLabel(st.Cal.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
 			ui.Row(c).Wrap().Gap(theme.Space4).Children(func() {
@@ -136,7 +136,7 @@ func calendarMondayExample(c *ui.Context, st *datesState) {
 			FirstWeekday:   time.Monday,
 			ShowYearPicker: true,
 		}, &st.CalMonday)
-		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+		datesAside(c).Children(func() {
 			mygoui.Typography(c, datesDayLabel(st.CalMonday.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
 			datesChip(c, "Monday first")
 		})
@@ -152,7 +152,7 @@ func calendarStaticHeadingExample(c *ui.Context, st *datesState) {
 			Min:   st.Min,
 			Max:   st.Max,
 		}, &st.CalStatic)
-		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+		datesAside(c).Children(func() {
 			mygoui.Typography(c, datesDayLabel(st.CalStatic.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
 			datesChip(c, "No year grid")
 		})
@@ -167,7 +167,7 @@ func calendarYearPickerExample(c *ui.Context, st *datesState) {
 			Today:          st.Today,
 			ShowYearPicker: true,
 		}, &st.CalYear)
-		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+		datesAside(c).Children(func() {
 			mygoui.Typography(c, datesDayLabel(st.CalYear.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
 			datesChip(c, "Choose year")
 		})
@@ -186,6 +186,12 @@ func calendarReadOnlyExample(c *ui.Context, st *datesState) {
 	}, &st.CalReadOnly)
 }
 
+// datesAside is the readout beside a demo. Its width does not follow its
+// text, so a changing value does not move the centered demo.
+func datesAside(c *ui.Context) ui.Element {
+	return ui.Column(c).Width(theme.Scale(c, 280)).Shrink(1).MinWidth(0).Gap(theme.Space8)
+}
+
 // rangeBoundedExample picks two endpoints over bounded weekdays.
 func rangeBoundedExample(c *ui.Context, st *datesState) {
 	ui.Row(c).Wrap().Gap(theme.Space24).AlignItems(ui.Start).Children(func() {
@@ -197,19 +203,9 @@ func rangeBoundedExample(c *ui.Context, st *datesState) {
 			DisabledDates:  datesWeekend,
 			ShowYearPicker: true,
 		}, &st.Range)
-		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+		datesAside(c).Children(func() {
 			mygoui.Typography(c, "Selected range", mygoui.TypographyOptions{Type: theme.TypeH6})
-			// Keep both the value and the hint line at a fixed height: a
-			// shorter completed range must not reflow the grid beside it.
-			ui.Column(c).MinHeight(theme.Scale(c, 40)).Justify(ui.Start).Children(func() {
-				mygoui.Typography(c, datesRangeLabel(st.Range.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
-			})
-			ui.Column(c).MinHeight(theme.Scale(c, 32)).Justify(ui.Start).Children(func() {
-				if !st.Range.Anchor.IsZero() {
-					mygoui.Typography(c, "Start "+st.Range.Anchor.Format("Mon, Jan 2")+" — now pick the end day.",
-						mygoui.TypographyOptions{Type: theme.TypeBodyXS, Muted: true})
-				}
-			})
+			mygoui.Typography(c, datesRangeLabel(st.Range.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
 			datesChip(c, "Weekends disabled")
 		})
 	})
@@ -226,7 +222,7 @@ func rangeMondayExample(c *ui.Context, st *datesState) {
 			FirstWeekday:   time.Monday,
 			ShowYearPicker: true,
 		}, &st.RangeMonday)
-		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+		datesAside(c).Children(func() {
 			mygoui.Typography(c, datesRangeLabel(st.RangeMonday.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
 			datesChip(c, "Monday first")
 		})
@@ -241,7 +237,7 @@ func rangeFreeExample(c *ui.Context, st *datesState) {
 			Today:          st.Today,
 			ShowYearPicker: true,
 		}, &st.RangeFree)
-		ui.Column(c).Grow(1).Basis(0).MinWidth(theme.Scale(c, 200)).Gap(theme.Space8).Children(func() {
+		datesAside(c).Children(func() {
 			mygoui.Typography(c, datesRangeLabel(st.RangeFree.Value), mygoui.TypographyOptions{Type: theme.TypeBodySM})
 			datesChip(c, "No bounds")
 		})

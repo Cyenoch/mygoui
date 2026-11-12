@@ -15,13 +15,13 @@ func TestZoomKeepsNativeChromeAndSearchUsable(t *testing.T) {
 	for range 5 {
 		tt.Key(ui.Cmd, ui.KeyEqual)
 	}
+	bar := ui.TitleBar{Height: 52, Left: 80, Right: 138}
 	title, ok := tt.Find("Gallery title bar")
-	if !ok || title.H != TitleBarHeight {
-		t.Fatalf("zoom changed the native chrome height: %+v", title)
+	if !ok || title.H < TitleBarHeight {
+		t.Fatalf("zoomed title bar does not cover the native band: %+v", title)
 	}
-	for _, label := range []string{"coss ui", "MyGo"} {
-		r, found := tt.Find(label)
-		if found && r.Y < title.H && (r.X < 80 || r.X+r.W > 1180-138) {
+	for _, label := range []string{"Toggle navigation", "GitHub", "Appearance"} {
+		if r, found := tt.Find(label); !found || !within(r, 1180, bar) {
 			t.Fatalf("zoomed %s overlaps native controls: %+v", label, r)
 		}
 	}

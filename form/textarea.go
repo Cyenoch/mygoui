@@ -21,6 +21,8 @@ type TextAreaOptions struct {
 
 // TextArea renders a multiline native editor on a field surface.
 func TextArea(c *ui.Context, value *string, o TextAreaOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	value = inputTextAnchor(value)
 	build := func() ui.Element {
 		e := ui.TextAreaBase(c, value)

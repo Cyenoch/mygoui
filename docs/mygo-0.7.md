@@ -1,6 +1,7 @@
 # MyGo 0.7.2 integration
 
-The library and `go tool mygo` both resolve `github.com/egoist/mygo v0.7.2`.
+Historical: superseded by [the 0.9.0 record](mygo-0.9.md).
+The library and `go tool mygo` resolved `github.com/egoist/mygo v0.7.2`.
 The minimum Go version is 1.27.3, following upstream's 0.6.4 security update.
 `make check`, `make dev` and `make app` use the module's tool directive;
 they no longer resolve an unrelated `latest` CLI.

@@ -81,7 +81,7 @@ func TestSliderMarksSitInTrackRow(t *testing.T) {
 	if !ok {
 		t.Fatal("the slider label is not rendered")
 	}
-	const trackH, markH, pad = float32(20), float32(16), float32(14)
+	const trackH, tickH, markH, pad = float32(20), float32(4), float32(24), float32(14)
 	left, width := header.X, float32(360)-2*header.X
 	markTop := header.Y + header.H + theme.Space4 + trackH + theme.Space4
 	want := []float32{left + pad, left + width/2, left + width - pad}
@@ -90,10 +90,10 @@ func TestSliderMarksSitInTrackRow(t *testing.T) {
 		if !ok {
 			t.Fatalf("mark %q is not rendered", s)
 		}
-		// The label box lies within the marks row right below the track, not
-		// at the top of the page.
-		if r.Y < markTop-0.5 || r.Y+r.H > markTop+markH+0.5 {
-			t.Fatalf("mark %q sits at y %v..%v, outside the marks row %v..%v", s, r.Y, r.Y+r.H, markTop, markTop+markH)
+		// The label lies within the marks row right below the track, under
+		// its tick rather than across it.
+		if r.Y < markTop+tickH-0.5 || r.Y+r.H > markTop+markH+0.5 {
+			t.Fatalf("mark %q sits at y %v..%v, want below the tick within %v..%v", s, r.Y, r.Y+r.H, markTop+tickH, markTop+markH)
 		}
 		// Its center lines up with the thumb at the same value, inside the
 		// track's padded end.
@@ -223,5 +223,15 @@ func TestSliderFormatAndDescription(t *testing.T) {
 	}
 	if !tt.HasText("0.0%") {
 		t.Fatalf("formatted output missing: %q", tt.Texts())
+	}
+}
+
+func TestSliderShowsFractionalStepExactly(t *testing.T) {
+	value := 0.25
+	tt := ui.NewTester(func(c *ui.Context) {
+		Slider(c, SliderOptions{State: SliderState{Value: &value}, Label: "Gain", Max: 1, Step: 0.25})
+	}, 360, 120)
+	if !tt.HasText("0.25") {
+		t.Fatalf("value text = %q, want 0.25", tt.Texts())
 	}
 }

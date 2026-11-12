@@ -158,10 +158,10 @@ func buildComponentPage(c *ui.Context, s *State, p ComponentPage) ui.Element {
 						mygoui.Link(c, mygoui.LinkOptions{
 							Label: referenceLabel(p.ID), Icon: lucide.ExternalLink(),
 							OnClick: func() { services.OpenURL(url) },
-						})
+						}).AlignSelf(ui.Center)
 					}
 				})
-				usageBar(c, chrome, p)
+				commandBar(c, &chrome.UsageCopiedAt, "Usage import", "Copy import line", p.importStatement())
 				panel(c, func() { exampleCode(c, s, p) })
 			case 2:
 				apiTable(c, s, p.Params)
@@ -173,21 +173,36 @@ func buildComponentPage(c *ui.Context, s *State, p ComponentPage) ui.Element {
 		})
 }
 
+// docsCopyPill copies text and confirms in place: the label slot reserves
+// the wider of its label and "Copied", so feedback does not move the row.
 func docsCopyPill(c *ui.Context, at *time.Time, label string, icon *ui.SVG, text func() string) {
+	const copied = "Copied"
 	shown, glyph := label, icon
 	if !at.IsZero() {
 		elapsed := c.Now().Sub(*at)
 		if elapsed < codeCopyFeedback {
-			shown, glyph = "Copied", lucide.Check()
+			shown, glyph = copied, lucide.Check()
 			c.After(codeCopyFeedback - elapsed)
 		} else {
 			*at = time.Time{}
 		}
 	}
+	ts := theme.SM()
+	ts.Weight = theme.WeightMedium
+	slot := float32(0)
+	for _, s := range [...]string{label, copied} {
+		w, _ := c.MeasureText(0, ui.Span{
+			Text: s, Font: theme.FontFamily(c), Size: theme.Scale(c, ts.Size), Weight: ts.Weight,
+		})
+		slot = max(slot, w)
+	}
 	services := c.Services()
 	mygoui.Button(c, mygoui.ButtonOptions{
 		Label: shown, Icon: glyph, Variant: mygoui.ButtonSecondary,
 		Size: theme.ButtonSmall,
+		Content: func() {
+			style.Text(ui.Text(c, shown), c, ts).SingleLine().MinWidth(slot)
+		},
 		OnClick: func() {
 			services.WriteClipboard(text())
 			*at = c.Now()
@@ -196,9 +211,8 @@ func docsCopyPill(c *ui.Context, at *time.Time, label string, icon *ui.SVG, text
 	})
 }
 
-// usageBar is the import block under Usage: one rounded bar, mono text and an
-// icon-only copy control.
-func usageBar(c *ui.Context, chrome *docsChromeState, p ComponentPage) ui.Element {
+// commandBar is one rounded bar of mono text with an icon-only copy control.
+func commandBar(c *ui.Context, at *time.Time, label, copyLabel, text string) ui.Element {
 	t := theme.Colors(c)
 	ts := theme.Code()
 	ts.Size = 13
@@ -207,17 +221,18 @@ func usageBar(c *ui.Context, chrome *docsChromeState, p ComponentPage) ui.Elemen
 		Padding(0, theme.Scale(c, 10), 0, theme.Scale(c, theme.Space16)).
 		Radius(theme.Scale(c, theme.Space12)).Clip().Background(t.SurfaceSecondary).
 		TextColor(t.SurfaceSecondaryForeground).BorderWidth(theme.Hairline).
-		BorderColor(t.Border).Label("Usage import")
+		BorderColor(t.Border).Label(label)
 	e.Children(func() {
 		ui.Row(c).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Children(func() {
-			style.Text(ui.Text(c, p.importStatement()), c, ts).
-				TextColor(t.Foreground).Selectable().NoWrap()
+			style.Text(ui.Text(c, text), c, ts).TextColor(t.Foreground).Selectable().NoWrap()
 		})
-		copyIconButton(c, &chrome.UsageCopiedAt, "Copy import line",
-			func() string { return p.importStatement() })
+		copyIconButton(c, at, copyLabel, func() string { return text })
 	})
 	return e
 }
+
+// demoMinHeight keeps short demos from collapsing the example surface.
+const demoMinHeight = 160
 
 // demoPanel is the bordered, clipped surface around one demo body. Its title
 // and description are rendered outside it by exampleFrame.
@@ -228,8 +243,9 @@ func demoPanel(c *ui.Context, label string, body func()) ui.Element {
 		TextColor(t.SurfaceForeground).BorderWidth(theme.Hairline).
 		BorderColor(t.Border).Label(label)
 	panel.Children(func() {
-		ui.Column(c).FillWidth().MinWidth(0).Padding(theme.Scale(c, theme.Space24)).
-			AlignItems(ui.Center).Children(body)
+		ui.Column(c).FillWidth().MinWidth(0).MinHeight(theme.Scale(c, demoMinHeight)).
+			Padding(theme.Scale(c, theme.Space24)).
+			AlignItems(ui.Center).Justify(ui.Center).Children(body)
 	})
 	return panel
 }

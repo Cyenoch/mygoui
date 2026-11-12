@@ -1,6 +1,7 @@
 package form
 
 import (
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -27,7 +28,9 @@ type RadioGroupOptions struct {
 // RadioGroup is a labelled container of radio buttons
 // that form one Tab stop, with the arrows, Home and End moving the choice.
 func RadioGroup(c *ui.Context, o RadioGroupOptions, body func()) ui.Element {
-	errText := choiceErrorText(o.Invalid, o.Error)
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
+	errText := formstyle.ErrorText(o.Invalid, o.Error)
 	disabled := o.Disabled
 
 	root := ui.Column(c).MinWidth(0).Gap(theme.Space4)

@@ -2,7 +2,6 @@ package navigation
 
 import (
 	"github.com/Cyenoch/mygoui"
-	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -35,9 +34,6 @@ func Toolbar(c *ui.Context, o ToolbarOptions) ui.Element {
 		radius := theme.RadiusScale().XL
 		root.Background(t.Card).TextColor(t.CardForeground).Border(theme.Hairline, t.Border).Radius(radius).Clip().
 			Padding(scale(c, theme.Space4))
-		// shadow-overlay is the whole rim: in dark mode it is an inset
-		// hairline, so no extra border is added.
-		root = style.Shadow(root, c, theme.OverlayShadows(c.Theme().Dark))
 	}
 	if o.Label != "" {
 		root.Label(o.Label)

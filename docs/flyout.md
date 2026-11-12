@@ -1,12 +1,40 @@
 # Native flyout
 
+## Anchored popups as flyouts
+
+Popover, Dropdown, Select, DatePicker, DateRangePicker and ColorPicker stay
+inside the window by default. A caller that wants a popup to extend beyond
+the window opts in per component with `Flyout`:
+
+```go
+// Window-owned state, set once the window exists:
+state.Flyouts = mygoui.FlyoutHost{Window: window}
+
+// In the view:
+form.Select(c, form.SelectOptions{Label: "Fruit", Items: items,
+    State: &state.Fruit, Flyout: &state.Flyouts})
+```
+
+The component opens a fitted native flyout after the build that sees it open,
+re-anchors it as the trigger moves, closes it when its open state turns false
+or the trigger leaves the view, and clears that state when the user dismisses
+it. The flyout follows the parent's light or dark mode. Popup content builds
+in the flyout's own context, so Popover's `Header`, `Body` and `Footer` take
+one. A nil host, a host without a window, and WebAssembly keep the in-window
+popup. A Dropdown whose menu has submenus stays in the window. Flyouts have no
+popup motion or Popover arrow, do not follow the parent's content zoom, and
+macOS and Windows draw their outline. Dialogs, sheets and other modal layers
+have no flyout form.
+
+## Custom flyout windows
+
 `overlay.NewFlyout` creates a separate native MyGo window that can extend
 outside its parent. It is not the in-window `overlay.Popover`, a WebView, or
 a browser portal. Create it in an input action on the main thread after
 `App.WhenReady`, not unconditionally while building a view. The caller owns
 the returned `*mygo.Window`, its model and any widget handles. The parent
-or tray must be explicit, and native content needs a positive width and
-height in window DIPs: MyGo's `FitContent` only sizes web pages.
+or tray must be explicit, and the window needs a positive width and height in
+window DIPs.
 
 ```go
 // Fields belonging to the parent window's state:
@@ -70,8 +98,8 @@ by platform, including system outlines on macOS and Windows 11.
 
 Set `FlyoutOptions.Dark` to a caller-owned `*bool` to follow an explicit
 application appearance instead of the OS. After changing it, invalidate the
-flyout too. A nil pointer follows the system. The Gallery's Popover page
-demonstrates this separate native window; the in-window Popover stays unchanged.
+flyout too. A nil pointer follows the system. The Gallery's Popover page demonstrates a
+Popover opened with `Flyout`.
 
 ## Native behavior and limits
 

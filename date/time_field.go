@@ -4,7 +4,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Cyenoch/mygoui/locale"
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -38,6 +38,8 @@ type TimeFieldOptions struct {
 // typed, keeping the date of the state's value (or today's date when it holds
 // none). A nil state uses a component-local copy.
 func TimeField(c *ui.Context, o TimeFieldOptions, st *TimeFieldState) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	if c == nil {
 		return ui.Element{}
 	}
@@ -113,10 +115,7 @@ type timeFieldSpec struct {
 func timeField(c *ui.Context, spec timeFieldSpec, buf *timeBuffer) ui.Element {
 	buf.refresh(spec.state.Value, spec.hour12)
 	invalid := spec.field.invalid || buf.invalid
-	errorText := spec.field.error
-	if errorText == "" && buf.invalid {
-		errorText = locale.M().Invalid
-	}
+	errorText := formstyle.ErrorText(invalid, spec.field.error)
 	return formField(c, spec.field, errorText, func() {
 		group := fieldGroup(c, invalid, spec.field.disabled)
 		if spec.width > 0 && !spec.field.fullWidth {

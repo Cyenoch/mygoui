@@ -41,6 +41,8 @@ type OTPOptions struct {
 // and caret are painted from its committed text. Rejecting characters can
 // reposition the caret when the native editor receives the filtered value.
 func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	if state == nil {
 		state = &OTPState{}
 	}
@@ -83,11 +85,7 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 			runes[n] = r
 			n++
 		}
-		filled := t.Background
-		base, hover := t.Background, t.Background
-		if o.Variant == ControlSecondary {
-			base, hover, filled = t.Background, t.Background, t.Background
-		}
+		idle, focused := formstyle.FieldFace(c, false, o.Invalid), formstyle.FieldFace(c, true, o.Invalid)
 		container := ui.Row(c).Gap(gap).Height(slotHeight).AlignItems(ui.Center).FillWidth().
 			MinWidth(theme.Scale(c, float32(length)*32+float32(length-1)*8))
 
@@ -111,41 +109,19 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 				if o.Variant == ControlPrimary {
 					slot = style.Shadow(slot, c, slotShadows)
 				}
-				// Snapshot the slot's hover in the build: a retained copy of
-				// a leaving element paints in later passes, where slot has
-				// expired.
-				slotHovered := !o.Disabled && slot.Hovered()
 				slot.Draw(func(p *ui.Painter, r ui.Rect) {
 					active := focusedNow && index == activeIndex
-					selected := selStart != selEnd && index >= selStart && index < selEnd
-					fill := base
-					switch {
-					case selected:
-						fill = t.Selection
-					case char != "" || active:
-						fill = filled
-					case slotHovered:
-						fill = hover
-					}
-					p.Fill(r, fill, radius)
-					border := t.Input
-					switch {
-					case o.Invalid:
-						border = t.Destructive.Alpha(0.36)
-					case active:
-						border = t.Ring
-					case slotHovered:
-						border = t.Input
-					}
-					if border.A != 0 {
-						p.Stroke(r, border, radius, theme.Hairline)
-					}
+					face := idle
 					if active {
-						ring := t.Ring.Alpha(0.24)
-						if o.Invalid {
-							ring = t.Destructive.Alpha(0.16)
-						}
-						formstyle.FieldRing(p, r, radius, ring)
+						face = focused
+					}
+					if selStart != selEnd && index >= selStart && index < selEnd {
+						face.Fill = t.Selection
+					}
+					p.Fill(r, face.Fill, radius)
+					p.Stroke(r, face.Border, radius, theme.Hairline)
+					if active {
+						formstyle.FieldRing(p, r, radius, face.Ring)
 						if char == "" {
 							// Blink at 500 ms a phase, but repaint only at the
 							// boundary instead of at every display frame.

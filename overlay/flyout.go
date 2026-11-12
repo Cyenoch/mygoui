@@ -13,7 +13,7 @@ import (
 
 // FlyoutOptions describes a native, independently themed flyout window.
 // Exactly one of Parent and Tray is required. Width and Height are window
-// DIPs and must be positive; native content cannot use MyGo's FitContent.
+// DIPs and must be positive.
 // Body, Header and Footer must not capture a context or element from another
 // build or window. The caller owns the returned window and its state.
 type FlyoutOptions struct {

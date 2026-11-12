@@ -7,6 +7,7 @@ import (
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/anchored"
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/list"
 	"github.com/Cyenoch/mygoui/locale"
@@ -37,6 +38,8 @@ type SelectOptions struct {
 	MaxHeight   float32
 	Placement   mygoui.Placement
 	OnChange    func(keys []string)
+	// Flyout opens the list as a native flyout of the host's window.
+	Flyout *mygoui.FlyoutHost
 }
 
 // SelectState is the caller-owned open flag, focus handle and list selection
@@ -256,17 +259,6 @@ func isASCII(s string) bool {
 	return true
 }
 
-// fieldMessage returns the visible and accessible error for a field.
-func fieldMessage(invalid bool, text string) string {
-	if !invalid {
-		return ""
-	}
-	if text != "" {
-		return text
-	}
-	return locale.M().Invalid
-}
-
 // itemKey is a list item's selection identity.
 func itemKey(it *list.ListBoxItem) string {
 	if it.Key != "" {
@@ -279,14 +271,16 @@ func itemKey(it *list.ListBoxItem) string {
 // list box. The trigger keeps the tab stop; the list receives the keyboard when
 // the popup opens, so its own navigation, typeahead and selection apply.
 func Select(c *ui.Context, o SelectOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	s := o.State
 	if s == nil {
 		panic("form: Select requires a caller-owned State")
 	}
 	mode := selectMode(o.Selection)
 	t := theme.Colors(c)
-	invalid := o.Invalid || o.Error != ""
-	errText := fieldMessage(invalid, o.Error)
+	invalid := o.Invalid
+	errText := formstyle.ErrorText(invalid, o.Error)
 
 	root := ui.Column(c).MinWidth(0).Gap(theme.Space4)
 	if o.FullWidth {
@@ -455,19 +449,7 @@ func selectPopup(c *ui.Context, o SelectOptions, s *SelectState, trigger ui.Elem
 	if maxHeight == 0 {
 		maxHeight = 320
 	}
-	t := theme.Colors(c)
-	radius := theme.RadiusScale().LG
-	anchor := trigger
-	ui.PopoverBase(c, trigger, &s.Open, func(panel ui.Element) {
-		panel.MinWidth(anchor.Bounds().W)
-		panel.Padding(0).Radius(radius).Background(t.Popover).Border(theme.Hairline, t.Border).Clip()
-		panel = style.Shadow(panel, c, theme.OverlayShadows(c.Theme().Dark))
-		panel = popoverMotion(c, panel, o.Placement, mygoui.SideBottom, 150*time.Millisecond)
-		placement := o.Placement
-		if placement.Offset == 0 {
-			placement.Offset = 4
-		}
-		anchored.Apply(panel, anchor, placement, mygoui.SideBottom)
+	popupList := func(c *ui.Context, refocus func()) {
 		list.ListBox(c, list.ListBoxOptions{
 			Label:          o.Label,
 			Items:          o.Items,
@@ -482,13 +464,13 @@ func selectPopup(c *ui.Context, o SelectOptions, s *SelectState, trigger ui.Elem
 				selectNotify(o, s)
 				if mode == list.SelectionSingle {
 					s.Open = false
-					s.Trigger.Focus(c)
+					refocus()
 				}
 			},
 			OnAction: func(key string) {
 				if mode == list.SelectionSingle {
 					s.Open = false
-					s.Trigger.Focus(c)
+					refocus()
 				}
 			},
 		})
@@ -496,6 +478,26 @@ func selectPopup(c *ui.Context, o SelectOptions, s *SelectState, trigger ui.Elem
 			s.focusList = false
 			s.List.Focus(c)
 		}
+	}
+	// The trigger keeps the parent window's focus while a flyout shows.
+	if anchored.Flyout(c, o.Flyout, trigger, &s.Open, anchored.FlyoutSpec{
+		Placement: o.Placement, Fallback: mygoui.SideBottom, Label: o.Label,
+		MinWidth: trigger.Bounds().W,
+		Body: func(c *ui.Context) {
+			// The flyout has the keyboard and holds only the list.
+			s.focusList = s.focusList || !s.List.FocusWithin(c)
+			popupList(c, func() {})
+		},
+	}) {
+		return
+	}
+	radius := theme.RadiusScale().LG
+	anchor := trigger
+	ui.PopoverBase(c, trigger, &s.Open, func(panel ui.Element) {
+		panel.MinWidth(anchor.Bounds().W)
+		panel = anchored.Surface(c, panel.Padding(0).Clip(), radius)
+		anchored.Apply(panel, anchor, o.Placement, mygoui.SideBottom)
+		popupList(c, func() { s.Trigger.Focus(c) })
 	})
 }
 
@@ -527,17 +529,6 @@ func selectIndicator(c *ui.Context, open bool) ui.Element {
 		AnimatePose(ui.Pose{Rotate: angle}, ui.Animation{
 			Duration: 150 * time.Millisecond, Ease: ui.EaseOut,
 		})
-}
-
-// popoverMotion fades and scales a popup. Reduced motion settles it at once.
-func popoverMotion(c *ui.Context, panel ui.Element, p mygoui.Placement, fallback mygoui.Side, d time.Duration) ui.Element {
-	if theme.ReduceMotion(c) {
-		return panel
-	}
-	motion := ui.Motion{Scale: 0.98, Opacity: 0}
-	return panel.Transition(ui.ElementTransition{
-		Duration: d, Ease: ui.EaseOut, Enter: &motion, Exit: &motion,
-	})
 }
 
 var (

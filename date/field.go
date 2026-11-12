@@ -6,7 +6,6 @@ import (
 
 	"github.com/Cyenoch/mygoui/form"
 	"github.com/Cyenoch/mygoui/internal/formstyle"
-	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -36,6 +35,8 @@ type DateFieldOptions struct {
 // stays quiet, and an impossible or out-of-bounds date shows the localized
 // invalid message.
 func DateField(c *ui.Context, o DateFieldOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	if c == nil {
 		return ui.Element{}
 	}
@@ -129,11 +130,8 @@ type dateFieldSpec struct {
 // DatePicker anchors its popover to.
 func dateField(c *ui.Context, spec dateFieldSpec, buf *dateBuffer) (ui.Element, ui.Element) {
 	buf.refresh(*spec.value)
-	errorText := spec.field.error
 	invalid := spec.field.invalid || buf.invalid
-	if errorText == "" && buf.invalid {
-		errorText = locale.M().Invalid
-	}
+	errorText := formstyle.ErrorText(invalid, spec.field.error)
 	var group ui.Element
 	field := formField(c, spec.field, errorText, func() {
 		group = dateGroup(c, spec, buf, invalid)
@@ -149,6 +147,10 @@ func dateGroup(c *ui.Context, spec dateFieldSpec, buf *dateBuffer, invalid bool)
 	group := fieldGroup(c, invalid, spec.field.disabled)
 	if spec.width > 0 && !spec.field.fullWidth {
 		group = group.Width(spec.width)
+	}
+	if spec.suffix != nil {
+		// A trailing icon button sits close to the edge, as in coss input groups.
+		group = group.Padding(0, theme.Space4, 0, theme.Space12)
 	}
 	if spec.field.fullWidth {
 		group = group.FillWidth()

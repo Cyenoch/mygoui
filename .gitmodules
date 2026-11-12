@@ -4,3 +4,7 @@
 [submodule "references/bklit"]
 	path = references/bklit
 	url = https://github.com/bklit/bklit-ui.git
+[submodule "references/lobe-mygo"]
+	path = references/lobe-mygo
+	url = https://github.com/lobehub/lobe-mygo.git
+	shallow = true

@@ -77,7 +77,7 @@ const linkIconDuration = 150 * time.Millisecond
 func Link(c *ui.Context, o LinkOptions) ui.Element {
 	t := theme.Colors(c)
 	radius := theme.RadiusScale().XL
-	e := ui.ButtonBase(c).Gap(theme.Space4).Padding(0).Radius(radius).
+	e := ui.ButtonBase(c).Gap(theme.Space4).Padding(0).Radius(radius).AlignItems(ui.Center).
 		AlignSelf(ui.Start).FocusRing(true).Label(o.Label)
 	e = style.Disabled(e, o.Disabled)
 	e.TextColor(t.Link)

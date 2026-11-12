@@ -1,7 +1,6 @@
 package mygoui
 
 import (
-	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -35,7 +34,7 @@ func Alert(c *ui.Context, o AlertOptions) ui.Element {
 	e.Children(func() {
 		icon := o.Icon
 		if icon == nil && o.ShowIcon {
-			icon = alertIcon(o.Status)
+			icon = StatusIcon(o.Status)
 		}
 		if icon != nil {
 			ui.Row(c).PaddingY(theme.Space2).Shrink(0).Children(func() {
@@ -64,18 +63,4 @@ func Alert(c *ui.Context, o AlertOptions) ui.Element {
 		})
 	})
 	return e
-}
-
-func alertIcon(color StatusColor) *ui.SVG {
-	switch color {
-	case ColorAccent, ColorInfo:
-		return lucide.Info()
-	case ColorSuccess:
-		return lucide.CircleCheck()
-	case ColorWarning:
-		return lucide.TriangleAlert()
-	case ColorDanger:
-		return lucide.CircleAlert()
-	}
-	return lucide.Info()
 }

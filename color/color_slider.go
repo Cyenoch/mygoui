@@ -232,8 +232,8 @@ func colorSliderTrack(c *ui.Context, o ColorSliderOptions, label string,
 		if inner.W > 0 && inner.H > 0 {
 			p.FillGradient(inner, ui.LinearGradient{Stops: stops, Angle: angle}, 0)
 		}
-		fillCorners(p, lowCap, low, lowRadii[0], lowRadii[1], lowRadii[2], lowRadii[3])
-		fillCorners(p, highCap, high, highRadii[0], highRadii[1], highRadii[2], highRadii[3])
+		p.FillRadii(lowCap, lowRadii, low)
+		p.FillRadii(highCap, highRadii, high)
 		p.Stroke(r, ui.RGBA(0, 0, 0, 0.1), radius, 1)
 
 		var cx, cy float32

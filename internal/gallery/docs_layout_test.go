@@ -30,6 +30,7 @@ func TestWorkbenchCopyActions(t *testing.T) {
 	state.Selected, state.Panel = "button", 1
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)
 	tt.Frame()
+	before, _ := tt.Find("Copy Markdown")
 	if err := tt.Click("Copy Markdown"); err != nil {
 		t.Fatal(err)
 	}
@@ -38,8 +39,8 @@ func TestWorkbenchCopyActions(t *testing.T) {
 			t.Fatalf("copied Markdown is missing %q", want)
 		}
 	}
-	if !tt.HasText("Copied") {
-		t.Fatal("copy action did not report success")
+	if after, ok := tt.Find("Copied"); !ok || after != before {
+		t.Fatalf("copy feedback = %+v, want it in place of %+v", after, before)
 	}
 	tt.Advance(codeCopyFeedback)
 	if err := tt.Click("Copy import"); err != nil {

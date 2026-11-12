@@ -3,7 +3,6 @@ package navigation
 import (
 	"math"
 
-	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -59,13 +58,6 @@ func drawCheck(p *ui.Painter, path *ui.Path, r ui.Rect, progress float32, color 
 func sinCos(angle float32) (sin, cos float32) {
 	s, c := math.Sincos(float64(angle) * math.Pi / 180)
 	return float32(s), float32(c)
-}
-
-// overlayPanel applies the popover surface, border, radius, and shadow.
-func overlayPanel(c *ui.Context, e ui.Element, radius float32) ui.Element {
-	t := theme.Colors(c)
-	e = e.Background(t.Popover).TextColor(t.PopoverForeground).Radius(radius).Border(theme.Hairline, t.Border).Clip()
-	return style.Shadow(e, c, theme.OverlayShadows(c.Theme().Dark))
 }
 
 // scale applies the host's text scale to a DIP metric.

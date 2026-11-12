@@ -49,6 +49,8 @@ type DatePickerOptions struct {
 	// Placement places the popup. The zero value uses bottom-center, as COSS
 	// does.
 	Placement mygoui.Placement
+	// Flyout opens the calendar as a native flyout of the host's window.
+	Flyout *mygoui.FlyoutHost
 
 	Handle       *ui.Handle
 	OnChange     func(time.Time)
@@ -58,6 +60,8 @@ type DatePickerOptions struct {
 // DatePicker renders a date field with a COSS-style popup calendar. Choosing a day
 // commits it to Value, reports OnChange and closes the popup.
 func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	if c == nil {
 		return ui.Element{}
 	}
@@ -65,9 +69,7 @@ func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
 	if o.FullWidth {
 		root.FillWidth()
 	}
-	// Keep the overlay layer present while closed so the panel's fade in and
-	// out has a parent in both frames.
-	ui.Overlay(c, func() {})
+	anchored.Warm(c)
 	value := o.Value
 	if value == nil {
 		value = ui.Local(root, datePickerValueKey{}, func() time.Time { return time.Time{} })
@@ -142,43 +144,50 @@ func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
 			*refocus = false
 		}
 
-		if group.Valid() {
-			panel := ui.PopoverBase(c, group, open, func(panel ui.Element) {
-				box := popoverPanel(c, panel, group, o.Placement)
-				box.Children(func() {
-					Calendar(c, CalendarOptions{
-						Label:           o.Label,
-						Today:           o.Today,
-						Min:             o.Min,
-						Max:             o.Max,
-						DisabledDates:   o.DisabledDates,
-						FirstWeekday:    o.FirstWeekday,
-						ShowYearPicker:  o.ShowYearPicker,
-						HideYearPicker:  o.HideYearPicker,
-						PrevLabel:       o.PrevLabel,
-						NextLabel:       o.NextLabel,
-						YearPickerLabel: o.YearPickerLabel,
-						MonthLabel:      o.MonthLabel,
-						WeekdayLabel:    o.WeekdayLabel,
-						DayLabel:        o.DayLabel,
-						OnChange: func(d time.Time) {
-							*value = d
-							if o.OnChange != nil {
-								o.OnChange(d)
-							}
-							closePopup(true)
-							*refocus = true
-						},
-						autofocus: true,
-					}, state)
-				})
-			})
-			if panel.Valid() && panel.Dismissed() {
-				*refocus = true
-				if o.OnOpenChange != nil {
-					o.OnOpenChange(false)
-				}
+		if !group.Valid() {
+			return
+		}
+		calendar := func(c *ui.Context) {
+			Calendar(c, CalendarOptions{
+				Label:           o.Label,
+				Today:           o.Today,
+				Min:             o.Min,
+				Max:             o.Max,
+				DisabledDates:   o.DisabledDates,
+				FirstWeekday:    o.FirstWeekday,
+				ShowYearPicker:  o.ShowYearPicker,
+				HideYearPicker:  o.HideYearPicker,
+				PrevLabel:       o.PrevLabel,
+				NextLabel:       o.NextLabel,
+				YearPickerLabel: o.YearPickerLabel,
+				MonthLabel:      o.MonthLabel,
+				WeekdayLabel:    o.WeekdayLabel,
+				DayLabel:        o.DayLabel,
+				OnChange: func(d time.Time) {
+					*value = d
+					if o.OnChange != nil {
+						o.OnChange(d)
+					}
+					closePopup(true)
+					*refocus = true
+				},
+				autofocus: true,
+			}, state)
+		}
+		dismissed := func() {
+			*refocus = true
+			if o.OnOpenChange != nil {
+				o.OnOpenChange(false)
 			}
+		}
+		if anchored.Flyout(c, o.Flyout, group, open, flyoutCalendar(o.Label, o.Placement, calendar, dismissed)) {
+			return
+		}
+		panel := ui.PopoverBase(c, group, open, func(panel ui.Element) {
+			popoverPanel(c, panel, group, o.Placement).Children(func() { calendar(c) })
+		})
+		if panel.Valid() && panel.Dismissed() {
+			dismissed()
 		}
 	})
 
@@ -224,17 +233,19 @@ func triggerButton(c *ui.Context, label string, onClick func()) ui.Element {
 	return e
 }
 
-// popoverPanel gives the calendar a bordered COSS popover and an arrival fade.
-func popoverPanel(c *ui.Context, panel, anchor ui.Element, place mygoui.Placement) ui.Element {
-	t := theme.Colors(c)
-	p := panel.Padding(theme.Space8).Radius(theme.RadiusScale().XL).Clip().Background(t.Popover).Border(theme.Hairline, t.Border)
-	p = style.Shadow(p, c, theme.OverlayShadows(c.Theme().Dark))
-	p = anchored.Apply(p, anchor, place, mygoui.SideBottom)
-	if !theme.ReduceMotion(c) {
-		fade := ui.Motion{Opacity: 0}
-		p = p.Transition(ui.ElementTransition{
-			Duration: 150 * time.Millisecond, Ease: ui.EaseOut, Enter: &fade, Exit: &fade,
-		})
+// flyoutCalendar is the flyout form of a picker's calendar popup.
+func flyoutCalendar(label string, place mygoui.Placement, body func(*ui.Context), dismissed func()) anchored.FlyoutSpec {
+	return anchored.FlyoutSpec{
+		Placement: place, Fallback: mygoui.SideBottom, Label: label, OnDismiss: dismissed,
+		Body: func(c *ui.Context) {
+			ui.Column(c).Padding(theme.Space8).Children(func() { body(c) })
+		},
 	}
-	return p
+}
+
+// popoverPanel gives the calendar the coss popover surface and motion.
+func popoverPanel(c *ui.Context, panel, anchor ui.Element, place mygoui.Placement) ui.Element {
+	p := anchored.Surface(c, panel.Padding(theme.Space8).Clip(), theme.RadiusScale().LG)
+	p = anchored.Apply(p, anchor, place, mygoui.SideBottom)
+	return anchored.Motion(c, p, anchored.Side(place, mygoui.SideBottom), false)
 }

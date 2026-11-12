@@ -66,19 +66,23 @@ Public APIs live at the module root or in coherent family packages.
 Additional library families can remain useful without becoming coss guarantees.
 
 The gallery is a native workbench consumer, not a web documentation clone. Its
-52 DIP custom title bar reads `c.TitleBar()` for actual left/right system
-control insets, keeps draggable content regions, and uses native macOS traffic
-lights. A grouped sidebar, Cmd/Ctrl+K search and Preview/Code/API/Tokens views
-share window-owned component state. Compact layouts preserve focus rather
+custom title bar reads `c.TitleBar()` for actual left/right system control
+insets, keeps draggable content regions, and uses native macOS traffic lights.
+The sidebar's top row reserves the leading insets; the page title bar reserves
+the trailing ones (and the leading ones when the sidebar is hidden). A grouped
+sidebar, Cmd/Ctrl+K search and Preview/Code/API/Tokens views share
+window-owned component state. Compact layouts preserve focus rather
 than rebuilding a second application shell. Dialog owns the Modal size
 examples; Drawer owns the native floating BottomSheet examples. Their Go APIs
 remain available, without duplicate top-level Gallery pages.
 
 Cmd/Ctrl `+`, `-` and `0` use native content zoom, not text-only scaling.
-The system-button strip stays 52 window DIPs high while content breakpoints
-and insets follow the zoom. Windows caption buttons follow the explicit
-Gallery appearance. A separate native Flyout example lives on the Popover
-page; it is not a duplicate overlay catalog entry.
+The title bar covers at least the native 52 DIP band and grows with zoom or
+text scale; when its controls no longer fit between the window controls they
+move below the band. Windows caption buttons follow the explicit
+Gallery appearance. The Popover page demonstrates a Popover opened as a
+native flyout, and the appearance panel opens as one; it is not a duplicate
+overlay catalog entry.
 
 Install `ToastState.View` once at the window root, after theme application and
 before modal views; page navigation must not remove its renderer. Overlay

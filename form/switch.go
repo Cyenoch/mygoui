@@ -3,6 +3,7 @@ package form
 import (
 	"time"
 
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -46,6 +47,8 @@ type SwitchOptions struct {
 // caller's bool. The thumb's travel and colors animate unless the desktop
 // asks for reduced motion, which moves it at once.
 func Switch(c *ui.Context, o SwitchOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	on := o.On
 	if on == nil {
 		var off bool
@@ -54,7 +57,7 @@ func Switch(c *ui.Context, o SwitchOptions) ui.Element {
 	}
 	t := theme.Colors(c)
 	disabled := o.Disabled
-	errText := choiceErrorText(o.Invalid, o.Error)
+	errText := formstyle.ErrorText(o.Invalid, o.Error)
 
 	indent := float32(0)
 	if o.LabelPosition == SwitchLabelAfter {

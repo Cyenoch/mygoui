@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
+	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -466,13 +467,13 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 func toastGlyph(v ToastVariant) *ui.SVG {
 	switch v {
 	case ToastSuccess:
-		return lucide.CircleCheck()
+		return mygoui.StatusIcon(mygoui.ColorSuccess)
 	case ToastWarning:
-		return lucide.TriangleAlert()
+		return mygoui.StatusIcon(mygoui.ColorWarning)
 	case ToastDanger:
-		return lucide.CircleX()
+		return mygoui.StatusIcon(mygoui.ColorDanger)
 	}
-	return lucide.Info()
+	return mygoui.StatusIcon(mygoui.ColorInfo)
 }
 
 func toastInk(p theme.Palette, v ToastVariant) (title, icon ui.Color) {

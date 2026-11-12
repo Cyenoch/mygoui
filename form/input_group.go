@@ -27,6 +27,8 @@ type InputGroupOptions struct {
 // non-interactive prefix or suffix focuses the editor; actions keep their
 // own activation. Block regions span the full width.
 func InputGroup(c *ui.Context, value *string, o InputGroupOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	value = inputTextAnchor(value)
 	t := theme.Colors(c)
 
@@ -97,7 +99,7 @@ func InputGroup(c *ui.Context, value *string, o InputGroupOptions) ui.Element {
 					Padding(0, theme.Space12, theme.Space8, theme.Space12).OnClick(focusEditor).Children(o.BlockSuffix)
 			}
 		})
-		return formstyle.SurfaceFocused(shell, c, editor.Focused(), o.Invalid || o.Error != "", o.Disabled)
+		return formstyle.SurfaceFocused(shell, c, editor.Focused(), o.Invalid, o.Disabled)
 	}
 
 	fieldOptions := InputOptions{

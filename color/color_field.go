@@ -3,7 +3,6 @@ package color
 import (
 	"github.com/Cyenoch/mygoui/form"
 	"github.com/Cyenoch/mygoui/internal/formstyle"
-	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -39,10 +38,7 @@ func ColorField(c *ui.Context, o ColorFieldOptions) ui.Element {
 		label = "Hex"
 	}
 	invalid := o.Error != "" || s.field.invalid
-	errorText := o.Error
-	if errorText == "" && invalid {
-		errorText = locale.M().Invalid
-	}
+	errorText := formstyle.ErrorText(invalid, o.Error)
 	placeholder := o.Placeholder
 	if placeholder == "" {
 		placeholder = "#000000"

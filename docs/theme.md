@@ -117,6 +117,13 @@ without a pressed scale. Disabled controls retain MyGo's native 50% opacity;
 the coss button source uses 64%. These are explicit native choices, not
 pixel-parity claims.
 
+Elevation copies the coss registry classes. `SurfaceShadows` is the card
+shadow-xs/5 with its edge, `FieldShadows` the input variant,
+`OverlayShadows` the popup and dialog shadow-lg/5 and `TooltipShadows` the
+tooltip shadow-md/5. Overlay and tooltip layers end with the 1px edge coss
+draws in its `before:` layer: black 4% below in light appearance, white 6%
+above in dark. Each call returns a copy.
+
 ## Token provenance
 
 Reference: coss ui

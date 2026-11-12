@@ -2,11 +2,11 @@ package form
 
 import (
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/anchored"
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/list"
 	"github.com/Cyenoch/mygoui/locale"
@@ -168,19 +168,28 @@ func (s *ComboBoxState) applyFilter(o ComboBoxOptions, query string) {
 // a click chooses it. The list API does not expose the highlighted row as an
 // active descendant for assistive technology.
 func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	s := o.State
 	if s == nil {
 		panic("form: ComboBox requires a caller-owned State")
 	}
 	mode := comboMode(o.Selection)
-	invalid := o.Invalid || o.Error != ""
-	errText := fieldMessage(invalid, o.Error)
+	invalid := o.Invalid
+	errText := formstyle.ErrorText(invalid, o.Error)
 	if o.Disabled {
 		s.Open = false
 	}
-	if s.wasActive && !s.Input.Focused(c) && !s.List.FocusWithin(c) {
-		s.Open = false
-		s.escaped = false
+	// Losing focus closes the popup. A dismissed popup returns focus to the
+	// input on the next build; like Escape, that must not reopen it. Focus
+	// that stays away for a build clears the flag.
+	if !s.Input.Focused(c) && !s.List.FocusWithin(c) {
+		if s.wasActive {
+			s.Open = false
+			s.escaped = true
+		} else {
+			s.escaped = false
+		}
 	}
 
 	root := ui.Column(c).MinWidth(0).Gap(theme.Space4)
@@ -503,7 +512,6 @@ func comboPopup(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, field ui.Ele
 	if maxHeight == 0 {
 		maxHeight = 320
 	}
-	t := theme.Colors(c)
 	radius := theme.RadiusScale().LG
 	empty := o.Empty
 	if empty == "" {
@@ -512,14 +520,8 @@ func comboPopup(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, field ui.Ele
 	anchor := field
 	ui.PopoverBase(c, field, &s.Open, func(panel ui.Element) {
 		panel.MinWidth(anchor.Bounds().W)
-		panel.Padding(0).Radius(radius).Background(t.Popover).Border(theme.Hairline, t.Border).Clip().KeepFocus()
-		panel = style.Shadow(panel, c, theme.OverlayShadows(c.Theme().Dark))
-		panel = popoverMotion(c, panel, o.Placement, mygoui.SideBottom, 150*time.Millisecond)
-		placement := o.Placement
-		if placement.Offset == 0 {
-			placement.Offset = 4
-		}
-		anchored.Apply(panel, anchor, placement, mygoui.SideBottom)
+		panel = anchored.Surface(c, panel.Padding(0).Clip().KeepFocus(), radius)
+		anchored.Apply(panel, anchor, o.Placement, mygoui.SideBottom)
 		list.ListBox(c, list.ListBoxOptions{
 			Label:             o.Label,
 			Items:             s.items,

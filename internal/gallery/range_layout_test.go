@@ -11,7 +11,7 @@ import (
 )
 
 // TestRangeCalendarSummaryDoesNotShiftGrid pins the demo layout: completing a
-// range shortens the summary from "pick an end day" to one line. That must not
+// range shortens the summary. In the centered example panel that must not
 // resize the summary column or move the calendar beside it.
 func TestRangeCalendarSummaryDoesNotShiftGrid(t *testing.T) {
 	day := time.Date(2026, time.October, 14, 0, 0, 0, 0, time.UTC)
@@ -25,7 +25,7 @@ func TestRangeCalendarSummaryDoesNotShiftGrid(t *testing.T) {
 	st.Range.Anchor = day
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.Apply(c)
-		rangeBoundedExample(c, st)
+		demoPanel(c, "Example panel", func() { rangeBoundedExample(c, st) })
 	}, 1000, 700)
 	tt.SetPreferences(ui.Preferences{TextScale: 1})
 	tt.Frame()

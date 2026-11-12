@@ -2,7 +2,6 @@ package date
 
 import (
 	"strconv"
-	"sync"
 	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
@@ -342,7 +341,7 @@ func buildHeader(c *ui.Context, spec calendarSpec, view *CalendarViewState, mont
 				style.Text(ui.Text(c, monthText), c, theme.SM()).
 					FontWeight(theme.WeightMedium).TextColor(t.Foreground).SingleLine()
 				if spec.showYearPicker {
-					icon := ui.Icon(c, lucide.ChevronRight()).Size(theme.Scale(c, 12), theme.Scale(c, 12)).
+					icon := ui.Icon(c, lucide.ChevronDown()).Size(theme.Scale(c, 12), theme.Scale(c, 12)).
 						TextColor(t.Foreground)
 					icon.AnimatePose(ui.Pose{Rotate: openDegrees(open)},
 						ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut})
@@ -372,7 +371,7 @@ func buildHeader(c *ui.Context, spec calendarSpec, view *CalendarViewState, mont
 // openDegrees is the chevron's turn while the year grid is open.
 func openDegrees(open bool) float32 {
 	if open {
-		return 90
+		return 180
 	}
 	return 0
 }
@@ -549,12 +548,12 @@ func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cell
 				if outside {
 					p.Fill(inner, t.Accent, radius)
 				} else {
-					fillBand(p, inner, t.Accent, tl, tr, br, bl)
+					p.FillRadii(inner, [4]float32{tl, tr, br, bl}, t.Accent)
 				}
 			}
 			switch {
 			case isStart || isEnd:
-				fillBand(p, inner, t.Primary, tl, tr, br, bl)
+				p.FillRadii(inner, [4]float32{tl, tr, br, bl}, t.Primary)
 			case isSelected:
 				p.Fill(inner, t.Primary, radius)
 			case !inRange && cellHovered:
@@ -584,46 +583,6 @@ func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cell
 // visible month and selectable. Disabled and outside days break the band.
 func bandContinues(spec calendarSpec, sel cellSelection, d, month time.Time) bool {
 	return sel.inRange(d) && sameMonth(d, month) && !spec.disabledDay(d)
-}
-
-// bandPathPool reuses the path buffer of a band with corners of unequal radii.
-var bandPathPool = sync.Pool{New: func() any { return &ui.Path{} }}
-
-// fillBand paints a rectangle with independent corner radii, as CSS's
-// border-radius does; Painter.Fill takes one radius for all four corners.
-func fillBand(p *ui.Painter, r ui.Rect, c ui.Color, tl, tr, br, bl float32) {
-	if r.W <= 0 || r.H <= 0 {
-		return
-	}
-	limit := min(r.W, r.H) / 2
-	tl, tr, br, bl = min(tl, limit), min(tr, limit), min(br, limit), min(bl, limit)
-	if tl == tr && tr == br && br == bl {
-		p.Fill(r, c, tl)
-		return
-	}
-	const k = 0.5523 // control point distance of a quarter circle
-	path := bandPathPool.Get().(*ui.Path)
-	path.Reset()
-	path.MoveTo(r.X+tl, r.Y)
-	path.LineTo(r.X+r.W-tr, r.Y)
-	if tr > 0 {
-		path.CubeTo(r.X+r.W-tr+tr*k, r.Y, r.X+r.W, r.Y+tr-tr*k, r.X+r.W, r.Y+tr)
-	}
-	path.LineTo(r.X+r.W, r.Y+r.H-br)
-	if br > 0 {
-		path.CubeTo(r.X+r.W, r.Y+r.H-br+br*k, r.X+r.W-br+br*k, r.Y+r.H, r.X+r.W-br, r.Y+r.H)
-	}
-	path.LineTo(r.X+bl, r.Y+r.H)
-	if bl > 0 {
-		path.CubeTo(r.X+bl-bl*k, r.Y+r.H, r.X, r.Y+r.H-bl+bl*k, r.X, r.Y+r.H-bl)
-	}
-	path.LineTo(r.X, r.Y+tl)
-	if tl > 0 {
-		path.CubeTo(r.X, r.Y+tl-tl*k, r.X+tl-tl*k, r.Y, r.X+tl, r.Y)
-	}
-	path.Close()
-	p.FillPath(path, c)
-	bandPathPool.Put(path)
 }
 
 // activateDay applies selection, following the day into its month.
@@ -701,7 +660,8 @@ func buildYearGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, mo
 	scroller := ui.Local(scroll, yearScrollKey{}, func() ui.ScrollState { return ui.ScrollState{} })
 	scroll.TrackScroll(scroller)
 	scrolled := ui.Local(scroll, yearScrollInitKey{}, func() bool { return false })
-	if !*scrolled {
+	first := !*scrolled
+	if first {
 		row := float32((selectedYear-lo)/3) * itemH
 		scroller.Y = max(0, row-height/2+itemH)
 		*scrolled = true
@@ -712,7 +672,11 @@ func buildYearGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, mo
 	var cursorCell ui.Element
 	scroll.Children(func() {
 		grid = ui.Grid(c).Columns(3).Gap(theme.Space4).Padding(theme.Space4).
-			Focusable().FocusRing(false).Role(ui.RoleGroup).Label(spec.years()).AutoFocus()
+			Focusable().FocusRing(false).Role(ui.RoleGroup).Label(spec.years())
+		if first {
+			// Focusing scrolls to the grid's top; keep the selected year's row.
+			grid.Focus(ui.FocusOptions{PreventScroll: true})
+		}
 		grid.Children(func() {
 			for y := lo; y <= hi; y++ {
 				year := y

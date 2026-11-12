@@ -2,6 +2,7 @@ package overlay
 
 import (
 	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/internal/anchored"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -37,7 +38,7 @@ func dialog(c *ui.Context, open *bool, o DialogOptions, slide bool) ui.Element {
 	if open == nil {
 		return ui.Element{}
 	}
-	warmOverlay(c)
+	anchored.Warm(c)
 	wasOpen := *open
 	close := func() {
 		*open = false

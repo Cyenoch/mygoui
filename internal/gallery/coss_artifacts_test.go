@@ -117,7 +117,6 @@ func TestWorkbenchVisualArtifacts(t *testing.T) {
 		textScale  float32
 	}{
 		{"workbench-wide", 1180, 0, false, false, ui.TitleBar{Height: 52, Left: 80}, 1},
-		{"workbench-category", 1180, 0, false, false, ui.TitleBar{Height: 52, Left: 80}, 1},
 		{"workbench-narrow", 360, 0, false, false, ui.TitleBar{Height: 52, Right: 138}, 1},
 		{"workbench-search", 360, 0, true, false, ui.TitleBar{Height: 52, Right: 138}, 1},
 		{"workbench-source", 1180, 1, false, false, ui.TitleBar{Height: 52, Left: 80}, 1},
@@ -127,9 +126,6 @@ func TestWorkbenchVisualArtifacts(t *testing.T) {
 	} {
 		s := New()
 		s.Selected, s.Panel, s.NavOpen, s.AppearanceOpen = "button", mode.panel, mode.nav, mode.appearance
-		if mode.name == "workbench-category" {
-			s.OpenGroup = "Actions"
-		}
 		tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, mode.width, 900)
 		tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: mode.textScale})
 		tt.SetTitleBar(mode.bar)

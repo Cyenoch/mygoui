@@ -171,13 +171,8 @@ func TestEveryPageRoutesThroughNativeNavigation(t *testing.T) {
 					if err := tt.Click("Toggle navigation"); err != nil {
 						t.Fatal(err)
 					}
-					r, ok := tt.Find(page.Title)
-					if !ok {
+					if _, ok := tt.Find(page.Title); !ok {
 						t.Fatalf("missing navigation link %q", page.Title)
-					}
-					if r.Y+r.H > 440 {
-						s.NavScroll.Y = r.Y - 200
-						tt.Frame()
 					}
 				} else {
 					revealSidebarEntry(t, tt, s, page.Title, float32(width), 900)
@@ -391,7 +386,7 @@ func TestThemeOverridesReachEverySpecimen(t *testing.T) {
 	s.Selected = "theming"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, 640, 900)
 	tt.Frame()
-	for _, label := range []string{"Radius 16", "Primary 2", "Dark"} {
+	for _, label := range []string{"Radius Large", "Primary 2", "Dark"} {
 		revealContent(t, tt, s, label, 640, 900)
 		if err := tt.Click(label); err != nil {
 			t.Fatal(err)

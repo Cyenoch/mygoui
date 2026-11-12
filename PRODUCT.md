@@ -20,7 +20,7 @@ interaction and motion in native Go, without a browser or JavaScript runtime.
 
 ## Users And Stack
 
-Go application authors using MyGo v0.7.2. Caller-owned state, typed options and
+Go application authors using MyGo v0.9.0. Caller-owned state, typed options and
 native focus, editing, selection and accessibility are binding constraints.
 
 ## Visual Authority

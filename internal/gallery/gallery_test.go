@@ -132,7 +132,7 @@ func TestEveryPageRendersAtDesktopAndCompactWidths(t *testing.T) {
 			state.Selected = page.ID
 			state.Dark = mode.dark
 			tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, mode.width, mode.height)
-			if !tt.HasText(page.Title) {
+			if !tt.HasText(pageHeading(page)) {
 				t.Fatalf("%s/%s: page title missing", mode.name, page.ID)
 			}
 			// Every named example keeps its own rendered frame, so a page
@@ -146,6 +146,15 @@ func TestEveryPageRendersAtDesktopAndCompactWidths(t *testing.T) {
 			}
 		}
 	}
+}
+
+// pageHeading is the heading a page shows first: its title, or the home
+// view's hero.
+func pageHeading(page Page) string {
+	if page.ID == "overview" {
+		return "coss ui, native in Go"
+	}
+	return page.Title
 }
 
 // Each workbench view exposes the selected component's own content.
@@ -175,7 +184,7 @@ func TestPagesRenderWithEnlargedText(t *testing.T) {
 		state.Selected = page.ID
 		tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1000, 900)
 		tt.SetPreferences(ui.Preferences{TextScale: 1.75})
-		if !tt.HasText(page.Title) {
+		if !tt.HasText(pageHeading(page)) {
 			t.Fatalf("%s: title missing at enlarged text", page.ID)
 		}
 	}
@@ -192,12 +201,6 @@ func TestCompactNavigationOpensAndSelects(t *testing.T) {
 	if !state.NavOpen {
 		t.Fatal("compact navigation did not open")
 	}
-	if err := tt.Click("Foundations"); err != nil {
-		t.Fatal(err)
-	}
-	if !tt.HasText("Typography") {
-		t.Fatal("expanded category did not list component pages")
-	}
 	if err := tt.Click("Typography"); err != nil {
 		t.Fatal(err)
 	}
@@ -206,22 +209,30 @@ func TestCompactNavigationOpensAndSelects(t *testing.T) {
 	}
 }
 
-func TestCompactDrawerUsesScrollArea(t *testing.T) {
+func TestCompactNavigationScrollsToEveryPage(t *testing.T) {
 	state := New()
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 600, 900)
-	tt.Frame()
+	tt.SetPreferences(ui.Preferences{TextScale: 1, ReduceMotion: true})
 	if err := tt.Click("Toggle navigation"); err != nil {
 		t.Fatal(err)
 	}
-	r, ok := tt.Find("Components")
-	if !ok {
-		t.Fatal("compact drawer has no Components scroll area")
+	list, ok := tt.Find("Gallery navigation")
+	if !ok || list.W < 250 || list.H < 600 {
+		t.Fatalf("compact navigation list = %+v, want the sheet's scrolling body", list)
 	}
-	if r.W < 400 || r.H < 200 || r.H > 301 {
-		t.Fatalf("compact navigation scroll area = %+v, want a constrained ScrollArea", r)
+	all := filterPagesInOrder(Pages())
+	last := all[len(all)-1]
+	for range 40 {
+		if r, ok := tt.Find(last.Title); ok && r.Y+r.H <= list.Y+list.H {
+			break
+		}
+		tt.Wheel(list.X+list.W/2, list.Y+list.H/2, 0, 400)
 	}
-	if state.NavScroll.MaxY <= 0 {
-		t.Fatal("compact drawer does not scroll")
+	if err := tt.Click(last.Title); err != nil {
+		t.Fatal(err)
+	}
+	if state.Selected != last.ID || state.NavOpen {
+		t.Fatalf("selected %q open=%v, want %q", state.Selected, state.NavOpen, last.ID)
 	}
 }
 
@@ -229,9 +240,6 @@ func TestShellSearchFiltersAndSelects(t *testing.T) {
 	state := New()
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 860)
 	tt.Frame()
-	if err := tt.Click("Actions"); err != nil {
-		t.Fatal(err)
-	}
 	if err := tt.Click("Button"); err != nil {
 		t.Fatal(err)
 	}
@@ -248,14 +256,8 @@ func TestShellSearchFiltersAndSelects(t *testing.T) {
 	}
 	state.Search = ""
 	tt.Frame()
-	if !navHas(tt, "Button") || !navHas(tt, "Display") {
-		t.Fatal("clearing the search did not restore category navigation")
-	}
-	if err := tt.Click("Display"); err != nil {
-		t.Fatal(err)
-	}
-	if !navHas(tt, "Chip") || navHas(tt, "Button") {
-		t.Fatal("opening a category did not show its pages and close the previous category")
+	if !navHas(tt, "Button") || !navHas(tt, "Typography") {
+		t.Fatal("clearing the search did not restore the full navigation")
 	}
 }
 
@@ -307,12 +309,6 @@ func TestSidebarShowsEveryComponentPage(t *testing.T) {
 			continue
 		}
 		revealSidebarEntry(t, tt, state, group.name, width, height)
-		if err := tt.Click(group.name); err != nil {
-			t.Fatal(err)
-		}
-		if state.OpenGroup != group.name {
-			t.Fatalf("opening %q selected category %q", group.name, state.OpenGroup)
-		}
 		for _, page := range group.pages {
 			revealSidebarEntry(t, tt, state, page.Title, width, height)
 		}
@@ -323,9 +319,9 @@ func TestSidebarUsesScrollArea(t *testing.T) {
 	state := New()
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 860)
 	tt.Frame()
-	r, ok := tt.Find("Components")
+	r, ok := tt.Find("Gallery navigation")
 	if !ok {
-		t.Fatal("sidebar has no Components scroll area")
+		t.Fatal("sidebar has no navigation scroll area")
 	}
 	if r.X >= 270 || r.W < 200 || r.H < 400 {
 		t.Fatalf("sidebar scroll area = %+v, want a labeled ScrollArea viewport", r)
@@ -337,7 +333,6 @@ func TestSidebarUsesScrollArea(t *testing.T) {
 func TestSidebarRowGeometryAndSelectedPaint(t *testing.T) {
 	state := New()
 	state.Selected = "card"
-	state.OpenGroup = "Foundations"
 	var pal theme.Palette
 	tt := ui.NewTester(func(c *ui.Context) { pal = theme.Colors(c); View(c, state) }, 1180, 860)
 	tt.Frame()
@@ -351,8 +346,8 @@ func TestSidebarRowGeometryAndSelectedPaint(t *testing.T) {
 	if gap := surface.Y - (typography.Y + typography.H); gap < 0 || gap > 4 {
 		t.Fatalf("row gap = %v, want <= 4", gap)
 	}
-	if heading := sidebarRect(t, tt, "Actions"); heading.H < 32 || heading.H > 40 {
-		t.Fatalf("category height = %v, want 32-40", heading.H)
+	if heading := sidebarRect(t, tt, "Actions"); heading.H < 20 || heading.H > 28 {
+		t.Fatalf("group heading height = %v, want 20-28", heading.H)
 	}
 
 	card := sidebarRect(t, tt, "Card")

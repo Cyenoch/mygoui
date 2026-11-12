@@ -2,6 +2,7 @@ package form_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Cyenoch/mygoui/form"
 	"github.com/Cyenoch/mygoui/list"
@@ -171,6 +172,41 @@ func TestEditablePopupKeyboardFiltersGroupedOptions(t *testing.T) {
 			tt.Key(0, ui.KeyEnter)
 			if len(changed) != 1 || changed[0] != "c" {
 				t.Fatalf("filtered keyboard selection = %v, want Bravo", changed)
+			}
+		})
+	}
+}
+
+func TestComboboxesOutsideClickClosesAndStaysClosed(t *testing.T) {
+	for _, kind := range []string{"combobox", "autocomplete"} {
+		t.Run(kind, func(t *testing.T) {
+			combo := form.ComboBoxState{}
+			auto := form.AutocompleteState{}
+			open := func() bool { return combo.Open || auto.Open }
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.Apply(c)
+				ui.Column(c).Fill().Padding(16).Children(func() {
+					if kind == "combobox" {
+						form.ComboBox(c, form.ComboBoxOptions{Label: "Letters", Items: comboItems(), State: &combo})
+					} else {
+						form.Autocomplete(c, form.AutocompleteOptions{Label: "Letters", Items: comboItems(), State: &auto})
+					}
+				})
+			}, 360, 420)
+			if err := tt.Click("Letters"); err != nil {
+				t.Fatal(err)
+			}
+			tt.Frame()
+			if !open() {
+				t.Fatal("focusing the field did not open the list")
+			}
+			tt.ClickAt(340, 400)
+			for range 5 {
+				tt.Advance(100 * time.Millisecond)
+				tt.Frame()
+			}
+			if open() {
+				t.Fatal("the list reopened after an outside click")
 			}
 		})
 	}

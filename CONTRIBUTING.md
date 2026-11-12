@@ -2,7 +2,7 @@
 
 The `coss` branch reconstructs coss ui with native Go/MyGo controls. Read
 [design](docs/design.md), the [component matrix](docs/components.md),
-[references](docs/references.md) and [MyGo 0.7 guidance](docs/mygo-0.7.md)
+[references](docs/references.md) and [MyGo 0.9 guidance](docs/mygo-0.9.md)
 before changing public behavior. The current coss contract supersedes the
 older visual-reference wording in the MyGo migration notes.
 
@@ -29,7 +29,7 @@ detector do not cover Go controls. `make design-artifacts` renders the
 existing compact/wide, light/dark gallery specimens for inspection;
 `make design-doctor` reports context drift, not visual correctness.
 
-Use the module's Go 1.27.3 target and pinned MyGo v0.7.2/mygoicons v0.2.1.
+Use the module's Go 1.27.3 target and pinned MyGo v0.9.0/mygoicons v0.2.1.
 Published module metadata must have no local replacements. Use a private
 development workspace when testing local dependencies.
 
@@ -110,3 +110,10 @@ behavior or actual screen-reader operation.
    Verify copied notices match the exact distributed reference/assets.
 4. Record the version/date before the maintainer tags and publishes.
    Local checks alone do not establish public availability.
+5. Pushing a `v*` tag runs the Release workflow, which attaches the gallery
+   for macOS, Windows, Linux and the web to the tag's release under stable
+   names. The gallery's download links resolve them through
+   `releases/latest`. The builds are ad-hoc signed and not notarized.
+
+The Pages workflow publishes the browser gallery from `main`. Enable it once
+under Settings → Pages with "GitHub Actions" as the source.

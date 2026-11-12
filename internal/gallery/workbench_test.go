@@ -122,31 +122,31 @@ func TestSearchSurvivesWindowResizing(t *testing.T) {
 	tt.Frame()
 }
 
-func TestDesktopCategoryAndSidebarKeyboard(t *testing.T) {
+func TestDesktopSidebarKeyboard(t *testing.T) {
 	s := New()
 	tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, 1180, 900)
 	tt.Frame()
-	if navHas(tt, "Button") || !navHas(tt, "Actions") {
-		t.Fatal("navigation did not start with collapsed categories")
+	if !navHas(tt, "Button") || !navHas(tt, "Typography") {
+		t.Fatal("navigation does not list every group's pages")
 	}
-	if err := tt.Click("Actions"); err != nil {
+	if err := tt.Click("Button"); err != nil {
 		t.Fatal(err)
 	}
-	if s.OpenGroup != "Actions" || !navHas(tt, "Button") {
-		t.Fatal("category did not expand")
-	}
-	tt.Key(0, ui.KeySpace)
-	if s.OpenGroup != "" || navHas(tt, "Button") {
-		t.Fatal("Space did not collapse the focused category")
-	}
-	tt.Key(0, ui.KeySpace)
-	tt.Key(0, ui.KeyTab)
-	if !tt.Focused("Button") {
-		t.Fatal("Tab did not reach the first component")
-	}
-	tt.Key(0, ui.KeyEnter)
 	if s.Selected != "button" {
-		t.Fatal("Enter did not select the focused component")
+		t.Fatal("clicking a page did not select it")
+	}
+	var next string
+	for _, group := range pageGroups(filterPagesInOrder(Pages())) {
+		for i, page := range group.pages {
+			if page.ID == "button" && i+1 < len(group.pages) {
+				next = group.pages[i+1].ID
+			}
+		}
+	}
+	tt.Key(0, ui.KeyTab)
+	tt.Key(0, ui.KeyEnter)
+	if s.Selected != next {
+		t.Fatalf("Tab and Enter selected %q, want the next page %q", s.Selected, next)
 	}
 	if err := tt.Click("Toggle navigation"); err != nil {
 		t.Fatal(err)
@@ -172,38 +172,32 @@ func TestAppearanceControlsAreKeyboardAccessible(t *testing.T) {
 			s.Selected = "button"
 			tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, width, 900)
 			tt.SetPreferences(ui.Preferences{TextScale: 1, ReduceMotion: true})
+			view, _ := tt.Find("Component view")
 			if err := tt.Click("Appearance"); err != nil {
 				t.Fatal(err)
 			}
-			tt.Key(0, ui.KeySpace)
-			if s.AppearanceOpen {
-				t.Fatal("keyboard could not close appearance controls")
-			}
-			tt.Key(0, ui.KeySpace)
 			if !s.AppearanceOpen {
-				t.Fatal("keyboard could not open appearance controls")
+				t.Fatal("appearance controls did not open")
+			}
+			if moved, _ := tt.Find("Component view"); moved != view || view.W == 0 {
+				t.Fatalf("opening appearance moved the page: %+v -> %+v", view, moved)
 			}
 			if err := tt.Click("Light"); err != nil {
 				t.Fatal(err)
 			}
-			tt.Key(0, ui.KeyTab)
-			if !tt.Focused("Dark") {
-				t.Fatal("Dark is not reachable with Tab")
+			tt.Key(0, ui.KeyRight)
+			if !s.Dark {
+				t.Fatal("arrow keys did not choose Dark")
 			}
-			tt.Key(0, ui.KeySpace)
 			tt.Key(0, ui.KeyTab)
-			tt.Key(0, ui.KeyTab)
-			if !tt.Focused("System") {
-				t.Fatal("System font is not reachable with Tab")
+			tt.Key(0, ui.KeyRight)
+			if !s.SystemFont {
+				t.Fatal("Tab and arrow keys did not reach the font choice")
 			}
-			tt.Key(0, ui.KeySpace)
 			tt.Key(0, ui.KeyTab)
-			if !tt.Focused("Radius 4") {
-				t.Fatal("radius is not reachable with Tab")
-			}
-			tt.Key(0, ui.KeySpace)
+			tt.Key(0, ui.KeyLeft)
 			prefs := theme.PreferencesSnapshot()
-			if !s.Dark || !s.SystemFont || s.Radius != 4 || prefs.FontFamily != "" || prefs.Radius != 4 {
+			if s.Radius != 4 || prefs.FontFamily != "" || prefs.Radius != 4 {
 				t.Fatalf("appearance did not apply: state=%+v preferences=%+v", s, prefs)
 			}
 			if err := tt.Click("Cal Sans"); err != nil {
@@ -212,8 +206,31 @@ func TestAppearanceControlsAreKeyboardAccessible(t *testing.T) {
 			if theme.PreferencesSnapshot().FontFamily != fonts.Family {
 				t.Fatal("Cal Sans did not return")
 			}
+			tt.Key(0, ui.KeyEscape)
+			if s.AppearanceOpen {
+				t.Fatal("Escape did not close appearance controls")
+			}
 		})
 	}
+}
+
+func TestAppearanceHidesUnavailableFont(t *testing.T) {
+	s := New()
+	s.SystemFontOnly, s.AppearanceOpen = true, true
+	tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, 1180, 900)
+	tt.SetPreferences(ui.Preferences{TextScale: 1, ReduceMotion: true})
+	if tt.HasText("Cal Sans") || theme.PreferencesSnapshot().FontFamily != "" {
+		t.Fatal("an unregistered font is offered or applied")
+	}
+}
+
+// within reports whether r lies in the window and clear of the native
+// control insets wherever it reaches into the title band.
+func within(r ui.Rect, width float32, bar ui.TitleBar) bool {
+	if r.X < 0 || r.X+r.W > width {
+		return false
+	}
+	return r.Y >= bar.Height || (r.X >= bar.Left && r.X+r.W <= width-bar.Right)
 }
 
 func TestNativeTitleBarInsetsClearControls(t *testing.T) {
@@ -233,55 +250,61 @@ func TestNativeTitleBarInsetsClearControls(t *testing.T) {
 					tt.SetPreferences(ui.Preferences{TextScale: scale, ReduceMotion: true})
 					tt.SetTitleBar(bar)
 					title, ok := tt.Find("Gallery title bar")
-					if !ok || title.H != max(float32(TitleBarHeight), bar.Height) {
-						t.Fatalf("native title-bar height: %+v, insets %+v", title, bar)
+					if !ok || title.H < max(float32(TitleBarHeight), bar.Height) {
+						t.Fatalf("title bar does not cover the native band: %+v, insets %+v", title, bar)
 					}
-					brand, found := tt.Find("coss ui")
-					if !found {
-						t.Fatal("brand is missing")
+					if side, ok := tt.Find("Sidebar title bar"); ok && side.H != title.H {
+						t.Fatalf("sidebar and page title bars differ: %+v, %+v", side, title)
 					}
-					for _, label := range []string{"coss ui", "MyGo"} {
+					for _, label := range []string{"coss ui", "Toggle navigation", "GitHub", "Appearance"} {
 						r, ok := tt.Find(label)
-						if !ok && label == "MyGo" {
+						if !ok && label == "coss ui" {
 							continue
 						}
-						if !ok || r.X < 0 || r.X+r.W > float32(width) {
-							t.Fatalf("%s leaves the window: %+v", label, r)
+						if !ok || !within(r, float32(width), bar) {
+							t.Fatalf("%s overlaps window controls or leaves the window: %+v, insets %+v", label, r, bar)
 						}
-						if r.Y < title.Y+title.H &&
-							(r.X < bar.Left || r.X+r.W > float32(width)-bar.Right) {
-							t.Fatalf("%s overlaps window controls: %+v, insets %+v", label, r, bar)
+						// Controls that cannot fit between the window
+						// controls are centered below the native band.
+						band := max(float32(TitleBarHeight), bar.Height)
+						want := title.H / 2
+						if r.Y >= band {
+							want = (band + title.H) / 2
+						}
+						if center := r.Y + r.H/2; label != "coss ui" && (center < want-1 || center > want+1) {
+							t.Fatalf("%s is not centered in the title bar: %+v, %+v", label, r, title)
 						}
 					}
-					if brand.Y < title.Y+title.H {
-						center := brand.Y + brand.H/2
-						if diff := center - (title.Y + title.H/2); diff < -1 || diff > 1 {
-							t.Fatalf("brand is not centered in native title bar: %+v, %+v", brand, title)
-						}
-					}
-					controls := []string{"Appearance", "Preview", "Code", "Toggle navigation"}
+					controls := []string{"Preview", "Code"}
 					compact := float32(width) < scale*docsCompactBelow
 					if !compact {
 						controls = append(controls, "Search components")
 					}
 					for _, label := range controls {
 						r, ok := tt.Find(label)
-						if !ok || r.Y < title.H || r.X < 0 || r.X+r.W > float32(width) {
-							t.Fatalf("%s overlaps title-bar controls or leaves window: %+v, insets %+v", label, r, bar)
+						if !ok || r.Y < title.H || !within(r, float32(width), bar) {
+							t.Fatalf("%s overlaps the title bar or leaves the window: %+v, insets %+v", label, r, bar)
 						}
 					}
 					if err := tt.Click("Appearance"); err != nil {
 						t.Fatal(err)
 					}
+					for _, label := range []string{"Dark", "System", "Large"} {
+						r, ok := tt.Find(label)
+						if !ok || r.Y < title.H || !within(r, float32(width), bar) {
+							t.Fatalf("%s overlaps the title bar or leaves the window: %+v, insets %+v", label, r, bar)
+						}
+					}
 					if compact {
+						tt.Key(0, ui.KeyEscape)
 						if err := tt.Click("Toggle navigation"); err != nil {
 							t.Fatal(err)
 						}
-					}
-					for _, label := range []string{"Dark", "System", "Radius 16", "Search components"} {
-						r, ok := tt.Find(label)
-						if !ok || r.Y < title.H || r.X < 0 || r.X+r.W > float32(width) {
-							t.Fatalf("%s overlaps title-bar controls or leaves window: %+v, insets %+v", label, r, bar)
+						for _, label := range []string{"coss ui", "Search components"} {
+							r, ok := tt.Find(label)
+							if !ok || !within(r, float32(width), bar) {
+								t.Fatalf("%s in the navigation sheet overlaps window controls: %+v, insets %+v", label, r, bar)
+							}
 						}
 					}
 				})
@@ -293,19 +316,19 @@ func TestNativeTitleBarInsetsClearControls(t *testing.T) {
 func TestTitleBarUpdatesOnFullscreenAndResize(t *testing.T) {
 	s := New()
 	tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, 1180, 900)
-	tt.SetPreferences(ui.Preferences{TextScale: 1.75, ReduceMotion: true})
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	tt.SetTitleBar(ui.TitleBar{Height: 52, Left: 80})
 	windowed, _ := tt.Find("coss ui")
 	tt.SetTitleBar(ui.TitleBar{})
 	fullscreen, _ := tt.Find("coss ui")
-	if fullscreen.X >= windowed.X {
+	if windowed.W == 0 || fullscreen.X >= windowed.X {
 		t.Fatalf("fullscreen did not release the native inset: windowed=%+v fullscreen=%+v", windowed, fullscreen)
 	}
 	tt.SetSize(360, 900)
 	tt.SetTitleBar(ui.TitleBar{Height: 52, Right: 138})
-	brand, ok := tt.Find("coss ui")
-	if !ok || brand.X+brand.W > 360-138 {
-		t.Fatalf("resized window did not respect its new right inset: %+v", brand)
+	appearance, ok := tt.Find("Appearance")
+	if !ok || appearance.X+appearance.W > 360-138 {
+		t.Fatalf("resized window did not respect its new right inset: %+v", appearance)
 	}
 	tt.Key(ui.Cmd, ui.KeyK)
 	if !tt.Focused("Search components") {
@@ -313,16 +336,19 @@ func TestTitleBarUpdatesOnFullscreenAndResize(t *testing.T) {
 	}
 }
 
-func TestTitleBarKeepsVeryLargeTextOutOfNativeBand(t *testing.T) {
+func TestTitleBarGrowsForVeryLargeText(t *testing.T) {
 	s := New()
+	s.Selected = "button"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, 360, 900)
 	tt.SetPreferences(ui.Preferences{TextScale: 2.5, ReduceMotion: true})
-	tt.SetTitleBar(ui.TitleBar{Height: 52, Left: 80, Right: 138})
+	bar := ui.TitleBar{Height: 52, Left: 80, Right: 138}
+	tt.SetTitleBar(bar)
 	title, _ := tt.Find("Gallery title bar")
-	brand, ok := tt.Find("coss ui")
-	if title.H != TitleBarHeight || !ok || brand.Y < title.Y+title.H ||
-		brand.X < 0 || brand.X+brand.W > 360 {
-		t.Fatalf("large brand overlaps the native band or window edge: title=%+v brand=%+v", title, brand)
+	for _, label := range []string{"Toggle navigation", "Appearance"} {
+		r, ok := tt.Find(label)
+		if !ok || r.Y < title.Y || r.Y+r.H > title.Y+title.H || !within(r, 360, bar) {
+			t.Fatalf("%s leaves the title bar or overlaps the native band: title=%+v control=%+v", label, title, r)
+		}
 	}
 }
 

@@ -48,7 +48,7 @@ actual docs sidebar and that registry source instead. See the per-component
 | [Combobox](https://coss.com/ui/docs/components/combobox) | `form.ComboBox / ComboBoxState` - `form/combo_box.go` | Editable filtering, single/multiple selection, removable selected items, custom values and custom filter. Async queries are callbacks; application owns requests/results. |
 | [Composer](https://coss.com/ui/docs/components/composer) | `form.Composer` - `form/composer.go` | Plain-text multiline draft with persistent actions, Enter submit/Shift+Enter newline and caller-controlled clearing. No rich structured draft, mention/token/slash popup or adaptive inline action layout. |
 | [Command](https://coss.com/ui/docs/components/command) | `navigation.Command / CommandState` - `navigation/command.go` | Inline searchable action list with label/keyword matching, named groups, disabled items, shared pointer/keyboard highlight, arrows/Enter and callbacks. Compose inside Dialog for a palette. Shortcut strings are display only; global shortcut registration belongs to the application. |
-| [Context Menu](https://coss.com/ui/docs/components/context-menu) | `navigation.ContextMenu / PopoverMenu(anchor, MenuOptions)` - `navigation/context_menu.go` | OS menu by default; PopoverMenu opts into MyGo's current-theme in-window menu with focus restoration, type-ahead and submenu navigation. Both support secondary click/menu-key/Shift+F10, actions, radio/checkbox selection, disabled items and separators. Section headings, item icons, descriptions, danger styling and shortcut strings are not rendered on these paths. |
+| [Context Menu](https://coss.com/ui/docs/components/context-menu) | `navigation.ContextMenu / PopoverMenu(anchor, MenuOptions)` - `navigation/context_menu.go` | OS menu by default; PopoverMenu opts into MyGo's current-theme in-window menu with focus restoration, type-ahead and submenu navigation. Both support secondary click/menu-key/Shift+F10, actions, radio/checkbox selection, disabled items and separators. Descriptions show as native subtitles and danger items use the native danger style; PopoverMenu also draws shortcut strings. Section headings and item icons are not rendered on these paths. |
 | [Date Picker](https://coss.com/ui/docs/components/date-picker) | `date.DatePicker / DateRangePicker` - `date/picker.go, date/range_picker.go` | Native ISO date editors plus anchored single/range calendar. Strict Gregorian date validation; no localized free-form parsing or timezone policy. |
 | [Dialog](https://coss.com/ui/docs/components/dialog) | `overlay.Dialog` - `overlay/dialog.go` | Caller-owned open flag with native modal focus, header/body/footer and dismissal. The default backdrop dims black at 32% and blurs with 4 DIP sigma; explicit dim-only and transparent modes are available. Keep constructor installed for retained exit paint. Footer is full-bleed; build actions directly and choose FullWidth explicitly on narrow layouts. Short panels scroll chrome as needed to keep actions reachable. |
 | [Drawer](https://coss.com/ui/docs/components/drawer) | `overlay.Drawer` - `overlay/drawer.go` | Four-edge attached modal with 450 ms native slide, separately fading scrim and optional wider-window Inset. Drag the middle of the inward-facing edge outward to dismiss; native body scrolling remains independent. Handle is optional, ShowClose adds an explicit close button, and PreventDismiss blocks swipe/backdrop/Escape dismissal. No snap points or nested drawer gesture coordination. BottomSheet is a separate floating handle-swipe API extension, demonstrated within the Drawer Gallery page. |
@@ -97,7 +97,9 @@ coss component clone. It can extend outside the parent window, unlike the
 in-window Popover. Explicit dimensions and Parent/Tray, focusability,
 zoom-aware handle anchors and independently rendered coss chrome are covered
 in [flyout.md](flyout.md). The host owns the window and closes/repositions it
-when its anchor disappears or changes; native content has no FitContent.
+when its anchor disappears or changes. Popover, Dropdown, Select, the date
+pickers and ColorPicker can open as fitted flyouts through an optional
+`Flyout` host; without one they stay in the window.
 
 | coss reference | Native mapping | Boundary |
 | --- | --- | --- |
@@ -135,7 +137,7 @@ mapping; their presence is not an upstream fidelity guarantee:
 | Family | Public surface |
 | --- | --- |
 | Root composition and text | `Surface`, `Typography`, `Heading`, `Paragraph`, `Code`, `Prose`, `Header`, `Link`, `LinkButton` |
-| Root actions and feedback | `ButtonGroup`, `CloseButton`, `PressableFeedback`, `Chip`, `BadgeAnchor`, `AvatarGroup`, `ProgressCircle`, `ScrollShadow`, `StatusColors` |
+| Root actions and feedback | `ButtonGroup`, `CloseButton`, `PressableFeedback`, `Chip`, `BadgeAnchor`, `AvatarGroup`, `ProgressCircle`, `ScrollShadow`, `StatusColors`, `StatusIcon` |
 | Root collections | `ListGroup`/`ListGroupItem`, `Tag`/`TagGroup`, `SkeletonGroup` |
 | Form helpers | `TextField`, `SearchField`, `ControlField`, `SwitchGroup`, `FieldGroup`, `FieldActions`, `ErrorMessage` |
 | List | `list.ListBox` with typed `ListBoxItem`/`ListBoxSection` and caller-owned `ListBoxState` |

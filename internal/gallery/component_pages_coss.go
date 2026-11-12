@@ -616,7 +616,7 @@ overlay.Sheet(c, &open, overlay.SheetOptions{
 		ID: "theming", Title: "Theming", Group: "Foundations", Order: 2,
 		Description: "Coss semantic roles, light and dark appearances, primary and radius overrides.",
 		Examples: []ComponentExample{
-			{Title: "Live theme", Demo: overviewThemeControls},
+			{Title: "Live theme", Demo: themeControls},
 			{Title: "Semantic roles", Demo: func(c *ui.Context, s *State) {
 				ui.Row(c).Wrap().Gap(theme.Space8).Children(func() {
 					mygoui.Button(c, mygoui.ButtonOptions{Label: "Primary action"})
@@ -823,6 +823,35 @@ func sidebarSpecimen(c *ui.Context, st *cossState, rail bool) {
 		})
 		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Padding(theme.Space8).Children(func() {
 			ui.Text(c, "Destination: "+st.Name)
+		})
+	})
+}
+
+// themeControls is the theming page's interactive specimen.
+func themeControls(c *ui.Context, s *State) {
+	ui.Column(c).FillWidth().Gap(theme.Space12).Children(func() {
+		ui.Row(c).Wrap().Gap(theme.Space8).Children(func() {
+			mygoui.Button(c, mygoui.ButtonOptions{Label: "Light", Variant: buttonFor(!s.Dark), OnClick: func() { s.setDark(false) }})
+			mygoui.Button(c, mygoui.ButtonOptions{Label: "Dark", Variant: buttonFor(s.Dark), OnClick: func() { s.setDark(true) }})
+			for _, radius := range appearanceRadii {
+				mygoui.Button(c.Key(radius), mygoui.ButtonOptions{
+					Label: "Radius " + radiusLabel(radius), Variant: buttonFor(s.Radius == radius),
+					OnClick: func() { s.Radius = radius },
+				})
+			}
+		})
+		swatches(c, s)
+		mygoui.Frame(c, mygoui.FrameOptions{Label: "Theme preview"}, func() {
+			mygoui.FrameHeader(c, func() {
+				mygoui.FrameTitle(c, "Make it yours")
+				mygoui.FrameDescription(c, "Primary, surface, radius")
+			})
+			mygoui.FramePanel(c, func() {
+				ui.Row(c).Wrap().Gap(theme.Space8).Children(func() {
+					mygoui.Button(c, mygoui.ButtonOptions{Label: "Browse components", OnClick: func() { selectPage(s, Page{ID: "button"}) }})
+					mygoui.Button(c, mygoui.ButtonOptions{Label: "Customize", Variant: mygoui.ButtonOutline, OnClick: func() { selectPage(s, Page{ID: "theming"}) }})
+				})
+			})
 		})
 	})
 }

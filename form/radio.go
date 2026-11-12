@@ -1,6 +1,7 @@
 package form
 
 import (
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -52,6 +53,8 @@ type RadioOptions[T comparable] struct {
 // shared state when clicked or with Space. Its control paints from the live
 // pointer and focus state of the row.
 func Radio[T comparable](c *ui.Context, o RadioOptions[T]) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	selected := o.State
 	if selected == nil || selected.Selected == nil {
 		o.Disabled = true
@@ -61,7 +64,7 @@ func Radio[T comparable](c *ui.Context, o RadioOptions[T]) ui.Element {
 
 	t := theme.Colors(c)
 	disabled := o.Disabled
-	errText := choiceErrorText(o.Invalid, o.Error)
+	errText := formstyle.ErrorText(o.Invalid, o.Error)
 	on := *selected.Selected == o.Value
 
 	return choiceField(c, o.Description, errText, disabled, theme.Space24, func() {

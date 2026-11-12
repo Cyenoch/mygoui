@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/internal/anchored"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -19,7 +20,7 @@ func TestPopoverEntranceZoomsToFullSize(t *testing.T) {
 			anchor := ui.Button(c, "Options").OnClick(func() { open = !open })
 			Popover(c, anchor, &open, PopoverOptions{
 				Title: "Details",
-				Body:  func() { ui.Button(c, "Inside") },
+				Body:  func(c *ui.Context) { ui.Button(c, "Inside") },
 			})
 		})
 	}, 640, 480)
@@ -31,7 +32,7 @@ func TestPopoverEntranceZoomsToFullSize(t *testing.T) {
 	if !tt.FramePending() {
 		t.Error("the popover arrival asks for no frames")
 	}
-	tt.Advance(popupMotionDuration)
+	tt.Advance(anchored.MotionDuration)
 	tt.Frame()
 	settled := motionLabel(t, tt, "Details")
 	if settled.Dx() <= entering.Dx() {
@@ -63,7 +64,7 @@ func TestPopoverArrowFollowsFlippedPanel(t *testing.T) {
 				Title:     "Information",
 				Arrow:     true,
 				Placement: mygoui.Placement{Side: mygoui.SideBottom},
-				Body:      func() { ui.Box(c).Height(120) },
+				Body:      func(c *ui.Context) { ui.Box(c).Height(120) },
 			}); p.Valid() {
 				box = p.Bounds()
 			}
@@ -73,7 +74,7 @@ func TestPopoverArrowFollowsFlippedPanel(t *testing.T) {
 	if err := tt.Click("Details"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Advance(2 * popupMotionDuration)
+	tt.Advance(2 * anchored.MotionDuration)
 	tt.Frame()
 	anchorRect, ok := tt.Find("Details")
 	if !ok {
@@ -122,7 +123,7 @@ func TestPopoverArrowPointsAtItsAnchor(t *testing.T) {
 	if err := tt.Click("Few words"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Advance(2 * popupMotionDuration)
+	tt.Advance(2 * anchored.MotionDuration)
 	tt.Frame()
 	anchorRect, ok := tt.Find("Few words")
 	if !ok || box.W <= 0 {
@@ -186,7 +187,7 @@ func TestPopoverReopenDuringExitIsWhole(t *testing.T) {
 			anchor := ui.Button(c, "Options").OnClick(func() { open = !open })
 			Popover(c, anchor, &open, PopoverOptions{
 				Title: "Details",
-				Body:  func() { ui.Button(c, "Inside").OnClick(func() { inside++ }) },
+				Body:  func(c *ui.Context) { ui.Button(c, "Inside").OnClick(func() { inside++ }) },
 			})
 		})
 	}, 640, 480)
@@ -194,14 +195,14 @@ func TestPopoverReopenDuringExitIsWhole(t *testing.T) {
 	if err := tt.Click("Options"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Advance(popupMotionDuration)
+	tt.Advance(anchored.MotionDuration)
 	tt.Frame()
 	settled := motionLabel(t, tt, "Details")
 	tt.Key(0, ui.KeyEscape)
 	if open {
 		t.Fatal("Escape did not close the popover")
 	}
-	tt.Advance(popupMotionDuration / 3)
+	tt.Advance(anchored.MotionDuration / 3)
 	if err := tt.Click("Options"); err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +213,7 @@ func TestPopoverReopenDuringExitIsWhole(t *testing.T) {
 	if again := motionLabel(t, tt, "Details"); again.Dx() < settled.Dx()*95/100 {
 		t.Fatalf("the reopened panel restarted its entrance: settled=%v again=%v", settled, again)
 	}
-	tt.Advance(popupMotionDuration)
+	tt.Advance(anchored.MotionDuration)
 	tt.Frame()
 	if got := motionLabel(t, tt, "Details"); got != settled {
 		t.Fatalf("the reopened panel did not settle at its layout size: got=%v want=%v", got, settled)

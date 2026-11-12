@@ -143,7 +143,7 @@ overlay.Popover(c, anchor, &open, overlay.PopoverOptions{
     Arrow:     true,
     Width:     theme.Scale(c, 320),
     Placement: mygoui.Placement{Side: mygoui.SideBottom, Align: mygoui.AlignStart},
-    Body: func() {
+    Body: func(c *ui.Context) {
         shortcutRow(c, "Open command menu", "⌘K")
     },
 })`,
@@ -153,7 +153,8 @@ overlay.Popover(c, anchor, &open, overlay.PopoverOptions{
 			{"Width", "float32", "content", "Fixed panel width; zero sizes it to its content."},
 			{"MinWidth", "float32", "180", "Keeps small popovers usable."},
 			{"Title", "string", "\"\"", "Heading and fallback accessible name of the popup."},
-			{"Body", "func()", "required", "Content of the anchored panel."},
+			{"Body", "func(*ui.Context)", "required", "Content of the anchored panel, built in the context it receives."},
+			{"Flyout", "*mygoui.FlyoutHost", "nil", "Opens the panel as a native flyout of the host's window."},
 		},
 		Tokens: []string{"Overlay", "OverlayForeground", "Muted"},
 	})

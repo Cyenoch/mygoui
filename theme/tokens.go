@@ -240,8 +240,10 @@ type Shadow struct {
 var (
 	lightSurfaceShadows = []Shadow{{Y: 1, Blur: 2, Color: ui.RGBA(0, 0, 0, 0.05)}, {Y: 1, Color: ui.RGBA(0, 0, 0, 0.04), Inset: true}}
 	darkSurfaceShadows  = []Shadow{{Y: -1, Color: ui.RGBA(255, 255, 255, 0.06), Inset: true}}
-	lightOverlayShadows = []Shadow{{Y: 4, Blur: 6, Spread: -1, Color: ui.RGBA(0, 0, 0, 0.1)}, {Y: 2, Blur: 4, Spread: -2, Color: ui.RGBA(0, 0, 0, 0.1)}}
 	lightFieldShadows   = []Shadow{{Y: 1, Blur: 2, Color: ui.RGBA(0, 0, 0, 0.05)}, {Y: 1, Color: ui.RGBA(0, 0, 0, 0.06), Inset: true}}
+	// Popups use shadow-lg/5 and tooltips shadow-md/5, over the same edge.
+	largeShadow  = []Shadow{{Y: 10, Blur: 15, Spread: -3, Color: ui.RGBA(0, 0, 0, 0.05)}, {Y: 4, Blur: 6, Spread: -4, Color: ui.RGBA(0, 0, 0, 0.05)}}
+	mediumShadow = []Shadow{{Y: 4, Blur: 6, Spread: -1, Color: ui.RGBA(0, 0, 0, 0.05)}, {Y: 2, Blur: 4, Spread: -2, Color: ui.RGBA(0, 0, 0, 0.05)}}
 )
 
 // SurfaceShadows returns an independent copy of the coss card elevation.
@@ -252,8 +254,19 @@ func SurfaceShadows(dark bool) []Shadow {
 	return append([]Shadow{}, lightSurfaceShadows...)
 }
 
-// OverlayShadows returns the coss popup elevation in either appearance.
-func OverlayShadows(dark bool) []Shadow { return append([]Shadow{}, lightOverlayShadows...) }
+// OverlayShadows returns the coss popup and dialog elevation.
+func OverlayShadows(dark bool) []Shadow { return withEdge(largeShadow, dark) }
+
+// TooltipShadows returns the lighter coss tooltip elevation.
+func TooltipShadows(dark bool) []Shadow { return withEdge(mediumShadow, dark) }
+
+func withEdge(drop []Shadow, dark bool) []Shadow {
+	edge := lightSurfaceShadows[1]
+	if dark {
+		edge = darkSurfaceShadows[0]
+	}
+	return append(append([]Shadow{}, drop...), edge)
+}
 
 // FieldShadows returns the fine edge and lower shadow of an outlined input.
 func FieldShadows(dark bool) []Shadow {

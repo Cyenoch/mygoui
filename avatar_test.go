@@ -59,3 +59,28 @@ func TestAvatarImageSourcesAndFallback(t *testing.T) {
 		})
 	}
 }
+
+// Overlapping group members are opaque: where one avatar covers the previous
+// one, it shows its own fill, not the two translucent fills mixed.
+func TestAvatarGroupOverlapDoesNotMixFills(t *testing.T) {
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		ui.Column(c).Fill().Padding(16).Background(theme.Colors(c).Background).Children(func() {
+			mygoui.AvatarGroup(c, mygoui.AvatarGroupOptions{Avatars: []mygoui.AvatarOptions{
+				{Name: "Ada Lovelace", Fallback: " "}, {Name: "Grace Hopper", Fallback: " "},
+			}})
+		})
+	}, 200, 100)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
+	second, ok := tt.Find("Grace Hopper")
+	if !ok {
+		t.Fatal("second avatar is not rendered")
+	}
+	img := tt.Image()
+	y := int(second.Y + second.H/2)
+	covered := img.At(int(second.X+3), y)
+	own := img.At(int(second.X+second.W/2), y)
+	if covered != own {
+		t.Fatalf("overlap shows %v, want the avatar's own fill %v", covered, own)
+	}
+}

@@ -25,6 +25,8 @@ type SearchFieldOptions struct {
 // SearchField renders a native search input with the search icon and clear
 // action inside a group shell.
 func SearchField(c *ui.Context, value *string, o SearchFieldOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	value = inputTextAnchor(value)
 	t := theme.Colors(c)
 

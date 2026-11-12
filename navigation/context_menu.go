@@ -12,9 +12,10 @@ func ContextMenu(anchor ui.Element, o MenuOptions) ui.Element {
 // PopoverMenu attaches a context menu drawn inside the window using the current
 // MyGo theme. It uses the same secondary-click and keyboard triggers as
 // ContextMenu, with native focus restoration, type-ahead and submenu navigation.
-// Attach only one context menu to an anchor. Like ContextMenu, it supports
-// actions, selection, disabled items, separators and submenus, not section
-// headings or item icons, descriptions, shortcut strings and danger styling.
+// Attach only one context menu to an anchor. Both support actions,
+// selection, disabled items, separators, submenus, descriptions and danger
+// items; PopoverMenu also draws shortcut strings. Section headings and item
+// icons are not shown.
 func PopoverMenu(anchor ui.Element, o MenuOptions) ui.Element {
 	return anchor.PopoverMenu(contextMenuBuilder(anchor, o))
 }
@@ -52,6 +53,15 @@ func contextMenuItems(m *ui.Menu, items []MenuItemOptions, sc *menuScope) {
 			checked = containsKey(*sc.selected, key)
 		}
 		entry := m.Item(item.Label).Disabled(item.Disabled)
+		if item.Description != "" {
+			entry.Subtitle(item.Description)
+		}
+		if item.Shortcut != "" {
+			entry.Trailing(item.Shortcut)
+		}
+		if item.Variant == MenuItemDanger {
+			entry.Danger()
+		}
 		switch {
 		case sc.selection == MenuSelectSingle:
 			entry.Radio(checked)

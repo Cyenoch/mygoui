@@ -12,15 +12,20 @@ import (
 )
 
 func main() {
-	if err := fonts.Register(); err != nil {
-		log.Fatal(err)
+	// Browsers cannot register embedded fonts; the gallery falls back to the
+	// system font there. Elsewhere a failed registration is a broken build.
+	fontErr := fonts.Register()
+	if fontErr != nil && runtime.GOOS != "js" {
+		log.Fatal(fontErr)
 	}
 	mygo.App.SetName("Coss UI Gallery")
 	mygo.App.OnWindowAllClosed(func() { mygo.App.Quit() })
 	mygo.App.WhenReady(func() {
 		state := gallery.New()
+		state.SystemFontOnly = fontErr != nil
 		window := mygo.NewWindow(windowOptions(state))
 		state.Window = window
+		state.Flyouts.Window = window
 		state.OnAppearanceChange = func(dark bool) {
 			source := mygo.ThemeLight
 			if dark {

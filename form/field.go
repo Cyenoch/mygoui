@@ -4,8 +4,8 @@
 package form
 
 import (
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
-	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -23,6 +23,8 @@ type FieldOptions struct {
 // assistive technology reads the description and error from it. The body must
 // build exactly one primary control.
 func Field(c *ui.Context, o FieldOptions, body func()) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	label := o.Label
 	if o.Required && label != "" {
 		label += " *"
@@ -34,10 +36,7 @@ func Field(c *ui.Context, o FieldOptions, body func()) ui.Element {
 	if o.FullWidth {
 		f.FillWidth()
 	}
-	errorText := o.Error
-	if errorText == "" && o.Invalid {
-		errorText = locale.M().Invalid
-	}
+	errorText := formstyle.ErrorText(o.Invalid, o.Error)
 	if o.Description == "" && errorText == "" {
 		return f
 	}
@@ -154,10 +153,7 @@ type FormOptions struct {
 // Form is a vertical form container. Submission stays with the caller's
 // submit action; the container only lays out a top-level error.
 func Form(c *ui.Context, o FormOptions, body func()) ui.Element {
-	message := o.Error
-	if message == "" && o.Invalid {
-		message = locale.M().Invalid
-	}
+	message := formstyle.ErrorText(o.Invalid, o.Error)
 	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space24).
 		Label(o.Label).Children(func() {
 		if message != "" {

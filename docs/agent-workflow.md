@@ -205,7 +205,7 @@ For the full component/state collector, use
 `MYGOUI_COSS_VISUAL_AUDIT_DIR` with `TestCossVisualAudit` as described in
 the existing gallery tests and `docs/visual-review.md`.
 Actual window behavior can use the `e2e` gallery automation documented in
-`docs/mygo-0.7.md`.
+`docs/mygo-0.9.md`.
 
 Apply `ui.NewTester` to changed keyboard/pointer actions, focus, disabled,
 read-only, invalid and retained-exit behavior as relevant. Check actual OS

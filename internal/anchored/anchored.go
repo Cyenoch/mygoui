@@ -10,13 +10,18 @@ import (
 // defaultOffset matches the coss popover and picker positioners.
 const defaultOffset = 4
 
+// Side is the requested side of p, or fallback when it is unset.
+func Side(p mygoui.Placement, fallback mygoui.Side) mygoui.Side {
+	if p.Side == mygoui.SideAuto {
+		return fallback
+	}
+	return p.Side
+}
+
 // Apply attaches panel to anchor for a typed placement, falling back to the
 // component-appropriate side when the caller leaves it unset.
 func Apply(panel, anchor ui.Element, p mygoui.Placement, fallback mygoui.Side) ui.Element {
-	side := p.Side
-	if side == mygoui.SideAuto {
-		side = fallback
-	}
+	side := Side(p, fallback)
 	offset := p.Offset
 	if offset == 0 {
 		offset = defaultOffset

@@ -35,7 +35,7 @@ func TestCalendarGridClickFocusesKeyboard(t *testing.T) {
 					}
 				}, width, 480)
 				tt.SetPreferences(ui.Preferences{ReduceMotion: true})
-				if err := tt.Click("Days"); err != nil {
+				if err := tt.Click("2026-10-14"); err != nil {
 					t.Fatal(err)
 				}
 				if !tt.Focused("Days") {

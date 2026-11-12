@@ -374,14 +374,6 @@ func tableBody(r ui.Rect, hasHeader bool) ui.Rect {
 	return ui.Rect{X: r.X, Y: r.Y + top, W: r.W, H: max(0, r.H-top)}
 }
 
-// mixColor returns t of the way from a to b.
-func mixColor(a, b ui.Color, t float32) ui.Color {
-	mix := func(x, y uint8) uint8 {
-		return uint8(float32(x)*(1-t) + float32(y)*t + 0.5)
-	}
-	return ui.RGB(mix(a.R, b.R), mix(a.G, b.G), mix(a.B, b.B))
-}
-
 // buildTableFooter adds the footer row inside the table's frame.
 func buildTableFooter(c *ui.Context, o TableOptions, root ui.Element) {
 	if o.Footer == nil {
@@ -472,7 +464,7 @@ func newTableLayout(c *ui.Context, o TableOptions, st *TableState, t theme.Palet
 	if c.Theme().Dark {
 		tint = ui.RGB(255, 255, 255)
 	}
-	selected := mixColor(base, tint, 0.04)
+	selected := base.Mix(tint, 0.04)
 	tl.paintFirst = tl.cellPaint(ui.Color{}, ui.Color{}, padX, padY)
 	tl.paintRow = tl.cellPaint(ui.Color{}, line, padX, padY)
 	tl.paintSelected = tl.cellPaint(selected, line, padX, padY)

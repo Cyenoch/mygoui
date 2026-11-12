@@ -98,7 +98,7 @@ func inputEditor(c *ui.Context, value *string, o inputCoreOptions) ui.Element {
 // description is hidden while invalid.
 func inputField(c *ui.Context, o InputOptions, hideDescriptionOnInvalid bool, body func()) ui.Element {
 	description := o.Description
-	if hideDescriptionOnInvalid && (o.Invalid || o.Error != "") {
+	if hideDescriptionOnInvalid && o.Invalid {
 		description = ""
 	}
 	return Field(c, FieldOptions{
@@ -120,6 +120,8 @@ func inputNeedsField(o InputOptions) bool {
 // Input renders a single-line native editor: typing commits
 // to value, and Enter submits without a fabricated action.
 func Input(c *ui.Context, value *string, o InputOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	value = inputTextAnchor(value)
 	build := func() ui.Element {
 		return inputEditor(c, value, inputCoreOptions{

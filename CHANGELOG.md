@@ -9,8 +9,36 @@ not a claim of pixel-perfect completion. No release is asserted by this log.
 
 ### Changed
 
+- Gallery: one title bar beside a full-height sidebar, flat grouped
+  navigation, an appearance popover and a compact navigation sheet, so opening
+  controls no longer moves the page. Pages lead with their title and view
+  switch on one edge; copy feedback keeps its width. The home view is a
+  landing page with the install command, downloads, a live preview and the
+  catalog. The browser build starts with the system font instead of exiting.
+- ComboBox and Autocomplete no longer reopen when a dismissed popup returns
+  focus to the input. Slider mark labels sit under their ticks, overlapping
+  AvatarGroup members are opaque, Sidebar content fades at its scroll edges,
+  date picker triggers sit closer to the field edge and the calendar's year
+  toggle uses a down chevron.
+- Release tags attach the gallery for macOS, Windows, Linux and the web to
+  their GitHub release; `main` publishes the browser gallery to GitHub Pages.
 - EmptyState action rows center recovery buttons with the icon and title,
   including narrow layouts and increased text scale.
+- Popups, menus and dialogs use coss shadow-lg/5 with its appearance edge;
+  tooltips use the new `theme.TooltipShadows` (shadow-md/5). Anchored popups
+  share one surface. Popovers and pickers fade in from 98% and fade out,
+  tooltips also shrink on exit, and menus, selects and combo boxes no longer
+  animate, as in coss. Toolbars drop their overlay shadow.
+- Fields show their invalid border whenever they show an error message.
+  Slider values show fractional steps exactly (0.25, not 0.2). InputOTP uses
+  the shared field face, including dark fill and the focused invalid border.
+- New `StatusIcon` maps a status to its coss icon; danger toasts and alert
+  dialogs now use the coss circle alert. Context menus show item
+  descriptions and danger styling, and PopoverMenu shows shortcut strings.
+- Upgrade MyGo to v0.9.0. The year picker keeps the selected year in view
+  when focus now scrolls into view, and a dialog reopened during its exit no
+  longer jumps for one frame. Development tools move to OpenSpec 2.0.0 and
+  Impeccable 4.8.2.
 - Upgrade MyGo to v0.7.2 and Go to 1.27.3; the CLI now resolves from the
   module tool directive instead of an unpinned latest version.
 - Avatar uses native `ImageSize`, including typed-nil and empty image fallback;
@@ -49,6 +77,11 @@ not a claim of pixel-perfect completion. No release is asserted by this log.
 
 ### Added
 
+- Optional `Flyout` host on Popover, Dropdown, Select, DatePicker,
+  DateRangePicker and ColorPicker opens their popup as a fitted native
+  flyout that can extend beyond the window; without one, and on the web,
+  they stay in the window. Popover's `Header`, `Body` and `Footer` now
+  receive the context they build in.
 - Native `chart` family covering the 19 documented Bklit chart subjects with
   coss chart roles, caller-owned inspection, legends, brush, axes and annotations.
   Gallery adds Charts and Chart Utilities with public Go examples. The source

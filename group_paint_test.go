@@ -2,6 +2,7 @@ package mygoui_test
 
 import (
 	"image"
+	"math"
 	"testing"
 
 	"github.com/Cyenoch/mygoicons/lucide"
@@ -446,6 +447,8 @@ func TestGroupedFocusRingIsInset(t *testing.T) {
 	if !ok {
 		t.Fatal(`"Two" missing`)
 	}
-	wantPixel(t, img, int(second.X)+2, mid, colors.Focus, "second inset ring")
-	wantPixel(t, img, int(second.X)-2, mid, selected, "previous button has no ring")
+	// Text shaping can leave the segment at a fractional x.
+	x := int(math.Round(float64(second.X)))
+	wantPixel(t, img, x+2, mid, colors.Focus, "second inset ring")
+	wantPixel(t, img, x-2, mid, selected, "previous button has no ring")
 }

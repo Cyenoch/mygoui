@@ -1,8 +1,8 @@
 package form
 
 import (
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
-	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -40,6 +40,8 @@ type CheckboxOptions struct {
 // description follow the caller's value. The whole row activates the native
 // check box, including Space while it has the focus.
 func Checkbox(c *ui.Context, o CheckboxOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	checked := o.Checked
 	if checked == nil {
 		var off bool
@@ -48,7 +50,7 @@ func Checkbox(c *ui.Context, o CheckboxOptions) ui.Element {
 	}
 	t := theme.Colors(c)
 	disabled := o.Disabled
-	errText := choiceErrorText(o.Invalid, o.Error)
+	errText := formstyle.ErrorText(o.Invalid, o.Error)
 
 	return choiceField(c, o.Description, errText, disabled, theme.Space24, func() {
 		row := ui.CheckboxBase(c, checked).Gap(theme.Space8).Shrink(0).
@@ -172,16 +174,4 @@ func choiceField(c *ui.Context, description, errText string, disabled bool, inde
 func choiceErrorMessage(c *ui.Context, text string) ui.Element {
 	return style.Text(ui.Text(c, text), c, theme.HelpText()).
 		TextColor(theme.Colors(c).DestructiveForeground).Role(ui.RoleStatus)
-}
-
-// choiceErrorText resolves a caller's error text, falling back to the
-// library's localized invalid message.
-func choiceErrorText(invalid bool, text string) string {
-	if text != "" {
-		return text
-	}
-	if invalid {
-		return locale.M().Invalid
-	}
-	return ""
 }

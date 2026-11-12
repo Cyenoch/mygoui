@@ -25,6 +25,14 @@ is identified by its actual path rather than represented as a UI-specific
 copyright declaration. [docs/references.md](docs/references.md) records
 registry paths and the published/runtime token discrepancy.
 
+## Lobe MyGo reference
+
+`references/lobe-mygo` pins
+[lobehub/lobe-mygo](https://github.com/lobehub/lobe-mygo) at
+`5e5fea5ef9e225f79564770ef18f6d293a2e5d4a` as a source-only component
+capability reference, MIT, copyright 2026 LobeHub. It is not a module
+dependency. The complete [license](licenses/lobe-mygo-NOTICE.md) is retained.
+
 ## Fonts
 
 The theme's native system defaults require no bundled coss font assets.
@@ -51,7 +59,7 @@ not download, install or register the corresponding fonts.
 
 ## MyGo
 
-`github.com/egoist/mygo v0.7.2` is a module dependency under MIT, copyright
+`github.com/egoist/mygo v0.9.0` is a module dependency under MIT, copyright
 2026 MyGo contributors. Its full [license](licenses/MyGo-LICENSE) is retained.
 
 Spinner uses MyGo's `plugins/loading`, whose shapes and motion follow Jakub
@@ -90,7 +98,7 @@ retain their declared MIT license and source metadata. These development
 files do not become application dependencies.
 
 The project installs Impeccable through the official `impeccable` CLI
-v4.8.0. The copied skill, command references, helpers and Claude profiles in
+v4.8.2. The copied skill, command references, helpers and Claude profiles in
 `.agents/claude-agents` are from
 [pbakaus/impeccable](https://github.com/pbakaus/impeccable), Apache 2.0,
 copyright 2025 Paul Bakaus. The complete
@@ -103,7 +111,7 @@ is retained as well. The notice was retrieved from upstream revision
 and download digests are recorded in the skill's `scripts/VERSION` and
 `scripts/engine-checksums.txt`; platform binaries are not committed.
 
-OpenSpec CLI v1.15.0 generates the copied `openspec-*` skills. Their metadata
+OpenSpec CLI v2.0.0 generates the copied `openspec-*` skills. Their metadata
 identifies OpenSpec and the generating version. The complete
 [MIT license](licenses/openspec-LICENSE), copyright 2024 OpenSpec
 Contributors, is retained from the installed `@fission-ai/openspec` package.

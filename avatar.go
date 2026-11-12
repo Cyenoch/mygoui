@@ -166,8 +166,12 @@ func AvatarGroup(c *ui.Context, o AvatarGroupOptions) ui.Element {
 				a.Ring = true
 			}
 			avatar := Avatar(c, a)
-			if i > 0 && !o.Grid {
-				avatar.MarginStart(-overlap)
+			if !o.Grid {
+				// Fills are translucent; an opaque base keeps overlaps from mixing.
+				avatar.Background(t.Background)
+				if i > 0 {
+					avatar.MarginStart(-overlap)
+				}
 			}
 			avatar.Role(ui.RoleImage)
 		}
@@ -175,7 +179,7 @@ func AvatarGroup(c *ui.Context, o AvatarGroupOptions) ui.Element {
 			dip, radius, ts := avatarMetrics(c, o.Size)
 			count := ui.Row(c).Center().Shrink(0).
 				MinWidth(dip).MinHeight(dip).PaddingX(theme.Space6).Radius(radius).
-				Background(t.Default).TextColor(t.DefaultSoftForeground)
+				Background(t.Default.Over(t.Background)).TextColor(t.DefaultSoftForeground)
 			if len(o.Avatars) > 0 && !o.Grid {
 				count.MarginStart(-overlap)
 			}

@@ -110,6 +110,8 @@ func numberClamp(v, lo, hi float64) float64 {
 // buttons. Typed text commits only as a finite in-range number; out-of-range
 // numbers clamp and invalid text returns to the last value.
 func NumberField(c *ui.Context, state *NumberFieldState, o NumberFieldOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	if state == nil {
 		state = &NumberFieldState{}
 	}

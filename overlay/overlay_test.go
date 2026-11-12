@@ -2,6 +2,7 @@ package overlay
 
 import (
 	"fmt"
+	"github.com/Cyenoch/mygoui"
 	"image"
 	"testing"
 	"time"
@@ -241,7 +242,7 @@ func TestPopoverAnchorsAndDismisses(t *testing.T) {
 			anchor := ui.Button(c, "Open popover").OnClick(func() { open = true })
 			Popover(c, anchor, &open, PopoverOptions{
 				Title: "Details",
-				Body: func() {
+				Body: func(c *ui.Context) {
 					ui.Button(c, "Inside")
 				},
 			})
@@ -289,7 +290,7 @@ func TestPopoverKeepsTallContentScrollable(t *testing.T) {
 			anchor := ui.Button(c, "Open popover").OnClick(func() { open = true })
 			if p := Popover(c, anchor, &open, PopoverOptions{
 				Title: "Details", Width: 600,
-				Body: func() {
+				Body: func(c *ui.Context) {
 					ui.Column(c).Gap(8).Children(func() {
 						for i := range 12 {
 							ui.Text(c, fmt.Sprintf("Row %d", i))
@@ -561,5 +562,25 @@ func TestToastDismissDuringExitKeepsPaintSafe(t *testing.T) {
 	tt.Frame()
 	if len(state.Items()) != 0 {
 		t.Fatalf("action left %d retained toasts", len(state.Items()))
+	}
+}
+
+// TestPopoverFlyoutHostWithoutWindowStaysInWindow pins the fallback: a host
+// without a window, as before the window exists, shows the in-window panel.
+func TestPopoverFlyoutHostWithoutWindowStaysInWindow(t *testing.T) {
+	open := true
+	host := &mygoui.FlyoutHost{}
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		anchor := ui.Button(c, "Open popover")
+		Popover(c, anchor, &open, PopoverOptions{
+			Title: "Details", Flyout: host,
+			Body: func(c *ui.Context) { ui.Button(c, "Inside") },
+		})
+	}, 640, 480)
+	tt.Frame()
+	tt.Frame()
+	if _, ok := tt.Find("Inside"); !ok {
+		t.Fatalf("popover body is not in the window; labels=%q", tt.Texts())
 	}
 }

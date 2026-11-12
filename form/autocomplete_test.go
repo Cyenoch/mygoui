@@ -160,10 +160,11 @@ func TestAutocompleteArrowsSkipDisabledAndPreserveFocus(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.ApplyMode(c, false)
 		ui.Column(c).Fill().Padding(16).Children(func() {
+			// Above the field, the popup does not cover it.
+			ui.Button(c, "Other")
 			form.Autocomplete(c, form.AutocompleteOptions{
 				Label: "Fruit", Items: items, State: &state,
 			})
-			ui.Button(c, "Other")
 			focused = state.Trigger.Focused(c)
 		})
 	}, 360, 480)

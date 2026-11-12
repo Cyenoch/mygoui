@@ -2,6 +2,7 @@
 package gallery
 
 import (
+	"github.com/Cyenoch/mygoui"
 	"sort"
 	"strings"
 	"sync"
@@ -76,25 +77,24 @@ type State struct {
 	Dark               bool
 	OnAppearanceChange func(bool)
 	Window             *mygo.Window
-	flyout             *mygo.Window
-	flyoutTrigger      ui.Handle
-	flyoutAnchor       mygo.Rectangle
-	flyoutError        string
-	zoomStep           int
-	Search             string
-	OpenGroup          string
-	Primary            int
-	Radius             float32
-	NavOpen            bool
-	SidebarClosed      bool
-	AppearanceOpen     bool
-	SystemFont         bool
-	Panel              int
-	SearchFocus        ui.Handle
-	Sidebar            ui.ScrollState
-	NavScroll          ui.ScrollState
-	Content            ui.ScrollState
-	pages              map[string]any
+	// Flyouts opens anchored popups as native flyouts of Window.
+	Flyouts        mygoui.FlyoutHost
+	zoomStep       int
+	Search         string
+	Primary        int
+	Radius         float32
+	NavOpen        bool
+	SidebarClosed  bool
+	AppearanceOpen bool
+	SystemFont     bool
+	// SystemFontOnly records that Cal Sans could not be registered, as in
+	// browsers: the gallery uses the system font and offers no font choice.
+	SystemFontOnly bool
+	Panel          int
+	SearchFocus    ui.Handle
+	Sidebar        ui.ScrollState
+	Content        ui.ScrollState
+	pages          map[string]any
 }
 
 func (s *State) setDark(dark bool) {
@@ -102,9 +102,6 @@ func (s *State) setDark(dark bool) {
 		return
 	}
 	s.Dark = dark
-	if s.flyout != nil {
-		s.flyout.Invalidate()
-	}
 	if s.OnAppearanceChange != nil {
 		s.OnAppearanceChange(dark)
 	}

@@ -124,8 +124,11 @@ Use the existing four-DIP rhythm and content-owned composition. Set alignment
 explicitly; MyGo row defaults and zero-valued alignment differ from CSS.
 Controls keep native keyboard, selection and focus behavior.
 
-The gallery owns its application layout: a native custom title bar, grouped
-sidebar and component workspace. Its scaled compact threshold, content cap
+The gallery owns its application layout: a full-height sidebar whose top row
+shares the native title bar, a page title bar of the same height, and a
+left-aligned content column where title, view switch and examples share one
+edge. Transient controls (appearance, compact navigation) open as overlays,
+never as inserted rows. Its scaled compact threshold, content cap
 and gutters come from `internal/gallery/docs_layout.go`; its surface brief
 records the workflow. Enlarged text and short windows must leave actions
 reachable. A web breakpoint does not redefine native control sizing.
@@ -134,9 +137,15 @@ reachable. A web breakpoint does not redefine native control sizing.
 
 Use surface tone, thin borders and existing native shadow treatments.
 Buttons change fill, border and shadow without shrinking on press.
-Dialogs use the existing dim/blur backdrop; popup surfaces use their native
-border/shadow helpers. Overlays retain inert exit paint rather than rebuilding
-consumer content after closure.
+Dialogs use the existing dim/blur backdrop. Popups, menus and dialogs share
+`theme.OverlayShadows` (coss shadow-lg/5 over a 1px edge, dark lower edge in
+light and light upper edge in dark); tooltips use `theme.TooltipShadows`
+(shadow-md/5). Anchored popups share one popover surface. Overlays retain
+inert exit paint rather than rebuilding consumer content after closure.
+
+Popovers, date and color pickers fade in from 98% around the edge facing
+their anchor and fade out; tooltips also shrink on exit. Menus, selects and
+combo boxes open and close at once, as in coss.
 
 Motion follows the existing Go durations/easings and honors
 `theme.ReduceMotion(c)`. `.impeccable/design.json` records motion extensions.

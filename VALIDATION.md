@@ -1,5 +1,62 @@
 # Validation
 
+## Optional anchored-popup flyouts
+
+2026-11-12, uncommitted change `overlay-flyouts`, macOS arm64, Go 1.27.3,
+MyGo 0.9.0.
+
+- `make check`, `golangci-lint run ./...` (zero issues) and `make wasm`: pass,
+  rerun after the review fixes. `make race`: pass, no reported race (Gallery
+  255.746 s, overlay 328.604 s); it ran before the review fixes, which close a
+  stale flyout, key the anchor owner by open flag and convert bounds with the
+  parent zoom. `make spec-check`: pass; the planned `absorb-lobe-components`
+  change stays uncommitted until it has deltas.
+- After the fixes, the appearance flyout opens in the active app and Escape
+  closes it and clears its open state. macOS closes a focusable flyout when
+  its app is inactive.
+- Headless: a host without a window keeps the Popover in-window; existing
+  in-window overlay, form, date, color and navigation tests pass unchanged.
+- Real macOS window through the `e2e` automation socket: the appearance
+  Popover opens as a fitted flyout (264×324 DIPs); a theme change inside it
+  reaches both windows; Escape, an outside press and a press on the anchor
+  close it and clear the caller's open state without reopening. Select's
+  list takes focus, Down Down Enter selects and returns focus to the trigger.
+  Dropdown focuses its first item; each open makes one window and none
+  remain after close. DatePicker commits with Right Enter, closes within about
+  150 ms and refocuses its trigger. ColorPicker extends below the parent
+  window.
+
+Not verified: DateRangePicker in a real window, Windows and Linux flyouts,
+multiple displays and screen readers.
+
+## MyGo 0.9.0, coss fidelity and Gallery refresh
+
+2026-11-12, uncommitted changes `improve-coss-fidelity` and `refresh-gallery`,
+macOS arm64, Go 1.27.3, MyGo 0.9.0.
+
+- `make check`: pass (headless tests, Gallery snippet type checks, build, Go
+  vet, MyGo lifetime vet, formatting, module integrity).
+- `make race`: pass, no reported race (Gallery 242.193 s, overlay 332.117 s).
+  It ran before the final review fixes, which touch only Gallery build code,
+  tests and the release workflow; `make check` was rerun afterwards and passes.
+- `golangci-lint run ./...`: zero issues. `make wasm`: pass.
+  `actionlint` on `pages.yml` and `release.yml`: pass.
+- `make spec-check`: both changes and the main specs pass; the only failure is
+  the planned, unimplemented `absorb-lobe-components` change, which has no
+  deltas yet.
+- `go tool mygo build` produced every release asset locally (darwin/arm64 dmg,
+  windows/amd64 exe, linux/amd64 tar.gz/deb/rpm, web); the workflow's renaming
+  and version patch were dry-run against that output.
+- Native Tester covers title-bar insets at text scale 1/1.75/2.5 with left and
+  right window controls, sidebar/title-bar height parity, header stacking,
+  appearance popover keyboard use without page movement, copy feedback width,
+  compact navigation sheet scrolling and keyboard navigation order. Headless
+  captures of landing, component, code, popover and compact views were reviewed.
+
+Not verified: the browser build in a real browser, both workflows on GitHub,
+real windows, GPU, screen readers, and Windows/Linux runtime. Release builds
+are unsigned and not notarized.
+
 ## Bklit native charts and EmptyState alignment
 
 2026-10-29, uncommitted native-library/Gallery changes, macOS 27.0.1

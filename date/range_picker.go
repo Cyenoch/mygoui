@@ -4,8 +4,9 @@ import (
 	"time"
 
 	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/internal/anchored"
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
-	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -49,6 +50,8 @@ type DateRangePickerOptions struct {
 	Open      *bool
 	OpenLabel string
 	Placement mygoui.Placement
+	// Flyout opens the calendar as a native flyout of the host's window.
+	Flyout *mygoui.FlyoutHost
 
 	Handle       *ui.Handle
 	OnChange     func(DateRange)
@@ -60,6 +63,8 @@ type DateRangePickerOptions struct {
 // popup. Editing the text commits an ordered range once both endpoints are
 // valid.
 func DateRangePicker(c *ui.Context, o DateRangePickerOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	if c == nil {
 		return ui.Element{}
 	}
@@ -67,9 +72,7 @@ func DateRangePicker(c *ui.Context, o DateRangePickerOptions) ui.Element {
 	if o.FullWidth {
 		root.FillWidth()
 	}
-	// Keep the overlay layer present while closed so the panel's fade in and
-	// out has a parent in both frames.
-	ui.Overlay(c, func() {})
+	anchored.Warm(c)
 	value := o.Value
 	if value == nil {
 		value = ui.Local(root, rangePickerValueKey{}, func() DateRange { return DateRange{} })
@@ -148,43 +151,50 @@ func DateRangePicker(c *ui.Context, o DateRangePickerOptions) ui.Element {
 			*refocus = false
 		}
 
-		if group.Valid() {
-			panel := ui.PopoverBase(c, group, open, func(panel ui.Element) {
-				box := popoverPanel(c, panel, group, o.Placement)
-				box.Children(func() {
-					RangeCalendar(c, RangeCalendarOptions{
-						Label:           o.Label,
-						Today:           o.Today,
-						Min:             o.Min,
-						Max:             o.Max,
-						DisabledDates:   o.DisabledDates,
-						FirstWeekday:    o.FirstWeekday,
-						ShowYearPicker:  o.ShowYearPicker,
-						HideYearPicker:  o.HideYearPicker,
-						PrevLabel:       o.PrevLabel,
-						NextLabel:       o.NextLabel,
-						YearPickerLabel: o.YearPickerLabel,
-						MonthLabel:      o.MonthLabel,
-						WeekdayLabel:    o.WeekdayLabel,
-						DayLabel:        o.DayLabel,
-						autofocus:       true,
-						OnChange: func(r DateRange) {
-							*value = r
-							if o.OnChange != nil {
-								o.OnChange(r)
-							}
-							closePopup(true)
-							*refocus = true
-						},
-					}, state)
-				})
-			})
-			if panel.Valid() && panel.Dismissed() {
-				*refocus = true
-				if o.OnOpenChange != nil {
-					o.OnOpenChange(false)
-				}
+		if !group.Valid() {
+			return
+		}
+		calendar := func(c *ui.Context) {
+			RangeCalendar(c, RangeCalendarOptions{
+				Label:           o.Label,
+				Today:           o.Today,
+				Min:             o.Min,
+				Max:             o.Max,
+				DisabledDates:   o.DisabledDates,
+				FirstWeekday:    o.FirstWeekday,
+				ShowYearPicker:  o.ShowYearPicker,
+				HideYearPicker:  o.HideYearPicker,
+				PrevLabel:       o.PrevLabel,
+				NextLabel:       o.NextLabel,
+				YearPickerLabel: o.YearPickerLabel,
+				MonthLabel:      o.MonthLabel,
+				WeekdayLabel:    o.WeekdayLabel,
+				DayLabel:        o.DayLabel,
+				autofocus:       true,
+				OnChange: func(r DateRange) {
+					*value = r
+					if o.OnChange != nil {
+						o.OnChange(r)
+					}
+					closePopup(true)
+					*refocus = true
+				},
+			}, state)
+		}
+		dismissed := func() {
+			*refocus = true
+			if o.OnOpenChange != nil {
+				o.OnOpenChange(false)
 			}
+		}
+		if anchored.Flyout(c, o.Flyout, group, open, flyoutCalendar(o.Label, o.Placement, calendar, dismissed)) {
+			return
+		}
+		panel := ui.PopoverBase(c, group, open, func(panel ui.Element) {
+			popoverPanel(c, panel, group, o.Placement).Children(func() { calendar(c) })
+		})
+		if panel.Valid() && panel.Dismissed() {
+			dismissed()
 		}
 	})
 
@@ -229,10 +239,7 @@ type rangeFieldSpec struct {
 func rangeField(c *ui.Context, spec rangeFieldSpec, buf *rangeBuffer) (ui.Element, ui.Element) {
 	buf.refresh(*spec.value)
 	invalid := spec.field.invalid || buf.invalid()
-	errorText := spec.field.error
-	if errorText == "" && invalid {
-		errorText = locale.M().Invalid
-	}
+	errorText := formstyle.ErrorText(invalid, spec.field.error)
 	var group ui.Element
 	field := formField(c, spec.field, errorText, func() {
 		group = rangeGroup(c, spec, buf, invalid)
@@ -259,6 +266,10 @@ func rangeGroup(c *ui.Context, spec rangeFieldSpec, buf *rangeBuffer, invalid bo
 	group := fieldGroup(c, invalid, spec.field.disabled)
 	if spec.width > 0 && !spec.field.fullWidth {
 		group = group.Width(spec.width)
+	}
+	if spec.suffix != nil {
+		// A trailing icon button sits close to the edge, as in coss input groups.
+		group = group.Padding(0, theme.Space4, 0, theme.Space12)
 	}
 	if spec.field.fullWidth {
 		group = group.FillWidth()

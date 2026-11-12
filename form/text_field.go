@@ -21,6 +21,8 @@ type TextFieldOptions struct {
 // TextField composes a labelled single-line field. Typing writes through to
 // Value; Enter reports OnSubmit and never invents a submission.
 func TextField(c *ui.Context, o TextFieldOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	value := inputTextAnchor(o.Value)
 	input := InputOptions{
 		Label:       o.Label,

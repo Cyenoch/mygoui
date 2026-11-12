@@ -1,8 +1,8 @@
 package overlay
 
 import (
-	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/internal/anchored"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -53,7 +53,7 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 	if open == nil {
 		return ui.Element{}
 	}
-	warmOverlay(c)
+	anchored.Warm(c)
 	wasOpen := *open
 	cancel := func() {
 		*open = false
@@ -119,7 +119,7 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 		if !o.HideIcon && (o.ShowIcon || o.Icon != nil) {
 			glyph := o.Icon
 			if glyph == nil {
-				glyph = statusGlyph(o.Status)
+				glyph = mygoui.StatusIcon(o.Status)
 			}
 			icon = statusIcon(c, o.Status, glyph)
 		}
@@ -180,16 +180,4 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 	}
 	motionState.observe(*open, theme.ReduceMotion(c), c.Now())
 	return p
-}
-
-func statusGlyph(status mygoui.StatusColor) *ui.SVG {
-	switch status {
-	case mygoui.ColorSuccess:
-		return lucide.CircleCheck()
-	case mygoui.ColorWarning:
-		return lucide.TriangleAlert()
-	case mygoui.ColorDanger:
-		return lucide.CircleX()
-	}
-	return lucide.Info()
 }

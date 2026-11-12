@@ -284,3 +284,20 @@ func TestContextMenuAnchorCanLeaveAndReturn(t *testing.T) {
 		t.Fatalf("selection %v, callbacks %d after anchor returned", selected, calls)
 	}
 }
+
+func TestPopoverMenuShowsDescriptionAndShortcut(t *testing.T) {
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		anchor := ui.ButtonBase(c).Label("Document").Size(140, 40)
+		PopoverMenu(anchor, MenuOptions{Sections: []MenuSectionOptions{{Items: []MenuItemOptions{
+			{Label: "Delete", Description: "Removes the file", Shortcut: "⌘⌫", Variant: MenuItemDanger},
+		}}}})
+	}, 400, 260)
+	if err := tt.Click("Document"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(ui.Shift, ui.KeyF10)
+	if !tt.HasText("Removes the file") || !tt.HasText("⌘⌫") {
+		t.Fatalf("menu texts = %q, want the description and shortcut", tt.Texts())
+	}
+}

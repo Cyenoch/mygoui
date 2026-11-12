@@ -119,6 +119,7 @@ func TestShadowSnapshotsDoNotLeakCallerMutation(t *testing.T) {
 	}{
 		{name: "surface", get: theme.SurfaceShadows},
 		{name: "overlay", get: theme.OverlayShadows},
+		{name: "tooltip", get: theme.TooltipShadows},
 		{name: "field", get: theme.FieldShadows},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -160,7 +161,10 @@ func TestCossElevationKeepsCrispEdges(t *testing.T) {
 			}
 		})
 	}
-	if layers := theme.OverlayShadows(true); len(layers) == 0 || layers[0].Inset {
-		t.Errorf("dark popup elevation = %+v, want a drop shadow", layers)
+	for _, dark := range []bool{false, true} {
+		layers := theme.OverlayShadows(dark)
+		if len(layers) < 2 || layers[0].Inset || !layers[len(layers)-1].Inset {
+			t.Errorf("popup elevation (dark=%v) = %+v, want a drop shadow and an inset edge", dark, layers)
+		}
 	}
 }

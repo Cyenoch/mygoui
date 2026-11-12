@@ -9,17 +9,9 @@ import (
 )
 
 // COSS specifies 200 ms for dialogs and sheets and 450 ms for drawers.
-// Popovers and tooltips use a 150 ms native transition.
 const (
 	dialogMotionDuration = 200 * time.Millisecond
 	drawerMotionDuration = 450 * time.Millisecond
-	popupMotionDuration  = 150 * time.Millisecond
-)
-
-// Popovers and tooltips fade from 98% around the anchor-facing edge.
-const (
-	popupEnterScale = 0.98
-	popupExitScale  = 0.98
 )
 
 // Allocate modal keys before DialogBase: its backdrop reads click/shortcut
@@ -158,10 +150,17 @@ func responsiveDialogMotion(c *ui.Context, back, panel ui.Element, state *dialog
 	}
 	progress := panel.AnimateTo(dialogProgressKey{}, target, ui.Animation{Duration: dialogMotionDuration, Ease: ui.EaseInOut})
 	state.progress = progress
+	// A dialog reopened during its exit returns from where its retained
+	// backdrop shows it, which holds the exit motion's share of the offset;
+	// the new panel adds only the offset it had when it closed.
+	reopening := state.resuming && c.Now().Equal(state.reopenedAt)
 	exit := ui.Motion{Opacity: 0}
 	if w < 640 {
 		offset := theme.Space16 * progress
 		exit.Y = theme.Space16 - offset
+		if reopening {
+			offset = theme.Space16 * state.closedProgress
+		}
 		panel.Translate(0, offset)
 	} else {
 		scale := 1 - 0.02*progress
@@ -170,7 +169,7 @@ func responsiveDialogMotion(c *ui.Context, back, panel ui.Element, state *dialog
 		if r := panel.LayoutBounds(); w > 0 && h > 0 && r.W > 0 && r.H > 0 {
 			back.TransformOrigin((r.X+r.W/2)/w, (r.Y+r.H/2)/h)
 		}
-		if state.resuming && c.Now().Equal(state.reopenedAt) {
+		if reopening {
 			retainedScale := (1 - 0.02*state.returnProgress) / (1 - 0.02*state.closedProgress)
 			back.Scale(1/retainedScale, 1/retainedScale)
 		}
@@ -180,26 +179,15 @@ func responsiveDialogMotion(c *ui.Context, back, panel ui.Element, state *dialog
 	transition := ui.ElementTransition{
 		Duration: dialogMotionDuration, Ease: ui.EaseInOut, Enter: &enter, Exit: &exit,
 	}
-	if state.resuming && c.Now().Equal(state.reopenedAt) {
-		// Settle the retained backdrop's position before its next snapshot;
-		// its returning panel already carries the visible offset. MyGo uses
-		// the first call for the return and the last for a later exit.
-		short := transition
-		short.Duration = time.Nanosecond
-		back.Transition(short)
+	if reopening {
+		// Settle the retained backdrop's position at once. MyGo applies an
+		// element's last Transition of the frame, so this frame uses only
+		// the short one and takes no exit until the next build.
+		transition.Duration = time.Nanosecond
 		transition.Exit = nil
 		state.exitEnabled = false
 	}
 	return back.Transition(transition)
-}
-
-// warmOverlay builds the overlay layer now. An element's Enter applies only
-// in a parent the frame before had, and the layer is rebuilt each frame: a
-// component must ask for it every frame, or the first surface a window shows
-// after a frame without overlays would appear without its arrival. It adds
-// no element: an empty overlay only makes sure the layer has been built.
-func warmOverlay(c *ui.Context) {
-	ui.Overlay(c, func() {})
 }
 
 // surfaceMotion fades an overlay and keeps an inert exit snapshot.
@@ -225,39 +213,4 @@ func surfaceMotion(c *ui.Context, e ui.Element, d time.Duration) ui.Element {
 // move their panels separately from the scrim.
 func dialogMotion(c *ui.Context, back ui.Element, d time.Duration) ui.Element {
 	return surfaceMotion(c, back, d)
-}
-
-// popupMotion fades an anchored panel and zooms it around
-// the anchor point. The caller keys the panel first, before building its
-// content, so that the content follows the panel's identity and the side it
-// settled on can be read from its committed box. The panel is a child of the
-// overlay layer, which warmOverlay keeps alive, so its Enter applies: the
-// transition drives its own frames and nothing is left at a partial scale.
-func popupMotion(c *ui.Context, panel ui.Element, side mygoui.Side) ui.Element {
-	if theme.ReduceMotion(c) {
-		return panel
-	}
-	panel.TransformOrigin(popupOrigin(side))
-	enter := ui.Motion{Opacity: 0, Scale: popupEnterScale}
-	exit := ui.Motion{Opacity: 0, Scale: popupExitScale}
-	return panel.Transition(ui.ElementTransition{
-		Duration: popupMotionDuration,
-		Ease:     ui.EaseOut,
-		Enter:    &enter,
-		Exit:     &exit,
-	})
-}
-
-// popupOrigin returns the transform origin for a panel on side: the point that faces the
-// anchor grows and shrinks in place.
-func popupOrigin(side mygoui.Side) (x, y float32) {
-	switch side {
-	case mygoui.SideTop:
-		return 0.5, 1
-	case mygoui.SideLeft:
-		return 1, 0.5
-	case mygoui.SideRight:
-		return 0, 0.5
-	}
-	return 0.5, 0
 }

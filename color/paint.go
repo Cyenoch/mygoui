@@ -1,8 +1,6 @@
 package color
 
 import (
-	"sync"
-
 	"github.com/egoist/mygo/ui"
 )
 
@@ -32,46 +30,6 @@ func checkers(p *ui.Painter, r ui.Rect, size float32) {
 			}, checkerDark, 0)
 		}
 	}
-}
-
-// bandPathPool reuses the path buffer of a fill with corners of unequal radii.
-var bandPathPool = sync.Pool{New: func() any { return &ui.Path{} }}
-
-// fillCorners paints a rectangle with independent corner radii, as CSS's
-// border-radius does; Painter.Fill takes one radius for all four corners.
-func fillCorners(p *ui.Painter, r ui.Rect, c ui.Color, tl, tr, br, bl float32) {
-	if r.W <= 0 || r.H <= 0 {
-		return
-	}
-	limit := min(r.W, r.H) / 2
-	tl, tr, br, bl = min(tl, limit), min(tr, limit), min(br, limit), min(bl, limit)
-	if tl == tr && tr == br && br == bl {
-		p.Fill(r, c, tl)
-		return
-	}
-	const k = 0.5523 // control point distance of a quarter circle
-	path := bandPathPool.Get().(*ui.Path)
-	path.Reset()
-	path.MoveTo(r.X+tl, r.Y)
-	path.LineTo(r.X+r.W-tr, r.Y)
-	if tr > 0 {
-		path.CubeTo(r.X+r.W-tr+tr*k, r.Y, r.X+r.W, r.Y+tr-tr*k, r.X+r.W, r.Y+tr)
-	}
-	path.LineTo(r.X+r.W, r.Y+r.H-br)
-	if br > 0 {
-		path.CubeTo(r.X+r.W, r.Y+r.H-br+br*k, r.X+r.W-br+br*k, r.Y+r.H, r.X+r.W-br, r.Y+r.H)
-	}
-	path.LineTo(r.X+bl, r.Y+r.H)
-	if bl > 0 {
-		path.CubeTo(r.X+bl-bl*k, r.Y+r.H, r.X, r.Y+r.H-bl+bl*k, r.X, r.Y+r.H-bl)
-	}
-	path.LineTo(r.X, r.Y+tl)
-	if tl > 0 {
-		path.CubeTo(r.X, r.Y+tl-tl*k, r.X+tl-tl*k, r.Y, r.X+tl, r.Y)
-	}
-	path.Close()
-	p.FillPath(path, c)
-	bandPathPool.Put(path)
 }
 
 // paintSwatch paints color over a checkerboard, rounded by radius.

@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -58,6 +59,8 @@ type SliderOptions struct {
 // Drags and the arrows, Home and End change the caller's value; a two-thumb
 // state is ordered by the native range slider, so the thumbs never cross.
 func Slider(c *ui.Context, o SliderOptions) ui.Element {
+	// An error message implies the invalid state.
+	o.Invalid = o.Invalid || o.Error != ""
 	min, max := o.Min, o.Max
 	if min == 0 && max == 0 {
 		max = 100
@@ -85,7 +88,7 @@ func Slider(c *ui.Context, o SliderOptions) ui.Element {
 		*state.Low = math.Max(min, math.Min(*state.Low, *state.High))
 		*state.High = math.Min(max, math.Max(*state.Low, *state.High))
 	}
-	errText := choiceErrorText(o.Invalid, o.Error)
+	errText := formstyle.ErrorText(o.Invalid, o.Error)
 	if o.Format == nil {
 		o.Format = sliderNumberFormat(step)
 	}
@@ -325,13 +328,14 @@ func sliderPaintThumb(p *ui.Painter, t theme.Palette, thumb ui.Rect, innerW, inn
 	}
 }
 
-// sliderMarks draws labelled ticks below a horizontal slider. The ticks and
-// labels sit in a row inset by the track's horizontal padding, so a mark at a
+// sliderMarks draws labelled ticks below a horizontal slider, each label
+// under its tick. The ticks and labels sit in a row inset by the track's horizontal padding, so a mark at a
 // value lines up with the thumb there instead of with the track's edge.
 func sliderMarks(c *ui.Context, o SliderOptions, min, max float64, rtl bool, pad float32) {
 	t := theme.Colors(c)
-	height := theme.Scale(c, 16)
 	tickH := theme.Scale(c, 4)
+	labelTop := tickH + theme.Scale(c, theme.Space4)
+	height := labelTop + theme.Scale(c, 16)
 	fracs := make([]float32, len(o.Marks))
 	for i, mark := range o.Marks {
 		fracs[i] = sliderFraction(mark.Value, min, max)
@@ -353,7 +357,7 @@ func sliderMarks(c *ui.Context, o SliderOptions, min, max float64, rtl bool, pad
 					continue
 				}
 				style.Text(ui.Text(c, mark.Label), c, theme.XS()).TextColor(t.Muted).
-					Absolute().Top(0).StartPercent(fracs[i] * 100).MarginStart(-24).Width(48).
+					Absolute().Top(labelTop).StartPercent(fracs[i] * 100).MarginStart(-24).Width(48).
 					TextAlign(ui.Center)
 			}
 		})
@@ -381,22 +385,12 @@ func sliderOutput(c *ui.Context, o SliderOptions, state SliderState, t theme.Pal
 // decimals for a snapping step, at most two otherwise.
 func sliderNumberFormat(step float64) func(float64) string {
 	if step > 0 {
-		d := sliderDecimals(step)
+		d := numberDecimals(step)
 		return func(v float64) string { return strconv.FormatFloat(v, 'f', d, 64) }
 	}
 	return func(v float64) string {
 		return strconv.FormatFloat(math.Round(v*100)/100, 'f', -1, 64)
 	}
-}
-
-// sliderDecimals returns the decimal places a step needs, up to six.
-func sliderDecimals(step float64) int {
-	d := 0
-	for step < 1 && step > 0 && d < 6 {
-		step *= 10
-		d++
-	}
-	return d
 }
 
 // sliderFraction maps v within lo..hi to 0..1, clamped.

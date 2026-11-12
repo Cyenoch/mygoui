@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/internal/anchored"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -135,16 +136,16 @@ func TestSurfacesPaintArrivalAndDeparture(t *testing.T) {
 				Title:     "Panel",
 			})
 		}, clickOpener("Open"), "Open"},
-		{"popover", popupMotionDuration, "Actions", func(c *ui.Context, open *bool) {
+		{"popover", anchored.MotionDuration, "Actions", func(c *ui.Context, open *bool) {
 			ui.Column(c).Padding(16).Children(func() {
 				anchor := ui.Button(c, "Options").OnClick(func() { *open = !*open })
 				Popover(c, anchor, open, PopoverOptions{
 					Title: "Actions",
-					Body:  func() { ui.Button(c, "Rename") },
+					Body:  func(c *ui.Context) { ui.Button(c, "Rename") },
 				})
 			})
 		}, clickOpener("Options"), "Options"},
-		{"tooltip", popupMotionDuration, "Help", func(c *ui.Context, open *bool) {
+		{"tooltip", anchored.MotionDuration, "Help", func(c *ui.Context, open *bool) {
 			anchor := ui.Button(c, "Hover me")
 			Tooltip(c, anchor, TooltipOptions{Text: "Help"})
 		}, func(t *testing.T, tt *ui.Tester) {
@@ -250,7 +251,7 @@ func TestReducedMotionSurfacesArriveAtRest(t *testing.T) {
 			ui.Button(c, "Open").OnClick(func() { *open = true })
 			BottomSheet(c, open, BottomSheetOptions{Title: "Actions"})
 		}, clickOpener("Open")},
-		{"tooltip", popupMotionDuration, "Help", func(c *ui.Context, open *bool) {
+		{"tooltip", anchored.MotionDuration, "Help", func(c *ui.Context, open *bool) {
 			anchor := ui.Button(c, "Hover me")
 			Tooltip(c, anchor, TooltipOptions{Text: "Help"})
 		}, func(t *testing.T, tt *ui.Tester) {

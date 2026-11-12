@@ -23,14 +23,18 @@ and inspect usable public Go API examples in one workspace.
 
 ## Workflow
 
-Grouped navigation and Cmd/Ctrl+K search select a component. Preview, Go source,
-API and Tokens views share that selection and retain window-owned example state.
-Appearance and content zoom remain immediately available.
+The home view introduces the library: install command, downloads, a live
+preview and the catalog. Flat grouped navigation and Cmd/Ctrl+K search select
+a component. Its page leads with title, description and the Preview / Code /
+API / Tokens switch, which share that selection and retain window-owned
+example state. Appearance (popover) and content zoom remain immediately
+available; neither moves the page.
 
 ## Layout and native constraints
 
 Preserve the custom native title bar, real OS control insets and draggable
-regions. Use the existing compact layout and scaling thresholds; keep navigation,
+regions. The sidebar's top row and the page title bar share one height. The
+browser build has no window controls and uses the system font. Use the existing compact layout and scaling thresholds; keep navigation,
 content and overlay actions reachable at compact widths and enlarged text.
 Use the root visual system and pinned coss component appearance. Keep native
 focus, selection, window commands and accessible control naming.

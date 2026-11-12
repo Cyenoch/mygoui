@@ -23,7 +23,7 @@ type TooltipOptions struct {
 // base owns the show timing (0.6 s rest, warm reuse within 0.4 s). Text also
 // supplies the anchor's accessible description.
 func Tooltip(c *ui.Context, anchor ui.Element, o TooltipOptions) ui.Element {
-	warmOverlay(c)
+	anchored.Warm(c)
 	if !anchor.Valid() {
 		return ui.Element{}
 	}
@@ -41,12 +41,12 @@ func Tooltip(c *ui.Context, anchor ui.Element, o TooltipOptions) ui.Element {
 		// arrow and the zoom follow that side.
 		tip = tip.Key(tooltipKey{anchor.ID()})
 		side := arrowSide(tip, anchor, want)
-		tip = popupMotion(c, tip, side)
+		tip = anchored.Motion(c, tip, side, true)
 		tip.MaxWidth(min(float32(320), max(float32(0), w-2*theme.Space8))).
 			MaxHeight(max(float32(0), h-2*theme.Space8)).
 			Padding(theme.Space4, theme.Space8).Radius(radius).
 			Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border)
-		tip = panelElevation(c, tip)
+		tip = style.Shadow(tip, c, theme.TooltipShadows(c.Theme().Dark))
 		if o.Arrow {
 			along := arrowAlong(tip, anchor, side)
 			tip.Draw(func(p *ui.Painter, r ui.Rect) {

@@ -48,7 +48,7 @@ func PreviewCard(c *ui.Context, anchor ui.Element, state *PreviewCardState, o Pr
 		width = 256
 	}
 	panel := Popover(c, anchor, &state.Open, PopoverOptions{
-		Placement: o.Placement, Width: width, Label: o.Label, Body: o.Body,
+		Placement: o.Placement, Width: width, Label: o.Label, Body: func(*ui.Context) { o.Body() },
 	})
 	overPanel := false
 	if panel.Valid() {

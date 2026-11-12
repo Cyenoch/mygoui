@@ -338,12 +338,11 @@ func SubMenu(c *ui.Context, anchor ui.Element, o SubMenuOptions) ui.Element {
 	if o.Open == nil {
 		return ui.Element{}
 	}
-	keepOverlay(c)
 	radius := theme.RadiusScale().LG
 	var panel ui.Element
 	panel = ui.PopoverBase(c, anchor, o.Open, func(p ui.Element) {
 		p.MaxWidth(scale(c, 360)).MinWidth(scale(c, 128)).Padding(0)
-		overlayPanel(c, p, radius)
+		anchored.Surface(c, p.Clip(), radius)
 		focus := ui.Local(p, "submenu-focus", func() bool { return true })
 		scroll := ui.Scroll(c).MaxHeight(scale(c, 360)).MinWidth(0).Shrink(0)
 		scroll.Children(func() {
@@ -360,7 +359,6 @@ func SubMenu(c *ui.Context, anchor ui.Element, o SubMenuOptions) ui.Element {
 		panel = anchored.Apply(panel, anchor, mygoui.Placement{
 			Side: mygoui.SideRight, Align: mygoui.AlignStart, Offset: scale(c, theme.Space4),
 		}, mygoui.SideRight)
-		panel = entryFade(c, panel, panelEntryMotion)
 	}
 	return panel
 }
@@ -374,6 +372,21 @@ type DropdownOptions struct {
 	Disabled  bool
 	Placement mygoui.Placement
 	Menu      MenuOptions
+	// Flyout opens the menu as a native flyout of the host's window. A menu
+	// with submenus stays in the window, where its submenus have room.
+	Flyout *mygoui.FlyoutHost
+}
+
+// hasSubmenu reports whether any item of o opens a submenu.
+func hasSubmenu(o MenuOptions) bool {
+	for _, section := range o.Sections {
+		for _, item := range section.Items {
+			if len(item.Submenu) > 0 {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 // Dropdown builds a menu button and its anchored menu panel. Click, Enter or
@@ -391,7 +404,6 @@ func Dropdown(c *ui.Context, o DropdownOptions) ui.Element {
 	if open == nil {
 		open = ui.Local(trigger, "dropdown-open", func() bool { return false })
 	}
-	keepOverlay(c)
 	prev := ui.Local(trigger, "dropdown-was-open", func() bool { return *open })
 	enter := *open && !*prev
 	*prev = *open
@@ -399,10 +411,30 @@ func Dropdown(c *ui.Context, o DropdownOptions) ui.Element {
 	if !o.Disabled {
 		trigger.OnClick(func() { *open = !*open })
 	}
+	host := o.Flyout
+	if hasSubmenu(o.Menu) {
+		host = nil // a fitted flyout would clip its submenus
+	}
+	// The flyout's first build follows this one; it focuses the first item.
+	focus := ui.Local(trigger, "dropdown-focus", func() bool { return false })
+	if enter && host != nil {
+		*focus = true
+	}
+	if anchored.Flyout(c, host, trigger, open, anchored.FlyoutSpec{
+		Placement: o.Placement, Fallback: mygoui.SideBottom, Label: o.Menu.Label,
+		MinWidth: scale(c, 128), MaxWidth: scale(c, 320), MaxHeight: scale(c, 420),
+		Body: func(c *ui.Context) {
+			ui.Scroll(c).FillWidth().MinWidth(0).MinHeight(0).Children(func() {
+				buildMenu(c, o.Menu, menuExtra{close: open, focusFirst: focus}, nil)
+			})
+		},
+	}) {
+		return trigger
+	}
 	radius := theme.RadiusScale().LG
 	panel := ui.PopoverBase(c, trigger, open, func(p ui.Element) {
 		p.MinWidth(scale(c, 128)).MaxWidth(scale(c, 320)).Padding(0)
-		overlayPanel(c, p, radius)
+		anchored.Surface(c, p.Clip(), radius)
 		focus := enter
 		scroll := ui.Scroll(c).MaxHeight(scale(c, 420)).MinWidth(0).Shrink(0)
 		scroll.Children(func() {
@@ -410,12 +442,7 @@ func Dropdown(c *ui.Context, o DropdownOptions) ui.Element {
 		})
 	})
 	if panel.Valid() {
-		placement := o.Placement
-		if placement.Offset == 0 {
-			placement.Offset = 4
-		}
-		panel = anchored.Apply(panel, trigger, placement, mygoui.SideBottom)
-		entryFade(c, panel, panelEntryMotion)
+		anchored.Apply(panel, trigger, o.Placement, mygoui.SideBottom)
 	}
 	return trigger
 }
