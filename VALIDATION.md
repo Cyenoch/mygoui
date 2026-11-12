@@ -18,6 +18,12 @@ Go 1.27.3, MyGo 0.9.0.
   through intermediate widths while collapsing. Both fail with the motion
   removed.
 
+- Main CI race job on `a4bc33b` (and `d8f83f7`) timed out in overlay at
+  600 s with no race reported; Gallery took 412.581 s there. Locally overlay
+  takes 329.5 s under race across 93 tests (slowest 41 s), so the package
+  race timeout is now 900 s in CI and `make race`, and the job allows 35
+  minutes. Tests and race instrumentation are unchanged.
+
 Not verified: the motion in a real window, the preview card exit shrink by
 pixels (it reuses the tested tooltip exit), GPU and screen readers.
 
