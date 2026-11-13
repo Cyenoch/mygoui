@@ -26,6 +26,9 @@ capability mapping, not a claim of pixel-perfect completion.
   AlertDialog enter and exit with no frame over 16 ms.
 - Without a GPU, SkeletonGroup rests static and a mask ScrollFade shows the
   shadow treatment instead of interpreting its shader per pixel.
+- The browser gallery leaves the browser its own shortcuts, such as reload
+  and find: MyGo's web surface cancels every key pressed with Ctrl or ⌘, so
+  the gallery keeps all but its own (editing and ⌘K search) from it.
 - The gallery sidebar builds the rows near its viewport: a quarter of the
   memory and half the allocations per frame.
 - Frame cost, from a review of every component. Drawer, BottomSheet, inset

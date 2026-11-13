@@ -18,6 +18,7 @@ func main() {
 	if fontErr != nil && runtime.GOOS != "js" {
 		log.Fatal(fontErr)
 	}
+	keepBrowserShortcuts()
 	mygo.App.SetName("Coss UI Gallery")
 	mygo.App.OnWindowAllClosed(func() { mygo.App.Quit() })
 	mygo.App.WhenReady(func() {
