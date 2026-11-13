@@ -9,6 +9,10 @@ not a claim of pixel-perfect completion. No release is asserted by this log.
 
 ### Changed
 
+- Dialog and AlertDialog enter with their fade and scale in a browser. MyGo
+  rasterizes a scaled rounded clip on the CPU each frame, which took longer
+  than the 200 ms motion in WebAssembly, so the panel appeared late and at
+  once; the panel now scales as one cached bitmap while it enters.
 - Cartesian charts read the caller's points without copying them, find a
   brush range by binary search and thin dense unstacked areas as lines
   already were: three series of 5,000 points build in about half the time

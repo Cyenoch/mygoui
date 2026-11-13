@@ -270,7 +270,8 @@ func codeBlock(c *ui.Context, s *State, o codeBlockOptions) {
 	st := StateOf[codeScrollState](s, "code:"+o.Key)
 	if colors := goColorsOf(t); st.lines == nil || st.code != code || st.colors != colors {
 		st.code, st.colors, st.lines = code, colors, st.lines[:0]
-		for _, line := range strings.Split(code, "\n") {
+		// A tab draws one space wide; the copy keeps the source's own.
+		for _, line := range strings.Split(strings.ReplaceAll(code, "\t", "    "), "\n") {
 			if o.Plain {
 				st.lines = append(st.lines, []ui.Span{{Text: line}})
 				continue

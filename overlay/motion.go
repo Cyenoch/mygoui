@@ -165,6 +165,12 @@ func responsiveDialogMotion(c *ui.Context, back, panel ui.Element, state *dialog
 	} else {
 		scale := 1 - 0.02*progress
 		panel.Scale(scale, scale)
+		if scale != 1 {
+			// MyGo rasterizes a scaled rounded clip on the CPU every frame,
+			// which outlasts the whole motion in a browser; scale one
+			// bitmap of the panel instead.
+			panel.Cache()
+		}
 		exit.Scale = 0.98 / scale
 		if r := panel.LayoutBounds(); w > 0 && h > 0 && r.W > 0 && r.H > 0 {
 			back.TransformOrigin((r.X+r.W/2)/w, (r.Y+r.H/2)/h)
