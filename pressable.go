@@ -52,7 +52,7 @@ func PressableFeedback(c *ui.Context, o PressableFeedbackOptions, body func()) u
 		Duration: pressableHighlightDuration, Ease: ui.EaseOut, Colors: true,
 	})
 	if !o.Disabled {
-		e = pressedPose(e, e.Pressed(), 0.985)
+		e = pressedPose(c, e, e.Pressed(), 0.985)
 	}
 	e.Children(body)
 	return e

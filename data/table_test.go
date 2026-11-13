@@ -250,6 +250,36 @@ func TestTableDisabledRowCannotBeChosen(t *testing.T) {
 	}
 }
 
+// A multiple selection never keeps a disabled row's key past a frame, whether
+// the app chose it or the row became disabled later.
+func TestTableMultipleSelectionDropsDisabledKeys(t *testing.T) {
+	rows := fileRows()
+	rows[0].disabled = true // Beta
+
+	st := &data.TableState{Selection: data.TableSelection{Mode: data.TableSelectionMultiple, Row: -1}}
+	o := fileTable(rows, st, nil)
+	tt := ui.NewTester(tableView(&o), 520, 320)
+	for _, chosen := range [][]any{{"b"}, {"a", "b", "c"}} {
+		st.Selection.Rows.Clear()
+		for _, key := range chosen {
+			st.Selection.Rows.Add(key)
+		}
+		tt.Frame()
+		if st.Selection.HasKey("b") || st.Selection.Rows.Len() != len(chosen)-1 {
+			t.Fatalf("chose %v, kept %v", chosen, keys(st.Selection))
+		}
+	}
+
+	rows[0].disabled = false
+	st.Selection.Rows.Add("b")
+	rows[1].disabled = true // Alpha
+	st.Revision++
+	tt.Frame()
+	if st.Selection.HasKey("a") || !st.Selection.HasKey("b") || !st.Selection.HasKey("c") {
+		t.Fatalf("after Alpha was disabled: %v", keys(st.Selection))
+	}
+}
+
 func TestTableWheelScrollKeepsHeader(t *testing.T) {
 	const n = 200
 	rows := make([]fileRow, n)

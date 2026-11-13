@@ -264,6 +264,7 @@ func TestModalCoverAndExtraSmallGeometry(t *testing.T) {
 
 // TestDrawerWidth checks the COSS maximum and the 48 DIP opposite-edge gap.
 func TestDrawerWidth(t *testing.T) {
+	skipInShort(t)
 	for _, tc := range []struct {
 		winW, want float32
 	}{
@@ -295,6 +296,7 @@ func TestDrawerWidth(t *testing.T) {
 // before the content, while a top drawer keeps its bar 8 DIPs off the bottom
 // edge.
 func TestDrawerHandleGutter(t *testing.T) {
+	skipInShort(t)
 	const winH = 480
 	for _, side := range []DrawerSide{DrawerTop, DrawerBottom} {
 		open := true

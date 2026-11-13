@@ -299,9 +299,9 @@ func ProgressCircle(c *ui.Context, o ProgressCircleOptions) ui.Element {
 	// A ring has no box that could carry the value, so the native channel
 	// eases the painted arc instead: frames are asked for only while it moves.
 	progress = e.AnimateTo(progressRingKey{}, progress, indicatorAnimation)
-	fill := indicatorFill(c, o.Color)
+	fill, track := indicatorFill(c, o.Color), t.Default
 	e.Draw(func(p *ui.Painter, r ui.Rect) {
-		drawRing(p, r, progress, fill, t.Default)
+		drawRing(p, r, progress, fill, track)
 	})
 	if o.ShowOutput {
 		e.Children(func() {

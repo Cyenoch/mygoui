@@ -38,6 +38,7 @@ func toastPageClick(t *testing.T, tt *ui.Tester, state *State, label string) {
 // the action's Draw callbacks had expired: "ui: element from pass N used in
 // pass N+2", which quit the app.
 func TestToastTopPlacementDismissDuringExit(t *testing.T) {
+	skipInShort(t)
 	state := New()
 	state.Selected = "toast"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)

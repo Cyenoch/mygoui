@@ -2,6 +2,7 @@ package mygoui
 
 import (
 	"math"
+	"sync"
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui/theme"
@@ -21,6 +22,12 @@ type StatusPalette struct {
 // StatusColors resolves a status against the live theme.
 func StatusColors(c *ui.Context, color StatusColor) StatusPalette {
 	t := theme.Colors(c)
+	return statusColors(&t, color)
+}
+
+// statusColors resolves a status against t, which callers holding the
+// palette pass instead of copying it again.
+func statusColors(t *theme.Palette, color StatusColor) StatusPalette {
 	switch color {
 	case ColorAccent:
 		return StatusPalette{
@@ -62,7 +69,16 @@ func StatusColors(c *ui.Context, color StatusColor) StatusPalette {
 
 // solidForeground picks the higher-contrast black or white ink for a status
 // fill; the status foreground tokens are intended for pale surfaces.
+// Its colors come from the published palettes, which change only with the
+// preferences, so each pair is resolved once: compositing Oklch colors is
+// costly on every build.
 func solidForeground(fill, background ui.Color) ui.Color {
+	key := [2]ui.Color{fill, background}
+	solidInks.Lock()
+	defer solidInks.Unlock()
+	if ink, ok := solidInks.m[key]; ok {
+		return ink
+	}
 	fill = fill.Over(background)
 	channel := func(v uint8) float64 {
 		s := float64(v) / 255
@@ -72,10 +88,21 @@ func solidForeground(fill, background ui.Color) ui.Color {
 		return math.Pow((s+0.055)/1.055, 2.4)
 	}
 	luminance := 0.2126*channel(fill.R) + 0.7152*channel(fill.G) + 0.0722*channel(fill.B)
+	ink := ui.RGB(255, 255, 255)
 	if luminance > 0.179 {
-		return ui.RGB(0, 0, 0)
+		ink = ui.RGB(0, 0, 0)
 	}
-	return ui.RGB(255, 255, 255)
+	// A host that edits its accent live publishes a palette per change.
+	if solidInks.m == nil || len(solidInks.m) >= 64 {
+		solidInks.m = map[[2]ui.Color]ui.Color{}
+	}
+	solidInks.m[key] = ink
+	return ink
+}
+
+var solidInks struct {
+	sync.Mutex
+	m map[[2]ui.Color]ui.Color
 }
 
 // StatusIcon is the coss icon for a status: info, check, triangle alert, or

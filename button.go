@@ -69,13 +69,36 @@ const buttonPressDuration = 250 * time.Millisecond
 // target, which would otherwise snap to the pressed size. AnimatePose moves
 // the committed box in paint-only frames and settles at once while the
 // desktop asks for less motion.
-func pressedPose(e ui.Element, pressed bool, scale float32) ui.Element {
+//
+// MyGo rasterizes a scaled rounded clip on the CPU in every frame of the
+// motion, so the element moves one bitmap of itself (Cache) while pressed
+// and until its release settles. The pose runs in frames that do not build
+// the view, so a frame is asked for when it settles, to drop the bitmap.
+func pressedPose(c *ui.Context, e ui.Element, pressed bool, scale float32) ui.Element {
 	pose := ui.Pose{Scale: 1}
 	if pressed {
 		pose.Scale = scale
 	}
+	press := ui.Local(e, pressPoseKey{}, func() pressPoseState { return pressPoseState{pressed: pressed} })
+	if press.pressed != pressed {
+		press.pressed, press.changed = pressed, c.Now()
+	}
+	if left := buttonPressDuration - c.Now().Sub(press.changed); pressed || left > 0 {
+		e.Cache()
+		if !pressed {
+			c.After(left)
+		}
+	}
 	return e.TransformOrigin(0.5, 0.5).
 		AnimatePose(pose, ui.Animation{Duration: buttonPressDuration, Ease: ui.EaseOut})
+}
+
+type pressPoseKey struct{}
+
+// pressPoseState is when the press last started or ended.
+type pressPoseState struct {
+	pressed bool
+	changed time.Time
 }
 
 // joinAdjust carries joined-group geometry into the internal builders

@@ -63,7 +63,7 @@ type overviewState struct {
 func buildOverview(c *ui.Context, s *State) ui.Element {
 	width := overviewWidth(c, s)
 	st := StateOf[overviewState](s, "overview")
-	groups := overviewGroups(Pages())
+	groups := s.overviewGroups.of("", func() []pageGroup { return overviewGroups(Pages()) })
 	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space64)).
 		Children(func() {
 			ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space40)).Children(func() {

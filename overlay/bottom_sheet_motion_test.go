@@ -165,6 +165,7 @@ func TestBottomSheetSlidesUpFromBelowTheWindow(t *testing.T) {
 // TestBottomSheetShortDragSpringsBack checks that the grab strip drags the
 // sheet with the pointer and that a drag short of the threshold returns it.
 func TestBottomSheetShortDragSpringsBack(t *testing.T) {
+	skipInShort(t)
 	tt, f := newSheetTest(t, func(c *ui.Context) BottomSheetOptions {
 		return BottomSheetOptions{
 			Title:  "Actions",
@@ -218,6 +219,7 @@ func TestBottomSheetShortDragSpringsBack(t *testing.T) {
 // the arrival and the departure: the sheet climbs into the window rather
 // than fading in place, and the backdrop still fades as it goes.
 func TestBottomSheetPaintsItsSlideAndDeparture(t *testing.T) {
+	skipInShort(t)
 	tt, f := newSheetTest(t, func(*ui.Context) BottomSheetOptions {
 		return BottomSheetOptions{Title: "Actions"}
 	})
@@ -253,6 +255,7 @@ func TestBottomSheetPaintsItsSlideAndDeparture(t *testing.T) {
 // stays on the handle while the sheet moves: a second grab on the way back
 // catches it and follows the pointer.
 func TestBottomSheetGrabCatchesTheSpringingSheet(t *testing.T) {
+	skipInShort(t)
 	tt, f := newSheetTest(t, func(*ui.Context) BottomSheetOptions {
 		return BottomSheetOptions{Title: "Actions", Height: 300}
 	})
@@ -291,6 +294,7 @@ func TestBottomSheetGrabCatchesTheSpringingSheet(t *testing.T) {
 // same exit as the handle swipe: the panel slides below the window and the
 // scrim clears with it, instead of vanishing before the mask.
 func TestBottomSheetCloseButtonSlidesOut(t *testing.T) {
+	skipInShort(t)
 	tt, f := newSheetTest(t, func(*ui.Context) BottomSheetOptions {
 		return BottomSheetOptions{Title: "Actions", Height: 300}
 	})
@@ -348,6 +352,7 @@ func TestBottomSheetHideHandleCloseStillDismisses(t *testing.T) {
 // the sheet follows the pointer, slides below the window, and only then
 // closes and gives the focus back to its opener.
 func TestBottomSheetLongDragSlidesOutAndDismisses(t *testing.T) {
+	skipInShort(t)
 	tt, f := newSheetTest(t, func(c *ui.Context) BottomSheetOptions {
 		return BottomSheetOptions{
 			Title:  "Actions",
@@ -398,6 +403,7 @@ func TestBottomSheetLongDragSlidesOutAndDismisses(t *testing.T) {
 // TestBottomSheetLongDragHonoursPreventDismiss checks that a sheet which
 // may not be dismissed comes back instead of sliding out.
 func TestBottomSheetLongDragHonoursPreventDismiss(t *testing.T) {
+	skipInShort(t)
 	tt, f := newSheetTest(t, func(c *ui.Context) BottomSheetOptions {
 		return BottomSheetOptions{
 			Title:          "Actions",
@@ -424,6 +430,7 @@ func TestBottomSheetLongDragHonoursPreventDismiss(t *testing.T) {
 // grab strip owns the swipe: a drag over the body, or over the top of a sheet
 // whose handle is hidden, leaves the panel where it is and open.
 func TestBottomSheetDragOutsideTheGrabStripDoesNotDismiss(t *testing.T) {
+	skipInShort(t)
 	body := func(c *ui.Context) BottomSheetOptions {
 		return BottomSheetOptions{
 			Title:  "Actions",

@@ -84,10 +84,10 @@ make spec-check
 
 `make check` runs headless tests, ordinary build, Go vet, MyGo lifetime vet,
 formatting and module verification. Race checks matter for shared-state
-changes. `make race` runs test binaries serially because each headless
-rasterizer already uses multiple cores; package-local concurrency stays
-enabled. Race binaries have a 10-minute timeout; CI allows 25 minutes for
-the full race job, including setup and compilation. Inspect module
+changes. `make race` passes `-short`, which leaves out the rendering
+sweeps: they drive one goroutine and run about twenty times slower under
+the race detector. A test that exercises shared state must not skip in
+short mode. Inspect module
 integrity when changing dependencies; run
 `go mod tidy` only as part of intentional module work.
 

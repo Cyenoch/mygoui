@@ -22,7 +22,7 @@ func Alert(c *ui.Context, o AlertOptions) ui.Element {
 	t := theme.Colors(c)
 	border, fill, iconInk := t.Border, ui.Transparent, t.MutedForeground
 	if o.Status != ColorDefault {
-		status := StatusColors(c, o.Status)
+		status := statusColors(&t, o.Status)
 		border, fill, iconInk = status.Solid.Alpha(0.32), status.Solid.Alpha(0.04), status.Solid
 	} else if c.Theme().Dark {
 		fill = t.Input.Alpha(0.32)

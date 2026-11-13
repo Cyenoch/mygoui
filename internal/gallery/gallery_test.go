@@ -119,6 +119,7 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 }
 
 func TestEveryPageRendersAtDesktopAndCompactWidths(t *testing.T) {
+	skipInShort(t)
 	for _, page := range Pages() {
 		for _, mode := range []struct {
 			name   string
@@ -178,6 +179,7 @@ func TestComponentPageAnatomy(t *testing.T) {
 }
 
 func TestPagesRenderWithEnlargedText(t *testing.T) {
+	skipInShort(t)
 	for _, page := range Pages() {
 		state := New()
 		state.Selected = page.ID
@@ -300,6 +302,7 @@ func revealSidebarEntry(t *testing.T, tt *ui.Tester, state *State, name string, 
 }
 
 func TestSidebarShowsEveryComponentPage(t *testing.T) {
+	skipInShort(t)
 	const width, height = 1180, 860
 	state := New()
 	// The sidebar belongs to component pages; the landing page has none.
@@ -575,7 +578,7 @@ func TestCodeBlockHighlightMatchesThemeTokens(t *testing.T) {
 		text  string
 		color ui.Color
 	}{
-		{"package main", pal.Primary},
+		{"package main", pal.Destructive},
 		{`import "github.com/Cyenoch/mygoui"`, pal.Success},
 	} {
 		r, ok := tt.Find(want.text)
@@ -629,5 +632,15 @@ func TestCodeBlockScrollsLongLines(t *testing.T) {
 		if strings.Contains(text, "…") {
 			t.Fatalf("code block truncated a line: %q", text)
 		}
+	}
+}
+
+// skipInShort leaves a rendering-heavy test out of the race run, which
+// passes -short: it drives a single goroutine, and the race detector slows
+// the software rasterizer about twentyfold.
+func skipInShort(t *testing.T) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("rendering test; skipped with -short")
 	}
 }

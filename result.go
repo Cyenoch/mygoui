@@ -21,7 +21,7 @@ type ResultOptions struct {
 // detail. Text and actions are an EmptyState; the icon carries the status.
 func Result(c *ui.Context, o ResultOptions) ui.Element {
 	t := theme.Colors(c)
-	status := StatusColors(c, o.Status)
+	status := statusColors(&t, o.Status)
 	icon := o.Icon
 	if icon == nil {
 		icon = StatusIcon(o.Status)

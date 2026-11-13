@@ -238,14 +238,10 @@ func Radar(c *ui.Context, o RadarOptions) (ui.Element, error) {
 	}
 	maxValue = max(1, maxValue)
 	t := theme.Colors(c)
-	metricLabels := make([]*ui.TextLayout, len(o.Metrics))
+	// The draw callback runs after the build, once the labels are shaped.
+	var metricLabels []*ui.TextLayout
 	clearance := theme.Scale(c, 24)
-	for i, text := range o.Metrics {
-		metricLabels[i] = ui.ShapeText(text, ui.Font{Family: theme.FontFamily(c), Size: theme.Scale(c, 12)}, 0)
-		w, h := metricLabels[i].Size()
-		clearance = max(clearance, w/2+theme.Scale(c, 12), h+theme.Scale(c, 8))
-	}
-	return surface(c, o.Options, len(o.Metrics), func(i int) string {
+	root := surface(c, o.Options, len(o.Metrics), func(i int) string {
 		text := o.Metrics[i]
 		for _, s := range o.Series {
 			text += " · " + s.Label + ": " + number(s.Values[i])
@@ -308,7 +304,13 @@ func Radar(c *ui.Context, o RadarOptions) (ui.Element, error) {
 			p.FillPath(path, fill.Alpha(.15))
 			p.StrokePath(path, 2, fill)
 		}
-	}, angularHit(c, o.Options, len(o.Metrics), true)), nil
+	}, angularHit(c, o.Options, len(o.Metrics), true))
+	metricLabels = shaped(root, "chart.radar.labels", ui.Font{Family: theme.FontFamily(c), Size: theme.Scale(c, 12)}, o.Metrics...)
+	for _, label := range metricLabels {
+		w, h := label.Size()
+		clearance = max(clearance, w/2+theme.Scale(c, 12), h+theme.Scale(c, 8))
+	}
+	return root, nil
 }
 
 type RadialKind uint8

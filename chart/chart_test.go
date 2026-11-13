@@ -451,3 +451,101 @@ func TestBrushKeepsPointsWithinItsBounds(t *testing.T) {
 		}
 	}
 }
+
+// Thinning a dense stacked band keeps, per pixel column, the extremes of both
+// edges, the ends of each defined run and the gaps between runs.
+func TestStackedAreaThinningKeepsBandExtremes(t *testing.T) {
+	const n, columns = 1000, 10
+	xs, lo, hi := make([]float32, n), make([]float32, n), make([]float32, n)
+	for i := range n {
+		xs[i] = float32(i) / n
+		lo[i] = float32(math.Sin(float64(i) * .37))
+		hi[i] = lo[i] + 1 + float32(math.Cos(float64(i)*.91))
+		if i >= 400 && i < 420 {
+			lo[i], hi[i] = float32(math.NaN()), float32(math.NaN())
+		}
+	}
+	// Summaries of each column's defined points, and of each run's ends.
+	type summary struct{ loMin, loMax, hiMin, hiMax float32 }
+	summarize := func(xs, lo, hi []float32) (map[int]summary, [][2]float32) {
+		columnsSeen := map[int]summary{}
+		var runs [][2]float32
+		for i := range xs {
+			if math.IsNaN(float64(hi[i])) {
+				continue
+			}
+			if i == 0 || math.IsNaN(float64(hi[i-1])) {
+				runs = append(runs, [2]float32{xs[i], xs[i]})
+			}
+			runs[len(runs)-1][1] = xs[i]
+			// Runs split a column, so key by run too.
+			key := len(runs)*1000 + int(math.Floor(float64(xs[i])*columns))
+			s, ok := columnsSeen[key]
+			if !ok {
+				s = summary{lo[i], lo[i], hi[i], hi[i]}
+			}
+			columnsSeen[key] = summary{min(s.loMin, lo[i]), max(s.loMax, lo[i]), min(s.hiMin, hi[i]), max(s.hiMax, hi[i])}
+		}
+		return columnsSeen, runs
+	}
+	wantColumns, wantRuns := summarize(xs, lo, hi)
+	gotX, gotLo, gotHi := thinBand(slices.Clone(xs), slices.Clone(lo), slices.Clone(hi), columns)
+	gotColumns, gotRuns := summarize(gotX, gotLo, gotHi)
+	if len(gotX) > 6*columns+2 {
+		t.Fatalf("kept %d of %d points for %d columns", len(gotX), n, columns)
+	}
+	if !reflect.DeepEqual(gotRuns, wantRuns) {
+		t.Fatalf("runs = %v, want %v", gotRuns, wantRuns)
+	}
+	if !reflect.DeepEqual(gotColumns, wantColumns) {
+		t.Fatalf("column extremes = %v, want %v", gotColumns, wantColumns)
+	}
+}
+
+// Inspection steps through every X any visible series has, once each.
+func TestSeriesXsMergesDistinctSeries(t *testing.T) {
+	pts := func(xs ...float64) []Point {
+		out := make([]Point, len(xs))
+		for i, x := range xs {
+			out[i] = Point{X: x}
+		}
+		return out
+	}
+	for _, tc := range []struct {
+		series []Series
+		want   []float64
+	}{
+		{[]Series{{Points: pts(1, 2, 3)}, {Points: pts(1, 2, 3)}}, []float64{1, 2, 3}},
+		{[]Series{{Points: pts(1, 3, 5)}, {Points: pts(0, 3, 4, 6)}, {Points: pts(5, 7)}}, []float64{0, 1, 3, 4, 5, 6, 7}},
+		{[]Series{{Points: pts(2)}, {}}, []float64{2}},
+	} {
+		if got := seriesXs(tc.series); !slices.Equal(got, tc.want) {
+			t.Fatalf("seriesXs = %v, want %v", got, tc.want)
+		}
+	}
+}
+
+// Radar labels are kept between frames but follow changed metrics.
+func TestRadarLabelsFollowMetrics(t *testing.T) {
+	view := func(metrics *[]string) func(*ui.Context) {
+		return func(c *ui.Context) {
+			theme.Apply(c)
+			if _, err := Radar(c, RadarOptions{Options: Options{Label: "Radar"}, Metrics: *metrics,
+				Series: []RadarSeries{{ID: "a", Values: []float64{1, 2, 3}}}}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
+	metrics := []string{"Speed", "Power", "Range"}
+	changed := []string{"Comfort", "Safety", "Price"}
+	tt := ui.NewTester(view(&metrics), 400, 300)
+	tt.Frame()
+	before := slices.Clone(tt.Image().Pix)
+	metrics = changed
+	tt.Frame()
+	fresh := ui.NewTester(view(&changed), 400, 300)
+	fresh.Frame()
+	if slices.Equal(tt.Image().Pix, before) || !slices.Equal(tt.Image().Pix, fresh.Image().Pix) {
+		t.Fatal("radar kept the labels of the previous metrics")
+	}
+}

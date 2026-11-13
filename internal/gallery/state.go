@@ -94,6 +94,8 @@ type State struct {
 	Sidebar        ui.ScrollState
 	Content        ui.ScrollState
 	pages          map[string]any
+	sidebarGroups  groupCache
+	overviewGroups groupCache
 }
 
 func (s *State) setDark(dark bool) {
@@ -132,6 +134,28 @@ func StateOf[T any](s *State, page string) *T {
 // returns every page. The result is one fresh slice the caller may sort; the
 // per-page haystack was lowercased at registration, so a build pass only
 // compares it.
+// groupCache keeps the page groups of one search. The registered pages are
+// fixed after init, so only the search and the page count (tests register
+// pages) invalidate it.
+type groupCache struct {
+	query  string
+	count  int
+	groups []pageGroup
+	valid  bool
+}
+
+// of returns the cached groups for query, building them when the search or
+// the registered pages changed.
+func (g *groupCache) of(query string, build func() []pageGroup) []pageGroup {
+	pagesMu.RLock()
+	count := len(pages)
+	pagesMu.RUnlock()
+	if !g.valid || g.query != query || g.count != count {
+		g.query, g.count, g.groups, g.valid = query, count, build(), true
+	}
+	return g.groups
+}
+
 func (s *State) filterPages() []Page {
 	query := strings.ToLower(strings.TrimSpace(s.Search))
 	pagesMu.RLock()

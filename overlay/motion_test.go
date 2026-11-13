@@ -107,6 +107,7 @@ func motionAssertSurface(t *testing.T, tt *ui.Tester, area image.Rectangle, dura
 // paints its way out and leaves nothing behind. The sliding drawers, sheet
 // and bottom sheet have their own motion tests.
 func TestSurfacesPaintArrivalAndDeparture(t *testing.T) {
+	skipInShort(t)
 	clickOpener := func(label string) func(*testing.T, *ui.Tester) {
 		return func(t *testing.T, tt *ui.Tester) {
 			if err := tt.Click(label); err != nil {

@@ -399,7 +399,12 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 			// dialog to close and fading for another transition.
 			back.Opacity(1 - min(drop/travel, 1))
 		}
-		panel.Translate(0, panel.AnimateTo(sheetEnterKey{}, enterY, sheetEnterAnimation)+drop)
+		enter := panel.AnimateTo(sheetEnterKey{}, enterY, sheetEnterAnimation)
+		panel.Translate(0, enter+drop)
+		if enter != 0 {
+			// Move one bitmap of the rounded panel, as edgeEnter does.
+			panel.Cache()
+		}
 	})
 	if swipedOut {
 		close()

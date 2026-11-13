@@ -33,32 +33,33 @@ func (s *TableState) syncSort() bool {
 	return false
 }
 
-// syncDisabled rebuilds the disabled rows when the row count, the revision or
-// the presence of RowDisabled changed.
+// syncDisabled rebuilds the disabled rows and their keys when the row count,
+// the revision or the presence of RowDisabled or RowKey changed.
 func (s *TableState) syncDisabled(o *TableOptions) {
-	has := o.RowDisabled != nil
-	if s.disabledDone && s.disabledHas == has && s.disabledRows == o.Rows && s.disabledRev == s.Revision {
+	has, keyed := o.RowDisabled != nil, o.RowKey != nil
+	if s.disabledDone && s.disabledHas == has && s.disabledKeyed == keyed &&
+		s.disabledRows == o.Rows && s.disabledRev == s.Revision {
 		return
 	}
-	s.disabled = s.disabled[:0]
+	if s.disabledSet == nil {
+		s.disabledSet = map[int]struct{}{}
+		s.disabledKeys = map[any]struct{}{}
+	} else {
+		clear(s.disabledSet)
+		clear(s.disabledKeys)
+	}
 	if has {
-		if s.disabledSet == nil {
-			s.disabledSet = map[int]struct{}{}
-		} else {
-			clear(s.disabledSet)
-		}
 		for i := range o.Rows {
 			if o.RowDisabled(i) {
-				s.disabled = append(s.disabled, i)
 				s.disabledSet[i] = struct{}{}
+				s.disabledKeys[s.keyRow(o.RowKey, i)] = struct{}{}
 			}
 		}
-	} else if s.disabledSet != nil {
-		clear(s.disabledSet)
 	}
 	s.disabledRows = o.Rows
 	s.disabledRev = s.Revision
 	s.disabledHas = has
+	s.disabledKeyed = keyed
 	s.disabledDone = true
 }
 
@@ -90,11 +91,14 @@ func (s *TableState) syncOrder(o *TableOptions) {
 		s.order[i] = i
 	}
 	if o.Compare != nil && s.Sort.Column != "" {
+		// Resolve each row once: the comparator runs O(n log n) times.
+		rows := make([]TableRow, o.Rows)
+		for i := range rows {
+			rows[i] = TableRow{Index: i, Key: s.keyRow(o.RowKey, i), Disabled: s.isDisabled(i)}
+		}
 		descending := s.Sort.Descending
 		slices.SortStableFunc(s.order, func(a, b int) int {
-			ra := TableRow{Index: a, Key: s.keyRow(o.RowKey, a), Disabled: s.isDisabled(a)}
-			rb := TableRow{Index: b, Key: s.keyRow(o.RowKey, b), Disabled: s.isDisabled(b)}
-			cmp := o.Compare(ra, rb)
+			cmp := o.Compare(rows[a], rows[b])
 			if descending {
 				return -cmp
 			}
@@ -189,10 +193,7 @@ func (s *TableState) afterBuild(o *TableOptions, nativeChanged, sortChanged bool
 		}
 		restored = true
 	} else if s.Selection.Mode == TableSelectionMultiple {
-		for _, under := range s.disabled {
-			key := s.keyRow(o.RowKey, under)
-			s.Selection.Rows.Remove(key)
-		}
+		s.removeDisabledKeys()
 	}
 
 	under := s.underlying(s.Selection.Row)
@@ -224,6 +225,22 @@ func (s *TableState) afterBuild(o *TableOptions, nativeChanged, sortChanged bool
 		s.takeSnapshot()
 	}
 	return changed
+}
+
+// removeDisabledKeys takes disabled rows out of a multiple selection, walking
+// the smaller of the selection and the disabled keys.
+func (s *TableState) removeDisabledKeys() {
+	if s.Selection.Rows.Len() > len(s.disabledKeys) {
+		for key := range s.disabledKeys {
+			s.Selection.Rows.Remove(key)
+		}
+		return
+	}
+	for key := range s.Selection.Rows.All() {
+		if _, ok := s.disabledKeys[key]; ok {
+			s.Selection.Rows.Remove(key)
+		}
+	}
 }
 
 // rememberLead records the identity of the row the selection is on.

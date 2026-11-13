@@ -5,6 +5,7 @@ package chart
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 
 	"github.com/Cyenoch/mygoui"
@@ -258,6 +259,28 @@ func Brush(c *ui.Context, state *BrushState, min, max float64, disabled bool) (u
 		Label: "Range", State: form.SliderState{Low: &state.From, High: &state.To},
 		Min: min, Max: max, Disabled: disabled, HideOutput: true,
 	}), nil
+}
+
+// shapedText keeps an element's shaped labels between frames: ui.ShapeText
+// shapes anew on every call, and a chart's labels rarely change.
+type shapedText struct {
+	font    ui.Font
+	texts   []string
+	layouts []*ui.TextLayout
+}
+
+// shaped returns the layouts of texts in font, kept in e's window state under
+// key and shaped again only when the font or the texts change.
+func shaped(e ui.Element, key string, font ui.Font, texts ...string) []*ui.TextLayout {
+	s := ui.Local(e, key, func() shapedText { return shapedText{} })
+	if s.layouts == nil || s.font != font || !slices.Equal(s.texts, texts) {
+		s.font, s.texts = font, slices.Clone(texts)
+		s.layouts = make([]*ui.TextLayout, len(texts))
+		for i, text := range texts {
+			s.layouts[i] = ui.ShapeText(text, font, 0)
+		}
+	}
+	return s.layouts
 }
 
 func line(p *ui.Painter, a, b ui.Point, width float32, color ui.Color) {

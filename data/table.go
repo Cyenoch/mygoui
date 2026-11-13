@@ -91,12 +91,13 @@ type TableState struct {
 	nativeSort ui.SortOrder
 	lastSort   TableSort
 
-	disabled     []int
-	disabledSet  map[int]struct{}
-	disabledRows int
-	disabledRev  uint64
-	disabledHas  bool
-	disabledDone bool
+	disabledSet   map[int]struct{}
+	disabledKeys  map[any]struct{}
+	disabledRows  int
+	disabledRev   uint64
+	disabledHas   bool
+	disabledKeyed bool
+	disabledDone  bool
 
 	leadUnder   int
 	leadKey     any

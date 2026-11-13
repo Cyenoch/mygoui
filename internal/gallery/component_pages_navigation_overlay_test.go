@@ -121,6 +121,7 @@ func TestDrawerDemoCloseRestoresItsTrigger(t *testing.T) {
 // Elements from the build pass that made them, which panicked ("element from
 // pass N used in pass N+2") and quit the app.
 func TestToastPageDismissesWithoutExpiredPaint(t *testing.T) {
+	skipInShort(t)
 	state := New()
 	state.Selected = "toast"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)

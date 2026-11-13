@@ -241,6 +241,7 @@ func within(r ui.Rect, width float32, bar ui.TitleBar) bool {
 }
 
 func TestNativeTitleBarInsetsClearControls(t *testing.T) {
+	skipInShort(t)
 	for _, width := range []int{1180, 360} {
 		for _, scale := range []float32{1, 1.75} {
 			for _, bar := range []ui.TitleBar{

@@ -92,11 +92,14 @@ func eachSelectItem(items []list.ListBoxItem, sections []list.ListBoxSection, fn
 
 // selectChosen returns the chosen keys and labels in item order.
 func selectChosen(items []list.ListBoxItem, sections []list.ListBoxSection, s *SelectState) (keys, labels []string) {
+	// Keys are unique, so without multiple choices one row at most matches.
+	single := s.List.Selected.Len() == 0
 	eachSelectItem(items, sections, func(it *list.ListBoxItem) bool {
 		key := itemKey(it)
 		if s.List.IsSelected(key) {
 			keys = append(keys, key)
 			labels = append(labels, it.Label)
+			return !single
 		}
 		return true
 	})

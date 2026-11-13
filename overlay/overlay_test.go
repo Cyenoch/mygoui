@@ -87,6 +87,7 @@ func TestModalPreventDismiss(t *testing.T) {
 // answers the question or starts the exit, Cancel runs exactly once and gives
 // the focus back, and the copy still painting the alert answers no press.
 func TestAlertDialogKeepsItsChoiceAndIgnoresDismissal(t *testing.T) {
+	skipInShort(t)
 	var open bool
 	accepted, cancelled := 0, 0
 	tt := ui.NewTester(func(c *ui.Context) {
@@ -192,6 +193,7 @@ func TestAlertDialogActionRequiresCallbackAndHonorsDisabled(t *testing.T) {
 
 // TestDrawerEdgeGeometry checks all four edge-attached drawer placements.
 func TestDrawerEdgeGeometry(t *testing.T) {
+	skipInShort(t)
 	const winW, winH = 640, 480
 	for _, tc := range []struct {
 		name string
@@ -582,5 +584,15 @@ func TestPopoverFlyoutHostWithoutWindowStaysInWindow(t *testing.T) {
 	tt.Frame()
 	if _, ok := tt.Find("Inside"); !ok {
 		t.Fatalf("popover body is not in the window; labels=%q", tt.Texts())
+	}
+}
+
+// skipInShort leaves a rendering-heavy test out of the race run, which
+// passes -short: it drives a single goroutine, and the race detector slows
+// the software rasterizer about twentyfold.
+func skipInShort(t *testing.T) {
+	t.Helper()
+	if testing.Short() {
+		t.Skip("rendering test; skipped with -short")
 	}
 }

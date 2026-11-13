@@ -266,23 +266,49 @@ func cartesian(c *ui.Context, o CartesianOptions, kind SeriesKind, force bool) (
 }
 
 // seriesXs returns the distinct X coordinates of series in increasing order.
+// Each series is already increasing, and usually shares the X of the first.
 func seriesXs(series []Series) []float64 {
-	total := 0
-	for _, s := range series {
-		total += len(s.Points)
-	}
-	xs := make([]float64, 0, total)
-	for _, s := range series {
-		for _, pt := range s.Points {
-			xs = append(xs, pt.X)
+	var xs []float64
+	for i, s := range series {
+		if i > 0 && sameXs(xs, s.Points) {
+			continue
 		}
-	}
-	if len(series) > 1 {
-		// Each series is already increasing.
-		slices.Sort(xs)
-		xs = slices.Compact(xs)
+		xs = mergeXs(xs, s.Points)
 	}
 	return xs
+}
+
+func sameXs(xs []float64, points []Point) bool {
+	if len(xs) != len(points) {
+		return false
+	}
+	for i, pt := range points {
+		if pt.X != xs[i] {
+			return false
+		}
+	}
+	return true
+}
+
+// mergeXs merges increasing xs and the increasing X of points, once each.
+func mergeXs(xs []float64, points []Point) []float64 {
+	out := make([]float64, 0, len(xs)+len(points))
+	i, j := 0, 0
+	for i < len(xs) || j < len(points) {
+		switch {
+		case j == len(points) || (i < len(xs) && xs[i] < points[j].X):
+			out = append(out, xs[i])
+			i++
+		case i == len(xs) || points[j].X < xs[i]:
+			out = append(out, points[j].X)
+			j++
+		default:
+			out = append(out, xs[i])
+			i++
+			j++
+		}
+	}
+	return out
 }
 
 func prepareSeries(o CartesianOptions, kind SeriesKind, force bool) ([]Series, error) {
@@ -481,10 +507,14 @@ func drawSeries(p *ui.Painter, r ui.Rect, ctx PlotContext, s Series, index, coun
 	}
 	switch s.Kind {
 	case AreaSeries:
-		if len(stack) == 0 && len(xs) > int(r.W)*4 {
-			// Unstacked areas share one baseline, so the outline can thin.
-			xs, ys = native.MinMax(nil, nil, xs, ys, max(1, int(r.W)))
-			low = low[:len(xs)]
+		if columns := max(1, int(r.W)); len(xs) > int(r.W)*4 {
+			if len(stack) == 0 {
+				// Unstacked areas share one baseline, so the outline can thin.
+				xs, ys = native.MinMax(nil, nil, xs, ys, columns)
+				low = low[:len(xs)]
+			} else {
+				xs, low, ys = thinBand(xs, low, ys, columns)
+			}
 		}
 		p.FillPath(native.Area(r, xs, low, ys, o.Curve), color.Alpha(0.18))
 		p.StrokePath(native.Line(r, xs, ys, o.Curve), 2, color)
@@ -499,29 +529,7 @@ func drawSeries(p *ui.Painter, r ui.Rect, ctx PlotContext, s Series, index, coun
 			p.Fill(ui.Rect{X: a.X - 3, Y: a.Y - 3, W: 6, H: 6}, color, 3)
 		}
 	case ProfitLossSeries:
-		for i := 1; i < len(xs); i++ {
-			a, b := s.Points[i-1], s.Points[i]
-			if math.IsNaN(a.Y) || math.IsNaN(b.Y) {
-				continue
-			}
-			fill := t.Success
-			if a.Y < 0 {
-				fill = t.Destructive
-			}
-			pa, pb := point(r, xs[i-1], ys[i-1]), point(r, xs[i], ys[i])
-			if (a.Y < 0) != (b.Y < 0) {
-				zero := a.X + (b.X-a.X)*(-a.Y)/(b.Y-a.Y)
-				mid := point(r, ctx.X.At(zero), ctx.Y.At(0))
-				line(p, pa, mid, 2, fill)
-				fill = t.Success
-				if b.Y < 0 {
-					fill = t.Destructive
-				}
-				line(p, mid, pb, 2, fill)
-				continue
-			}
-			line(p, pa, pb, 2, fill)
-		}
+		drawProfitLoss(p, r, xs, ys, ctx.Y.At(0), t)
 	case ScatterSeries:
 		for i := range xs {
 			if !math.IsNaN(s.Points[i].Y) {
@@ -549,6 +557,111 @@ func drawSeries(p *ui.Painter, r ui.Rect, ctx PlotContext, s Series, index, coun
 			}
 			p.Fill(ui.Rect{X: min(a.X, b.X), Y: min(a.Y, b.Y), W: max(1, abs(a.X-b.X)), H: max(1, abs(a.Y-b.Y))}, color, 2)
 		}
+	}
+}
+
+// thinBand keeps, per pixel column, the points holding the extremes of both
+// edges of a stacked band, the ends of each defined run and one missing sample
+// between runs. Both edges keep the same points, so the band stays closed and
+// meets the bands beside it. It compacts xs, lo and hi in place: every kept
+// index is at or after the slot it moves to.
+func thinBand(xs, lo, hi []float32, columns int) ([]float32, []float32, []float32) {
+	n, out := len(xs), 0
+	keep := func(i int) {
+		xs[out], lo[out], hi[out] = xs[i], lo[i], hi[i]
+		out++
+	}
+	column := func(i int) int { return int(math.Floor(float64(xs[i]) * float64(columns))) }
+	missing := func(i int) bool { return math.IsNaN(float64(hi[i])) }
+	runStart := true
+	for i := 0; i < n; {
+		if missing(i) {
+			keep(i)
+			for i < n && missing(i) {
+				i++
+			}
+			runStart = true
+			continue
+		}
+		col := column(i)
+		minLo, maxLo, minHi, maxHi := i, i, i, i
+		j := i + 1
+		for ; j < n && !missing(j) && column(j) == col; j++ {
+			if lo[j] < lo[minLo] {
+				minLo = j
+			}
+			if lo[j] > lo[maxLo] {
+				maxLo = j
+			}
+			if hi[j] < hi[minHi] {
+				minHi = j
+			}
+			if hi[j] > hi[maxHi] {
+				maxHi = j
+			}
+		}
+		picks := [6]int{minLo, maxLo, minHi, maxHi}
+		k := 4
+		if runStart {
+			picks[k] = i
+			k++
+		}
+		if j == n || missing(j) {
+			picks[k] = j - 1
+			k++
+		}
+		slices.Sort(picks[:k])
+		for m, pick := range picks[:k] {
+			if m == 0 || pick != picks[m-1] {
+				keep(pick)
+			}
+		}
+		runStart = false
+		i = j
+	}
+	return xs[:out], lo[:out], hi[:out]
+}
+
+// drawProfitLoss strokes gains and losses as one path each, split where the
+// line crosses zero, the plot fraction y0. Dense lines thin as Line does.
+func drawProfitLoss(p *ui.Painter, r ui.Rect, xs, ys []float32, y0 float32, t theme.Palette) {
+	if len(xs) > int(r.W)*4 {
+		xs, ys = native.MinMax(nil, nil, xs, ys, max(1, int(r.W)))
+	}
+	var paths [2]ui.Path // gains, losses
+	var ends [2]ui.Point
+	var drawn [2]bool
+	add := func(loss bool, a, b ui.Point) {
+		k := 0
+		if loss {
+			k = 1
+		}
+		if !drawn[k] || ends[k] != a {
+			paths[k].MoveTo(a.X, a.Y)
+		}
+		paths[k].LineTo(b.X, b.Y)
+		ends[k], drawn[k] = b, true
+	}
+	for i := 1; i < len(xs); i++ {
+		ya, yb := ys[i-1], ys[i]
+		if math.IsNaN(float64(ya)) || math.IsNaN(float64(yb)) {
+			continue
+		}
+		pa, pb := point(r, xs[i-1], ya), point(r, xs[i], yb)
+		lossA, lossB := ya < y0, yb < y0
+		if lossA == lossB {
+			add(lossA, pa, pb)
+			continue
+		}
+		mid := point(r, xs[i-1]+(xs[i]-xs[i-1])*(y0-ya)/(yb-ya), y0)
+		add(lossA, pa, mid)
+		add(lossB, mid, pb)
+	}
+	if drawn[0] {
+		p.StrokePath(&paths[0], 2, t.Success)
+	}
+	if drawn[1] {
+		p.StrokePath(&paths[1], 2, t.Destructive)
 	}
 }
 

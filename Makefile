@@ -5,7 +5,7 @@ IMPECCABLE = .agents/skills/impeccable/scripts/impeccable
 
 .PHONY: generate check test race vet build lint wasm workflows gallery basic dev app refs agents agents-update spec-check design-context design-doctor design-artifacts
 
-# generate refreshes the gallery's API table from the library source.
+# generate refreshes the gallery's API and example tables from the source.
 generate:
 	go run ./internal/apidoc/cmd/apidoc
 
@@ -21,7 +21,7 @@ test:
 	CGO_ENABLED=0 go test ./... -count=1 -timeout=180s
 
 race:
-	CGO_ENABLED=1 go test -race -p 1 ./... -count=1 -timeout=900s
+	CGO_ENABLED=1 go test -race -short ./... -count=1 -timeout=300s
 
 build:
 	CGO_ENABLED=0 go build ./...

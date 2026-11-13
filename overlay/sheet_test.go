@@ -122,6 +122,7 @@ func TestSheetGeometry(t *testing.T) {
 }
 
 func TestSheetReopenDuringExit(t *testing.T) {
+	skipInShort(t)
 	var open bool
 	actions := 0
 	tt := ui.NewTester(func(c *ui.Context) {
@@ -183,6 +184,7 @@ func TestSheetDoesNotStrandScrimWhenDismissedDuringEntry(t *testing.T) {
 }
 
 func TestEdgeSurfacesSlideAndRetainInertExits(t *testing.T) {
+	skipInShort(t)
 	for _, tc := range []struct {
 		name       string
 		side       mygoui.Side

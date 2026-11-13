@@ -38,41 +38,92 @@ func mercator(pt GeoPoint) ui.Point {
 	return ui.Point{X: float32(pt.Longitude * math.Pi / 180), Y: float32(math.Log(math.Tan(math.Pi/4 + lat/2)))}
 }
 
-func Choropleth(c *ui.Context, o ChoroplethOptions) (ui.Element, error) {
-	if err := checkOptions(o.Options); err != nil {
-		return ui.Element{}, err
+// projectedPolygon is one polygon of a region in the projected geometry:
+// rings index ringEnds, and lo/hi bound its points.
+type projectedPolygon struct {
+	region           int
+	firstRing, rings int
+	lo, hi           ui.Point
+}
+
+// projectedMap is the Mercator geometry of a build's regions, projected once
+// so paint and hit testing only scale and offset it.
+type projectedMap struct {
+	points   []ui.Point
+	ringEnds []int
+	polygons []projectedPolygon
+	lo, hi   ui.Point
+	maxValue float64
+}
+
+// ring returns the points of ring k.
+func (m *projectedMap) ring(k int) []ui.Point {
+	start := 0
+	if k > 0 {
+		start = m.ringEnds[k-1]
 	}
+	return m.points[start:m.ringEnds[k]]
+}
+
+func projectRegions(regions []Region) (projectedMap, error) {
+	total := 0
+	for _, region := range regions {
+		for _, polygon := range region.Polygons {
+			for _, ring := range polygon.Rings {
+				total += len(ring)
+			}
+		}
+	}
+	inf := float32(math.Inf(1))
+	m := projectedMap{points: make([]ui.Point, 0, total), lo: ui.Point{X: inf, Y: inf}, hi: ui.Point{X: -inf, Y: -inf}}
 	ids := map[string]bool{}
-	loX, loY, hiX, hiY := float32(math.Inf(1)), float32(math.Inf(1)), float32(math.Inf(-1)), float32(math.Inf(-1))
-	maxValue := 0.0
-	for ri, region := range o.Regions {
+	for ri, region := range regions {
 		if region.ID == "" || ids[region.ID] || !finite(region.Value) || region.Value < 0 || len(region.Polygons) == 0 {
-			return ui.Element{}, fmt.Errorf("choropleth: invalid region %d", ri)
+			return m, fmt.Errorf("choropleth: invalid region %d", ri)
 		}
 		ids[region.ID] = true
-		maxValue = max(maxValue, region.Value)
+		m.maxValue = max(m.maxValue, region.Value)
 		for _, polygon := range region.Polygons {
 			if len(polygon.Rings) == 0 {
-				return ui.Element{}, fmt.Errorf("choropleth: region %q has an empty polygon", region.ID)
+				return m, fmt.Errorf("choropleth: region %q has an empty polygon", region.ID)
 			}
+			projected := projectedPolygon{region: ri, firstRing: len(m.ringEnds), rings: len(polygon.Rings),
+				lo: ui.Point{X: inf, Y: inf}, hi: ui.Point{X: -inf, Y: -inf}}
 			for _, ring := range polygon.Rings {
 				if len(ring) < 3 {
-					return ui.Element{}, fmt.Errorf("choropleth: region %q needs at least three ring points", region.ID)
+					return m, fmt.Errorf("choropleth: region %q needs at least three ring points", region.ID)
 				}
 				for i, pt := range ring {
 					valid := finite(pt.Longitude) && finite(pt.Latitude) && math.Abs(pt.Longitude) <= 180 && math.Abs(pt.Latitude) <= 85.0511
 					crosses := i > 0 && math.Abs(pt.Longitude-ring[i-1].Longitude) > 180
 					if !valid || crosses {
-						return ui.Element{}, fmt.Errorf("choropleth: invalid or antimeridian-crossing coordinates in %q", region.ID)
+						return m, fmt.Errorf("choropleth: invalid or antimeridian-crossing coordinates in %q", region.ID)
 					}
 					v := mercator(pt)
-					loX, hiX, loY, hiY = min(loX, v.X), max(hiX, v.X), min(loY, v.Y), max(hiY, v.Y)
+					m.points = append(m.points, v)
+					projected.lo = ui.Point{X: min(projected.lo.X, v.X), Y: min(projected.lo.Y, v.Y)}
+					projected.hi = ui.Point{X: max(projected.hi.X, v.X), Y: max(projected.hi.Y, v.Y)}
 				}
+				m.ringEnds = append(m.ringEnds, len(m.points))
 			}
+			m.polygons = append(m.polygons, projected)
+			m.lo = ui.Point{X: min(m.lo.X, projected.lo.X), Y: min(m.lo.Y, projected.lo.Y)}
+			m.hi = ui.Point{X: max(m.hi.X, projected.hi.X), Y: max(m.hi.Y, projected.hi.Y)}
 		}
 	}
-	if len(o.Regions) > 0 && (hiX <= loX || hiY <= loY) {
-		return ui.Element{}, fmt.Errorf("choropleth: geometry must have nonzero geographic extent")
+	if len(regions) > 0 && (m.hi.X <= m.lo.X || m.hi.Y <= m.lo.Y) {
+		return m, fmt.Errorf("choropleth: geometry must have nonzero geographic extent")
+	}
+	return m, nil
+}
+
+func Choropleth(c *ui.Context, o ChoroplethOptions) (ui.Element, error) {
+	if err := checkOptions(o.Options); err != nil {
+		return ui.Element{}, err
+	}
+	m, err := projectRegions(o.Regions)
+	if err != nil {
+		return ui.Element{}, err
 	}
 	zoom, panX, panY := 1.0, 0.0, 0.0
 	if v := o.Viewport; v != nil {
@@ -81,11 +132,13 @@ func Choropleth(c *ui.Context, o ChoroplethOptions) (ui.Element, error) {
 		}
 		zoom, panX, panY = max(1, v.Zoom), v.PanX, v.PanY
 	}
-	transform := func(r ui.Rect, pt GeoPoint) ui.Point {
-		projected := mercator(pt)
-		scale := min(r.W/(hiX-loX), r.H/(hiY-loY)) * .92 * float32(zoom)
-		return ui.Point{X: r.X + r.W/2 + (projected.X-(loX+hiX)/2)*scale + float32(panX)*r.W,
-			Y: r.Y + r.H/2 - (projected.Y-(loY+hiY)/2)*scale + float32(panY)*r.H}
+	// view maps projected points into r: screen = origin + projected*scale,
+	// with y flipped.
+	view := func(r ui.Rect) (origin ui.Point, scale float32) {
+		scale = min(r.W/(m.hi.X-m.lo.X), r.H/(m.hi.Y-m.lo.Y)) * .92 * float32(zoom)
+		origin = ui.Point{X: r.X + r.W/2 - (m.lo.X+m.hi.X)/2*scale + float32(panX)*r.W,
+			Y: r.Y + r.H/2 + (m.lo.Y+m.hi.Y)/2*scale + float32(panY)*r.H}
+		return origin, scale
 	}
 	t := theme.Colors(c)
 	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8)
@@ -107,46 +160,46 @@ func Choropleth(c *ui.Context, o ChoroplethOptions) (ui.Element, error) {
 		surface(c, o.Options, len(o.Regions), func(i int) string {
 			return o.Regions[i].Label + ": " + number(o.Regions[i].Value)
 		}, func(p *ui.Painter, r ui.Rect, selected int) {
-			for i, region := range o.Regions {
-				fill := t.Chart1.Alpha(.2 + .8*float32(region.Value/max(1, maxValue)))
-				if selected == i {
+			origin, scale := view(r)
+			for _, polygon := range m.polygons {
+				fill := t.Chart1.Alpha(.2 + .8*float32(o.Regions[polygon.region].Value/max(1, m.maxValue)))
+				if selected == polygon.region {
 					fill = t.Chart2
 				}
-				for _, polygon := range region.Polygons {
-					path := &ui.Path{}
-					for _, ring := range polygon.Rings {
-						for j, pt := range ring {
-							v := transform(r, pt)
-							if j == 0 {
-								path.MoveTo(v.X, v.Y)
-							} else {
-								path.LineTo(v.X, v.Y)
-							}
+				path := &ui.Path{}
+				for k := polygon.firstRing; k < polygon.firstRing+polygon.rings; k++ {
+					for j, v := range m.ring(k) {
+						x, y := origin.X+v.X*scale, origin.Y-v.Y*scale
+						if j == 0 {
+							path.MoveTo(x, y)
+						} else {
+							path.LineTo(x, y)
 						}
-						path.Close()
 					}
-					p.FillPath(path, fill)
-					p.StrokePath(path, 1, t.Background)
+					path.Close()
 				}
+				p.FillPath(path, fill)
+				p.StrokePath(path, 1, t.Background)
 			}
 		}, func(x, y float32) int {
 			bounds := o.State.Handle.Bounds(c)
-			r := ui.Rect{W: bounds.W, H: bounds.H}
-			for i := len(o.Regions) - 1; i >= 0; i-- {
-				for _, polygon := range o.Regions[i].Polygons {
-					inside := false
-					for _, ring := range polygon.Rings {
-						points := make([]ui.Point, len(ring))
-						for j, pt := range ring {
-							points[j] = transform(r, pt)
-						}
-						if polygonContains(points, x*r.W, y*r.H) {
-							inside = !inside
-						}
+			origin, scale := view(ui.Rect{W: bounds.W, H: bounds.H})
+			// The pointer in projected coordinates; the mapping is affine, so
+			// containment is the same as on screen.
+			at := ui.Point{X: (x*bounds.W - origin.X) / scale, Y: (origin.Y - y*bounds.H) / scale}
+			for i := len(m.polygons) - 1; i >= 0; i-- {
+				polygon := m.polygons[i]
+				if at.X < polygon.lo.X || at.X > polygon.hi.X || at.Y < polygon.lo.Y || at.Y > polygon.hi.Y {
+					continue
+				}
+				inside := false
+				for k := polygon.firstRing; k < polygon.firstRing+polygon.rings; k++ {
+					if polygonContains(m.ring(k), at.X, at.Y) {
+						inside = !inside
 					}
-					if inside {
-						return i
-					}
+				}
+				if inside {
+					return polygon.region
 				}
 			}
 			return -1

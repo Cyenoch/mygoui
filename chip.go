@@ -79,7 +79,7 @@ func Chip(c *ui.Context, o ChipOptions) ui.Element {
 // default foreground for its secondary and tertiary variants.
 func chipColors(c *ui.Context, color StatusColor, variant ChipVariant) (bg, fg ui.Color) {
 	t := theme.Colors(c)
-	p := StatusColors(c, color)
+	p := statusColors(&t, color)
 	switch variant {
 	case ChipPrimary:
 		return p.Solid, p.SolidForeground

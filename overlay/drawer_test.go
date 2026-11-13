@@ -193,6 +193,7 @@ func drawerSwipe(tt *ui.Tester, x, y, dx, dy float32) {
 }
 
 func TestDrawerSwipeDirectionThresholdAndFocus(t *testing.T) {
+	skipInShort(t)
 	for _, tc := range []struct {
 		name string
 		side DrawerSide
@@ -368,6 +369,7 @@ func TestDrawerSwipeFromInset(t *testing.T) {
 }
 
 func TestDrawerSwipeFadesDefaultBackdrop(t *testing.T) {
+	skipInShort(t)
 	tt, f := newDrawerSwipeFixture(t, DrawerRight, false, false)
 	rest := f.panel
 	beforeImage := tt.Image()
@@ -398,6 +400,7 @@ func TestDrawerSwipeFadesDefaultBackdrop(t *testing.T) {
 }
 
 func TestDrawerSwipePreventionAnimatesBackAndCanBeCaught(t *testing.T) {
+	skipInShort(t)
 	tt, f := newDrawerSwipeFixture(t, DrawerRight, true, false)
 	rest := f.panel
 	x, y, dx, dy := drawerSwipeStart(DrawerRight, rest)
@@ -428,6 +431,7 @@ func TestDrawerSwipePreventionAnimatesBackAndCanBeCaught(t *testing.T) {
 }
 
 func TestDrawerSwipeExitSnapshotIsInert(t *testing.T) {
+	skipInShort(t)
 	tt, f := newDrawerSwipeFixture(t, DrawerRight, false, false)
 	rest := f.panel
 	x, y, dx, dy := drawerSwipeStart(DrawerRight, rest)
@@ -461,6 +465,7 @@ func TestDrawerSwipeExitSnapshotIsInert(t *testing.T) {
 }
 
 func TestDrawerReopensDuringSwipeExit(t *testing.T) {
+	skipInShort(t)
 	tt, f := newDrawerSwipeFixture(t, DrawerRight, false, false)
 	rest := f.panel
 	x, y, dx, dy := drawerSwipeStart(DrawerRight, rest)
@@ -492,6 +497,7 @@ func TestDrawerReopensDuringSwipeExit(t *testing.T) {
 }
 
 func TestDrawerBodyScrollAndControlsDoNotSwipe(t *testing.T) {
+	skipInShort(t)
 	var open bool
 	var panel ui.Rect
 	actions := 0

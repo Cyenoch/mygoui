@@ -59,6 +59,7 @@ func Skeleton(c *ui.Context, o SkeletonOptions) ui.Element {
 		{Color: ui.RGBA(255, 255, 255, peak), At: 0.5},
 		{Color: ui.Transparent, At: 0.6},
 	}
+	surface := t.Surface
 	e.DrawOver(func(p *ui.Painter, r ui.Rect) {
 		if r.W <= 0 || r.H <= 0 {
 			return
@@ -67,7 +68,7 @@ func Skeleton(c *ui.Context, o SkeletonOptions) ui.Element {
 		switch o.Animation {
 		case SkeletonPulse:
 			k := 1 - float32(math.Abs(float64(2*phase-1)))
-			p.Fill(r, t.Surface.Alpha(0.5*ui.EaseInOut(k)), radius)
+			p.Fill(r, surface.Alpha(0.5*ui.EaseInOut(k)), radius)
 		default:
 			box := skeletonGradientBox(windowWidth, windowHeight, phase)
 			p.Clip(r, radius, func() {

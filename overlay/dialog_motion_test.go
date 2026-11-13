@@ -72,6 +72,7 @@ func TestRedMarkerBoundsRejectsSubpixelGlyphs(t *testing.T) {
 }
 
 func TestResponsiveDialogMotion(t *testing.T) {
+	skipInShort(t)
 	for _, kind := range []string{"dialog", "alert"} {
 		for _, tc := range []struct {
 			name   string
@@ -169,6 +170,7 @@ func TestResponsiveDialogMotion(t *testing.T) {
 }
 
 func TestResponsiveDialogDismissDuringEntry(t *testing.T) {
+	skipInShort(t)
 	for _, kind := range []string{"dialog", "alert"} {
 		for _, width := range []int{320, 800} {
 			name := "mobile"
@@ -235,6 +237,7 @@ func TestResponsiveDialogDismissDuringEntry(t *testing.T) {
 }
 
 func TestResponsiveDialogDesktopExitScalesAroundPanel(t *testing.T) {
+	skipInShort(t)
 	for _, kind := range []string{"dialog", "alert"} {
 		t.Run(kind, func(t *testing.T) {
 			var open bool
@@ -276,6 +279,7 @@ func TestResponsiveDialogDesktopExitScalesAroundPanel(t *testing.T) {
 }
 
 func TestResponsiveDialogReopensAfterInterruptedEntry(t *testing.T) {
+	skipInShort(t)
 	for _, kind := range []string{"dialog", "alert"} {
 		for _, width := range []int{320, 800} {
 			name := "mobile"
@@ -325,6 +329,7 @@ func TestResponsiveDialogReopensAfterInterruptedEntry(t *testing.T) {
 }
 
 func TestResponsiveDialogRecloseWhileReturning(t *testing.T) {
+	skipInShort(t)
 	for _, kind := range []string{"dialog", "alert"} {
 		t.Run(kind, func(t *testing.T) {
 			var open bool
@@ -385,6 +390,7 @@ func TestResponsiveDialogRecloseWhileReturning(t *testing.T) {
 }
 
 func TestResponsiveDialogExternalCloseAfterReopen(t *testing.T) {
+	skipInShort(t)
 	for _, kind := range []string{"dialog", "alert"} {
 		for _, delay := range []time.Duration{0, 20 * time.Millisecond, dialogMotionDuration / 4} {
 			t.Run(kind+"/"+delay.String(), func(t *testing.T) {
@@ -445,6 +451,7 @@ func TestResponsiveDialogExternalCloseAfterReopen(t *testing.T) {
 }
 
 func TestResponsiveDialogDesktopRecloseWhileReturning(t *testing.T) {
+	skipInShort(t)
 	for _, kind := range []string{"dialog", "alert"} {
 		t.Run(kind, func(t *testing.T) {
 			var open bool
@@ -590,6 +597,7 @@ func TestResponsiveDialogBackdropDuringEntry(t *testing.T) {
 }
 
 func TestResponsiveDialogResizesAndReopensDuringExit(t *testing.T) {
+	skipInShort(t)
 	for _, kind := range []string{"dialog", "alert"} {
 		t.Run(kind, func(t *testing.T) {
 			var open bool

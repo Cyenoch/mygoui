@@ -161,6 +161,7 @@ func TestDefaultSegmentedControlIsIndependent(t *testing.T) {
 }
 
 func TestEveryPageRoutesThroughNativeNavigation(t *testing.T) {
+	skipInShort(t)
 	for _, width := range []int{640, 1180} {
 		for _, page := range Pages() {
 			t.Run(fmt.Sprintf("%d/%s", width, page.ID), func(t *testing.T) {
@@ -230,6 +231,7 @@ func TestCossCanonicalTokenResolver(t *testing.T) {
 }
 
 func TestCossExamplesUseNativeInputAndCallerState(t *testing.T) {
+	skipInShort(t)
 	for _, width := range []int{640, 1180} {
 		newPage := func(t *testing.T, id string) (*State, *ui.Tester, func(string)) {
 			s := New()

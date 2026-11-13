@@ -115,6 +115,7 @@ func TestModalBackdrops(t *testing.T) {
 }
 
 func TestCOSSFooterFullBleed(t *testing.T) {
+	skipInShort(t)
 	for _, kind := range []string{"dialog", "alert", "sheet", "drawer"} {
 		for _, dark := range []bool{false, true} {
 			name := kind + "/light"

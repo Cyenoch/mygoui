@@ -38,7 +38,7 @@ type AvatarOptions struct {
 func Avatar(c *ui.Context, o AvatarOptions) ui.Element {
 	t := theme.Colors(c)
 	size, radius, ts := avatarMetrics(c, o.Size)
-	status := StatusColors(c, o.Color)
+	status := statusColors(&t, o.Color)
 	bg := t.Border
 	if o.Soft {
 		bg = status.Soft

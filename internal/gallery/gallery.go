@@ -219,7 +219,9 @@ func pageGroups(list []Page) []pageGroup {
 // the sidebar and the compact navigation sheet. Groups never collapse, so
 // the list does not change height while browsing.
 func pageList(c *ui.Context, s *State, choose func(Page)) {
-	groups := pageGroups(filterPagesInOrder(s.filterPages()))
+	groups := s.sidebarGroups.of(s.Search, func() []pageGroup {
+		return pageGroups(filterPagesInOrder(s.filterPages()))
+	})
 	ui.Column(c).FillWidth().Gap(theme.Space16).Children(func() {
 		if len(groups) == 0 {
 			ui.Row(c).Padding(theme.Space8).Children(func() {

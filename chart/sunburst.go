@@ -126,10 +126,8 @@ func Sunburst(c *ui.Context, o SunburstOptions) (ui.Element, error) {
 		}
 	}
 	t := theme.Colors(c)
+	// The draw callback runs after the build, once the total is shaped.
 	var totalLabel *ui.TextLayout
-	if focus != nil {
-		totalLabel = ui.ShapeText(number(sums[focus.ID]), ui.Font{Family: theme.FontFamily(c), Size: theme.Scale(c, 12), Features: "tnum"}, 0)
-	}
 	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8).Children(func() {
 		if focus != nil && o.Drill != nil {
 			ancestors := []*HierarchyNode{}
@@ -144,7 +142,7 @@ func Sunburst(c *ui.Context, o SunburstOptions) (ui.Element, error) {
 				}
 			})
 		}
-		surface(c, o.Options, len(segments), func(i int) string { return segments[i].node.Label + ": " + number(segments[i].value) },
+		area := surface(c, o.Options, len(segments), func(i int) string { return segments[i].node.Label + ": " + number(segments[i].value) },
 			func(p *ui.Painter, r ui.Rect, selected int) {
 				cx, cy, radius := circle(r)
 				step := radius * .8 / float32(maxDepth)
@@ -180,5 +178,9 @@ func Sunburst(c *ui.Context, o SunburstOptions) (ui.Element, error) {
 				}
 				return -1
 			})
+		if focus != nil {
+			font := ui.Font{Family: theme.FontFamily(c), Size: theme.Scale(c, 12), Features: "tnum"}
+			totalLabel = shaped(area, "chart.sunburst.total", font, number(sums[focus.ID]))[0]
+		}
 	}), nil
 }
