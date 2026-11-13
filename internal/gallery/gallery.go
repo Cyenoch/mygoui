@@ -30,13 +30,16 @@ func View(c *ui.Context, s *State) {
 	overlaysStateOf(s).toasts.View(c)
 	t := theme.Colors(c)
 	compact := docsCompact(c)
-	sidebarOpen := !compact && !s.SidebarClosed
-	if !compact {
-		// The sheet exists only in compact layouts; do not reopen it later.
+	sidebarOpen := sidebarShown(c, s)
+	// The landing page has no sidebar, so it navigates through the sheet as
+	// compact layouts do.
+	sheet := compact || isLanding(s)
+	if !sheet {
+		// Do not reopen the sheet when it comes back later.
 		s.NavOpen = false
 	}
 	c.OnShortcut(ui.Cmd, ui.KeyK, func() {
-		if compact {
+		if sheet {
 			s.NavOpen = true
 		} else {
 			s.SidebarClosed = false
@@ -50,7 +53,7 @@ func View(c *ui.Context, s *State) {
 		}
 		content(c, s, compact, sidebarOpen)
 	})
-	if compact {
+	if sheet {
 		navigationSheet(c, s)
 	}
 }
@@ -333,7 +336,6 @@ func shortcutKeys() []string {
 func selectPage(s *State, page Page) {
 	s.Selected = page.ID
 	s.Content.Y = 0
-	s.Panel = 0
 	s.NavOpen = false
 }
 
@@ -361,12 +363,17 @@ func content(c *ui.Context, s *State, compact, sidebarOpen bool) {
 	t := theme.Colors(c)
 	ui.Column(c.Key("workbench")).Grow(1).Basis(0).MinWidth(0).FillHeight().Children(func() {
 		pageHeader(c, s, compact, sidebarOpen)
-		mygoui.ScrollArea(c.Key("workbench-content"), &s.Content, mygoui.ScrollAreaOptions{
-			Axis: mygoui.ScrollVertical, Label: "Component content",
-			Fade: &mygoui.ScrollFadeOptions{
-				Mode: mygoui.SurfaceFade, Edges: mygoui.FadeBottom, Surface: t.Background,
-			},
-		}, func() { docsPageColumn(c, s) }).Grow(1).Basis(0).MinHeight(0)
+		ui.Row(c).FillWidth().Grow(1).Basis(0).MinHeight(0).Children(func() {
+			mygoui.ScrollArea(c.Key("workbench-content"), &s.Content, mygoui.ScrollAreaOptions{
+				Axis: mygoui.ScrollVertical, Label: "Component content",
+				Fade: &mygoui.ScrollFadeOptions{
+					Mode: mygoui.SurfaceFade, Edges: mygoui.FadeBottom, Surface: t.Background,
+				},
+			}, func() { docsPageColumn(c, s) }).Grow(1).Basis(0).MinWidth(0).FillHeight()
+			if page, ok := indexedPage(c, s); ok {
+				docsIndex(c, s, page)
+			}
+		})
 	})
 }
 
@@ -390,8 +397,12 @@ func pageHeader(c *ui.Context, s *State, compact, sidebarOpen bool) {
 		Padding(top, right, 0, left).AlignItems(ui.Center).Gap(theme.Space8).
 		BorderWidth(0, 0, theme.Hairline, 0).BorderColor(t.Border).Label("Gallery title bar").
 		Children(func() {
-			navigationToggle(c, s, compact)
-			breadcrumb(c, s, compact)
+			if isLanding(s) && !compact {
+				landingNavigation(c, s)
+			} else {
+				navigationToggle(c, s, compact)
+				breadcrumb(c, s, compact)
+			}
 			services := c.Services()
 			mygoui.Button(c, mygoui.ButtonOptions{
 				Label: "GitHub", Icon: lucide.Github(), IconOnly: true,
@@ -400,6 +411,35 @@ func pageHeader(c *ui.Context, s *State, compact, sidebarOpen bool) {
 			}).Shrink(0).AlignSelf(ui.Center)
 			appearanceButton(c, s)
 		})
+}
+
+// landingNavigation is the landing page's title bar: the brand, the ways
+// into the catalog and search, in place of the sidebar.
+func landingNavigation(c *ui.Context, s *State) {
+	ui.Row(c).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Gap(theme.Space4).Children(func() {
+		ui.Row(c).Shrink(0).Padding(0, theme.Space12, 0, theme.Space4).Children(func() { brand(c) })
+		for _, link := range [...]struct{ label, page string }{
+			{"Components", "button"}, {"Theming", "theming"},
+		} {
+			mygoui.Button(c.Key(link.page), mygoui.ButtonOptions{
+				Label: link.label, Variant: mygoui.ButtonGhost, Size: theme.ButtonSmall,
+				OnClick: func() {
+					if page, ok := pageFor(link.page); ok {
+						selectPage(s, page)
+					}
+				},
+			}).Shrink(0)
+		}
+		ui.Row(c).Grow(1)
+		mygoui.Button(c, mygoui.ButtonOptions{
+			Label: "Search components", Icon: lucide.Search(), IconOnly: true,
+			Variant: mygoui.ButtonGhost, Size: theme.ButtonSmall,
+			OnClick: func() {
+				s.NavOpen = true
+				s.SearchFocus.Focus(c)
+			},
+		}).Shrink(0)
+	})
 }
 
 // breadcrumb names where the page sits; compact widths keep the title only.

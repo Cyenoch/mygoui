@@ -70,8 +70,9 @@ custom title bar reads `c.TitleBar()` for actual left/right system control
 insets, keeps draggable content regions, and uses native macOS traffic lights.
 The sidebar's top row reserves the leading insets; the page title bar reserves
 the trailing ones (and the leading ones when the sidebar is hidden). A grouped
-sidebar, Cmd/Ctrl+K search and Preview/Code/API/Tokens views share
-window-owned component state. Compact layouts preserve focus rather
+sidebar, Cmd/Ctrl+K search and one document per component share
+window-owned component state; each example switches between its preview and
+its source, and the reference is generated from the library (`make generate`). Compact layouts preserve focus rather
 than rebuilding a second application shell. Dialog owns the Modal size
 examples; Drawer owns the native floating BottomSheet examples. Their Go APIs
 remain available, without duplicate top-level Gallery pages.

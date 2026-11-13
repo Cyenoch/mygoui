@@ -61,7 +61,6 @@ func TestThemeTokenCardsShowValuesAndRoles(t *testing.T) {
 	for _, size := range []struct{ width, height int }{{1100, 900}, {640, 900}} {
 		state := New()
 		state.Selected = "button"
-		state.Panel = 3
 		var page float32
 		tt := ui.NewTester(func(c *ui.Context) {
 			page = pageWidth(c, state)
@@ -145,7 +144,6 @@ func TestThemeTokenCardsShowValuesAndRoles(t *testing.T) {
 func TestThemeTokenCardsMarkCustomTokens(t *testing.T) {
 	state := New()
 	state.Selected = "card"
-	state.Panel = 3
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1100, 900)
 	tt.Frame()
 	light := theme.ColorsForMode(false)

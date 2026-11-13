@@ -90,7 +90,6 @@ type State struct {
 	// SystemFontOnly records that Cal Sans could not be registered, as in
 	// browsers: the gallery uses the system font and offers no font choice.
 	SystemFontOnly bool
-	Panel          int
 	SearchFocus    ui.Handle
 	Sidebar        ui.ScrollState
 	Content        ui.ScrollState

@@ -179,23 +179,21 @@ var summary string`
 	return ""
 }
 
-// TestCodeBlockCopyControl pins the compact header and the copy feedback: the
-// header stays 40 DIP or shorter, Copy writes the untouched snippet, the
+// TestCodeBlockCopyControl pins the corner copy control and its feedback:
+// it sits inside the listing, Copy writes the untouched snippet, the
 // button reports Copied, and it reverts after the feedback window.
 func TestCodeBlockCopyControl(t *testing.T) {
 	const code = "package main\n\nfunc main() {\n\tprintln(\"hi\")\n}\n"
 	p := ComponentPage{ID: "copyblock", Title: "Copy block", Group: "Foundations", Code: code}
 	state := New()
-	state.Panel = 1
 	tt := ui.NewTester(func(c *ui.Context) { buildComponentPage(c, state, p) }, 700, 700)
 	tt.Frame()
 
-	header, ok := tt.Find("Go code header")
-	if !ok || header.W <= 0 || header.H <= 0 || header.H > 40 {
-		t.Fatalf("code header is not compact (rect %+v)", header)
-	}
-	if _, ok := tt.Find("Copy code"); !ok {
-		t.Fatal("code header has no Copy code button")
+	block, _ := tt.Find("Go code")
+	button, ok := tt.Find("Copy code")
+	if !ok || button.Y < block.Y || button.Y+button.H > block.Y+block.H ||
+		button.X+button.W > block.X+block.W || button.X < block.X+block.W/2 {
+		t.Fatalf("Copy code %+v is not in the top corner of the listing %+v", button, block)
 	}
 	if err := tt.Click("Copy code"); err != nil {
 		t.Fatal(err)
@@ -229,7 +227,6 @@ func TestCodeBlockHugsSnippet(t *testing.T) {
 	}, "\n")
 	p := ComponentPage{ID: "hugblock", Title: "Hug block", Group: "Foundations", Code: code}
 	state := New()
-	state.Panel = 1
 	tt := ui.NewTester(func(c *ui.Context) { buildComponentPage(c, state, p) }, 700, 700)
 	tt.Frame()
 	block, ok := tt.Find("Go code")

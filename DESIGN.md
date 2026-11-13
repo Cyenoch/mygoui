@@ -126,8 +126,9 @@ Controls keep native keyboard, selection and focus behavior.
 
 The gallery owns its application layout: a full-height sidebar whose top row
 shares the native title bar, a page title bar of the same height, and a
-left-aligned content column where title, view switch and examples share one
-edge. Transient controls (appearance, compact navigation) open as overlays,
+left-aligned content column where title, sections and examples share one
+edge, with a page index beside it on wide windows. The landing page drops the
+sidebar for a centered column. Transient controls (appearance, compact navigation) open as overlays,
 never as inserted rows. Its scaled compact threshold, content cap
 and gutters come from `internal/gallery/docs_layout.go`; its surface brief
 records the workflow. Enlarged text and short windows must leave actions

@@ -3,7 +3,11 @@ MYGO = go tool mygo
 OPENSPEC = node scripts/openspec.mjs
 IMPECCABLE = .agents/skills/impeccable/scripts/impeccable
 
-.PHONY: check test race vet build lint wasm workflows gallery basic dev app refs agents agents-update spec-check design-context design-doctor design-artifacts
+.PHONY: generate check test race vet build lint wasm workflows gallery basic dev app refs agents agents-update spec-check design-context design-doctor design-artifacts
+
+# generate refreshes the gallery's API table from the library source.
+generate:
+	go run ./internal/apidoc/cmd/apidoc
 
 check: vet test build
 	@test -z "$$(gofmt -l .)"

@@ -1,7 +1,6 @@
 package gallery
 
 import (
-	"fmt"
 	"regexp"
 	"sort"
 	"strconv"
@@ -25,17 +24,17 @@ type ComponentParam struct {
 // ComponentExample is one named demo under a page's Examples section, such as
 // "Variants" or "With Icons". Its title and description render outside its
 // own bordered panel. Examples share the page's State and StateOf buckets, so
-// a follow-up split must give each demo its own keys if their state must not
-// interact. The page keeps one Code snippet today; per-example code is not
-// modeled yet.
+// demos whose state must not interact need their own keys. An example's Code
+// view shows the source of its Demo, read from the page files.
 type ComponentExample struct {
 	Title, Description string
 	Demo               func(c *ui.Context, s *State)
 }
 
 // ComponentPage is one component's documentation page, shaped like a Coss
-// docs page: live demos, a Go usage snippet, its usable parameters and the
-// theme tokens it consumes. Examples split demos into named frames.
+// docs page: live demos with their source, a Go usage snippet, the API of
+// the option types that snippet names and the theme tokens it consumes.
+// Params supply the defaults and descriptions the Go source does not carry.
 type ComponentPage struct {
 	ID, Title, Group, Description string
 	Order                         int
@@ -141,39 +140,6 @@ func RegisterComponent(p ComponentPage) {
 	})
 }
 
-// buildComponentPage shows one workbench view while keeping the page's
-// examples, source and reference data together.
-func buildComponentPage(c *ui.Context, s *State, p ComponentPage) ui.Element {
-	chrome := docsChromeOf(s, p.ID)
-	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space16)).
-		Children(func() {
-			switch s.Panel {
-			case 1:
-				ui.Row(c).FillWidth().Wrap().Gap(theme.Space8).AlignItems(ui.Center).Children(func() {
-					docsCopyPill(c, &chrome.MarkdownCopiedAt, "Copy Markdown", lucide.FileText(),
-						func() string { return markdownDoc(p) })
-					docsCopyPill(c, &chrome.ImportCopiedAt, "Copy import", lucide.Code(),
-						func() string { return p.importStatement() })
-					if url := sourceURL(p.ID); url != "" {
-						services := c.Services()
-						mygoui.Link(c, mygoui.LinkOptions{
-							Label: referenceLabel(p.ID), Icon: lucide.ExternalLink(),
-							OnClick: func() { services.OpenURL(url) },
-						}).AlignSelf(ui.Center)
-					}
-				})
-				commandBar(c, &chrome.UsageCopiedAt, "Usage import", "Copy import line", p.importStatement())
-				panel(c, func() { exampleCode(c, s, p) })
-			case 2:
-				apiTable(c, s, p.Params)
-			case 3:
-				tokenCards(c, s, p.Tokens)
-			default:
-				examplePanel(c, s, p)
-			}
-		})
-}
-
 // docsCopyPill copies text and confirms in place: the label slot reserves
 // the wider of its label and "Copied", so feedback does not move the row.
 func docsCopyPill(c *ui.Context, at *time.Time, label string, icon *ui.SVG, text func() string) {
@@ -251,28 +217,6 @@ func demoPanel(c *ui.Context, label string, body func()) ui.Element {
 	return panel
 }
 
-// exampleFrame keeps each live specimen in its own keyed surface.
-func exampleFrame(c *ui.Context, s *State, example ComponentExample) ui.Element {
-	return ui.Column(c.Key(example.Title)).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space8)).
-		Children(func() {
-			mygoui.Typography(c, example.Title, mygoui.TypographyOptions{Type: theme.TypeH5})
-			demoPanel(c, "Example panel: "+example.Title, func() {
-				if example.Demo != nil {
-					example.Demo(c, s)
-				}
-			})
-		})
-}
-
-// examplePanel renders all live examples, including off-screen scroll content.
-func examplePanel(c *ui.Context, s *State, p ComponentPage) ui.Element {
-	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space24)).Children(func() {
-		for _, example := range p.Examples {
-			exampleFrame(c, s, example)
-		}
-	})
-}
-
 // panel is a Coss documentation surface: 16 DIP padding, 12 DIP radius,
 // a hairline border and the page surface.
 func panel(c *ui.Context, body func()) ui.Element {
@@ -283,38 +227,11 @@ func panel(c *ui.Context, body func()) ui.Element {
 		BorderColor(t.Border).Children(body)
 }
 
-// markdownDoc renders a component page as a Markdown document for the
-// "Copy Markdown" action.
-func markdownDoc(p ComponentPage) string {
-	var b strings.Builder
-	fmt.Fprintf(&b, "# %s\n\n%s\n", p.Title, p.Description)
-	if url := sourceURL(p.ID); url != "" {
-		fmt.Fprintf(&b, "\n[%s](%s)\n", referenceLabel(p.ID), url)
-	} else {
-		b.WriteString("\nNative addition.\n")
-	}
-	if code := strings.TrimSpace(p.Code); code != "" {
-		fmt.Fprintf(&b, "\n## Usage\n\n```go\n%s\n```\n", code)
-	}
-	if len(p.Params) > 0 {
-		b.WriteString("\n## API Reference\n\n| Name | Type | Default | Description |\n")
-		b.WriteString("| --- | --- | --- | --- |\n")
-		for _, param := range p.Params {
-			fmt.Fprintf(&b, "| %s | %s | %s | %s |\n",
-				mdCell(param.Name), mdCell(param.Type), mdCell(param.Default), mdCell(param.Description))
-		}
-	}
-	if len(p.Tokens) > 0 {
-		b.WriteString("\n## Theme tokens\n\n")
-		for _, token := range p.Tokens {
-			role := tokenRoles[token]
-			if role == "" {
-				role = "Theme token."
-			}
-			fmt.Fprintf(&b, "- `%s` — %s\n", token, role)
-		}
-	}
-	return b.String()
+// tablePanel is the docs surface around rows that carry their own vertical
+// padding.
+func tablePanel(c *ui.Context, body func()) ui.Element {
+	side := theme.Scale(c, theme.Space16)
+	return panel(c, body).Padding(theme.Scale(c, theme.Space4), side, theme.Scale(c, theme.Space4), side)
 }
 
 // mdCell keeps a Markdown table cell on one row.
@@ -323,87 +240,110 @@ func mdCell(text string) string {
 	return strings.ReplaceAll(text, "\n", " ")
 }
 
-// exampleCode is the code area of the Examples panel: a compact header with
-// an icon-only copy control, a line-number gutter and highlighted lines that
-// scroll horizontally. Long snippets can fold to six lines under a fade.
-func exampleCode(c *ui.Context, s *State, p ComponentPage) {
-	code := strings.TrimRight(p.Code, "\n")
+// codeBlockOptions describes one listing. Key names its retained scroll,
+// fold, copy and highlight state. Label and CopyLabel default to "Go code"
+// and "Copy code". Numbered adds the line-number gutter. Plain leaves text
+// that is not Go, such as a shell command, uncoloured.
+type codeBlockOptions struct {
+	Key, Code        string
+	Label, CopyLabel string
+	Numbered, Plain  bool
+}
+
+// codeBlock is one highlighted listing on the docs surface: lines that
+// scroll sideways rather than wrap, an optional line-number gutter and a
+// copy control floating in its top corner. Long listings can fold to six
+// lines under a fade.
+func codeBlock(c *ui.Context, s *State, o codeBlockOptions) {
+	code := strings.TrimRight(o.Code, "\n")
 	if strings.TrimSpace(code) == "" {
 		return
 	}
+	label, copyLabel := o.Label, o.CopyLabel
+	if label == "" {
+		label = "Go code"
+	}
+	if copyLabel == "" {
+		copyLabel = "Copy code"
+	}
 	t := theme.Colors(c)
-	lines := strings.Split(code, "\n")
-	long := len(lines) > codeCollapseLines
-	st := StateOf[codeScrollState](s, "code:"+p.ID)
-	visible := lines
+	st := StateOf[codeScrollState](s, "code:"+o.Key)
+	if colors := goColorsOf(t); st.lines == nil || st.code != code || st.colors != colors {
+		st.code, st.colors, st.lines = code, colors, st.lines[:0]
+		for _, line := range strings.Split(code, "\n") {
+			if o.Plain {
+				st.lines = append(st.lines, []ui.Span{{Text: line}})
+				continue
+			}
+			st.lines = append(st.lines, goSpans(colors, line))
+		}
+	}
+	long := len(st.lines) > codeCollapseLines
+	visible := st.lines
 	collapsed := long && st.Collapsed
 	if collapsed {
-		visible = lines[:codeCollapseLines]
+		visible = st.lines[:codeCollapseLines]
 	}
-	ui.Column(c).FillWidth().MinWidth(0).Label("Go code").Children(func() {
-		ui.Row(c).FillWidth().MinWidth(0).MinHeight(theme.Scale(c, 40)).
-			AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(theme.Scale(c, theme.Space8)).
-			Padding(0, theme.Scale(c, 10), 0, theme.Scale(c, theme.Space16)).
-			BorderWidth(0, 0, theme.Hairline, 0).BorderColor(t.Border).
-			Label("Go code header").Children(func() {
-			mygoui.Typography(c, "Go", mygoui.TypographyOptions{
-				Type: theme.TypeBodyXS, Weight: theme.WeightMedium,
-			})
-			copyIconButton(c, &st.CopiedAt, "Copy code", func() string { return p.Code })
-		})
-		body := ui.Column(c).FillWidth().MinWidth(0).Clip()
-		body.Children(func() {
-			bottom := theme.Scale(c, theme.Space16)
-			if collapsed {
-				bottom = theme.Scale(c, theme.Space32)
-			}
-			ui.ScrollHorizontal(c).TrackScroll(&st.Scroll).MinWidth(0).Children(func() {
-				ui.Column(c).Shrink(0).
-					Padding(theme.Scale(c, theme.Space16), theme.Scale(c, theme.Space16),
-						bottom, theme.Scale(c, theme.Space16)).
-					Children(func() {
-						for i, line := range visible {
-							codeRow(c, i+1, line)
-						}
-					})
-			})
-			if collapsed {
-				fade := ui.Row(c).Absolute().Left(0).Right(0).Bottom(0).
-					Height(theme.Scale(c, 56))
-				fade.Draw(func(painter *ui.Painter, r ui.Rect) {
-					clear := t.Surface
-					clear.A = 0
-					painter.FillGradient(r, ui.LinearGradient{
-						Angle: 180,
-						Stops: []ui.GradientStop{{Color: clear, At: 0}, {Color: t.Surface, At: 1}},
-					}, 0)
+	pad := theme.Scale(c, theme.Space16)
+	ui.Column(c).FillWidth().MinWidth(0).Radius(theme.Scale(c, theme.Space12)).Clip().
+		Background(t.Surface).TextColor(t.SurfaceForeground).
+		BorderWidth(theme.Hairline).BorderColor(t.Border).Label(label).Children(func() {
+		bottom := pad
+		if collapsed {
+			bottom = theme.Scale(c, theme.Space32)
+		}
+		// Code reads left to right in a right-to-left interface too.
+		ui.ScrollHorizontal(c).TrackScroll(&st.Scroll).MinWidth(0).Direction(ui.LeftToRight).Children(func() {
+			ui.Column(c).Shrink(0).
+				Padding(pad, pad+theme.Scale(c, theme.ButtonHeight(theme.ButtonSmall)), bottom, pad).
+				Children(func() {
+					for i, spans := range visible {
+						codeRow(c, i+1, spans, o.Numbered)
+					}
 				})
-				ui.Row(c).Absolute().Left(0).Right(0).Bottom(theme.Scale(c, theme.Space6)).
-					Justify(ui.Center).Children(func() {
+		})
+		if collapsed {
+			fade := ui.Row(c).Absolute().Left(0).Right(0).Bottom(0).
+				Height(theme.Scale(c, 56))
+			fade.Draw(func(painter *ui.Painter, r ui.Rect) {
+				clear := t.Surface
+				clear.A = 0
+				painter.FillGradient(r, ui.LinearGradient{
+					Angle: 180,
+					Stops: []ui.GradientStop{{Color: clear, At: 0}, {Color: t.Surface, At: 1}},
+				}, 0)
+			})
+			ui.Row(c).Absolute().Left(0).Right(0).Bottom(theme.Scale(c, theme.Space6)).
+				Justify(ui.Center).Children(func() {
+				mygoui.Button(c, mygoui.ButtonOptions{
+					Label: "Expand code", Icon: lucide.ChevronDown(),
+					Variant: mygoui.ButtonSecondary, Size: theme.ButtonSmall,
+					OnClick: func() {
+						st.Collapsed = false
+						c.Invalidate()
+					},
+				})
+			})
+		} else if long {
+			ui.Row(c).FillWidth().MinWidth(0).Justify(ui.Center).
+				Padding(0, pad, theme.Scale(c, theme.Space12), pad).
+				Children(func() {
 					mygoui.Button(c, mygoui.ButtonOptions{
-						Label: "Expand code", Icon: lucide.ChevronDown(),
-						Variant: mygoui.ButtonSecondary, Size: theme.ButtonSmall,
+						Label: "Collapse code", Icon: lucide.ChevronUp(),
+						Variant: mygoui.ButtonGhost, Size: theme.ButtonSmall,
 						OnClick: func() {
-							st.Collapsed = false
+							st.Collapsed = true
 							c.Invalidate()
 						},
 					})
 				})
-			} else if long {
-				ui.Row(c).FillWidth().MinWidth(0).Justify(ui.Center).
-					Padding(theme.Space4, theme.Scale(c, theme.Space16),
-						theme.Scale(c, theme.Space12), theme.Scale(c, theme.Space16)).
-					Children(func() {
-						mygoui.Button(c, mygoui.ButtonOptions{
-							Label: "Collapse code", Icon: lucide.ChevronUp(),
-							Variant: mygoui.ButtonGhost, Size: theme.ButtonSmall,
-							OnClick: func() {
-								st.Collapsed = true
-								c.Invalidate()
-							},
-						})
-					})
-			}
+		}
+		// The corner control keeps its own surface, so a long line scrolls
+		// under it rather than through it.
+		inset := theme.Scale(c, theme.Space8)
+		ui.Row(c).Absolute().Top(inset).Right(inset).Radius(theme.RadiusScale().MD).
+			Background(t.Surface).Children(func() {
+			copyIconButton(c, &st.CopiedAt, copyLabel, func() string { return o.Code })
 		})
 	})
 }
@@ -433,48 +373,64 @@ func copyIconButton(c *ui.Context, at *time.Time, label string, text func() stri
 	}).AlignSelf(ui.Center)
 }
 
-// codeRow is one source line: a right-aligned number in a fixed gutter, then
-// the highlighted line.
-func codeRow(c *ui.Context, number int, line string) {
+// codeRow is one source line: a right-aligned number in a fixed gutter when
+// numbered, then the highlighted line.
+func codeRow(c *ui.Context, number int, spans []ui.Span, numbered bool) {
 	t := theme.Colors(c)
-	ts := theme.Code()
-	ts.Size = 13
-	label := strconv.Itoa(number)
-	ui.Row(c).AlignItems(ui.Start).Gap(theme.Space12).Shrink(0).Children(func() {
-		ui.Column(c).Width(theme.Scale(c, 24)).Shrink(0).AlignItems(ui.End).Children(func() {
-			gutter := style.Text(ui.Text(c, label), c, ts).TextColor(t.Muted)
-			gutter.Label("line " + label).TextAlign(ui.End).SingleLine()
-		})
-		if line == "" {
-			line = " "
+	ui.Row(c).AlignItems(ui.Start).Gap(theme.Space16).Shrink(0).Children(func() {
+		if numbered {
+			ts := theme.Code()
+			ts.Size = 13
+			label := strconv.Itoa(number)
+			ui.Column(c).Width(theme.Scale(c, 24)).Shrink(0).AlignItems(ui.End).Children(func() {
+				gutter := style.Text(ui.Text(c, label), c, ts).TextColor(t.Muted)
+				gutter.Label("line " + label).TextAlign(ui.End).SingleLine()
+			})
 		}
-		ui.RichText(c, goSpans(c, line)...).
+		ui.RichText(c, spans...).
 			Font(theme.Mono).FontSize(theme.Scale(c, 13)).
 			FixedLineHeight(theme.Scale(c, 20)).Selectable().
 			TextColor(t.Foreground)
 	})
 }
 
-// goKeywords are the Go words the gallery snippets paint in the accent color.
+// goKeywords are the Go words a listing paints as keywords.
 var goKeywords = map[string]bool{
 	"package": true, "import": true, "func": true, "type": true, "struct": true,
 	"var": true, "const": true, "return": true, "if": true, "else": true,
-	"for": true, "range": true, "nil": true, "true": true, "false": true,
+	"for": true, "range": true, "switch": true, "case": true, "default": true,
+	"break": true, "continue": true, "go": true, "defer": true, "map": true,
+	"interface": true, "select": true, "chan": true,
 }
 
-// goSpans splits one line into Highlight spans: comments muted italic,
-// strings success, numbers warning, keywords accent and everything else the
-// foreground color.
-func goSpans(c *ui.Context, line string) []ui.Span {
-	t := theme.Colors(c)
-	// A source line usually splits into a handful of tokens; sizing the slice
-	// up front keeps a build from growing it three or four times per line.
+// goLiterals are the predeclared values painted as constants.
+var goLiterals = map[string]bool{"nil": true, "true": true, "false": true, "iota": true}
+
+// goColors are the theme roles a Go listing is painted with.
+type goColors struct {
+	text, comment, str, number, keyword, call, qualifier ui.Color
+}
+
+func goColorsOf(t theme.Palette) goColors {
+	return goColors{
+		text: t.Foreground, comment: t.Muted, str: t.Success, number: t.Warning,
+		keyword: t.Destructive, call: t.Info, qualifier: t.MutedForeground,
+	}
+}
+
+// goSpans splits one line into highlight spans: comments italic, strings,
+// numbers and predeclared values, keywords, called functions and the
+// package qualifiers before a selector. A blank line keeps its height.
+func goSpans(colors goColors, line string) []ui.Span {
+	if line == "" {
+		return []ui.Span{{Text: " "}}
+	}
+	// A source line usually splits into a handful of tokens.
 	spans := make([]ui.Span, 0, 8)
 	add := func(text string, color ui.Color, italic bool) {
-		if text == "" {
-			return
+		if text != "" {
+			spans = append(spans, ui.Span{Text: text, Color: color, Italic: italic})
 		}
-		spans = append(spans, ui.Span{Text: text, Color: color, Italic: italic})
 	}
 	identStart := func(b byte) bool {
 		return b == '_' || b >= 'a' && b <= 'z' || b >= 'A' && b <= 'Z'
@@ -484,69 +440,93 @@ func goSpans(c *ui.Context, line string) []ui.Span {
 	}
 	for i := 0; i < len(line); {
 		if strings.HasPrefix(line[i:], "//") {
-			add(line[i:], t.Muted, true)
+			add(line[i:], colors.comment, true)
 			break
+		}
+		if strings.HasPrefix(line[i:], "/*") {
+			j := len(line)
+			if end := strings.Index(line[i+2:], "*/"); end >= 0 {
+				j = i + 2 + end + 2
+			}
+			add(line[i:j], colors.comment, true)
+			i = j
+			continue
 		}
 		ch := line[i]
 		switch {
-		case ch == '"' || ch == '`':
-			quote := ch
+		case ch == '"' || ch == '`' || ch == '\'':
 			j := i + 1
 			for j < len(line) {
-				if quote == '"' && line[j] == '\\' {
+				if ch != '`' && line[j] == '\\' {
 					j += 2
 					continue
 				}
-				if line[j] == quote {
+				if line[j] == ch {
 					j++
 					break
 				}
 				j++
 			}
-			if j > len(line) {
-				j = len(line)
-			}
-			add(line[i:j], t.Success, false)
+			j = min(j, len(line))
+			add(line[i:j], colors.str, false)
 			i = j
 		case ch >= '0' && ch <= '9':
 			j := i + 1
-			for j < len(line) && (line[j] >= '0' && line[j] <= '9' || line[j] == '.') {
+			for j < len(line) && (identPart(line[j]) || line[j] == '.') {
 				j++
 			}
-			add(line[i:j], t.Warning, false)
+			add(line[i:j], colors.number, false)
 			i = j
 		case identStart(ch):
 			j := i + 1
 			for j < len(line) && identPart(line[j]) {
 				j++
 			}
-			word := line[i:j]
-			if goKeywords[word] {
-				add(word, t.Primary, false)
-			} else {
-				add(word, t.Foreground, false)
+			word, next := line[i:j], byte(0)
+			if j < len(line) {
+				next = line[j]
+			}
+			member := i > 0 && line[i-1] == '.'
+			switch {
+			case member && next == '(', !member && next == '(' && !goKeywords[word]:
+				add(word, colors.call, false)
+			case member:
+				add(word, colors.text, false)
+			case goKeywords[word]:
+				add(word, colors.keyword, false)
+			case goLiterals[word]:
+				add(word, colors.number, false)
+			case next == '.':
+				add(word, colors.qualifier, false)
+			default:
+				add(word, colors.text, false)
 			}
 			i = j
 		default:
 			j := i + 1
-			for j < len(line) && !identStart(line[j]) && (line[j] < '0' || line[j] > '9') &&
-				line[j] != '"' && line[j] != '`' && !strings.HasPrefix(line[j:], "//") {
+			for j < len(line) && !identPart(line[j]) && line[j] != '"' && line[j] != '`' &&
+				line[j] != '\'' && !strings.HasPrefix(line[j:], "//") && !strings.HasPrefix(line[j:], "/*") {
 				j++
 			}
-			add(line[i:j], t.Foreground, false)
+			add(line[i:j], colors.text, false)
 			i = j
 		}
 	}
 	return spans
 }
 
-// codeScrollState is the example code area: its horizontal scroll so long
-// lines do not truncate, its expanded/collapsed choice and the time its copy
-// control last reported success, so feedback survives frames.
+// codeScrollState is one listing's retained state: its horizontal scroll so
+// long lines do not truncate, its fold, the time its copy control last
+// reported success, and its highlighted lines until the code or the theme's
+// colours change.
 type codeScrollState struct {
 	Scroll    ui.ScrollState
 	CopiedAt  time.Time
 	Collapsed bool
+
+	code   string
+	colors goColors
+	lines  [][]ui.Span
 }
 
 // codeCopyFeedback is how long the copy button shows "Copied".
@@ -571,9 +551,9 @@ func apiTable(c *ui.Context, s *State, params []ComponentParam) {
 	// The panel's padding is the only thing between the page column and the
 	// columns; measuring it once keeps every row from re-measuring the page.
 	available := width - 2*theme.Scale(c, theme.Space16)
-	panel(c, func() {
+	tablePanel(c, func() {
 		ui.Column(c).FillWidth().MinWidth(0).Children(func() {
-			apiRow(c, ComponentParam{Name: "Name", Type: "Type", Default: "Default", Description: "Description"}, true, available)
+			apiRow(c, ComponentParam{Name: "Prop", Type: "Type", Default: "Default", Description: "Description"}, true, available)
 			for _, param := range params {
 				mygoui.Separator(c, mygoui.SeparatorOptions{Color: mygoui.SeparatorSecondary})
 				apiRow(c, param, false, available)
@@ -585,14 +565,14 @@ func apiTable(c *ui.Context, s *State, params []ComponentParam) {
 // apiStacked is the narrow-width API: the name beside its wrapping code pills,
 // then the description below, so long values stay readable without columns.
 func apiStacked(c *ui.Context, params []ComponentParam) {
-	panel(c, func() {
+	tablePanel(c, func() {
 		ui.Column(c).FillWidth().MinWidth(0).Children(func() {
 			for i, param := range params {
 				if i > 0 {
 					mygoui.Separator(c, mygoui.SeparatorOptions{Color: mygoui.SeparatorSecondary})
 				}
 				ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space6).
-					Padding(theme.Space12, 0, theme.Space12, 0).Children(func() {
+					Padding(theme.Space8, 0, theme.Space8, 0).Children(func() {
 					ui.Row(c).FillWidth().MinWidth(0).Wrap().AlignItems(ui.Start).
 						Gap(theme.Space6).Children(func() {
 						apiParamName(c, param.Name)
@@ -613,6 +593,7 @@ func apiStacked(c *ui.Context, params []ComponentParam) {
 // apiParamName paints a parameter's name as compact mono medium ink.
 func apiParamName(c *ui.Context, name string) {
 	ts := theme.Code()
+	ts.Size = 13
 	ts.Weight = theme.WeightMedium
 	style.Text(ui.Text(c, name), c, ts).TextColor(theme.Colors(c).Foreground)
 }
@@ -625,13 +606,13 @@ func apiDescription(c *ui.Context, description string) {
 }
 
 func apiRow(c *ui.Context, p ComponentParam, header bool, available float32) {
-	// Wide columns: Name 20%, Type 30%, Default 20%, Description the rest.
+	// Wide columns: Prop 20%, Type 30%, Default 18%, Description the rest.
 	gaps := float32(3 * theme.Space12)
 	nameW := available * 0.20
 	typeW := available * 0.30
-	defW := available * 0.20
+	defW := available * 0.18
 	ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Gap(theme.Space12).
-		Padding(theme.Space12, 0, theme.Space12, 0).Children(func() {
+		Padding(theme.Space8, 0, theme.Space8, 0).Children(func() {
 		ui.Column(c).Width(nameW).Shrink(0).MinWidth(0).Children(func() {
 			if header {
 				apiHeaderText(c, p.Name)

@@ -160,23 +160,19 @@ func pageHeading(page Page) string {
 	return page.Title
 }
 
-// Each workbench view exposes the selected component's own content.
+// A component page is one document holding the component's own preview,
+// source, reference and tokens.
 func TestComponentPageAnatomy(t *testing.T) {
 	state := New()
 	state.Selected = "button"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)
 	tt.Frame()
-	for _, view := range []struct{ label, content string }{
-		{"Preview", "Example panel: Variants"},
-		{"Code", "Go code"},
-		{"API", "Variant"},
-		{"Tokens", "token card PrimaryForeground"},
+	for _, want := range []string{
+		"Example panel: Variants", "Install command", "Go code", "mygoui.ButtonOptions",
+		"Variant", "token card PrimaryForeground",
 	} {
-		if err := tt.Click(view.label); err != nil {
-			t.Fatal(err)
-		}
-		if !tt.HasText(view.content) {
-			t.Fatalf("%s view does not show %q", view.label, view.content)
+		if !tt.HasText(want) {
+			t.Fatalf("the page does not show %q", want)
 		}
 	}
 }
@@ -241,6 +237,8 @@ func TestCompactNavigationScrollsToEveryPage(t *testing.T) {
 
 func TestShellSearchFiltersAndSelects(t *testing.T) {
 	state := New()
+	// The sidebar belongs to component pages; the landing page has none.
+	state.Selected = "theming"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 860)
 	tt.Frame()
 	if err := tt.Click("Button"); err != nil {
@@ -304,6 +302,8 @@ func revealSidebarEntry(t *testing.T, tt *ui.Tester, state *State, name string, 
 func TestSidebarShowsEveryComponentPage(t *testing.T) {
 	const width, height = 1180, 860
 	state := New()
+	// The sidebar belongs to component pages; the landing page has none.
+	state.Selected = "theming"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, width, height)
 	tt.Frame()
 	for _, group := range pageGroups(filterPagesInOrder(Pages())) {
@@ -320,6 +320,8 @@ func TestSidebarShowsEveryComponentPage(t *testing.T) {
 
 func TestSidebarUsesScrollArea(t *testing.T) {
 	state := New()
+	// The sidebar belongs to component pages; the landing page has none.
+	state.Selected = "theming"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 860)
 	tt.Frame()
 	r, ok := tt.Find("Gallery navigation")
@@ -464,16 +466,22 @@ func TestCodeBlockLineNumbersAndHighlighting(t *testing.T) {
 	for _, size := range []struct{ width, height int }{{1100, 900}, {640, 900}} {
 		state := New()
 		state.Selected = "button"
-		state.Panel = 1
 		width, height := float32(size.width), float32(size.height)
 		tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, size.width, size.height)
 		tt.Frame()
-		block := revealContent(t, tt, state, "Go code", width, height)
+		if err := tt.Click("Code"); err != nil {
+			t.Fatal(err)
+		}
+		tt.Frame()
+		// Bring the listing under the title bar so every line is on screen.
+		state.Content.Y = 180
+		tt.Frame()
+		block, _ := tt.Find("Go code")
 		if block.W <= 0 || block.X < 0 || block.X+block.W > width {
 			t.Fatalf("%dx%d: code block lies outside the page (rect %+v)", size.width, size.height, block)
 		}
-		if !tt.HasText("Go code") || !tt.HasText("package") || !tt.HasText("mygoui") {
-			t.Fatalf("%dx%d: code block lost its header or text", size.width, size.height)
+		if !tt.HasText("mygoui") {
+			t.Fatalf("%dx%d: code block lost its text", size.width, size.height)
 		}
 		// A ten-line snippet folds at eight lines.
 		checkLines := func(from, to int) {
@@ -500,7 +508,7 @@ func TestCodeBlockLineNumbersAndHighlighting(t *testing.T) {
 			}
 		}
 		cp, _ := componentPage("button")
-		lines := len(strings.Split(strings.TrimRight(cp.Code, "\n"), "\n"))
+		lines := len(strings.Split(exampleSource("button", cp.Examples[0].Title), "\n"))
 		checkLines(1, lines)
 		if _, ok := tt.Find("line " + strconv.Itoa(lines+1)); ok {
 			t.Fatalf("%dx%d: more line numbers than code lines", size.width, size.height)
@@ -509,6 +517,7 @@ func TestCodeBlockLineNumbersAndHighlighting(t *testing.T) {
 		if err := tt.Click("Collapse code"); err != nil {
 			t.Fatal(err)
 		}
+		state.Content.Y = 180
 		tt.Frame()
 		checkLines(1, codeCollapseLines)
 		if _, ok := tt.Find("line " + strconv.Itoa(codeCollapseLines+1)); ok {
@@ -526,14 +535,13 @@ func TestComponentPageHeaderAndAPIPills(t *testing.T) {
 	state := New()
 	state.Selected = "button"
 	state.Search = "no such page"
-	state.Panel = 2
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)
 	tt.Frame()
 	title, ok := tt.Find("Button")
 	if !ok || title.X < 270 {
 		t.Fatalf("page header is missing the title (rect %+v)", title)
 	}
-	for _, want := range []string{"Name", "Type", "Default", "Description"} {
+	for _, want := range []string{"Prop", "Type", "Default", "Description"} {
 		if !tt.HasText(want) {
 			t.Fatalf("API table is missing the %q header", want)
 		}
@@ -556,7 +564,6 @@ func TestCodeBlockHighlightMatchesThemeTokens(t *testing.T) {
 		Code:   "package main\n\nimport \"github.com/Cyenoch/mygoui\"\n",
 	}
 	state := New()
-	state.Panel = 1
 	var pal theme.Palette
 	tt := ui.NewTester(func(c *ui.Context) {
 		pal = theme.Colors(c)
@@ -585,7 +592,6 @@ func TestAPIShowsFullTypeValues(t *testing.T) {
 	for _, size := range []struct{ width, height int }{{1100, 900}, {640, 900}} {
 		state := New()
 		state.Selected = "avatargroup"
-		state.Panel = 2
 		tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, size.width, size.height)
 		tt.Frame()
 		if !tt.HasText("[]mygoui.AvatarOptions") {
@@ -610,7 +616,6 @@ func TestCodeBlockScrollsLongLines(t *testing.T) {
 		Code: "package main\n\n" + long + "\n",
 	}
 	state := New()
-	state.Panel = 1
 	tt := ui.NewTester(func(c *ui.Context) { buildComponentPage(c, state, p) }, 640, 900)
 	tt.Frame()
 	scroll := StateOf[codeScrollState](state, "code:longcode")

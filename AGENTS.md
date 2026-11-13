@@ -69,6 +69,10 @@ in this file and `openspec/config.yaml`.
 
 `make check` checks the headless suite, build, Go vet, MyGo lifetimes, formatting and module integrity. Also run `make race` for shared-state changes, `golangci-lint run ./...`, and the WebAssembly build before release. Exercise changed UI behavior with `ui.NewTester`. Record OS/GPU/screen-reader evidence separately from headless rendering. Read `CONTRIBUTING.md` before publishing.
 
+Run `make generate` after changing an exported struct: it rewrites the
+gallery's API table (`internal/gallery/api_gen.go`), and the suite fails when
+that file is stale.
+
 `make spec-check` validates main specs, active deltas and archived task completion.
 `make design-doctor` reports Impeccable context/configuration drift; inspect its
 findings, since a zero exit code alone does not mean the report is clean.

@@ -14,7 +14,6 @@ func TestGlobalSearchKeyboardOpensLivePreview(t *testing.T) {
 		t.Run(fmt.Sprint(width), func(t *testing.T) {
 			s := New()
 			s.Selected = "button"
-			s.Panel = 1
 			tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, width, 900)
 			tt.SetPreferences(ui.Preferences{TextScale: 1, ReduceMotion: true})
 			tt.Key(ui.Cmd, ui.KeyK)
@@ -38,8 +37,8 @@ func TestGlobalSearchKeyboardOpensLivePreview(t *testing.T) {
 				t.Fatal("search did not filter navigation")
 			}
 			tt.Key(0, ui.KeyEnter)
-			if s.Selected != "composer" || s.NavOpen || s.Panel != 0 {
-				t.Fatalf("selected=%q navigation open=%v panel=%d", s.Selected, s.NavOpen, s.Panel)
+			if s.Selected != "composer" || s.NavOpen {
+				t.Fatalf("selected=%q navigation open=%v", s.Selected, s.NavOpen)
 			}
 			revealContent(t, tt, s, "Message draft", float32(width), 900)
 			if err := tt.Click("Message draft"); err != nil {
@@ -54,7 +53,13 @@ func TestGlobalSearchKeyboardOpensLivePreview(t *testing.T) {
 	}
 }
 
-func TestWorkbenchViewsRetainPreviewState(t *testing.T) {
+// leadView is the Preview or Code choice of the Button page's lead example.
+func leadView(s *State) *exampleViewState {
+	page, _ := componentPage("button")
+	return StateOf[exampleViewState](s, "example:button:"+page.Examples[0].Title)
+}
+
+func TestExampleViewsRetainPreviewState(t *testing.T) {
 	s := New()
 	s.Selected = "button"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, 900, 900)
@@ -66,16 +71,16 @@ func TestWorkbenchViewsRetainPreviewState(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.Key(0, ui.KeyRight)
-	if s.Panel != 1 || !tt.HasText("Go code") {
-		t.Fatal("right arrow did not select the source view")
+	if leadView(s).Tab != 1 || tt.HasText("Actions fired 1") {
+		t.Fatal("right arrow did not replace the preview with its source")
 	}
 	tt.Key(0, ui.KeyLeft)
-	if s.Panel != 0 || !tt.HasText("Actions fired 1") {
+	if leadView(s).Tab != 0 || !tt.HasText("Actions fired 1") {
 		t.Fatal("returning to preview lost the live demo state")
 	}
 }
 
-func TestWorkbenchViewFocusSurvivesResize(t *testing.T) {
+func TestExampleViewFocusSurvivesResize(t *testing.T) {
 	s := New()
 	s.Selected = "button"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, 1180, 900)
@@ -84,15 +89,15 @@ func TestWorkbenchViewFocusSurvivesResize(t *testing.T) {
 		t.Fatal(err)
 	}
 	tt.SetSize(360, 900)
-	if !tt.Focused("Code") || s.Panel != 1 {
+	if !tt.Focused("Code") || leadView(s).Tab != 1 {
 		t.Fatal("resizing lost the selected view or its native focus")
 	}
-	tt.Key(0, ui.KeyRight)
-	if s.Panel != 2 || !tt.Focused("API") {
-		t.Fatal("keyboard selection stopped working after the views wrapped")
+	tt.Key(0, ui.KeyLeft)
+	if leadView(s).Tab != 0 || !tt.Focused("Preview") {
+		t.Fatal("keyboard selection stopped working at the compact width")
 	}
 	tt.SetSize(1180, 900)
-	if !tt.Focused("API") || s.Panel != 2 {
+	if !tt.Focused("Preview") || leadView(s).Tab != 0 {
 		t.Fatal("expanding lost the selected view or its native focus")
 	}
 }
@@ -124,6 +129,8 @@ func TestSearchSurvivesWindowResizing(t *testing.T) {
 
 func TestDesktopSidebarKeyboard(t *testing.T) {
 	s := New()
+	// The sidebar belongs to component pages; the landing page has none.
+	s.Selected = "theming"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, 1180, 900)
 	tt.Frame()
 	if !navHas(tt, "Button") || !navHas(tt, "Typography") {
@@ -172,14 +179,14 @@ func TestAppearanceControlsAreKeyboardAccessible(t *testing.T) {
 			s.Selected = "button"
 			tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, width, 900)
 			tt.SetPreferences(ui.Preferences{TextScale: 1, ReduceMotion: true})
-			view, _ := tt.Find("Component view")
+			view, _ := tt.Find("Copy Markdown")
 			if err := tt.Click("Appearance"); err != nil {
 				t.Fatal(err)
 			}
 			if !s.AppearanceOpen {
 				t.Fatal("appearance controls did not open")
 			}
-			if moved, _ := tt.Find("Component view"); moved != view || view.W == 0 {
+			if moved, _ := tt.Find("Copy Markdown"); moved != view || view.W == 0 {
 				t.Fatalf("opening appearance moved the page: %+v -> %+v", view, moved)
 			}
 			if err := tt.Click("Light"); err != nil {
@@ -354,7 +361,7 @@ func TestTitleBarGrowsForVeryLargeText(t *testing.T) {
 
 func TestCompactWorkbenchWithEnlargedText(t *testing.T) {
 	const width = 360
-	labels := []string{"Preview", "Code", "API", "Tokens"}
+	labels := []string{"Preview", "Code"}
 	for _, scale := range []float32{1.75, 2.5} {
 		t.Run(fmt.Sprint(scale), func(t *testing.T) {
 			s := New()
@@ -372,6 +379,9 @@ func TestCompactWorkbenchWithEnlargedText(t *testing.T) {
 			tt.SetPreferences(ui.Preferences{TextScale: scale, ReduceMotion: true})
 			tt.SetTitleBar(ui.TitleBar{Height: 52, Left: 80, Right: 138})
 			for _, label := range append([]string{"Toggle navigation", "Appearance"}, labels...) {
+				if _, isView := textWidths[label]; isView {
+					revealContent(t, tt, s, label, width, 900)
+				}
 				r, ok := tt.Find(label)
 				if !ok || r.X < 0 || r.X+r.W > width || r.Y < 0 || r.Y+r.H > 900 {
 					t.Fatalf("%s is not visible at enlarged text: %+v", label, r)
@@ -384,7 +394,7 @@ func TestCompactWorkbenchWithEnlargedText(t *testing.T) {
 				if err := tt.Click(label); err != nil {
 					t.Fatal(err)
 				}
-				if s.Panel != i {
+				if leadView(s).Tab != i {
 					t.Fatalf("%s did not select its view", label)
 				}
 			}
@@ -392,7 +402,7 @@ func TestCompactWorkbenchWithEnlargedText(t *testing.T) {
 				t.Fatal(err)
 			}
 			tt.Key(0, ui.KeyRight)
-			if s.Panel != 1 {
+			if leadView(s).Tab != 1 {
 				t.Fatal("keyboard did not move from Preview to Code")
 			}
 		})

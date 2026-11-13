@@ -165,6 +165,8 @@ func TestEveryPageRoutesThroughNativeNavigation(t *testing.T) {
 		for _, page := range Pages() {
 			t.Run(fmt.Sprintf("%d/%s", width, page.ID), func(t *testing.T) {
 				s := New()
+				// The sidebar belongs to component pages; the landing page has none.
+				s.Selected = "theming"
 				s.Search = page.Title
 				tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, width, 900)
 				if width < docsCompactBelow {
@@ -190,8 +192,6 @@ func TestEveryPageRoutesThroughNativeNavigation(t *testing.T) {
 						}
 					}
 					if sourceURL(page.ID) != "" {
-						s.Panel = 1
-						tt.Frame()
 						if !tt.HasText(referenceLabel(page.ID)) {
 							t.Fatal("source component lost its upstream reference")
 						}
@@ -404,10 +404,11 @@ func TestThemeOverridesReachEverySpecimen(t *testing.T) {
 	}
 }
 
-func TestThemedMenuSelectionSurvivesWorkbenchViews(t *testing.T) {
+func TestThemedMenuSelectionSurvivesItsSourceView(t *testing.T) {
 	state := New()
 	state.Selected = "contextmenu"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)
+	revealContent(t, tt, state, "Themed document actions", 1180, 900)
 	if err := tt.Click("Themed document actions"); err != nil {
 		t.Fatal(err)
 	}
@@ -429,14 +430,16 @@ func TestThemedMenuSelectionSurvivesWorkbenchViews(t *testing.T) {
 	}
 	before := selectionMark()
 	tt.Key(0, ui.KeyEscape)
-	if err := tt.Click("Code"); err != nil {
-		t.Fatal(err)
+	view := StateOf[exampleViewState](state, "example:contextmenu:Themed menu")
+	view.Tab = 1
+	tt.Frame()
+	if _, ok := tt.Find("Themed document actions"); ok {
+		t.Fatal("the example stayed mounted behind its source")
 	}
-	if err := tt.Click("Preview"); err != nil {
-		t.Fatal(err)
-	}
+	view.Tab = 0
+	tt.Frame()
 	if !tt.HasText("Sort: date") {
-		t.Fatal("workbench navigation lost the sort result")
+		t.Fatal("viewing the source lost the sort result")
 	}
 	if err := tt.Click("Themed document actions"); err != nil {
 		t.Fatal(err)

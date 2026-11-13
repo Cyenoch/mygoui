@@ -1,6 +1,7 @@
 package gallery
 
 import (
+	"slices"
 	"strings"
 	"testing"
 
@@ -27,14 +28,15 @@ func exampleFramesFixture() ComponentPage {
 
 func TestWorkbenchCopyActions(t *testing.T) {
 	state := New()
-	state.Selected, state.Panel = "button", 1
+	state.Selected = "button"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1180, 900)
 	tt.Frame()
 	before, _ := tt.Find("Copy Markdown")
 	if err := tt.Click("Copy Markdown"); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"# Button", "## Usage", "```go", "## API Reference", "## Theme tokens"} {
+	for _, want := range []string{"# Button", "## Installation", "## Usage", "```go", "## API Reference",
+		"### mygoui.ButtonOptions", "## Examples", "## Theme tokens"} {
 		if !strings.Contains(tt.Clipboard(), want) {
 			t.Fatalf("copied Markdown is missing %q", want)
 		}
@@ -43,7 +45,7 @@ func TestWorkbenchCopyActions(t *testing.T) {
 		t.Fatalf("copy feedback = %+v, want it in place of %+v", after, before)
 	}
 	tt.Advance(codeCopyFeedback)
-	if err := tt.Click("Copy import"); err != nil {
+	if err := tt.Click("Copy import line"); err != nil {
 		t.Fatal(err)
 	}
 	p, _ := componentPage("button")
@@ -57,26 +59,23 @@ func TestComponentExampleFrames(t *testing.T) {
 	state := New()
 	tt := ui.NewTester(func(c *ui.Context) { buildComponentPage(c, state, p) }, 1180, 1400)
 	tt.Frame()
-	for _, example := range p.Examples {
-		title, ok := tt.Find(example.Title)
-		if !ok {
-			t.Fatalf("missing example title %q", example.Title)
-		}
-		panel, ok := tt.Find("Example panel: " + example.Title)
-		if !ok || title.Y+title.H > panel.Y {
-			t.Fatalf("%q title and preview panel: title %+v, panel %+v", example.Title, title, panel)
-		}
+	lead, second := p.Examples[0].Title, p.Examples[1].Title
+	if _, ok := tt.Find("Example panel: " + lead); !ok || slices.Contains(tt.Texts(), lead) {
+		t.Fatal("the lead example is missing or repeats a title under the page's")
+	}
+	title, _ := tt.Find(second)
+	panel, ok := tt.Find("Example panel: " + second)
+	if !ok || title.H <= 0 || title.Y+title.H > panel.Y {
+		t.Fatalf("%q title and preview panel: title %+v, panel %+v", second, title, panel)
 	}
 	if !tt.HasText("Primary") || !tt.HasText("Ghost") {
 		t.Fatal("preview omitted an interactive specimen")
 	}
-	state.Panel = 1
-	tt.Frame()
 	if !tt.HasText("Go code") || !tt.HasText("package main") {
-		t.Fatal("source view omitted the snippet")
+		t.Fatal("usage omitted the snippet")
 	}
-	if tt.HasText("Example panel: Button variants") {
-		t.Fatal("preview remains mounted in source view")
+	if _, ok := tt.Find("Code"); ok {
+		t.Fatal("an example whose source the page files do not hold offers a Code view")
 	}
 }
 
@@ -86,12 +85,16 @@ func TestUsageBarCopiesDerivedImport(t *testing.T) {
 		t.Fatal("input page is not registered")
 	}
 	state := New()
-	state.Panel = 1
 	tt := ui.NewTester(func(c *ui.Context) { buildComponentPage(c, state, p) }, 1180, 1400)
 	tt.Frame()
 	bar, ok := tt.Find("Usage import")
-	if !ok || bar.H <= 48 || !tt.HasText(p.importStatement()) {
-		t.Fatalf("multi-line import bar is incomplete: %+v", bar)
+	if !ok || bar.H <= 48 {
+		t.Fatalf("multi-line import block is incomplete: %+v", bar)
+	}
+	for _, line := range strings.Split(p.importStatement(), "\n") {
+		if !tt.HasText(strings.TrimSpace(line)) {
+			t.Fatalf("import block is missing %q", line)
+		}
 	}
 	if err := tt.Click("Copy import line"); err != nil {
 		t.Fatal(err)
@@ -142,13 +145,12 @@ func TestComponentPageImportStatementDerivesFromCode(t *testing.T) {
 func TestCopyControlsFitTheirRows(t *testing.T) {
 	for _, width := range []int{1180, 640} {
 		state := New()
-		state.Panel = 1
 		p := exampleFramesFixture()
 		tt := ui.NewTester(func(c *ui.Context) { buildComponentPage(c, state, p) }, width, 1400)
 		tt.Frame()
 		for _, item := range []struct{ row, control string }{
 			{"Usage import", "Copy import line"},
-			{"Go code header", "Copy code"},
+			{"Go code", "Copy code"},
 		} {
 			row, rowOK := tt.Find(item.row)
 			button, buttonOK := tt.Find(item.control)

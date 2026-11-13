@@ -125,7 +125,10 @@ func TestWorkbenchVisualArtifacts(t *testing.T) {
 		{"workbench-very-large", 360, 0, false, false, ui.TitleBar{Height: 52, Left: 80, Right: 138}, 2.5},
 	} {
 		s := New()
-		s.Selected, s.Panel, s.NavOpen, s.AppearanceOpen = "button", mode.panel, mode.nav, mode.appearance
+		s.Selected, s.NavOpen, s.AppearanceOpen = "button", mode.nav, mode.appearance
+		if page, _ := componentPage("button"); mode.panel == 1 {
+			StateOf[exampleViewState](s, "example:button:"+page.Examples[0].Title).Tab = 1
+		}
 		tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, mode.width, 900)
 		tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: mode.textScale})
 		tt.SetTitleBar(mode.bar)

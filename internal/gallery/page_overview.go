@@ -58,30 +58,98 @@ type overviewState struct {
 	Notify          bool
 }
 
-// buildOverview is the gallery's home: what it is, how to get it, a live
-// sample and the catalog.
+// buildOverview is the gallery's home: what the library is, a live sample,
+// what it offers, the catalog and how to get the gallery.
 func buildOverview(c *ui.Context, s *State) ui.Element {
 	width := overviewWidth(c, s)
 	st := StateOf[overviewState](s, "overview")
-	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space48)).
+	groups := overviewGroups(Pages())
+	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space64)).
 		Children(func() {
-			overviewHero(c, s, st)
-			overviewSection(c, "Download", func() { overviewDownloads(c, width) })
-			overviewSection(c, "Live preview", func() { overviewShowcase(c, st, width) })
-			overviewSection(c, "Components", func() { overviewGroupGrid(c, s, overviewGroups(Pages()), width) })
+			ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space40)).Children(func() {
+				overviewHero(c, s, st, groups, width)
+				overviewShowcase(c, st, width)
+			})
+			overviewStats(c, groups, width)
+			overviewSection(c, "Built for native apps", func() { overviewFeatures(c, width) })
+			overviewSection(c, "Components", func() { overviewGroupGrid(c, s, groups, width) })
+			overviewSection(c, "Get the gallery", func() { overviewDownloads(c, width) })
 			overviewFooter(c)
 		})
 }
 
-func overviewHero(c *ui.Context, s *State, st *overviewState) {
-	ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space16).Padding(theme.Space16, 0, 0, 0).Children(func() {
-		mygoui.Badge(c, mygoui.BadgeOptions{Label: "MyGo 0.9", Variant: mygoui.BadgeOutline})
-		mygoui.Typography(c, "coss ui, native in Go", mygoui.TypographyOptions{Type: theme.TypeH1})
-		mygoui.Typography(c, "Accessible desktop and web components with the coss look, built on MyGo.",
-			mygoui.TypographyOptions{Type: theme.TypeBody, Muted: true}).MaxWidth(theme.Scale(c, 560))
-		ui.Row(c).Wrap().Gap(theme.Space8).Padding(theme.Space8, 0, 0, 0).Children(func() {
+// overviewCompactBelow is the content width under which the home page
+// stacks its rows and uses the smaller display size.
+const overviewCompactBelow = 560
+
+func componentCount(groups []pageGroup) int {
+	count := 0
+	for _, group := range groups {
+		count += len(group.pages)
+	}
+	return count
+}
+
+// overviewHero is the centered opening: status pill, display headline, the
+// two main actions and the install command, over a grid that fades out
+// around it.
+func overviewHero(c *ui.Context, s *State, st *overviewState, groups []pageGroup, width float32) {
+	t := theme.Colors(c)
+	compact := width < theme.Scale(c, overviewCompactBelow)
+	display := theme.H1()
+	display.Size, display.LineHeight = 60, 64
+	top := theme.Scale(c, theme.Space64)
+	switch {
+	case compact:
+		display.Size, display.LineHeight = 40, 44
+		top = theme.Scale(c, theme.Space24)
+	case width >= theme.Scale(c, 900):
+		display.Size, display.LineHeight = 76, 80
+		top = theme.Scale(c, 96)
+	}
+	cell := theme.Scale(c, 48)
+	hero := ui.Column(c).FillWidth().MinWidth(0).AlignItems(ui.Center).
+		Gap(theme.Scale(c, theme.Space20)).Padding(top, 0, theme.Scale(c, theme.Space8), 0)
+	hero.Draw(func(p *ui.Painter, r ui.Rect) {
+		line := t.Border.Alpha(0.7)
+		for x := r.X + r.W/2 - cell/2; x > r.X; x -= cell {
+			p.Line(x, r.Y, x, r.Y+r.H, theme.Hairline, line)
+			mirror := 2*(r.X+r.W/2) - x
+			p.Line(mirror, r.Y, mirror, r.Y+r.H, theme.Hairline, line)
+		}
+		for y := r.Y + cell/2; y < r.Y+r.H; y += cell {
+			p.Line(r.X, y, r.X+r.W, y, theme.Hairline, line)
+		}
+		clear := t.Background
+		clear.A = 0
+		p.FillRadialGradient(r, ui.RadialGradient{
+			Radius: max(r.W, r.H) * 0.55,
+			Stops: []ui.GradientStop{
+				{Color: t.Background, At: 0}, {Color: clear, At: 0.45}, {Color: t.Background, At: 1},
+			},
+		}, 0)
+	})
+	hero.Children(func() {
+		pill := theme.XS()
+		pill.Weight = theme.WeightMedium
+		ui.Row(c).AlignItems(ui.Center).Gap(theme.Space8).
+			Padding(theme.Space4, theme.Space12, theme.Space4, theme.Space10).
+			Radius(theme.Scale(c, 999)).Background(t.Background).
+			BorderWidth(theme.Hairline).BorderColor(t.Border).Children(func() {
+			dot := theme.Scale(c, 6)
+			ui.Box(c).Size(dot, dot).Radius(dot).Background(t.Success)
+			style.Text(ui.Text(c, fmt.Sprintf("MyGo 0.9 · %d components", componentCount(groups))), c, pill).
+				TextColor(t.MutedForeground).SingleLine()
+		})
+		style.Text(ui.Text(c, "coss ui, native in Go"), c, display).
+			TextColor(t.Foreground).TextAlign(ui.Center).Role(ui.RoleHeading)
+		lead := theme.Base()
+		lead.Size, lead.LineHeight = 18, 28
+		style.Text(ui.Text(c, "Accessible desktop and web components with the coss look, built on MyGo."), c, lead).
+			TextColor(t.MutedForeground).TextAlign(ui.Center).MaxWidth(theme.Scale(c, 520))
+		ui.Row(c).Wrap().Justify(ui.Center).Gap(theme.Space8).Padding(theme.Space8, 0, 0, 0).Children(func() {
 			mygoui.Button(c, mygoui.ButtonOptions{
-				Label: "Browse components", EndIcon: lucide.ArrowRight(),
+				Label: "Browse components", EndIcon: lucide.ArrowRight(), Size: theme.ButtonLarge,
 				OnClick: func() {
 					if page, ok := pageFor("button"); ok {
 						selectPage(s, page)
@@ -89,19 +157,89 @@ func overviewHero(c *ui.Context, s *State, st *overviewState) {
 				},
 			})
 			mygoui.Button(c, mygoui.ButtonOptions{
-				Label: "Customize", Icon: lucide.Palette(), Variant: mygoui.ButtonOutline,
+				Label: "Customize", Icon: lucide.Palette(), Variant: mygoui.ButtonOutline, Size: theme.ButtonLarge,
 				OnClick: func() { s.AppearanceOpen = true },
 			})
 		})
 		commandBar(c, &st.InstallCopiedAt, "Install command", "Copy install command", installCommand).
-			MaxWidth(theme.Scale(c, 560))
+			MaxWidth(theme.Scale(c, 400))
+	})
+}
+
+// overviewStats states the catalog in numbers taken from the registered
+// pages and published builds.
+func overviewStats(c *ui.Context, groups []pageGroup, width float32) {
+	t := theme.Colors(c)
+	stats := [...]struct{ value, label string }{
+		{fmt.Sprint(componentCount(groups)), "Components"},
+		{fmt.Sprint(len(groups)), "Families"},
+		{fmt.Sprint(len(galleryDownloads)), "Platforms"},
+		{"MIT", "License"},
+	}
+	cols := len(stats)
+	if width < theme.Scale(c, overviewCompactBelow) {
+		cols = 2
+	}
+	cellWidth := width / float32(cols)
+	ui.Row(c).FillWidth().MinWidth(0).Wrap().
+		BorderWidth(theme.Hairline, 0, theme.Hairline, 0).BorderColor(t.Border).Children(func() {
+		for i, stat := range stats {
+			cell := ui.Column(c.Key(stat.label)).Width(cellWidth).Shrink(0).Gap(theme.Space4).
+				Padding(theme.Scale(c, theme.Space24), theme.Scale(c, theme.Space16)).
+				BorderColor(t.Border)
+			left, top := float32(0), float32(0)
+			if i%cols > 0 {
+				left = theme.Hairline
+			}
+			if i >= cols {
+				top = theme.Hairline
+			}
+			cell.BorderWidth(top, 0, 0, left).Children(func() {
+				mygoui.Typography(c, stat.value, mygoui.TypographyOptions{Type: theme.TypeH2})
+				mygoui.Typography(c, stat.label, mygoui.TypographyOptions{Type: theme.TypeBodySM, Muted: true})
+			})
+		}
+	})
+}
+
+var overviewFeatureList = [...]struct {
+	icon        func() *ui.SVG
+	title, text string
+}{
+	{lucide.MousePointerClick, "Native controls", "Focus, selection and text editing come from MyGo on macOS, Windows, Linux and the web."},
+	{lucide.Braces, "Typed Go API", "Options are plain structs, and state stays in your code."},
+	{lucide.Accessibility, "Accessible", "Built on native roles, names and keyboard navigation."},
+	{lucide.Palette, "Themeable", "Light and dark palettes, accent and radius from one token set."},
+}
+
+// overviewFeatures says what the library is built on, two to a row.
+func overviewFeatures(c *ui.Context, width float32) {
+	t := theme.Colors(c)
+	_, cardWidth := overviewColumns(c, width, 280, 2)
+	ui.Row(c).FillWidth().MinWidth(0).Wrap().Gap(theme.Scale(c, theme.Space12)).AlignItems(ui.Stretch).Children(func() {
+		for _, feature := range overviewFeatureList {
+			ui.Row(c.Key(feature.title)).Width(cardWidth).Shrink(0).AlignItems(ui.Start).
+				Gap(theme.Scale(c, theme.Space16)).Padding(theme.Scale(c, theme.Space20)).
+				Radius(theme.RadiusScale().XL).Background(t.Card).
+				BorderWidth(theme.Hairline).BorderColor(t.Border).Children(func() {
+				box, icon := theme.Scale(c, 36), theme.Scale(c, theme.IconMD)
+				ui.Row(c).Size(box, box).Shrink(0).AlignItems(ui.Center).Justify(ui.Center).
+					Radius(theme.RadiusScale().LG).Background(t.MutedBackground).Children(func() {
+					ui.Icon(c, feature.icon()).Size(icon, icon)
+				})
+				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(theme.Space4).Children(func() {
+					mygoui.Typography(c, feature.title, mygoui.TypographyOptions{Type: theme.TypeH6})
+					mygoui.Typography(c, feature.text, mygoui.TypographyOptions{Type: theme.TypeBodySM, Muted: true})
+				})
+			})
+		}
 	})
 }
 
 // overviewSection is a titled block of the home page.
 func overviewSection(c *ui.Context, title string, body func()) {
-	ui.Column(c.Key(title)).FillWidth().MinWidth(0).Gap(theme.Space16).Children(func() {
-		mygoui.Typography(c, title, mygoui.TypographyOptions{Type: theme.TypeH4})
+	ui.Column(c.Key(title)).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space20)).Children(func() {
+		mygoui.Typography(c, title, mygoui.TypographyOptions{Type: theme.TypeH3})
 		body()
 	})
 }
@@ -144,12 +282,50 @@ func overviewDownloads(c *ui.Context, width float32) {
 	})
 }
 
-// overviewShowcase is a small working form built from library components.
+// overviewShowcase is a stage of working library components.
 func overviewShowcase(c *ui.Context, st *overviewState, width float32) {
+	t := theme.Colors(c)
+	pad := theme.Scale(c, theme.Space12)
+	width -= 2 * (pad + theme.Hairline)
 	cols, cardWidth := overviewColumns(c, width, 280, 2)
 	if cols == 1 {
 		cardWidth = width
 	}
+	stage := ui.Column(c).FillWidth().MinWidth(0).Padding(pad).Gap(theme.Scale(c, theme.Space12)).
+		Radius(theme.RadiusScale().XL + pad).Background(t.BackgroundSecondary).
+		BorderWidth(theme.Hairline).BorderColor(t.Border).Label("Live preview")
+	stage.Children(func() {
+		overviewShowcaseCards(c, st, cardWidth)
+		overviewShowcaseStrip(c)
+	})
+}
+
+// overviewShowcaseStrip lines up the action and status variants.
+func overviewShowcaseStrip(c *ui.Context) {
+	t := theme.Colors(c)
+	ui.Row(c).FillWidth().MinWidth(0).Wrap().AlignItems(ui.Center).Gap(theme.Space8).
+		Padding(theme.Scale(c, theme.Space16), theme.Scale(c, theme.Space24)).
+		Radius(theme.RadiusScale().XL).Background(t.Card).
+		BorderWidth(theme.Hairline).BorderColor(t.Border).Label("Variants preview").Children(func() {
+		for _, button := range [...]struct {
+			label   string
+			variant mygoui.ButtonVariant
+		}{
+			{"Default", mygoui.ButtonPrimary}, {"Secondary", mygoui.ButtonSecondary},
+			{"Outline", mygoui.ButtonOutline}, {"Ghost", mygoui.ButtonGhost},
+			{"Destructive", mygoui.ButtonDanger},
+		} {
+			mygoui.Button(c.Key(button.label), mygoui.ButtonOptions{
+				Label: button.label, Variant: button.variant, Size: theme.ButtonSmall,
+			})
+		}
+		ui.Row(c).Grow(1)
+		mygoui.Badge(c, mygoui.BadgeOptions{Label: "Stable", Variant: mygoui.BadgeSuccess})
+		mygoui.Badge(c, mygoui.BadgeOptions{Label: "Beta", Variant: mygoui.BadgeOutline})
+	})
+}
+
+func overviewShowcaseCards(c *ui.Context, st *overviewState, cardWidth float32) {
 	ui.Row(c).FillWidth().MinWidth(0).Wrap().Gap(theme.Scale(c, theme.Space12)).AlignItems(ui.Stretch).Children(func() {
 		ui.Column(c.Key("account")).Width(cardWidth).Shrink(0).Children(func() {
 			mygoui.Card(c, mygoui.CardOptions{Label: "Account preview"}, func() {
@@ -235,9 +411,14 @@ func overviewGroupGrid(c *ui.Context, s *State, groups []pageGroup, width float3
 				count = "1 component"
 			}
 			actionCard(c.Key(group.name), "Browse "+group.name, cardWidth, func() { selectPage(s, group.pages[0]) }, func() {
-				ui.Column(c).FillWidth().Gap(theme.Space4).Children(func() {
-					mygoui.Typography(c, group.name, mygoui.TypographyOptions{Type: theme.TypeH6, Truncate: true})
-					mygoui.Typography(c, count, mygoui.TypographyOptions{Type: theme.TypeBodyXS, Muted: true})
+				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(theme.Space12).Children(func() {
+					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(theme.Space4).Children(func() {
+						mygoui.Typography(c, group.name, mygoui.TypographyOptions{Type: theme.TypeH6, Truncate: true})
+						mygoui.Typography(c, count, mygoui.TypographyOptions{Type: theme.TypeBodyXS, Muted: true})
+					})
+					icon := theme.Scale(c, theme.IconSM)
+					ui.Icon(c, lucide.ArrowRight()).Size(icon, icon).Shrink(0).
+						TextColor(theme.Colors(c).MutedForeground)
 				})
 			})
 		}

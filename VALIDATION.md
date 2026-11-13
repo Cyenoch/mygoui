@@ -1,5 +1,35 @@
 # Validation
 
+## Gallery document pages and landing page
+
+2026-11-13, uncommitted change `gallery-docs-pages` on 0455c4d, macOS arm64,
+Go 1.27.3, MyGo 0.9.0.
+
+- `make check`, `golangci-lint run ./...` (zero issues), `make wasm` and
+  `make spec-check` pass. The full shuffled suite passes in
+  the Linux CI image (Docker, 17 packages).
+- Headless captures reviewed at 1440, 1180 and 400 DIP wide, light and dark:
+  component page (top, usage, API table, example source), landing page.
+- Headless: the index marks the picked section, clears it when the reader
+  scrolls away and marks the last section at the end; an example's Code view
+  shows its demo's source; the reference lists fields the page never wrote
+  a row for; the landing page has no sidebar and Cmd/Ctrl+K still reaches
+  search. `TestGalleryAPITableIsCurrent` fails on a stale `api_gen.go`.
+- Independent review found eight defects, all fixed: the index lagged a
+  frame behind scrolling (sections are now recorded in content coordinates),
+  a jump marked the first child of the picked section, unrelated option
+  types and duplicated descriptions in the reference, helper bodies shown
+  in place of a demo's own code, a test that no longer remounted what it
+  tested, the import line derived every frame, generic field types losing
+  their qualifier, and an unused generated field.
+- Build cost on the Button page (reviewer's headless measure, before
+  listing spans were cached): 0.26 ms to 0.40 ms per frame.
+
+Not verified: a real window, GPU, screen readers, RTL placement of the page
+index, the Windows suite for this change, and the per-frame cost after the
+span cache. 36 examples built in loops (chart pages, one popover) have no
+Code view.
+
 ## Lobe component absorption and chart performance
 
 2026-11-13, uncommitted change `absorb-lobe-components` on 7855b5b, macOS

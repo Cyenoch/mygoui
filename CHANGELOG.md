@@ -14,6 +14,16 @@ not a claim of pixel-perfect completion. No release is asserted by this log.
   already were: three series of 5,000 points build in about half the time
   with a quarter of the allocations. Heatmap validation no longer builds a
   map per frame.
+- Gallery component pages are one document in the coss docs order: lead
+  example, Installation, Usage, API Reference, Examples and Theme tokens,
+  with an "On this page" index on wide windows. Each example shows its own
+  source behind a Code tab, and the reference lists every field of the
+  option types from the library source (`make generate`; a test fails when
+  it is stale). Listings share one surface with a corner copy control and
+  colour Go keywords, strings, numbers, comments, calls and qualifiers.
+- Gallery home page: a full-window landing page without the sidebar, with
+  a centered hero, a stage of live components, catalog
+  numbers, what the library is built on, families and downloads.
 - Motion follows coss more closely: a held switch thumb stretches after
   100 ms, Select and ComboBox show a static up-down chevron,
   preview cards shrink as they fade out, Sidebar collapses over 200 ms, the

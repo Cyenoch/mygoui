@@ -23,11 +23,17 @@ and inspect usable public Go API examples in one workspace.
 
 ## Workflow
 
-The home view introduces the library: install command, downloads, a live
-preview and the catalog. Flat grouped navigation and Cmd/Ctrl+K search select
-a component. Its page leads with title, description and the Preview / Code /
-API / Tokens switch, which share that selection and retain window-owned
-example state. Appearance (popover) and content zoom remain immediately
+The home view is the landing page (Persuade) and owns the window, with no
+sidebar and its own title-bar links and search: a centered hero with the
+install command, a stage of live components, catalog numbers, what the
+library is built on, the family grid and downloads. Flat grouped navigation and Cmd/Ctrl+K search select
+a component. Its page is one document: title, description and page actions,
+the lead example, Installation, Usage, API Reference, further Examples and
+Theme tokens. Each example switches between Preview and its own source and
+retains window-owned state. Wide windows keep an "On this page" index beside
+the content that marks the section being read and scrolls to a chosen one.
+Example source and the reference's fields and types come from the code; the
+page supplies titles, descriptions, the usage snippet and defaults. Appearance (popover) and content zoom remain immediately
 available; neither moves the page.
 
 ## Layout and native constraints
