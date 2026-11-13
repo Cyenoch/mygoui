@@ -11,6 +11,7 @@ import (
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/form"
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 	native "github.com/egoist/mygo/ui/chart"
@@ -37,6 +38,30 @@ type Options struct {
 	OnActivate         func(int)
 	Indicator          func(*ui.Painter, ui.Rect, int)
 	hideReadout        bool
+	// navigate maps an arrow, dx and dy in screen directions, from the
+	// selection to the next one; nil steps through the data in order, Right
+	// and Down forward.
+	navigate func(from, dx, dy int) int
+	// up, when set, is what Escape does with nothing selected, as a drilled
+	// sunburst going up a level.
+	up func()
+	// expose sets what assistive technology reads of a chart that is not a
+	// plain group, as a gauge's meter.
+	expose func(ui.Element)
+	// gesture takes the plot's input before inspection does, as a map's
+	// zoom and pan, and reports whether it took it.
+	gesture func(ui.InputEvent, *plotGesture) bool
+}
+
+// plotGesture is what a gesture keeps of the plot between frames: its
+// handle, its size as the input comes and the press being dragged.
+type plotGesture struct {
+	handle   ui.Handle
+	w, h     float32
+	last     ui.Point
+	dragging bool
+	// dragged marks a press that moved, which then activates nothing.
+	dragged bool
 }
 
 // SeriesColor resolves a series index through the host's coss chart roles.
@@ -71,43 +96,74 @@ func surface(c *ui.Context, o Options, count int, describe func(int) string,
 	draw func(*ui.Painter, ui.Rect, int), hit func(float32, float32) int,
 ) ui.Element {
 	t := theme.Colors(c)
-	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space8))
+	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space(2)))
 	root.Children(func() {
 		area := ui.Box(c).FillWidth().MinWidth(0).Height(chartHeight(c, o)).
 			Label(o.Label).Description(o.Description).Role(ui.RoleGroup).Disabled(o.Disabled)
+		active := !area.IsDisabled() && !o.Loading && count > 0
+		var gesture func(ui.InputEvent) bool
+		var g *plotGesture
+		if o.gesture != nil && active {
+			g = ui.Local(area, "chart.gesture", func() plotGesture { return plotGesture{} })
+			area.Bind(&g.handle)
+			gesture = func(ev ui.InputEvent) bool {
+				r := g.handle.Bounds(c)
+				g.w, g.h = r.W, r.H
+				return o.gesture(ev, g)
+			}
+			area.HandleInput(gesture)
+		}
 		selected := -1
 		if o.State != nil {
 			area.Bind(&o.State.Handle)
-			if !area.IsDisabled() && !o.Loading && count > 0 {
-				selected = inspect(c, area, o, count, hit)
+			if active {
+				selected = inspect(c, area, o, count, hit, gesture)
 			}
 		}
 		if o.Loading {
+			// A loading chart is a busy region that keeps its Tab stop.
+			area.Busy(true)
+			if o.State != nil && !area.IsDisabled() {
+				area.Focusable()
+			}
 			area.Children(func() { mygoui.Skeleton(c, mygoui.SkeletonOptions{}).Fill() })
 			return
 		}
 		if count == 0 {
 			text := o.EmptyText
 			if text == "" {
-				text = "No data"
+				text = locale.M().NoData
 			}
 			area.Center().Children(func() {
 				style.Text(ui.Text(c, text), c, theme.SM()).TextColor(t.MutedForeground)
 			})
 			return
 		}
-		if selected >= 0 {
+		switch {
+		case selected >= 0:
 			area.Value(describe(selected))
+		case count == 1:
+			area.Value(describe(0))
+		default:
+			// Without a selection the value spans the data: its first and
+			// last measurements.
+			area.Value(describe(0) + " – " + describe(count-1))
+		}
+		if o.expose != nil {
+			o.expose(area)
 		}
 		if o.State != nil && o.OnActivate != nil && !area.IsDisabled() {
 			activate := func() {
+				if g != nil && g.dragged {
+					return
+				}
 				if i := o.State.Selected; i >= 0 && i < count {
 					o.OnActivate(i)
 				}
 			}
 			area.OnClick(activate).OnShortcut(0, ui.KeyEnter, activate)
 		}
-		area.FocusRing(area.Focused()).Draw(func(p *ui.Painter, r ui.Rect) {
+		area.FocusRing(area.FocusVisible()).Draw(func(p *ui.Painter, r ui.Rect) {
 			p.Clip(r, 0, func() {
 				draw(p, r, selected)
 				if o.Indicator != nil && selected >= 0 {
@@ -127,12 +183,12 @@ func surface(c *ui.Context, o Options, count int, describe func(int) string,
 func plotFrame(c *ui.Context, o Options, axes native.Axes, count int, describe func(int) string,
 	build func(ui.Element, Options),
 ) ui.Element {
-	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8)
+	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(2))
 	root.Children(func() {
 		inner := o
 		inner.hideReadout = true
 		native.Plot(c, axes, func(area ui.Element) { build(area, inner) }).FillWidth().MinWidth(0).
-			Gap(theme.Space12).Padding(theme.Space8, theme.Space16)
+			Gap(theme.Space(3)).Padding(theme.Space(2), theme.Space(4))
 		if o.State != nil && !root.IsDisabled() && !o.Disabled && !o.Loading {
 			if i := o.State.Selected; i >= 0 && i < count {
 				Tooltip(c, describe(i))
@@ -145,9 +201,27 @@ func plotFrame(c *ui.Context, o Options, axes native.Axes, count int, describe f
 type pointerState struct {
 	x, y    float32
 	pending bool
+	// chosen marks a selection the pointer made, which ends as the pointer
+	// leaves the plot.
+	chosen bool
 }
 
-func inspect(c *ui.Context, area ui.Element, o Options, count int, hit func(float32, float32) int) int {
+// step moves from a selection by delta through count measurements in
+// order, stopping at the ends; from nothing, forward takes the first and
+// back the last.
+func step(from, delta, count int) int {
+	if from < 0 {
+		if delta > 0 {
+			return 0
+		}
+		return count - 1
+	}
+	return max(0, min(count-1, from+delta))
+}
+
+func inspect(c *ui.Context, area ui.Element, o Options, count int, hit func(float32, float32) int,
+	gesture func(ui.InputEvent) bool,
+) int {
 	area.Focusable()
 	st := o.State
 	old := st.Selected
@@ -158,6 +232,9 @@ func inspect(c *ui.Context, area ui.Element, o Options, count int, hit func(floa
 	// Native event routing observes committed disabled ancestors, including
 	// modifiers applied after Children. Polling PointerPosition does not.
 	area.HandleInput(func(event ui.InputEvent) bool {
+		if gesture != nil && gesture(event) {
+			return true
+		}
 		if event.Kind != ui.InputPointerMove {
 			return false
 		}
@@ -165,6 +242,7 @@ func inspect(c *ui.Context, area ui.Element, o Options, count int, hit func(floa
 		return true
 	})
 	choose := func(index int) {
+		ptr.chosen = false
 		if st.Selected == index {
 			return
 		}
@@ -173,25 +251,43 @@ func inspect(c *ui.Context, area ui.Element, o Options, count int, hit func(floa
 			o.OnSelect(index)
 		}
 	}
-	area.OnShortcut(0, ui.KeyRight, func() { choose(min(count-1, st.Selected+1)) })
-	area.OnShortcut(0, ui.KeyDown, func() { choose(min(count-1, st.Selected+1)) })
-	back := func() {
-		index := st.Selected
-		if index < 0 {
-			index = count
+	arrow := func(dx, dy int) func() {
+		return func() {
+			if o.navigate != nil {
+				if next := o.navigate(st.Selected, dx, dy); next >= 0 {
+					choose(next)
+				}
+				return
+			}
+			choose(step(st.Selected, dx+dy, count))
 		}
-		choose(max(0, index-1))
 	}
-	area.OnShortcut(0, ui.KeyLeft, back).OnShortcut(0, ui.KeyUp, back).
+	page := max(1, count/10)
+	area.OnShortcut(0, ui.KeyRight, arrow(1, 0)).OnShortcut(0, ui.KeyLeft, arrow(-1, 0)).
+		OnShortcut(0, ui.KeyDown, arrow(0, 1)).OnShortcut(0, ui.KeyUp, arrow(0, -1)).
+		OnShortcut(0, ui.KeyPageDown, func() { choose(step(st.Selected, page, count)) }).
+		OnShortcut(0, ui.KeyPageUp, func() { choose(step(st.Selected, -page, count)) }).
 		OnShortcut(0, ui.KeyHome, func() { choose(0) }).
-		OnShortcut(0, ui.KeyEnd, func() { choose(count - 1) }).
-		OnShortcut(0, ui.KeyEscape, func() { choose(-1) })
+		OnShortcut(0, ui.KeyEnd, func() { choose(count - 1) })
+	// Escape is taken only when it has something to undo, so that it
+	// otherwise reaches the dialog or popover around the chart.
+	switch {
+	case st.Selected >= 0:
+		area.OnShortcut(0, ui.KeyEscape, func() { choose(-1) })
+	case o.up != nil:
+		area.OnShortcut(0, ui.KeyEscape, o.up)
+	}
 	r := area.Bounds()
 	if ptr.pending {
 		ptr.pending = false
 		if r.W > 0 && r.H > 0 {
 			st.Selected = hit(ptr.x/r.W, ptr.y/r.H)
+			ptr.chosen = st.Selected >= 0
 		}
+	}
+	if ptr.chosen && !area.Hovered() {
+		ptr.chosen = false
+		st.Selected = -1
 	}
 	if st.Selected != old && o.OnSelect != nil {
 		o.OnSelect(st.Selected)
@@ -204,7 +300,7 @@ func inspect(c *ui.Context, area ui.Element, o Options, count int, hit func(floa
 func Tooltip(c *ui.Context, text string) ui.Element {
 	t := theme.Colors(c)
 	return style.Text(ui.Text(c, text), c, theme.XS()).TextColor(t.PopoverForeground).
-		Background(t.Popover).Padding(theme.Space8, theme.Space12).
+		Background(t.Popover).Padding(theme.Space(2), theme.Space(3)).
 		Radius(theme.RadiusScale().MD).Role(ui.RoleStatus)
 }
 
@@ -216,14 +312,14 @@ type LegendItem struct {
 
 // Legend uses native toggles; nil state gives a read-only legend.
 func Legend(c *ui.Context, state *State, items []LegendItem, disabled bool) ui.Element {
-	return ui.Row(c).FillWidth().Wrap().Gap(theme.Space8).Children(func() {
+	return ui.Row(c).FillWidth().Wrap().Gap(theme.Space(2)).Children(func() {
 		for i, item := range items {
 			color := item.Color
 			if color == (ui.Color{}) {
 				color = SeriesColor(c, i)
 			}
 			visible := state == nil || !state.Hidden[item.ID]
-			ui.Row(c.Key(item.ID)).Gap(theme.Space6).AlignItems(ui.Center).Children(func() {
+			ui.Row(c.Key(item.ID)).Gap(theme.Space(1.5)).AlignItems(ui.Center).Children(func() {
 				ui.Box(c).Size(8, 8).Radius(2).Background(color)
 				if state == nil {
 					style.Text(ui.Text(c, item.Label), c, theme.XS())
@@ -256,7 +352,7 @@ func Brush(c *ui.Context, state *BrushState, min, max float64, disabled bool) (u
 		return ui.Element{}, fmt.Errorf("chart brush: selection must be finite")
 	}
 	return form.Slider(c, form.SliderOptions{
-		Label: "Range", State: form.SliderState{Low: &state.From, High: &state.To},
+		Label: locale.M().Range, State: form.SliderState{Low: &state.From, High: &state.To},
 		Min: min, Max: max, Disabled: disabled, HideOutput: true,
 	}), nil
 }
@@ -284,7 +380,7 @@ func shaped(e ui.Element, key string, font ui.Font, texts ...string) []*ui.TextL
 }
 
 func line(p *ui.Painter, a, b ui.Point, width float32, color ui.Color) {
-	p.StrokePath((&ui.Path{}).MoveTo(a.X, a.Y).LineTo(b.X, b.Y), width, color)
+	p.StrokePolyline([][2]float32{{a.X, a.Y}, {b.X, b.Y}}, width, color)
 }
 
 func point(r ui.Rect, x, y float32) ui.Point {

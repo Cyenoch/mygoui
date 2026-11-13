@@ -71,7 +71,7 @@ type menubarState struct {
 func Menubar(c *ui.Context, o MenubarOptions) ui.Element {
 	t := theme.Colors(c)
 	root := ui.Row(c).Shrink(0).MinWidth(0).AlignSelf(ui.Start).AlignItems(ui.Center).
-		Gap(scale(c, theme.Space4)).Padding(scale(c, theme.Space4)).
+		Gap(scale(c, theme.Space(1))).Padding(scale(c, theme.Space(1))).
 		Radius(theme.RadiusScale().LG).Border(theme.Hairline, t.Border).Background(t.Background).
 		Role(ui.RoleMenuBar).FocusGroup(ui.Horizontal)
 	if o.Label != "" {
@@ -240,7 +240,7 @@ func buildMenubarMenu(c *ui.Context, o MenubarOptions, i int, open *string, titl
 	radius := theme.RadiusScale().SM
 	c.Key(key)
 	el := ui.ButtonBase(c).Shrink(0).Center().
-		Padding(scale(c, theme.Space4), scale(c, theme.Space8)).MinHeight(scale(c, 28)).
+		Padding(scale(c, theme.Space(1)), scale(c, theme.Space(2))).MinHeight(scale(c, 28)).
 		Radius(radius).FocusRing(true).Role(ui.RoleMenuItem).Label(m.Label).
 		TextColor(t.Foreground).Cursor(ui.CursorPointer)
 	st := ui.Local(el, "menubar-trigger", func() menubarTrigger { return menubarTrigger{} })
@@ -276,7 +276,7 @@ func buildMenubarMenu(c *ui.Context, o MenubarOptions, i int, open *string, titl
 	if !shown {
 		el.OnShortcut(0, ui.KeyDown, toggle)
 	}
-	panel := menuPopover(c, el, &st.shown, m.Menu, mygoui.Placement{Align: mygoui.AlignStart})
+	panel := menuPopover(c, el, &st.shown, m.Menu, mygoui.Placement{Align: mygoui.AlignStart}, false)
 	if !panel.Valid() {
 		return
 	}
@@ -288,6 +288,10 @@ func buildMenubarMenu(c *ui.Context, o MenubarOptions, i int, open *string, titl
 		if !panel.PressedOutside() {
 			el.Focus()
 		}
+		return
+	}
+	if panel.FocusLeft() {
+		*open = "" // Tab moved on from the menu
 		return
 	}
 	forth, back := ui.KeyRight, ui.KeyLeft
@@ -357,28 +361,54 @@ func menubarNeighbour(menus []MenubarMenuOptions, i, step int) string {
 	return menus[i].key()
 }
 
+// menuPanelKey keys the panel of the menu that open shows.
+type menuPanelKey struct{ open *bool }
+
 // menuPopover builds menu in a panel anchored to trigger while *open is
 // true, focusing its first item as it opens, and returns the panel, invalid
 // while closed. Choosing an item, Escape or a press outside sets *open to
-// false. Dropdown's in-window path is the same panel.
-func menuPopover(c *ui.Context, trigger ui.Element, open *bool, menu MenuOptions, placement mygoui.Placement) ui.Element {
+// false. A menu button trigger also opens on Down at the first item and on
+// Up at the last, and choosing or Escape gives it the focus back: MyGo
+// would return it to the first item, which goes with the panel. A press
+// outside leaves the focus where it lands. Dropdown's in-window path is
+// the same panel.
+func menuPopover(c *ui.Context, trigger ui.Element, open *bool, menu MenuOptions, placement mygoui.Placement, menuButton bool) ui.Element {
 	prev := ui.Local(trigger, "menu-was-open", func() bool { return false })
+	fromEnd := ui.Local(trigger, "menu-from-end", func() bool { return false })
 	enter := *open && !*prev
-	*prev = *open
+	closed := *prev && !*open
 	ml := ui.Local(trigger, "menu-list", newMenuList)
 	if enter {
 		*ml = newMenuList() // each opening starts at the top
 	}
+	first, last := enter && !*fromEnd, enter && *fromEnd
+	if enter {
+		*fromEnd = false
+	}
+	if menuButton && !*open {
+		trigger.OnShortcut(0, ui.KeyDown, func() { *open = true })
+		trigger.OnShortcut(0, ui.KeyUp, func() { *open, *fromEnd = true, true })
+	}
 	radius := theme.RadiusScale().LG
 	panel := ui.PopoverBase(c, trigger, open, func(p ui.Element) {
+		// An unkeyed panel takes its identity from the overlays built
+		// before it: a trigger's tooltip closing as the menu opens would
+		// rebuild every item and drop the focus given to the first.
+		p = p.Key(menuPanelKey{open})
 		p.MinWidth(scale(c, 128)).MaxWidth(scale(c, 320)).Padding(0)
 		anchored.Surface(c, p.Clip(), radius)
-		focus := enter
-		buildMenuPanel(c, menu, menuExtra{close: open, focusFirst: &focus}, nil, *ml, scale(c, 320)).
+		buildMenuPanel(c, menu, menuExtra{close: open, focusFirst: &first, focusLast: &last}, nil, *ml, scale(c, 320)).
 			MaxHeight(scale(c, 420)).MinWidth(0).Shrink(0)
 	})
 	if panel.Valid() {
 		anchored.Apply(panel, trigger, placement, mygoui.SideBottom)
+		if panel.Dismissed() {
+			closed = !panel.PressedOutside()
+		}
+	}
+	*prev = *open
+	if closed && menuButton {
+		trigger.Focus()
 	}
 	return panel
 }

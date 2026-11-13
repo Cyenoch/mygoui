@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Cyenoch/mygoui/internal/busy"
 	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
@@ -34,19 +35,16 @@ const (
 	ProgressLarge
 )
 
-// progressDuration is coss ui's 500 ms indicator transition.
+// progressDuration is how long a quantity takes to reach a new value. Only
+// the bar and the ring move this way, so it is timed here.
 const progressDuration = 500 * time.Millisecond
 
-// indicatorTransition animates a value change on the indicator. MyGo lays the
-// fill out at each width on the way, so the track never jumps and asks for
-// frames only while the value moves.
-var indicatorTransition = ui.ElementTransition{
-	Duration: progressDuration, Ease: ui.EaseOut, Size: true,
+// indicatorAnimation is the cadence of a value change. The ring paints with
+// it; the bar's fill is a box, which MyGo lays out at each width on the way,
+// so the track never jumps and asks for frames only while the value moves.
+func indicatorAnimation() ui.Animation {
+	return ui.Animation{Duration: progressDuration, Ease: theme.Motion().Ease}
 }
-
-// indicatorAnimation is the same cadence for paint that is not a box, as the
-// determinate ring.
-var indicatorAnimation = ui.Animation{Duration: progressDuration, Ease: ui.EaseOut}
 
 // progressFill lays the bar's fill in its track and eases a value change,
 // unless the desktop asks for less motion.
@@ -56,10 +54,11 @@ func progressFill(c *ui.Context, pct, height, radius float32, fill ui.Color) {
 	if theme.ReduceMotion(c) {
 		return
 	}
-	bar.Transition(indicatorTransition)
+	move := indicatorAnimation()
+	bar.Transition(ui.ElementTransition{Duration: move.Duration, Ease: move.Ease, Size: true})
 }
 
-// ProgressOptions configures a coss ui bar indicator.
+// ProgressOptions configures a bar indicator.
 type ProgressOptions struct {
 	Label           string
 	Value, Min, Max float64
@@ -75,7 +74,7 @@ type ProgressOptions struct {
 func ProgressBar(c *ui.Context, o ProgressOptions) ui.Element {
 	t := theme.Colors(c)
 	lo, hi := progressBounds(o.Min, o.Max)
-	e := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8).
+	e := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(2)).
 		Role(ui.RoleProgress).Label(o.Label)
 	if o.Indeterminate {
 		e.Range(0, 1, -1)
@@ -99,20 +98,13 @@ func ProgressBar(c *ui.Context, o ProgressOptions) ui.Element {
 				if r.W <= 0 || r.H <= 0 {
 					return
 				}
-				band := r.W * 0.4
-				if reduced {
-					// Reduced motion holds the 2/5 fill at the start.
-					p.Fill(ui.Rect{X: r.X, Y: r.Y, W: band, H: r.H}, fill, radius)
-					return
-				}
-				// Sweep from -100% to 350% of the band's own width.
-				const period = 1500 * time.Millisecond
-				phase := float32(p.Now().Sub(*start)%period) / float32(period)
-				x := r.X - band + ui.EaseInOut(phase)*(band*4.5)
+				x, band := busy.Sweep(r.X, r.W, p.Now().Sub(*start), reduced)
 				p.Clip(r, radius, func() {
 					p.Fill(ui.Rect{X: x, Y: r.Y, W: band, H: r.H}, fill, radius)
 				})
-				p.AnimationFrameRate(60)
+				if !reduced {
+					p.AnimationFrameRate(60)
+				}
 			})
 		} else {
 			pct := progressFraction(o.Value, lo, hi)
@@ -138,7 +130,7 @@ type MeterOptions struct {
 func Meter(c *ui.Context, o MeterOptions) ui.Element {
 	t := theme.Colors(c)
 	lo, hi := progressBounds(o.Min, o.Max)
-	e := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8).
+	e := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(2)).
 		Role(ui.RoleMeter).Label(o.Label).Range(lo, hi, o.Value)
 	e.Children(func() {
 		output := ""
@@ -148,7 +140,7 @@ func Meter(c *ui.Context, o MeterOptions) ui.Element {
 		progressHeading(c, o.Label, o.ShowOutput, output)
 		height, _ := progressMetrics(o.Size)
 		if o.Size == ProgressMedium {
-			height = theme.Space8
+			height = theme.Space(2)
 		}
 		radius := float32(0)
 		pct := progressFraction(o.Value, lo, hi)
@@ -182,12 +174,12 @@ func progressHeading(c *ui.Context, label string, showOutput bool, output string
 }
 
 func progressMetrics(size ProgressSize) (height, radius float32) {
-	height, radius = theme.Space6, 999
+	height, radius = theme.Space(1.5), 999
 	switch size {
 	case ProgressSmall:
-		height, radius = theme.Space4, 999
+		height, radius = theme.Space(1), 999
 	case ProgressLarge:
-		height, radius = theme.Space8, 999
+		height, radius = theme.Space(2), 999
 	}
 	return height, radius
 }
@@ -302,7 +294,7 @@ func ProgressCircle(c *ui.Context, o ProgressCircleOptions) ui.Element {
 		Range(lo, hi, o.Value).Label(label)
 	// A ring has no box that could carry the value, so the native channel
 	// eases the painted arc instead: frames are asked for only while it moves.
-	progress = e.AnimateTo(progressRingKey{}, progress, indicatorAnimation)
+	progress = e.AnimateTo(progressRingKey{}, progress, indicatorAnimation())
 	fill, track := motion.Color(e, progressFillKey{}, indicatorFill(c, o.Color)), t.Default
 	e.Draw(func(p *ui.Painter, r ui.Rect) {
 		drawRing(p, r, progress, fill, track)

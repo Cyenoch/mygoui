@@ -68,8 +68,8 @@ func Radio[T comparable](c *ui.Context, o RadioOptions[T]) ui.Element {
 	errText := formstyle.ErrorText(o.Invalid, o.Error)
 	on := *selected.Selected == o.Value
 
-	return choiceField(c, o.Description, errText, disabled, theme.Space24, func() {
-		row := ui.RadioBase(c, selected.Selected, o.Value).Gap(theme.Space8).Shrink(0).
+	return choiceField(c, o.Description, errText, disabled, theme.Space(6), func() {
+		row := ui.RadioBase(c, selected.Selected, o.Value).Gap(theme.Space(2)).Shrink(0).
 			FocusRing(false).TextColor(t.Foreground).Label(o.Label)
 		if o.Description != "" {
 			row.Description(o.Description)

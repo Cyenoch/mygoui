@@ -5,7 +5,6 @@ import (
 	"math"
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
@@ -126,29 +125,36 @@ type docTabInput struct {
 	middle   bool
 }
 
-var docTabShift = ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut}
-
 // A tab opened or closed grows from nothing along the strip and fades. The
 // copy of a closed tab takes no room, so the tabs beside it slide into its
 // place on a transition of their own: Position follows the layout, except in
 // the build after a drop, where the caller's new order already holds them.
 var (
-	docTabGone   = ui.Motion{Collapse: true}
-	docTabFade   = ui.Motion{}
-	docTabEase   = ui.EaseOut
-	docTabLayout = ui.ElementTransition{
+	docTabGone = ui.Motion{Collapse: true}
+	docTabFade = ui.Motion{}
+)
+
+func docTabLayout() ui.ElementTransition {
+	m := theme.Motion()
+	return ui.ElementTransition{
 		// Colors and shadows are left out: they fade on the tab's own
 		// channel and would be eased twice.
-		Position: true, Duration: motion.Reveal, Ease: docTabEase,
+		Position: true, Duration: m.Reveal, Ease: m.Ease,
 		Enter: &docTabGone, Exit: &docTabGone,
 	}
-	// docTabStrip makes the viewport and the add button follow the tabs, so
-	// the viewport does not clip the ones sliding in or out.
-	docTabStrip    = ui.ElementTransition{Position: true, Width: true, Duration: motion.Reveal, Ease: docTabEase}
-	docTabFadeOnly = ui.ElementTransition{
-		Duration: motion.State, Ease: docTabEase, Enter: &docTabFade, Exit: &docTabFade,
-	}
-)
+}
+
+// docTabStrip makes the viewport and the add button follow the tabs, so the
+// viewport does not clip the ones sliding in or out.
+func docTabStrip() ui.ElementTransition {
+	m := theme.Motion()
+	return ui.ElementTransition{Position: true, Width: true, Duration: m.Reveal, Ease: m.Ease}
+}
+
+func docTabFadeOnly() ui.ElementTransition {
+	m := theme.Motion()
+	return ui.ElementTransition{Duration: m.State, Ease: m.Ease, Enter: &docTabFade, Exit: &docTabFade}
+}
 
 // DocumentTabs builds a strip of document tabs. A click, Enter or Space
 // selects a tab; the arrows, Home and End move the focus along the strip,
@@ -164,7 +170,7 @@ var (
 // newly active tab is brought into view.
 func DocumentTabs(c *ui.Context, o DocumentTabsOptions) ui.Element {
 	t := theme.Colors(c)
-	gap := scale(c, theme.Space2)
+	gap := scale(c, theme.Space(0.5))
 	root := ui.Row(c).FillWidth().MinWidth(0).Shrink(0).AlignItems(ui.Center).Gap(gap).
 		Padding(gap).Radius(theme.RadiusScale().LG).Background(t.MutedBackground)
 	st := ui.Local(root, docTabsStateKey{}, func() docTabsState { return docTabsState{held: -1, refocus: -1} })
@@ -270,7 +276,7 @@ func DocumentTabs(c *ui.Context, o DocumentTabsOptions) ui.Element {
 		if !settle {
 			// The viewport follows its tabs, so it does not clip the ones
 			// sliding in or out before they get there.
-			viewport.Transition(docTabStrip)
+			viewport.Transition(docTabStrip())
 		}
 		viewport.Children(func() {
 			list := ui.Row(c).Shrink(0).Gap(gap).Role(ui.RoleTabList).FocusGroup(ui.Horizontal)
@@ -286,7 +292,7 @@ func DocumentTabs(c *ui.Context, o DocumentTabsOptions) ui.Element {
 						width: width, index: i, count: n, many: &st.closeMany, origin: &st.menuTab,
 					}, o)
 					if tab.Key == st.reveal {
-						if docTabShows(view, st.bounds[i], scale(c, theme.Space24), &st.scroll, forward < 0) || st.revealTries >= 6 {
+						if docTabShows(view, st.bounds[i], scale(c, theme.Effects().FadeEdge), &st.scroll, forward < 0) || st.revealTries >= 6 {
 							st.reveal = ""
 						} else {
 							st.revealTries++
@@ -306,7 +312,8 @@ func DocumentTabs(c *ui.Context, o DocumentTabsOptions) ui.Element {
 					case settle:
 						el.Translate(el.Jump(docTabShiftKey{}, shift), 0)
 					default:
-						el.Translate(el.AnimateTo(docTabShiftKey{}, shift, docTabShift), 0)
+						m := theme.Motion()
+						el.Translate(el.AnimateTo(docTabShiftKey{}, shift, ui.Animation{Duration: m.Shift, Ease: m.Ease}), 0)
 					}
 					switch {
 					case in.held && st.held < 0:
@@ -352,7 +359,7 @@ func DocumentTabs(c *ui.Context, o DocumentTabsOptions) ui.Element {
 			})
 			st.addW = add.LayoutBounds().W
 			if !settle {
-				add.Transition(docTabStrip)
+				add.Transition(docTabStrip())
 			}
 		}
 	})
@@ -472,7 +479,8 @@ func docTabWheel(s *ui.ScrollState, ev ui.InputEvent) bool {
 	if ev.Precise {
 		s.X = to
 	} else {
-		s.ScrollTo(to, 0, ui.Animation{Duration: motion.State, Ease: ui.EaseOut})
+		m := theme.Motion()
+		s.ScrollTo(to, 0, ui.Animation{Duration: m.State, Ease: m.Ease})
 	}
 	return true
 }
@@ -481,7 +489,7 @@ func docTabWheel(s *ui.ScrollState, ev ui.InputEvent) bool {
 // they lie.
 func docTabEdges(c *ui.Context, viewport ui.Element, s *ui.ScrollState) {
 	w := viewport.LayoutBounds().W
-	reach := scale(c, theme.Space24)
+	reach := scale(c, theme.Effects().FadeEdge)
 	if s.MaxX <= 0.5 || w <= 2*reach {
 		return
 	}
@@ -522,7 +530,8 @@ func docTabShows(view, tab ui.Rect, edge float32, s *ui.ScrollState, rtl bool) b
 func docTabScrollTo(still, laidOut bool) ui.ScrollIntoViewOptions {
 	o := ui.ScrollIntoViewOptions{Inline: ui.ScrollCenter}
 	if !still && laidOut {
-		o.Animation = &ui.Animation{Duration: motion.Reveal, Ease: ui.EaseOut}
+		m := theme.Motion()
+		o.Animation = &ui.Animation{Duration: m.Reveal, Ease: m.Ease}
 	}
 	return o
 }
@@ -552,7 +561,7 @@ func docTabAllTabs(c *ui.Context, st *docTabsState, o DocumentTabsOptions, pick 
 			},
 		}
 	}
-	menuPopover(c, button, &st.listOpen, menu, mygoui.Placement{Align: mygoui.AlignEnd})
+	menuPopover(c, button, &st.listOpen, menu, mygoui.Placement{Align: mygoui.AlignEnd}, true)
 }
 
 // docTab builds one tab and reads its input.
@@ -561,9 +570,9 @@ func docTab(c *ui.Context, tab *DocumentTab, v docTabView, o DocumentTabsOptions
 	closable := o.OnClose != nil && !tab.Pinned
 	height := scale(c, theme.HeightButtonSM)
 	el := ui.ButtonBase(c).Role(ui.RoleTab).AccessSelected(v.active).Label(tab.Title).
-		Row().AlignItems(ui.Center).Gap(scale(c, theme.Space6)).Shrink(0).
+		Row().AlignItems(ui.Center).Gap(scale(c, theme.Space(1.5))).Shrink(0).
 		Height(height).MaxWidth(scale(c, 200)).
-		PaddingStart(scale(c, theme.Space10)).PaddingEnd(scale(c, theme.Space10)).
+		PaddingStart(scale(c, theme.Space(2.5))).PaddingEnd(scale(c, theme.Space(2.5))).
 		Radius(theme.RadiusScale().MD).FocusRing(true)
 	switch {
 	case tab.Pinned:
@@ -574,18 +583,18 @@ func docTab(c *ui.Context, tab *DocumentTab, v docTabView, o DocumentTabsOptions
 	// The Exit stays declared in every build, or the tab would count as gone.
 	switch {
 	case theme.ReduceMotion(c):
-		el.Transition(docTabFadeOnly)
+		el.Transition(docTabFadeOnly())
 	case v.settle:
-		still := docTabLayout
+		still := docTabLayout()
 		still.Position = false
 		el.Transition(still)
 	default:
-		layout := docTabLayout
+		layout := docTabLayout()
 		layout.Width = v.width > 0
 		el.Transition(layout)
 	}
 	if !tab.Pinned && (closable || tab.Dirty) {
-		el.PaddingEnd(scale(c, theme.Space4))
+		el.PaddingEnd(scale(c, theme.Space(1)))
 	}
 	if tab.Dirty {
 		el.Description(locale.M().Modified)
@@ -622,8 +631,8 @@ func docTab(c *ui.Context, tab *DocumentTab, v docTabView, o DocumentTabsOptions
 		}
 		if tab.Pinned {
 			if tab.Dirty {
-				dot := scale(c, theme.Space6)
-				ui.Box(c).Absolute().Top(scale(c, theme.Space4)).Right(scale(c, theme.Space4)).
+				dot := scale(c, theme.Space(1.5))
+				ui.Box(c).Absolute().Top(scale(c, theme.Space(1))).Right(scale(c, theme.Space(1))).
 					Size(dot, dot).Radius(dot / 2).Background(fg)
 			}
 			return
@@ -707,7 +716,7 @@ func docTabHasOthers(tabs []DocumentTab, skip int) bool {
 // is on it. It reports a press of the close button.
 func docTabClose(c *ui.Context, tab *DocumentTab, closable, offered bool, ink ui.Color) (closed bool) {
 	t := theme.Colors(c)
-	side := scale(c, theme.Space20)
+	side := scale(c, theme.Space(5))
 	slot := ui.Box(c).Size(side, side).Center().Shrink(0)
 	if closable {
 		// The slot stays out of the focus order, so the arrows go from tab
@@ -728,7 +737,7 @@ func docTabClose(c *ui.Context, tab *DocumentTab, closable, offered bool, ink ui
 			glyph := scale(c, theme.IconSM)
 			ui.Icon(c, lucide.X()).Size(glyph, glyph).Shrink(0)
 		case dirty > 0:
-			dot := scale(c, theme.Space8)
+			dot := scale(c, theme.Space(2))
 			ui.Box(c).Size(dot, dot).Radius(dot / 2).Background(ink.Alpha(dirty))
 		}
 	})

@@ -47,7 +47,7 @@ func Typography(c *ui.Context, text string, o TypographyOptions) ui.Element {
 	} else if o.Type == theme.TypeCode {
 		// The code role uses an inline chip on the default fill.
 		e.Background(theme.Colors(c).Default).Radius(theme.RadiusScale().MD).
-			PaddingX(theme.Space6).PaddingY(theme.Space2).AlignSelf(ui.Start)
+			PaddingX(theme.Space(1.5)).PaddingY(theme.Space(0.5)).AlignSelf(ui.Start)
 	}
 	return e
 }
@@ -82,6 +82,6 @@ func Code(c *ui.Context, text string) ui.Element {
 
 // Prose arranges caller-composed typography with an 8 DIP gap.
 func Prose(c *ui.Context, body func()) ui.Element {
-	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8).
+	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(2)).
 		TextColor(theme.Colors(c).Foreground).Children(body)
 }

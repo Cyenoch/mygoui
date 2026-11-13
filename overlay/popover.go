@@ -32,6 +32,8 @@ type PopoverOptions struct {
 	Flyout *mygoui.FlyoutHost
 	// shrinkOnExit also shrinks the panel to 98% as it fades out.
 	shrinkOnExit bool
+	// hover leaves the focus where it is, for a card that hover opens.
+	hover bool
 }
 
 // flyoutMaxWidth caps a content-sized flyout popover, which has no window
@@ -40,7 +42,11 @@ const flyoutMaxWidth = 400
 
 // Popover shows an anchored popover while *open is true. It is
 // non-modal: the press that dismisses it reaches what is under the pointer,
-// and Escape or an outside press sets *open to false.
+// and Escape or an outside press sets *open to false. As it opens the focus
+// moves into the panel, from which Tab reaches its controls, unless the
+// anchor is a field that holds the focus; Escape returns the focus to the anchor, and the
+// focus moving on past the panel and its anchor closes it, but not the
+// window ceasing to be active.
 func Popover(c *ui.Context, anchor ui.Element, open *bool, o PopoverOptions) ui.Element {
 	if open == nil {
 		return ui.Element{}
@@ -72,8 +78,8 @@ func Popover(c *ui.Context, anchor ui.Element, open *bool, o PopoverOptions) ui.
 	radius := theme.RadiusScale().LG
 	want := resolveSide(o.Placement, mygoui.SideBottom)
 	w, h := c.Size()
-	availableWidth := max(float32(0), w-2*theme.Space8)
-	availableHeight := max(float32(0), h-2*theme.Space8)
+	availableWidth := max(float32(0), w-2*theme.Space(2))
+	availableHeight := max(float32(0), h-2*theme.Space(2))
 	p := ui.PopoverBase(c, anchor, open, func(panel ui.Element) {
 		// Key the panel before reading the side it settled on: a keyed
 		// element keeps its state, and so its committed box, from frame to
@@ -105,16 +111,30 @@ func Popover(c *ui.Context, anchor ui.Element, open *bool, o PopoverOptions) ui.
 		popoverContent(c, o)
 		anchored.Apply(panel, anchor, o.Placement, mygoui.SideBottom)
 	})
+	if p.Valid() && !o.hover {
+		// The popover records the element to give the focus back to after
+		// its callback: the panel takes the focus after that, unless the
+		// anchor holds it and takes text, as a field the user is typing
+		// into. The anchor counts as inside the panel for FocusLeft.
+		p.TabStop(false).FocusRing(false)
+		if !anchor.FocusWithin() || !c.FocusTakesText() {
+			p.AutoFocus()
+		}
+		// The window losing the keyboard is not the user moving on.
+		if p.FocusLeft() && c.WindowActive() {
+			*open = false
+		}
+	}
 	return p
 }
 
 // popoverContent is the scrollable header, body and footer of a popover.
 func popoverContent(c *ui.Context, o PopoverOptions) {
 	t := theme.Colors(c)
-	ui.Scroll(c).FillWidth().MinWidth(0).MinHeight(0).Padding(theme.Space16).Children(func() {
-		ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space12).Children(func() {
+	ui.Scroll(c).FillWidth().MinWidth(0).MinHeight(0).Padding(theme.Space(4)).Children(func() {
+		ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(3)).Children(func() {
 			if o.Header != nil || o.Title != "" || o.Description != "" {
-				ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space4).Children(func() {
+				ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(1)).Children(func() {
 					if o.Header != nil {
 						o.Header(c)
 						return
@@ -132,7 +152,7 @@ func popoverContent(c *ui.Context, o PopoverOptions) {
 				ui.Column(c).FillWidth().MinWidth(0).Children(func() { o.Body(c) })
 			}
 			if o.Footer != nil {
-				ui.Row(c).FillWidth().Justify(ui.End).Gap(theme.Space8).Children(func() { o.Footer(c) })
+				ui.Row(c).FillWidth().Justify(ui.End).Gap(theme.Space(2)).Children(func() { o.Footer(c) })
 			}
 		})
 	})

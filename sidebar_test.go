@@ -12,7 +12,9 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-func TestSidebarSelectionRemeasuresWeightedText(t *testing.T) {
+// TestSidebarSelectionKeepsTheRowSize pins that choosing an item changes its
+// face, not its text: the row keeps its size at every text scale.
+func TestSidebarSelectionKeepsTheRowSize(t *testing.T) {
 	for _, scale := range []float32{1, 2} {
 		t.Run(fmt.Sprint(scale), func(t *testing.T) {
 			selected, collapsed := "", false
@@ -37,9 +39,9 @@ func TestSidebarSelectionRemeasuresWeightedText(t *testing.T) {
 			}
 			fresh := ui.NewTester(build, 300, 240)
 			fresh.SetPreferences(ui.Preferences{TextScale: scale, ReduceMotion: true})
-			// Cached normal-width text must paint exactly like a fresh selected row.
+			// A row selected late paints exactly like one built selected.
 			if !bytes.Equal(tt.Image().Pix, fresh.Image().Pix) {
-				t.Fatal("selected text reused unselected font metrics or escaped its row")
+				t.Fatal("a row selected late paints unlike one built selected")
 			}
 		})
 	}
@@ -255,10 +257,10 @@ func TestSidebarTokenPaintAndFocus(t *testing.T) {
 				colors.SidebarAccent.Over(colors.Sidebar), "hovered item")
 
 			tt.Key(0, ui.KeyTab)
-			if !tt.Focused("Toggle Sidebar") {
+			if !tt.Focused("Toggle sidebar") {
 				t.Fatal("toggle not keyboard focused")
 			}
-			toggle, _ := tt.Find("Toggle Sidebar")
+			toggle, _ := tt.Find("Toggle sidebar")
 			wantPixel(t, tt.Image(), int(toggle.X+toggle.W/2), int(toggle.Y)+1,
 				colors.SidebarRing.Over(colors.Sidebar), "sidebar focus ring")
 		})
@@ -294,7 +296,7 @@ func TestSidebarUsesInjectedTokens(t *testing.T) {
 	wantPixel(t, img, 100, int(home.Y+home.H/2), accent, "injected sidebar accent")
 	wantPixel(t, img, 255, 100, border, "injected sidebar border")
 	tt.Key(0, ui.KeyTab)
-	toggle, _ := tt.Find("Toggle Sidebar")
+	toggle, _ := tt.Find("Toggle sidebar")
 	wantPixel(t, tt.Image(), int(toggle.X+toggle.W/2), int(toggle.Y)+1, ring, "injected sidebar ring")
 }
 

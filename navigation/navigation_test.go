@@ -225,10 +225,11 @@ func TestPaginationSelectedPageHasVisibleDarkSurface(t *testing.T) {
 		})
 	}, 640, 160)
 
-	selected, ok := tt.Find("2, Selected")
-	if !ok {
-		t.Fatal("selected page is not exposed")
+	page2, ok := tt.AccessByRole(ui.RoleButton, "2")
+	if !ok || page2.Current != ui.CurrentPage {
+		t.Fatalf("the current page is not exposed: %+v", page2)
 	}
+	selected := page2.Bounds
 	img := tt.Image()
 	y := int(selected.Y + selected.H/2)
 	inside := img.RGBAAt(int(selected.X+4), y)
@@ -624,5 +625,28 @@ func TestDropdownKeepsFocusWhenItGrowsLongWhileOpen(t *testing.T) {
 	tt.Frame()
 	if !tt.Focused("Item 1") {
 		t.Fatal("growing the open menu dropped the focus")
+	}
+}
+
+// TestTabsPanelIsATabPanelOfTheSelectedTab protects the tabs pattern for
+// assistive technology: the panel shown is a tab panel, named and controlled
+// by the selected tab, and follows the selection.
+func TestTabsPanelIsATabPanelOfTheSelectedTab(t *testing.T) {
+	selected := 0
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		navigation.Tabs(c, navigation.TabsOptions{Selected: &selected, Label: "Sections", Items: []navigation.TabOptions{
+			{Label: "Overview", Content: func() { ui.Text(c, "Overview panel") }},
+			{Label: "Settings", Content: func() { ui.Text(c, "Settings panel") }},
+		}})
+	}, 640, 320)
+	for _, name := range []string{"Overview", "Settings"} {
+		if err := tt.Click(name); err != nil {
+			t.Fatal(err)
+		}
+		tab, _ := tt.AccessByRole(ui.RoleTab, name)
+		if _, ok := tt.AccessByRole(ui.RoleTabPanel, name); !ok || len(tab.Controls) != 1 || tab.Controls[0] != name {
+			t.Fatalf("%s: tab panel shown %v, the tab controls %q", name, ok, tab.Controls)
+		}
 	}
 }

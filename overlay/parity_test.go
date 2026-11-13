@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/Cyenoch/mygoui"
-	"github.com/Cyenoch/mygoui/internal/anchored"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -32,7 +31,7 @@ func TestPopoverEntranceZoomsToFullSize(t *testing.T) {
 	if !tt.FramePending() {
 		t.Error("the popover arrival asks for no frames")
 	}
-	tt.Advance(anchored.MotionDuration)
+	tt.Advance(popupMotionDuration)
 	tt.Frame()
 	settled := motionLabel(t, tt, "Details")
 	if settled.Dx() <= entering.Dx() {
@@ -74,7 +73,7 @@ func TestPopoverArrowFollowsFlippedPanel(t *testing.T) {
 	if err := tt.Click("Details"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Advance(2 * anchored.MotionDuration)
+	tt.Advance(2 * popupMotionDuration)
 	tt.Frame()
 	anchorRect, ok := tt.Find("Details")
 	if !ok {
@@ -123,7 +122,7 @@ func TestPopoverArrowPointsAtItsAnchor(t *testing.T) {
 	if err := tt.Click("Few words"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Advance(2 * anchored.MotionDuration)
+	tt.Advance(2 * popupMotionDuration)
 	tt.Frame()
 	anchorRect, ok := tt.Find("Few words")
 	if !ok || box.W <= 0 {
@@ -195,14 +194,14 @@ func TestPopoverReopenDuringExitIsWhole(t *testing.T) {
 	if err := tt.Click("Options"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Advance(anchored.MotionDuration)
+	tt.Advance(popupMotionDuration)
 	tt.Frame()
 	settled := motionLabel(t, tt, "Details")
 	tt.Key(0, ui.KeyEscape)
 	if open {
 		t.Fatal("Escape did not close the popover")
 	}
-	tt.Advance(anchored.MotionDuration / 3)
+	tt.Advance(popupMotionDuration / 3)
 	if err := tt.Click("Options"); err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +212,7 @@ func TestPopoverReopenDuringExitIsWhole(t *testing.T) {
 	if again := motionLabel(t, tt, "Details"); again.Dx() < settled.Dx()*95/100 {
 		t.Fatalf("the reopened panel restarted its entrance: settled=%v again=%v", settled, again)
 	}
-	tt.Advance(anchored.MotionDuration)
+	tt.Advance(popupMotionDuration)
 	tt.Frame()
 	if got := motionLabel(t, tt, "Details"); got != settled {
 		t.Fatalf("the reopened panel did not settle at its layout size: got=%v want=%v", got, settled)

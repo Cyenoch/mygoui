@@ -44,13 +44,13 @@ type AccordionItemOptions struct {
 
 // Accordion builds a column of sections. Up and Down move the keyboard focus
 // between headers, Home and End to the first and the last; Enter and Space
-// toggle the focused section. The panel grows and fades, its height and
+// toggle the focused section. Each header is a Tab stop, and Tab goes on
+// into its actions and its open panel. The panel grows and fades, its height and
 // opacity both over the shared collapsible animation, and its indicator turns
 // with the same progress; reduced motion settles all of them at once.
 func Accordion(c *ui.Context, o AccordionOptions) ui.Element {
 	t := theme.Colors(c)
-	root := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).
-		Role(ui.RoleGroup).FocusGroup(ui.Vertical)
+	root := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Role(ui.RoleGroup)
 	if o.Label != "" {
 		root.Label(o.Label)
 	}
@@ -59,7 +59,7 @@ func Accordion(c *ui.Context, o AccordionOptions) ui.Element {
 		// first and last headers and clips its children, as upstream's
 		// per-corner trigger rules do. The default variant draws on the page
 		// with square header faces, so it is not clipped.
-		radius := min(scale(c, theme.Space32), theme.RadiusScale().XXXL)
+		radius := min(scale(c, theme.Space(8)), theme.RadiusScale().XXXL)
 		root.Background(t.Surface).TextColor(t.SurfaceForeground).Radius(radius).Clip()
 	}
 	expanded := o.Expanded
@@ -72,6 +72,8 @@ func Accordion(c *ui.Context, o AccordionOptions) ui.Element {
 		expanded:      expanded,
 		hideSeparator: o.HideSeparator,
 		onChange:      o.OnChange,
+		focus:         ui.Local(root, "accordion-focus", func() int { return -1 }),
+		enabled:       func(i int) bool { return !o.Items[i].Disabled },
 	}
 	root.Children(func() {
 		for i := range o.Items {
@@ -127,8 +129,8 @@ func accordionItem(c *ui.Context, sc *accordionScope, index, count int, o Accord
 		}
 		header.Children(func() {
 			parts = ui.CollapsibleBase(c, &open)
-			tr = parts.Trigger.Grow(1).AlignItems(ui.Center).Gap(scale(c, theme.Space8)).
-				PaddingY(scale(c, theme.Space16)).FocusRing(false).Label(o.Title)
+			tr = parts.Trigger.Grow(1).AlignItems(ui.Center).Gap(scale(c, theme.Space(2))).
+				PaddingY(scale(c, theme.Space(4))).FocusRing(false).Label(o.Title)
 			// Snapshot the trigger's states in the build: a retained copy
 			// of a leaving element paints in later passes, where tr has
 			// expired.
@@ -157,6 +159,9 @@ func accordionItem(c *ui.Context, sc *accordionScope, index, count int, o Accord
 				})
 			})
 			tr = style.Disabled(tr, o.Disabled)
+			if !o.Disabled {
+				rove(tr, sc.focus, index, count, sc.enabled, ui.KeyUp, ui.KeyDown)
+			}
 			if o.Actions != nil {
 				ui.Row(c).AlignItems(ui.Center).Shrink(0).Children(o.Actions)
 			}
@@ -172,8 +177,8 @@ func accordionItem(c *ui.Context, sc *accordionScope, index, count int, o Accord
 			}
 		}
 		if panel := parts.Panel(o.Body); panel.Valid() {
-			panel.FillWidth().MinWidth(0).Gap(scale(c, theme.Space8)).
-				Padding(0, 0, scale(c, theme.Space16), 0).
+			panel.FillWidth().MinWidth(0).Gap(scale(c, theme.Space(2))).
+				Padding(0, 0, scale(c, theme.Space(4)), 0).
 				TextColor(t.Muted)
 			fadePanel(panel, parts.Progress())
 		}

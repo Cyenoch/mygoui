@@ -274,20 +274,22 @@ func TestCalendarFocusAndSelectionAcrossDifferentWeekCounts(t *testing.T) {
 	}
 	tt.Key(0, ui.KeyEnd)
 	tt.Key(0, ui.KeyEnter)
-	if st.Value.Month() != time.February || st.Value.Day() != 28 || len(changes) != 2 {
+	if st.Value.Month() != time.February || st.Value.Day() != 7 || len(changes) != 2 {
 		t.Fatalf("February selection %v, callbacks %v", st.Value, changes)
 	}
 	for _, month := range []time.Month{time.March, time.April, time.May} {
 		tt.Key(0, ui.KeyPageDown)
-		if st.Month.Month() != month || st.Cursor.Day() != 28 || !tt.Focused("Days") {
+		if st.Month.Month() != month || st.Cursor.Day() != 7 || !tt.Focused("Days") {
 			t.Fatalf("paged to %v: month %v, cursor %v, focused %v", month, st.Month, st.Cursor, tt.Focused("Days"))
 		}
 		if st.Value.Month() != time.February || len(changes) != 2 {
 			t.Fatalf("paging changed the selection %v or callbacks %v", st.Value, changes)
 		}
 	}
-	tt.Key(0, ui.KeyEnd)
-	tt.Key(0, ui.KeyEnter)
+	// May 31 opens the sixth row.
+	for _, key := range []ui.Key{ui.KeyDown, ui.KeyDown, ui.KeyDown, ui.KeyEnd, ui.KeyRight, ui.KeyEnter} {
+		tt.Key(0, key)
+	}
 	if st.Value.Month() != time.May || st.Value.Day() != 31 || len(changes) != 3 || !tt.Focused("Days") {
 		t.Fatalf("sixth-row selection %v, callbacks %v, focused %v", st.Value, changes, tt.Focused("Days"))
 	}

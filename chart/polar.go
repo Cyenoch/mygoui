@@ -136,6 +136,9 @@ func Gauge(c *ui.Context, o GaugeOptions) (ui.Element, error) {
 	}
 	t := theme.Colors(c)
 	fraction := (o.Value - o.Min) / (o.Max - o.Min)
+	o.expose = func(area ui.Element) {
+		area.Role(ui.RoleMeter).Range(o.Min, o.Max, o.Value).Value(number(o.Value))
+	}
 	return surface(c, o.Options, 1, func(int) string { return o.Label + ": " + number(o.Value) },
 		func(p *ui.Painter, r ui.Rect, _ int) {
 			cx, cy, radius := circle(r)

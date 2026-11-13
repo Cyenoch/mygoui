@@ -7,6 +7,7 @@ import (
 	"github.com/Cyenoch/mygoui/internal/anchored"
 	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -130,12 +131,12 @@ func DateRangePicker(c *ui.Context, o DateRangePickerOptions) ui.Element {
 	}
 	openLabel := o.OpenLabel
 	if openLabel == "" {
-		openLabel = "Open calendar"
+		openLabel = locale.M().OpenCalendar
 	}
 
 	root.Children(func() {
 		spec.suffix = func() {
-			trigger = triggerButton(c, openLabel, func() {
+			trigger = triggerButton(c, openLabel, *open, func() {
 				if *open {
 					return
 				}
@@ -258,10 +259,10 @@ func rangeGroup(c *ui.Context, spec rangeFieldSpec, buf *rangeBuffer, invalid bo
 	}
 	startLabel, endLabel := spec.startLabel, spec.endLabel
 	if startLabel == "" {
-		startLabel = "Start date"
+		startLabel = locale.M().StartDate
 	}
 	if endLabel == "" {
-		endLabel = "End date"
+		endLabel = locale.M().EndDate
 	}
 	group := fieldGroup(c, invalid, spec.field.disabled)
 	if spec.width > 0 && !spec.field.fullWidth {
@@ -269,7 +270,7 @@ func rangeGroup(c *ui.Context, spec rangeFieldSpec, buf *rangeBuffer, invalid bo
 	}
 	if spec.suffix != nil {
 		// A trailing icon button sits close to the edge, as in coss input groups.
-		group = group.Padding(0, theme.Space4, 0, theme.Space12)
+		group = group.Padding(0, theme.Space(1), 0, theme.Space(3))
 	}
 	if spec.field.fullWidth {
 		group = group.FillWidth()
@@ -280,7 +281,7 @@ func rangeGroup(c *ui.Context, spec rangeFieldSpec, buf *rangeBuffer, invalid bo
 		start.OnChange(func() { buf.commit(spec) })
 
 		style.Text(ui.Text(c, "–"), c, theme.SM()).
-			TextColor(t.FieldPlaceholder).PaddingX(theme.Space4).Shrink(0)
+			TextColor(t.FieldPlaceholder).PaddingX(theme.Space(1)).Shrink(0)
 
 		end := fieldInput(c, &buf.endText, endPlaceholder)
 		end.Label(endLabel)

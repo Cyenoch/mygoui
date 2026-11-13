@@ -95,9 +95,11 @@ type menuScope struct {
 }
 
 // menuExtra carries wiring that only a root (Dropdown or SubMenu) has.
+// focusLast gives the focus to the last enabled item in the next build.
 type menuExtra struct {
 	close      *bool
 	focusFirst *bool
+	focusLast  *bool
 }
 
 // Menu builds a menu: a vertical stack of sections and items with Arrow, Home
@@ -109,8 +111,8 @@ func Menu(c *ui.Context, o MenuOptions) ui.Element {
 }
 
 func buildMenu(c *ui.Context, o MenuOptions, extra menuExtra, parent *menuScope) ui.Element {
-	root := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Gap(scale(c, theme.Space4)).
-		Padding(scale(c, theme.Space4)).Role(ui.RoleMenu).FocusGroup(ui.Vertical).Clip()
+	root := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Gap(scale(c, theme.Space(1))).
+		Padding(scale(c, theme.Space(1))).Role(ui.RoleMenu).FocusGroup(ui.Vertical).Clip()
 	if o.Label != "" {
 		root.Label(o.Label)
 	}
@@ -120,6 +122,10 @@ func buildMenu(c *ui.Context, o MenuOptions, extra menuExtra, parent *menuScope)
 	}
 	sc.ahead = ui.Local(root, "menu-ahead", func() menuAhead { return menuAhead{want: -1} })
 	sc.ahead.begin()
+	if extra.focusLast != nil && *extra.focusLast {
+		sc.ahead.want = enabledItems(o) - 1
+		*extra.focusLast = false
+	}
 	root.Children(func() {
 		for i := range o.Sections {
 			buildMenuSection(c, o.Sections[i], sc)
@@ -183,7 +189,7 @@ func buildMenuSection(c *ui.Context, o MenuSectionOptions, sc *menuScope) ui.Ele
 // buildMenuHeading builds a section's title row.
 func buildMenuHeading(c *ui.Context, title string) ui.Element {
 	heading := ui.Row(c).FillWidth().AlignItems(ui.Center).Shrink(0).
-		Padding(scale(c, theme.Space6), scale(c, theme.Space8), scale(c, theme.Space4), scale(c, theme.Space8)).
+		Padding(scale(c, theme.Space(1.5)), scale(c, theme.Space(2)), scale(c, theme.Space(1)), scale(c, theme.Space(2))).
 		Role(ui.RoleText)
 	heading.Children(func() {
 		style.Text(ui.Text(c, title), c, theme.XS()).TextColor(theme.Colors(c).Muted).
@@ -230,7 +236,7 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 		c.Key(o.Key)
 	}
 	el := ui.ButtonBase(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Justify(ui.Start).
-		Gap(scale(c, theme.Space8)).Padding(scale(c, theme.Space4), scale(c, theme.Space8)).
+		Gap(scale(c, theme.Space(2))).Padding(scale(c, theme.Space(1)), scale(c, theme.Space(2))).
 		MinHeight(scale(c, 28)).Radius(radius).FocusRing(true).
 		Role(role).Label(o.Label).Cursor(ui.CursorPointer)
 	el.Checked(on)
@@ -240,7 +246,7 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 	if hasIndicator || o.inset {
 		el.PaddingStart(scale(c, 28))
 		if hasSubmenu {
-			el.PaddingStart(scale(c, theme.Space8))
+			el.PaddingStart(scale(c, theme.Space(2)))
 			el.PaddingEnd(scale(c, 28))
 		}
 	}
@@ -288,8 +294,8 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 			if !hasIndicator || shown <= 0.001 {
 				return
 			}
-			start := r.X + scale(c, theme.Space8)
-			end := r.X + r.W - scale(c, theme.Space8) - iconSize
+			start := r.X + scale(c, theme.Space(2))
+			end := r.X + r.W - scale(c, theme.Space(2)) - iconSize
 			if c.Direction() == ui.RightToLeft {
 				start, end = end, start
 			}
@@ -409,7 +415,7 @@ func SubMenu(c *ui.Context, anchor ui.Element, o SubMenuOptions) ui.Element {
 		// 4 DIP is the menu's own padding: the submenu's edge then meets the
 		// parent panel's edge, as upstream's flush submenu does.
 		panel = anchored.Apply(panel, anchor, mygoui.Placement{
-			Side: mygoui.SideRight, Align: mygoui.AlignStart, Offset: scale(c, theme.Space4),
+			Side: mygoui.SideRight, Align: mygoui.AlignStart, Offset: scale(c, theme.Space(1)),
 		}, mygoui.SideRight)
 	}
 	return panel
@@ -429,6 +435,19 @@ type DropdownOptions struct {
 	Flyout *mygoui.FlyoutHost
 }
 
+// enabledItems counts the items of o that take the focus.
+func enabledItems(o MenuOptions) int {
+	n := 0
+	for _, section := range o.Sections {
+		for _, item := range section.Items {
+			if !item.Separator && !item.Disabled {
+				n++
+			}
+		}
+	}
+	return n
+}
+
 // hasSubmenu reports whether any item of o opens a submenu.
 func hasSubmenu(o MenuOptions) bool {
 	for _, section := range o.Sections {
@@ -441,9 +460,10 @@ func hasSubmenu(o MenuOptions) bool {
 	return false
 }
 
-// Dropdown builds a menu button and its anchored menu panel. Click, Enter or
-// Space opens it; a press outside or Escape closes it; choosing an item closes
-// it and reports the item. Menu items receive the keyboard focus as it opens.
+// Dropdown builds a menu button and its anchored menu panel. Click, Enter,
+// Space or Down opens it at its first item, Up at its last; a press outside
+// or Escape closes it; choosing an item closes it and reports the item.
+// Choosing or Escape returns the focus to the button.
 func Dropdown(c *ui.Context, o DropdownOptions) ui.Element {
 	trigger := mygoui.Button(c, mygoui.ButtonOptions{
 		Label:    o.Label,
@@ -486,17 +506,7 @@ func Dropdown(c *ui.Context, o DropdownOptions) ui.Element {
 	}) {
 		return trigger
 	}
-	radius := theme.RadiusScale().LG
-	panel := ui.PopoverBase(c, trigger, open, func(p ui.Element) {
-		p.MinWidth(scale(c, 128)).MaxWidth(scale(c, 320)).Padding(0)
-		anchored.Surface(c, p.Clip(), radius)
-		focus := enter
-		buildMenuPanel(c, o.Menu, menuExtra{close: open, focusFirst: &focus}, nil, *ml, scale(c, 320)).
-			MaxHeight(scale(c, 420)).MinWidth(0).Shrink(0)
-	})
-	if panel.Valid() {
-		anchored.Apply(panel, trigger, o.Placement, mygoui.SideBottom)
-	}
+	menuPopover(c, trigger, open, o.Menu, o.Placement, true)
 	return trigger
 }
 

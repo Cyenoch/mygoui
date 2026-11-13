@@ -83,7 +83,7 @@ func CheckboxGroup(c *ui.Context, o CheckboxGroupOptions, body func()) ui.Elemen
 	errText := formstyle.ErrorText(o.Invalid, o.Error)
 	disabled := o.Disabled
 
-	root := ui.Column(c).MinWidth(0).FillWidth().Gap(theme.Space4).
+	root := ui.Column(c).MinWidth(0).FillWidth().Gap(theme.Space(1)).
 		Role(ui.RoleGroup).Label(o.Label)
 	if o.Description != "" {
 		root.Description(o.Description)
@@ -128,7 +128,7 @@ func CheckboxGroup(c *ui.Context, o CheckboxGroupOptions, body func()) ui.Elemen
 // choiceItems builds the container a choice group's options flow in.
 func choiceItems(c *ui.Context, orientation GroupOrientation) ui.Element {
 	if orientation == GroupHorizontal {
-		return ui.Row(c).MinWidth(0).FillWidth().Wrap().AlignItems(ui.Start).Gap(theme.Space12)
+		return ui.Row(c).MinWidth(0).FillWidth().Wrap().AlignItems(ui.Start).Gap(theme.Space(3))
 	}
-	return ui.Column(c).MinWidth(0).FillWidth().Gap(theme.Space12)
+	return ui.Column(c).MinWidth(0).FillWidth().Gap(theme.Space(3))
 }

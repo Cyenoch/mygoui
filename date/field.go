@@ -103,7 +103,7 @@ func formField(c *ui.Context, spec fieldSpec, errorText string, body func()) ui.
 
 // fieldGroup uses the shared COSS input surface and focus-within treatment.
 func fieldGroup(c *ui.Context, invalid, disabled bool) ui.Element {
-	e := ui.Row(c).MinHeight(theme.Scale(c, 32)).AlignItems(ui.Center).PaddingX(theme.Space12)
+	e := ui.Row(c).MinHeight(theme.Scale(c, 32)).AlignItems(ui.Center).PaddingX(theme.Space(3))
 	return formstyle.Surface(e, c, false, invalid, disabled)
 }
 
@@ -150,7 +150,7 @@ func dateGroup(c *ui.Context, spec dateFieldSpec, buf *dateBuffer, invalid bool)
 	}
 	if spec.suffix != nil {
 		// A trailing icon button sits close to the edge, as in coss input groups.
-		group = group.Padding(0, theme.Space4, 0, theme.Space12)
+		group = group.Padding(0, theme.Space(1), 0, theme.Space(3))
 	}
 	if spec.field.fullWidth {
 		group = group.FillWidth()

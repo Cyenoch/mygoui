@@ -1,13 +1,11 @@
 package mygoui
 
 import (
-	"math"
-	"sync"
-	"time"
-
+	"github.com/Cyenoch/mygoui/effect"
+	"github.com/Cyenoch/mygoui/internal/fx"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/shader"
 )
 
 // SkeletonAnimation selects placeholder motion; shimmer is the COSS default.
@@ -42,54 +40,47 @@ func Skeleton(c *ui.Context, o SkeletonOptions) ui.Element {
 	if o.Circle {
 		radius = height / 2
 	}
-	e := ui.Box(c).Height(height).Shrink(0).Radius(radius).Clip().Role(ui.RoleNone).
-		Background(t.MutedBackground)
+	e := ui.Box(c).Height(height).Shrink(0).Radius(radius).Clip().Role(ui.RoleNone)
 	if o.Width > 0 {
 		e.Width(o.Width)
 	} else {
 		e.FillWidth()
 	}
-	if o.Animation == SkeletonNone || theme.ReduceMotion(c) || c.Preferences().HighContrast {
-		return e
+	tokens := theme.Effects()
+	period := tokens.ShimmerPeriod
+	fill := t.MutedBackground
+	if o.Animation == SkeletonNone || period <= 0 || theme.ReduceMotion(c) || c.Preferences().HighContrast {
+		return e.Background(fill)
 	}
+	if o.Animation == SkeletonPulse {
+		// The fill loses alpha as a SkeletonGroup's content does.
+		return e.Draw(func(p *ui.Painter, r ui.Rect) {
+			p.Fill(r, fill.Alpha(1-fx.Pulse(fx.Phase(p.Now(), period))), radius)
+			p.AnimationFrameRate(60)
+		})
+	}
+	e.Background(fill)
 	windowWidth, windowHeight := c.Size()
-	peak := skeletonHighlight(c)
+	peak := tokens.ShimmerPeak
+	if c.Theme().Dark {
+		peak = tokens.ShimmerPeakDark
+	}
 	stops := []ui.GradientStop{
 		{Color: ui.Transparent, At: 0.4},
 		{Color: ui.RGBA(255, 255, 255, peak), At: 0.5},
 		{Color: ui.Transparent, At: 0.6},
 	}
-	surface := t.Surface
 	e.DrawOver(func(p *ui.Painter, r ui.Rect) {
 		if r.W <= 0 || r.H <= 0 {
 			return
 		}
-		phase := skeletonPhase(p.Now())
-		switch o.Animation {
-		case SkeletonPulse:
-			k := 1 - float32(math.Abs(float64(2*phase-1)))
-			p.Fill(r, surface.Alpha(0.5*ui.EaseInOut(k)), radius)
-		default:
-			box := skeletonGradientBox(windowWidth, windowHeight, phase)
-			p.Clip(r, radius, func() {
-				p.FillGradient(box, ui.LinearGradient{Angle: 120, Stops: stops}, 0)
-			})
-		}
+		box := skeletonGradientBox(windowWidth, windowHeight, fx.Phase(p.Now(), period))
+		p.Clip(r, radius, func() {
+			p.FillGradient(box, ui.LinearGradient{Angle: 120, Stops: stops}, 0)
+		})
 		p.AnimationFrameRate(60)
 	})
 	return e
-}
-
-func skeletonPhase(now time.Time) float32 {
-	const period = 2 * time.Second
-	return float32(now.UnixNano()%int64(period)) / float32(period)
-}
-
-func skeletonHighlight(c *ui.Context) float32 {
-	if c.Theme().Dark {
-		return 0.04
-	}
-	return 0.64
 }
 
 func skeletonGradientBox(width, height, phase float32) ui.Rect {
@@ -101,85 +92,18 @@ type SkeletonGroupOptions struct {
 	Animation SkeletonAnimation
 }
 
-// SkeletonGroup lays out placeholders and animates the entire rendered subtree
-// together. Skeletons inside a group should use SkeletonNone. While animated,
-// MyGo excludes embedded web views and skips the effect if either layer side
-// exceeds 8192 pixels.
+// SkeletonGroup lays out placeholders, as a busy group named by the locale's
+// Loading, and animates the entire rendered subtree
+// together through effect.Shimmer. Skeletons inside a group should use
+// SkeletonNone. Without a GPU, above MyGo's 8192-pixel effect layer, under
+// reduced motion and under high contrast the group rests; embedded web
+// views do not show through it while it animates.
 func SkeletonGroup(c *ui.Context, o SkeletonGroupOptions, body func()) ui.Element {
-	e := ui.Column(c).Gap(theme.Space8).FillWidth().Clip()
+	e := ui.Column(c).Gap(theme.Space(2)).FillWidth().Clip().
+		Role(ui.RoleGroup).Label(locale.M().Loading).Busy(true)
 	e.Children(body)
-	if o.Animation == SkeletonNone || theme.ReduceMotion(c) || c.Preferences().HighContrast {
+	if o.Animation == SkeletonNone {
 		return e
 	}
-	fx := ui.Local(e, skeletonGroupKey{}, newSkeletonGroupEffect)
-	fx.width, fx.height = c.Size()
-	fx.peak, fx.pulse = skeletonHighlight(c), o.Animation == SkeletonPulse
-	return e.Effect(fx)
-}
-
-type skeletonGroupKey struct{}
-
-var skeletonGroupShader = sync.OnceValue(func() *shader.Shader {
-	return shader.MustCompile(`package main
-
-var Window vec4
-var Motion vec3
-
-func ColorEffect(pos vec2, color vec4) vec4 {
-	if Motion.z > 0.5 {
-		return color * (1.0 - 0.5 * (1.0 - abs(2.0 * Motion.x - 1.0)))
-	}
-	center := (-0.5 + 2.0 * Motion.x) * Window.z
-	x := pos.x + Window.x - center
-	y := pos.y + Window.y - Window.w / 2.0
-	half := (2.0 * Window.z * 0.8660254 + Window.w * 0.5) / 2.0
-	t := 0.5 + (0.8660254 * x + 0.5 * y) / (2.0 * half)
-	highlight := clamp(1.0 - abs(t - 0.5) / 0.1, 0.0, 1.0) * Motion.y
-	return vec4(mix(color.rgb, vec3(color.a), highlight), color.a)
-}
-`)
-})
-
-type skeletonGroupEffect struct {
-	values        *shader.Values
-	window        shader.Uniform
-	motion        shader.Uniform
-	effect        shader.Effect
-	width, height float32
-	peak          float32
-	pulse         bool
-}
-
-func newSkeletonGroupEffect() skeletonGroupEffect {
-	s := skeletonGroupShader()
-	values := s.NewValues()
-	return skeletonGroupEffect{
-		values: values, window: s.Uniform("Window"), motion: s.Uniform("Motion"),
-		effect: s.Effect(shader.Options{Values: values}),
-	}
-}
-
-func (fx *skeletonGroupEffect) EffectMargin() ui.Point { return ui.Point{} }
-
-// PaintEffect shows the resting placeholders, as SkeletonNone does, where
-// there is no GPU: MyGo would interpret the shader per pixel every frame.
-func (fx *skeletonGroupEffect) PaintEffect(p *ui.Painter, box ui.Rect, content *ui.Bitmap, inset ui.Point) {
-	if !p.Accelerated() {
-		paintEffectContent(p, box, content, inset)
-		return
-	}
-	mode := float32(0)
-	if fx.pulse {
-		mode = 1
-	}
-	fx.values.Vec4(fx.window, box.X, box.Y, fx.width, fx.height)
-	fx.values.Vec3(fx.motion, skeletonPhase(p.Now()), fx.peak, mode)
-	fx.effect.PaintEffect(p, box, content, inset)
-	p.AnimationFrameRate(60)
-}
-
-// paintEffectContent draws an effect's content unchanged.
-func paintEffectContent(p *ui.Painter, box ui.Rect, content *ui.Bitmap, inset ui.Point) {
-	s := p.Scale()
-	p.ImageRegion(content, ui.Rect{X: inset.X, Y: inset.Y, W: box.W * s, H: box.H * s}, box, ui.ImageOptions{})
+	return effect.Shimmer(c, e, effect.ShimmerOptions{Pulse: o.Animation == SkeletonPulse})
 }

@@ -38,8 +38,8 @@ func (s *TableState) wireSkeleton() {
 // rows and columns keep the table's metrics.
 func (tl *tableLayout) buildSkeletonCell(c *ui.Context, row, col int) {
 	cell := ui.Box(c).FillWidth().FillHeight().MinWidth(0).
-		FixedLineHeight(theme.Scale(c, theme.Space20)).
-		PaddingY(theme.Scale(c, theme.Space4)).Justify(ui.Center)
+		FixedLineHeight(theme.Scale(c, theme.Space(5))).
+		PaddingY(theme.Scale(c, theme.Space(1))).Justify(ui.Center)
 	switch cellColumn(tl, col).Align {
 	case ui.Center:
 		cell.AlignItems(ui.Center)

@@ -85,12 +85,12 @@ func Image(c *ui.Context, o ImageOptions) ui.Element {
 				fit = ui.Contain
 			}
 			ui.Image(c.Key(imageShown), o.Source).Fill().Fit(fit).Role(ui.RoleNone).
-				Transition(fadeTransition)
+				Transition(fadeTransition())
 		case o.Status == ImageLoading:
-			Skeleton(c.Key(imageLoading), SkeletonOptions{Radius: radius}).Fill().Transition(fadeTransition)
+			Skeleton(c.Key(imageLoading), SkeletonOptions{Radius: radius}).Fill().Transition(fadeTransition())
 		default:
-			ui.Column(c.Key(imageFailed)).Fill().Center().Gap(theme.Space8).Padding(theme.Space8).
-				Background(t.MutedBackground).TextColor(t.MutedForeground).Transition(fadeTransition).
+			ui.Column(c.Key(imageFailed)).Fill().Center().Gap(theme.Space(2)).Padding(theme.Space(2)).
+				Background(t.MutedBackground).TextColor(t.MutedForeground).Transition(fadeTransition()).
 				Children(func() {
 					size := theme.Scale(c, theme.IconLG)
 					ui.Icon(c, lucide.ImageOff()).Size(size, size).Shrink(0)

@@ -25,20 +25,20 @@ func Snippet(c *ui.Context, o SnippetOptions) ui.Element {
 	// The copy button sits closer to the edge than text does.
 	end := theme.Scale(c, 10)
 	if o.NoCopy {
-		end = theme.Scale(c, theme.Space16)
+		end = theme.Scale(c, theme.Space(4))
 	}
 	e := ui.Row(c).MinWidth(0).MinHeight(theme.Scale(c, 44)).
-		AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space8)).
-		Padding(0, end, 0, theme.Scale(c, theme.Space16)).
+		AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space(2))).
+		Padding(0, end, 0, theme.Scale(c, theme.Space(4))).
 		Radius(theme.RadiusScale().XL).Clip().Background(t.SurfaceSecondary).
-		BorderWidth(theme.Hairline).BorderColor(t.Border).Role(ui.RoleGroup)
+		BorderWidth(theme.Hairline).BorderColor(t.Border)
 	if o.Label != "" {
-		e.Label(o.Label)
+		e.Role(ui.RoleGroup).Label(o.Label)
 	}
 	return e.Children(func() {
 		// Code reads left to right in a right-to-left interface too.
 		line := ui.Row(c).Grow(1).MinWidth(0).AlignItems(ui.Center).
-			Gap(theme.Scale(c, theme.Space8)).Direction(ui.LeftToRight)
+			Gap(theme.Scale(c, theme.Space(2))).Direction(ui.LeftToRight)
 		line.Children(func() {
 			if o.Prefix != "" {
 				style.Text(ui.Text(c, o.Prefix), c, ts).TextColor(t.Muted).
@@ -48,7 +48,7 @@ func Snippet(c *ui.Context, o SnippetOptions) ui.Element {
 				MinWidth(0).Selectable().SingleLine()
 		})
 		if !o.NoCopy {
-			CopyButton(c, CopyButtonOptions{Text: o.Text, Size: theme.ButtonSmall})
+			CopyButton(c, CopyButtonOptions{Text: o.Text, Label: copyLabel(o.Label), Size: theme.ButtonSmall})
 		}
 	})
 }

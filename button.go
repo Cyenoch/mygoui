@@ -54,7 +54,7 @@ type ButtonOptions struct {
 	// other left-aligned actions.
 	Align ButtonAlign
 
-	// Corners overrides the uniform coss ui radius. Nil keeps the default;
+	// Corners overrides the uniform radius. Nil keeps the default;
 	// a zero array makes square corners.
 	Corners *[4]float32
 }
@@ -89,7 +89,7 @@ func pressedPose(c *ui.Context, e ui.Element, pressed bool, scale float32) ui.El
 		}
 	}
 	return e.TransformOrigin(0.5, 0.5).
-		AnimatePose(pose, ui.Animation{Duration: buttonPressDuration, Ease: ui.EaseOut})
+		AnimatePose(pose, ui.Animation{Duration: buttonPressDuration, Ease: theme.Motion().Ease})
 }
 
 type pressPoseKey struct{}
@@ -238,7 +238,7 @@ func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 	side := theme.Scale(c, height)
 	iconSize := theme.Scale(c, glyph)
 
-	e := ui.ButtonBase(c).MinHeight(side).Gap(theme.Space8).
+	e := ui.ButtonBase(c).MinHeight(side).Gap(theme.Space(2)).
 		PaddingX(paddingX).PaddingY(0).Center().Shrink(0).
 		FocusRing(true).Label(o.Label).Busy(pending)
 	swap := busy.Swap(e, pending)
@@ -299,7 +299,7 @@ func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 	}
 
 	content := func() {
-		row := ui.Row(c).Center().Gap(theme.Space8).MinWidth(0)
+		row := ui.Row(c).Center().Gap(theme.Space(2)).MinWidth(0)
 		if swap > 0 {
 			row.Opacity(1 - swap)
 		}
@@ -333,7 +333,7 @@ func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 		}
 	}
 	if adj.hasCorners {
-		e = style.CornerFill(c, e, theme.Space8, adj.corners, bg, hover, pressed, content, overlay)
+		e = style.CornerFill(c, e, theme.Space(2), adj.corners, bg, hover, pressed, content, overlay)
 	} else {
 		e = style.Background(e, radius, bg, hover, pressed)
 		e.Children(func() {
@@ -350,9 +350,10 @@ func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 }
 
 func buttonColors(t theme.Palette, v ButtonVariant, dark bool) (bg, hover, pressed, fg ui.Color) {
+	dim := theme.Effects().HoverOpacity
 	switch v {
 	case ButtonSecondary, ButtonTertiary:
-		return t.Secondary, t.Secondary.Alpha(0.9), t.Secondary.Alpha(0.8), t.SecondaryForeground
+		return t.Secondary, t.Secondary.Alpha(dim), t.Secondary.Alpha(0.8), t.SecondaryForeground
 	case ButtonOutline:
 		if dark {
 			return t.Input.Alpha(0.32), t.Input.Alpha(0.64), t.Input.Alpha(0.64), t.Foreground
@@ -363,7 +364,7 @@ func buttonColors(t theme.Palette, v ButtonVariant, dark bool) (bg, hover, press
 	case ButtonLink:
 		return ui.Transparent, ui.Transparent, ui.Transparent, t.Foreground
 	case ButtonDanger:
-		return t.Destructive, t.Destructive.Alpha(0.9), t.Destructive.Alpha(0.9), ui.RGB(255, 255, 255)
+		return t.Destructive, t.Destructive.Alpha(dim), t.Destructive.Alpha(dim), ui.RGB(255, 255, 255)
 	case ButtonDestructiveOutline:
 		bg := t.Popover
 		if dark {
@@ -373,7 +374,7 @@ func buttonColors(t theme.Palette, v ButtonVariant, dark bool) (bg, hover, press
 	case ButtonDangerSoft:
 		return t.DangerSoft, t.DangerSoftHover, t.DangerSoftHover, t.DestructiveForeground
 	}
-	return t.Primary, t.Primary.Alpha(0.9), t.Primary.Alpha(0.9), t.PrimaryForeground
+	return t.Primary, t.Primary.Alpha(dim), t.Primary.Alpha(dim), t.PrimaryForeground
 }
 
 // ButtonGroupOrientation selects the join axis.
@@ -384,7 +385,7 @@ const (
 	GroupVertical
 )
 
-// ButtonGroupOptions controls a joined set of coss ui buttons.
+// ButtonGroupOptions controls a joined set of buttons.
 type ButtonGroupOptions struct {
 	Orientation ButtonGroupOrientation
 	FullWidth   bool

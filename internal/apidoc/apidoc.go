@@ -21,7 +21,8 @@ import (
 var Packages = map[string]string{
 	"mygoui": ".", "form": "form", "list": "list", "navigation": "navigation",
 	"overlay": "overlay", "date": "date", "color": "color", "data": "data",
-	"chart": "chart", "content": "content", "theme": "theme",
+	"chart": "chart", "content": "content", "theme": "theme", "layout": "layout",
+	"effect": "effect",
 }
 
 // Generate returns the Go source of the gallery's API table for the module

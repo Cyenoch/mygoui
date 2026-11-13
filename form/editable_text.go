@@ -58,7 +58,7 @@ func editableDisplay(c *ui.Context, value *string, st *editableState, o Editable
 	t := theme.Colors(c)
 	radius := theme.RadiusScale().Field
 	b := ui.ButtonBase(c).Bind(&st.text).FillWidth().MinWidth(0).Justify(ui.Start).
-		PaddingX(theme.Space12).PaddingY(theme.Scale(c, 5)).MinHeight(theme.Scale(c, 32)).
+		PaddingX(theme.Space(3)).PaddingY(theme.Scale(c, 5)).MinHeight(theme.Scale(c, 32)).
 		Cursor(ui.CursorText).Label(inputAccessibleName("", o.AriaLabel, *value)).Value(*value)
 	b = style.Disabled(b, o.Disabled)
 	b = style.Background(b, radius, ui.Transparent, t.Accent, t.Accent)

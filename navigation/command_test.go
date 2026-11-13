@@ -325,3 +325,58 @@ func TestCommandLoadingKeepsInputEditableAndResultsInert(t *testing.T) {
 		t.Fatalf("empty message shown while loading: %v", tt.Texts())
 	}
 }
+
+// TestCommandInputIsTheOneTabStopAndEscapeClearsTheQuery protects the
+// combobox pattern of the command: Tab passes from the input over the list,
+// which the input controls, and Escape empties a query, showing every action
+// again.
+func TestCommandInputIsTheOneTabStopAndEscapeClearsTheQuery(t *testing.T) {
+	var state CommandState
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		ui.Column(c).Fill().Padding(16).Children(func() {
+			Command(c, CommandOptions{State: &state, Label: "Commands", Items: []CommandItem{
+				{Key: "archive", Label: "Archive"}, {Key: "duplicate", Label: "Duplicate"},
+			}})
+			ui.Button(c, "After")
+		})
+	}, 400, 320)
+	if err := tt.Click("Commands"); err != nil {
+		t.Fatal(err)
+	}
+	if a, _ := tt.AccessByRole(ui.RoleTextField, "Commands"); len(a.Controls) != 1 || a.Controls[0] != "Commands" {
+		t.Fatalf("the input controls %q", a.Controls)
+	}
+	tt.Type("arch")
+	tt.Key(0, ui.KeyEscape)
+	if state.Query != "" || !tt.HasText("Duplicate") || !tt.Focused("Commands") {
+		t.Fatalf("Escape left the query %q, Duplicate shown %v", state.Query, tt.HasText("Duplicate"))
+	}
+	tt.Key(0, ui.KeyTab)
+	if !tt.Focused("After") {
+		t.Fatal("Tab from the input stopped before the next control")
+	}
+}
+
+// TestCommandInputPointsAtTheHighlightedRow pins the active descendant: the
+// input keeps the focus and names the row the arrows are on.
+func TestCommandInputPointsAtTheHighlightedRow(t *testing.T) {
+	var state CommandState
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		Command(c, CommandOptions{State: &state, Label: "Commands", Items: []CommandItem{
+			{Key: "archive", Label: "Archive"}, {Key: "duplicate", Label: "Duplicate"},
+		}})
+	}, 400, 320)
+	if err := tt.Click("Commands"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(0, ui.KeyDown)
+	tt.Frame()
+	if row, _ := tt.AccessByRole(ui.RoleOption, "Duplicate"); !row.Focused {
+		t.Fatalf("Down from the input: Duplicate is not the active descendant (%+v)", row)
+	}
+	if !tt.Focused("Commands") {
+		t.Fatal("the input lost the focus to the list")
+	}
+}

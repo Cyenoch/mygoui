@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -140,18 +141,25 @@ func Choropleth(c *ui.Context, o ChoroplethOptions) (ui.Element, error) {
 			Y: r.Y + r.H/2 + (m.lo.Y+m.hi.Y)/2*scale + float32(panY)*r.H}
 		return origin, scale
 	}
+	if o.Viewport != nil {
+		o.gesture = func(ev ui.InputEvent, g *plotGesture) bool {
+			return mapGesture(o.Viewport, ev, g)
+		}
+	}
 	t := theme.Colors(c)
-	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8)
+	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(2))
+	// One path, kept between frames, outlines every polygon in turn.
+	path := ui.Local(root, "chart.map.path", func() ui.Path { return ui.Path{} })
 	root.Children(func() {
 		if o.Viewport != nil {
-			ui.Row(c).Gap(theme.Space4).Children(func() {
+			ui.Row(c).Gap(theme.Space(1)).Children(func() {
 				for _, command := range []struct {
 					label string
 					run   func()
 				}{
-					{"Zoom in", func() { o.Viewport.Zoom = min(16, zoom*1.5) }},
-					{"Zoom out", func() { o.Viewport.Zoom = max(1, zoom/1.5) }},
-					{"Reset map", func() { *o.Viewport = MapState{} }},
+					{locale.M().ZoomIn, func() { o.Viewport.Zoom = min(16, zoom*1.5) }},
+					{locale.M().ZoomOut, func() { o.Viewport.Zoom = max(1, zoom/1.5) }},
+					{locale.M().ResetZoom, func() { *o.Viewport = MapState{} }},
 				} {
 					mygoui.Button(c, mygoui.ButtonOptions{Label: command.label, Size: theme.ButtonSmall, Variant: mygoui.ButtonOutline, Disabled: o.Disabled, OnClick: command.run})
 				}
@@ -166,7 +174,7 @@ func Choropleth(c *ui.Context, o ChoroplethOptions) (ui.Element, error) {
 				if selected == polygon.region {
 					fill = t.Chart2
 				}
-				path := &ui.Path{}
+				path.Reset()
 				for k := polygon.firstRing; k < polygon.firstRing+polygon.rings; k++ {
 					for j, v := range m.ring(k) {
 						x, y := origin.X+v.X*scale, origin.Y-v.Y*scale
@@ -206,6 +214,54 @@ func Choropleth(c *ui.Context, o ChoroplethOptions) (ui.Element, error) {
 		})
 	})
 	return root, nil
+}
+
+// mapGesture zooms the map with the wheel or a pinch, keeping the point
+// under the pointer in place, and pans it with a drag.
+func mapGesture(v *MapState, ev ui.InputEvent, g *plotGesture) bool {
+	if g.w <= 0 || g.h <= 0 {
+		return false
+	}
+	zoomAt := func(k float64) {
+		from := max(1, v.Zoom)
+		to := max(1, min(16, from*k))
+		k = to / from
+		x, y := float64(ev.X-g.w/2), float64(ev.Y-g.h/2)
+		w, h := float64(g.w), float64(g.h)
+		v.Zoom = to
+		v.PanX = (x - (x-v.PanX*w)*k) / w
+		v.PanY = (y - (y-v.PanY*h)*k) / h
+	}
+	switch ev.Kind {
+	case ui.InputScroll:
+		zoomAt(math.Exp(-float64(ev.DY) / 100))
+		return true
+	case ui.InputZoom:
+		zoomAt(float64(ev.Scale))
+		return true
+	case ui.InputPointerDown:
+		// Taking the press brings its moves here; a click still activates.
+		if ev.Button != 0 {
+			return false
+		}
+		g.last, g.dragging, g.dragged = ui.Point{X: ev.X, Y: ev.Y}, true, false
+		return true
+	case ui.InputPointerUp:
+		g.dragging = false
+	case ui.InputPointerMove:
+		if !g.dragging || ev.Button != 0 {
+			return false
+		}
+		dx, dy := ev.X-g.last.X, ev.Y-g.last.Y
+		if !g.dragged && dx*dx+dy*dy < 16 {
+			return true
+		}
+		v.PanX += float64(dx / g.w)
+		v.PanY += float64(dy / g.h)
+		g.last, g.dragged = ui.Point{X: ev.X, Y: ev.Y}, true
+		return true
+	}
+	return false
 }
 
 func polygonContains(points []ui.Point, x, y float32) bool {

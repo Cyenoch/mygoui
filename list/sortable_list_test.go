@@ -87,3 +87,46 @@ func TestSortableListMovesByDraggingTheHandle(t *testing.T) {
 		t.Fatalf("a disabled list moved: %v", f.moves)
 	}
 }
+
+// TestSortableListEscapeCancelsADrag pins the drag's way out: Escape puts the
+// held row back, and the release moves nothing.
+func TestSortableListEscapeCancelsADrag(t *testing.T) {
+	f := &sortableFixture{order: []string{"Alpha", "Bravo", "Charlie"}}
+	tt := f.tester()
+	from, _ := tt.Find("Reorder Alpha")
+	to, _ := tt.Find("Reorder Charlie")
+	x, y0, y1 := from.X+from.W/2, from.Y+from.H/2, to.Y+to.H/2
+	tt.Press(x, y0)
+	for k := 1; k <= 4; k++ {
+		tt.Move(x, y0+(y1-y0)*float32(k)/4)
+	}
+	tt.Key(0, ui.KeyEscape)
+	tt.Move(x, y1+1)
+	tt.Release(x, y1)
+	tt.Frame()
+	if len(f.moves) != 0 {
+		t.Fatalf("a cancelled drag moved: %v", f.moves)
+	}
+}
+
+// TestSortableListTellsAssistiveTechnology pins what a screen reader hears:
+// each row's place in the list, the grip's keys, and each move.
+func TestSortableListTellsAssistiveTechnology(t *testing.T) {
+	f := &sortableFixture{order: []string{"Alpha", "Bravo", "Charlie"}}
+	tt := f.tester()
+	if bravo, _ := tt.AccessByRole(ui.RoleListItem, "Bravo"); bravo.PosInSet != 2 || bravo.SetSize != 3 {
+		t.Fatalf("Bravo is %d of %d, want 2 of 3", bravo.PosInSet, bravo.SetSize)
+	}
+	if grip, _ := tt.Access("Reorder Alpha"); grip.KeyShortcuts == "" {
+		t.Fatal("the grip does not tell its keys")
+	}
+	if err := tt.Click("Reorder Alpha"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Announcements()
+	tt.Key(ui.Alt, ui.KeyDown)
+	tt.Frame()
+	if got := tt.Announcements(); !slices.Contains(got, "Alpha, 2 of 3") {
+		t.Fatalf("the move announced %q, want \"Alpha, 2 of 3\"", got)
+	}
+}

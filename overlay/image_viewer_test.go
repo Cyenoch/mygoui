@@ -97,3 +97,25 @@ func TestImageViewerPansWhenZoomedAndClosesOutsideTheImage(t *testing.T) {
 		t.Fatalf("press outside the image: open %v, dismissed %d", open, dismissed)
 	}
 }
+
+// Right to left the images run from the right: Left steps forward and
+// Previous sits on the right.
+func TestImageViewerStepsTheWayImagesRunInRightToLeft(t *testing.T) {
+	open, index, dismissed := true, 0, 0
+	tt := viewerTester(&open, &index, &dismissed)
+	tt.SetDirection(ui.RightToLeft)
+	tt.Frame()
+	previous, _ := tt.AccessByRole(ui.RoleButton, "Previous")
+	next, _ := tt.AccessByRole(ui.RoleButton, "Next")
+	if previous.Bounds.X <= next.Bounds.X {
+		t.Fatalf("Previous at %+v, Next at %+v: Previous is not on the right", previous.Bounds, next.Bounds)
+	}
+	tt.Key(0, ui.KeyLeft)
+	if index != 1 {
+		t.Fatalf("Left: index %d, want 1", index)
+	}
+	tt.Key(0, ui.KeyRight)
+	if index != 0 {
+		t.Fatalf("Right: index %d, want 0", index)
+	}
+}

@@ -43,11 +43,12 @@ type PaginationOptions struct {
 
 // Pagination builds previous and next controls around numbered pages with
 // ellipses for gaps. Previous is disabled on the first page and Next on the
-// last; clicking the current page does nothing.
+// last; one that disables holding the focus hands it to the current page.
+// The current page is exposed as current and clicking it does nothing.
 func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 	t := theme.Colors(c)
 	pages := max(o.Pages, 1)
-	root := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(scale(c, theme.Space16)).
+	root := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(scale(c, theme.Space(4))).
 		Role(ui.RoleGroup).MinWidth(0)
 	if o.Summary == nil {
 		root.Justify(ui.Center)
@@ -66,6 +67,9 @@ func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 		page = ui.Local(root, "pagination-page", func() int { return 1 })
 	}
 	*page = max(1, min(*page, pages))
+	// current is the current page's button, which takes the focus from a
+	// previous or next control as it disables.
+	current := ui.Local(root, "pagination-current", func() ui.Handle { return ui.Handle{} })
 
 	size, font, navPad, radius := float32(32), theme.SM(), float32(10), theme.RadiusScale().MD
 	switch o.Size {
@@ -93,7 +97,7 @@ func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 			padding = 0
 		}
 		btn := ui.ButtonBase(c).Height(size).MinWidth(size).PaddingX(scale(c, padding)).
-			Center().Gap(scale(c, theme.Space6)).Shrink(0).Radius(radius).FocusRing(true).Label(label)
+			Center().Gap(scale(c, theme.Space(1.5))).Shrink(0).Radius(radius).FocusRing(true).Label(label)
 		btn = style.Background(btn, radius, ui.Transparent, t.Accent, t.Accent)
 		btn.TextColor(t.DefaultForeground)
 		if enabled {
@@ -120,15 +124,18 @@ func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 			}
 		})
 		style.Disabled(btn, !enabled)
+		if !enabled && btn.Focused() {
+			current.Focus(c)
+		}
 	}
 
 	root.Children(func() {
 		if o.Summary != nil {
-			summary := ui.Row(c).AlignItems(ui.Center).Gap(scale(c, theme.Space8)).Shrink(0)
+			summary := ui.Row(c).AlignItems(ui.Center).Gap(scale(c, theme.Space(2))).Shrink(0)
 			summary = style.Text(summary, c, font).TextColor(t.Muted)
 			summary.Children(o.Summary)
 		}
-		content := ui.Row(c).AlignItems(ui.Center).Gap(scale(c, theme.Space4)).Shrink(0)
+		content := ui.Row(c).AlignItems(ui.Center).Gap(scale(c, theme.Space(1))).Shrink(0)
 		if o.Summary != nil && !*stacked {
 			content.MarginStart(ui.Auto)
 		}
@@ -145,15 +152,14 @@ func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 				}
 				number := n
 				active := number == *page
-				label := strconv.Itoa(number)
-				if active {
-					label = label + ", " + locale.M().Selected
-				}
 				// Keyed by page, so the page that becomes current is the
 				// button that was not: its face fades in as the old one's
 				// fades out.
 				btn := ui.ButtonBase(c.Key(number)).Size(size, size).Center().Shrink(0).Radius(radius).
-					FocusRing(true).Label(label)
+					FocusRing(true).Label(strconv.Itoa(number))
+				if active {
+					btn.Current(ui.CurrentPage).Bind(current)
+				}
 				shown := motion.Progress(btn, "active", active)
 				bg := ui.Transparent
 				hover := t.Accent

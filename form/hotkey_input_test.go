@@ -84,3 +84,17 @@ func TestHotkeyKeysNameEveryKeyKind(t *testing.T) {
 		t.Fatalf("Ctrl+9 keys are %v", got)
 	}
 }
+
+func TestHotkeyInputExposesRecording(t *testing.T) {
+	value := Hotkey{Mods: ui.Ctrl, Key: ui.KeyK}
+	changes := 0
+	tt := hotkeyTester(&value, &changes)
+	formTextClick(t, tt, "Shortcut")
+	if info, ok := tt.AccessByRole(ui.RoleToggleButton, "Shortcut"); !ok || !info.Checked {
+		t.Fatalf("recording: found %v, pressed %v", ok, info.Checked)
+	}
+	tt.Key(0, ui.KeyEscape)
+	if info, _ := tt.AccessByRole(ui.RoleToggleButton, "Shortcut"); info.Checked {
+		t.Fatal("the recorder still reads as pressed after Escape")
+	}
+}

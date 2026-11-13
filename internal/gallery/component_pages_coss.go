@@ -627,6 +627,7 @@ overlay.Sheet(c, &open, overlay.SheetOptions{
 					mygoui.Badge(c, mygoui.BadgeOptions{Label: "Ready", Variant: mygoui.BadgeSuccess})
 				})
 			}},
+			{Title: "Motion, spacing and effects", Demo: languageTokenCards},
 		},
 		Code: `primary := ui.RGB(37, 99, 235)
 theme.Configure(theme.Preferences{

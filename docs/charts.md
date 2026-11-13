@@ -1,7 +1,7 @@
 # Native charts
 
 `github.com/Cyenoch/mygoui/chart` covers the 19 Bklit chart subjects and utility
-subjects in native MyGo, with coss appearance. Series use Chart1 through Chart5;
+subjects in native MyGo, with the appearance recorded in `DESIGN.md`. Series use Chart1 through Chart5;
 axes use Border/MutedForeground; surfaces, controls and typography reuse mygoui.
 This is a native capability mapping, **not full Bklit React/export parity**.
 See [reference provenance](references.md) for pinned source and licensing.

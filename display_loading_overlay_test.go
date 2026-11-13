@@ -84,3 +84,31 @@ func TestLoadingOverlayLooksLateButHoldsInputAtOnce(t *testing.T) {
 		t.Fatal("the scrim never appeared")
 	}
 }
+
+// TestLoadingOverlayGivesTheFocusBackWhenItHides pins the return of the
+// focus the cover took: the keyboard continues where the user left it.
+func TestLoadingOverlayGivesTheFocusBackWhenItHides(t *testing.T) {
+	visible := false
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		mygoui.LoadingOverlay(c, mygoui.LoadingOverlayOptions{Visible: visible}, func() {
+			mygoui.Button(c, mygoui.ButtonOptions{Label: "Refresh"})
+			mygoui.Button(c, mygoui.ButtonOptions{Label: "Save"})
+		})
+	}, 320, 160)
+	tt.Key(0, ui.KeyTab)
+	tt.Key(0, ui.KeyTab)
+	if !tt.Focused("Save") {
+		t.Fatal("Tab does not reach Save")
+	}
+	visible = true
+	tt.Frame()
+	if tt.Focused("Save") {
+		t.Fatal("covered content kept the focus")
+	}
+	visible = false
+	tt.Advance(400 * time.Millisecond)
+	if !tt.Focused("Save") {
+		t.Fatal("hiding the overlay did not give the focus back")
+	}
+}

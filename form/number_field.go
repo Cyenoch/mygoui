@@ -4,6 +4,7 @@ import (
 	"math"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui/internal/style"
@@ -106,9 +107,32 @@ func numberClamp(v, lo, hi float64) float64 {
 	return v
 }
 
+// numberParse reads typed text as a finite number.
+func numberParse(text string) (float64, bool) {
+	v, err := strconv.ParseFloat(strings.TrimSpace(text), 64)
+	return v, err == nil && !math.IsNaN(v) && !math.IsInf(v, 0)
+}
+
+// numberHold is a stepper's press: when it began and how many steps it took.
+type numberHold struct {
+	start   time.Time
+	steps   int
+	holding bool
+	// stepped marks a press that stepped, so its click does not step again.
+	stepped bool
+}
+
+// The stepper repeats as AppKit's does: once on press, then every
+// numberRepeat after numberRepeatDelay.
+const (
+	numberRepeatDelay = 400 * time.Millisecond
+	numberRepeat      = 80 * time.Millisecond
+)
+
 // NumberField renders a native numeric editor between increment and decrement
-// buttons. Typed text commits only as a finite in-range number; out-of-range
-// numbers clamp and invalid text returns to the last value.
+// buttons. Typing reports each finite in-range number; Enter and leaving the
+// field commit the text, clamping out-of-range numbers and returning invalid
+// text to the last value.
 func NumberField(c *ui.Context, state *NumberFieldState, o NumberFieldOptions) ui.Element {
 	// An error message implies the invalid state.
 	o.Invalid = o.Invalid || o.Error != ""
@@ -118,26 +142,6 @@ func NumberField(c *ui.Context, state *NumberFieldState, o NumberFieldOptions) u
 	step := numberStep(o.Step)
 	lo, hi := numberBounds(o)
 	format := func(v float64) string { return numberFormatValue(v, step, o.Format) }
-
-	// Settle the text before the editor reads it, so blur and programmatic
-	// values format in the frame that builds them.
-	focused := state.handle.Focused(c)
-	if !state.initialized {
-		state.Value = numberRound(numberClamp(state.Value, lo, hi), step)
-		state.Text = format(state.Value)
-		state.lastValue = state.Value
-		state.initialized = true
-	} else if focused != state.focused {
-		if !focused {
-			state.Text = format(state.Value)
-			state.lastValue = state.Value
-		}
-	} else if !focused && state.Value != state.lastValue {
-		state.Value = numberRound(numberClamp(state.Value, lo, hi), step)
-		state.Text = format(state.Value)
-		state.lastValue = state.Value
-	}
-	state.focused = focused
 
 	apply := func(v float64) {
 		v = numberRound(numberClamp(v, lo, hi), step)
@@ -149,6 +153,39 @@ func NumberField(c *ui.Context, state *NumberFieldState, o NumberFieldOptions) u
 			o.OnChange()
 		}
 	}
+	commit := func() {
+		if v, ok := numberParse(state.Text); ok {
+			apply(v)
+		} else {
+			state.Text = format(state.Value)
+		}
+	}
+	// Steps start from the typed number, so typing and stepping compose.
+	stepBy := func(delta float64) {
+		from := state.Value
+		if v, ok := numberParse(state.Text); ok {
+			from = v
+		}
+		apply(from + delta)
+	}
+
+	// Settle the text before the editor reads it, so blur and programmatic
+	// values format in the frame that builds them.
+	focused := state.handle.Focused(c)
+	if !state.initialized {
+		state.Value = numberRound(numberClamp(state.Value, lo, hi), step)
+		state.Text = format(state.Value)
+		state.lastValue = state.Value
+		state.initialized = true
+	} else if state.Value != state.lastValue {
+		// The application set a value: it replaces the text, focused or not.
+		state.Value = numberRound(numberClamp(state.Value, lo, hi), step)
+		state.Text = format(state.Value)
+		state.lastValue = state.Value
+	} else if focused != state.focused && !focused && !o.Disabled && !o.ReadOnly {
+		commit()
+	}
+	state.focused = focused
 
 	t := theme.Colors(c)
 	height := theme.Scale(c, 32)
@@ -166,9 +203,12 @@ func NumberField(c *ui.Context, state *NumberFieldState, o NumberFieldOptions) u
 
 		var editor ui.Element
 		row.Children(func() {
+			// The steppers are pointer targets beside the editor, which keeps
+			// the keyboard focus and steps with the arrow and page keys.
 			button := func(label string, icon *ui.SVG, delta float64, atBound bool) {
 				b := ui.ButtonBase(c).Width(buttonWidth).Height(height).Center().Shrink(0).
-					Padding(0).Radius(0).FocusRing(false).Label(label).Tooltip(label)
+					Padding(0).Radius(0).FocusRing(false).Label(label).Tooltip(label).
+					TabStop(false).KeepFocus()
 				b.TextColor(t.FieldForeground)
 				blocked := o.Disabled || o.ReadOnly || atBound
 				b = style.Disabled(b, blocked)
@@ -177,14 +217,40 @@ func NumberField(c *ui.Context, state *NumberFieldState, o NumberFieldOptions) u
 				b.Children(func() {
 					ui.Icon(c, icon).Size(theme.Scale(c, theme.IconMD), theme.Scale(c, theme.IconMD)).Shrink(0)
 				})
-				if !blocked {
-					b.OnClick(func() { apply(state.Value + delta) })
+				if blocked {
+					return
 				}
+				hold := ui.Local(b, "number-hold", func() numberHold { return numberHold{} })
+				if b.Pressed() {
+					now := c.Now()
+					if !hold.holding {
+						*hold = numberHold{start: now, holding: true, stepped: true}
+						state.handle.Focus(c)
+					}
+					due := 1
+					if held := now.Sub(hold.start); held > numberRepeatDelay {
+						due += int((held - numberRepeatDelay) / numberRepeat)
+					}
+					for ; hold.steps < due; hold.steps++ {
+						stepBy(delta)
+					}
+					c.After(numberRepeat)
+				} else {
+					hold.holding = false
+				}
+				// A click without a press comes from assistive technology.
+				b.OnClick(func() {
+					if hold.stepped {
+						hold.stepped = false
+						return
+					}
+					stepBy(delta)
+				})
 			}
 			// Grid children must be built in visual column order.
 			button(locale.M().Decrease, lucide.Minus(), -step, state.Value <= lo)
 			editor = ui.TextInputBase(c, &state.Text).MinWidth(0).TextAlign(ui.Center).
-				PaddingX(theme.Space12).PaddingY(theme.Scale(c, 5)).FontFeatures("tnum")
+				PaddingX(theme.Space(3)).PaddingY(theme.Scale(c, 5)).FontFeatures("tnum")
 			editor = fieldText(editor, c)
 			if o.Placeholder != "" {
 				editor.Placeholder(o.Placeholder)
@@ -198,46 +264,38 @@ func NumberField(c *ui.Context, state *NumberFieldState, o NumberFieldOptions) u
 			if o.Min != nil || o.Max != nil {
 				editor.Range(lo, hi, state.Value)
 			}
-			editor.OnChange(func() {
-				if o.Disabled || o.ReadOnly {
-					return
-				}
-				raw := strings.TrimSpace(state.Text)
-				if raw == "" {
-					return
-				}
-				v, err := strconv.ParseFloat(raw, 64)
-				if err != nil || math.IsNaN(v) || math.IsInf(v, 0) {
-					state.Text = format(state.Value)
-					return
-				}
-				next := numberRound(numberClamp(v, lo, hi), step)
-				if next != v {
-					state.Text = format(next)
-				}
-				if next != state.Value {
-					state.Value = next
-					state.lastValue = next
-					if o.OnChange != nil {
-						o.OnChange()
+			if !o.Disabled && !o.ReadOnly {
+				editor.OnChange(func() {
+					v, ok := numberParse(state.Text)
+					if !ok || v < lo || v > hi {
+						return
 					}
-				}
-			})
-			editor.OnTextKey(func(k ui.TextKey) bool {
-				if o.Disabled || o.ReadOnly {
-					return false
-				}
-				switch k.Key {
-				case ui.KeyUp:
-					apply(state.Value + step)
-				case ui.KeyDown:
-					apply(state.Value - step)
-				default:
-					return false
-				}
-				k.SetText(state.Text)
-				return true
-			})
+					if v = numberRound(v, step); v != state.Value {
+						state.Value = v
+						state.lastValue = v
+						if o.OnChange != nil {
+							o.OnChange()
+						}
+					}
+				})
+				editor.OnSubmit(commit)
+				editor.OnTextKey(func(k ui.TextKey) bool {
+					switch k.Key {
+					case ui.KeyUp:
+						stepBy(step)
+					case ui.KeyDown:
+						stepBy(-step)
+					case ui.KeyPageUp:
+						stepBy(10 * step)
+					case ui.KeyPageDown:
+						stepBy(-10 * step)
+					default:
+						return false
+					}
+					k.SetText(state.Text)
+					return true
+				})
+			}
 
 			button(locale.M().Increase, lucide.Plus(), step, state.Value >= hi)
 		})

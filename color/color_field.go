@@ -22,6 +22,10 @@ type ColorFieldOptions struct {
 	FullWidth   bool
 	// OnChange reports that the text parsed as another color.
 	OnChange func()
+
+	// autofocus focuses the input as it appears, when the picker's panel
+	// opens.
+	autofocus bool
 }
 
 // ColorField is a hex color field. It accepts #rgb, #rgba, #rrggbb
@@ -53,7 +57,7 @@ func ColorField(c *ui.Context, o ColorFieldOptions) ui.Element {
 		FullWidth: o.FullWidth,
 	}, func() {
 		group := ui.Row(c).Height(theme.Scale(c, theme.HeightInput)).MinWidth(0).
-			AlignItems(ui.Center).Gap(theme.Space8).PaddingX(theme.Space12)
+			AlignItems(ui.Center).Gap(theme.Space(2)).PaddingX(theme.Space(3))
 		if o.FullWidth {
 			group.FillWidth()
 		}
@@ -72,6 +76,9 @@ func ColorField(c *ui.Context, o ColorFieldOptions) ui.Element {
 			input := ui.TextInputBase(c, &s.field.text).Grow(1).MinWidth(theme.Scale(c, 120)).
 				Placeholder(placeholder)
 			input = formstyle.Text(input, c)
+			if o.autofocus {
+				input.AutoFocus()
+			}
 			input.OnChange(func() {
 				parsed, err := ParseHex(s.field.text)
 				if err != nil {

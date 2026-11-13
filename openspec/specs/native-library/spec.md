@@ -71,7 +71,7 @@ GPU, operating-system gesture, IME or screen-reader validation.
 - **WHEN** the upstream component exposes a feature unavailable in the native API
 - **THEN** the component matrix records the limitation instead of claiming parity
 
-### Requirement: Anchored popups share one surface and coss motion
+### Requirement: Anchored popups share one surface and popup motion
 
 Anchored popups SHALL paint the shared popover surface. Popovers and pickers
 SHALL fade in from 98% around the edge facing their anchor and fade out;
@@ -104,7 +104,7 @@ semantics even when the caller does not set the separate invalid flag.
 - **WHEN** a form field is built with an error message and no invalid flag
 - **THEN** it shows the error text and the destructive border
 
-### Requirement: Control state motion follows coss
+### Requirement: Control state motion follows the recorded design language
 
 A pressed switch SHALL stretch its thumb toward the track's centre. Select and
 combo box triggers SHALL show a static up-down indicator. A sidebar SHALL move
@@ -281,11 +281,19 @@ technology. The panel SHALL keep one presentation for as long as it is open.
 
 Where the frame does not draw on a GPU, SkeletonGroup SHALL rest static
 without requesting frames, and a mask ScrollFade SHALL show the shadow
-treatment inside the viewport instead of running its shader.
+treatment inside the viewport instead of running its shader. A mask
+ScrollFade whose viewport exceeds the toolkit's effect-layer limit SHALL
+show the same shadow treatment on a GPU frame.
 
 #### Scenario: A mask fade renders in software
 
 - **WHEN** a viewport with a mask fade has more to scroll below
+- **THEN** its bottom edge is shaded and its content is otherwise unchanged
+
+#### Scenario: A mask fade exceeds the layer limit
+
+- **WHEN** a viewport with a mask fade is wider than the effect-layer limit
+  and has more to scroll below
 - **THEN** its bottom edge is shaded and its content is otherwise unchanged
 
 ### Requirement: Loading has one presentation

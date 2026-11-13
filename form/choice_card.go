@@ -113,9 +113,9 @@ type choiceCardFace struct {
 func choiceCard(c *ui.Context, card ui.Element, f choiceCardFace, indicator func()) ui.Element {
 	t := theme.Colors(c)
 	radius := theme.RadiusScale().LG
-	card = card.Row().AlignItems(ui.Start).Gap(theme.Space12).MinWidth(0).
-		Padding(theme.Space12, theme.Space16).FocusRing(false).Cursor(ui.CursorPointer).
-		Label(f.title)
+	card = card.Row().AlignItems(ui.Start).Gap(theme.Space(3)).MinWidth(0).
+		Padding(theme.Space(3), theme.Space(4)).FocusRing(false).Cursor(ui.CursorPointer).
+		Label(f.title).Invalid(f.invalid)
 	if f.description != "" {
 		card.Description(f.description)
 	}
@@ -148,7 +148,7 @@ func choiceCard(c *ui.Context, card ui.Element, f choiceCardFace, indicator func
 			size := theme.Scale(c, 20)
 			ui.Icon(c, f.icon).Size(size, size).Shrink(0).TextColor(t.MutedForeground)
 		}
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(theme.Space2).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(theme.Space(0.5)).Children(func() {
 			style.Text(ui.Text(c, f.title), c, theme.Label()).TextColor(t.Foreground)
 			if f.description != "" {
 				Description(c, f.description)

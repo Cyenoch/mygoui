@@ -24,9 +24,9 @@ func Kbd(c *ui.Context, o KbdOptions) ui.Element {
 		background = ui.Transparent
 	}
 	label := strings.Join(o.Keys, " ")
-	e := ui.Row(c).Shrink(0).Center().AlignSelf(ui.Start).Gap(theme.Space4).
+	e := ui.Row(c).Shrink(0).Center().AlignSelf(ui.Start).Gap(theme.Space(1)).
 		MinHeight(theme.Scale(c, theme.HeightKbd)).MinWidth(theme.Scale(c, theme.HeightKbd)).
-		PaddingX(theme.Space4).Radius(4).Background(background).
+		PaddingX(theme.Space(1)).Radius(4).Background(background).
 		TextColor(t.MutedForeground).Label(label)
 	e.Children(func() {
 		ts := theme.XS()
@@ -41,7 +41,7 @@ func Kbd(c *ui.Context, o KbdOptions) ui.Element {
 // KbdGroup renders each key in a chord as a separate keycap.
 func KbdGroup(c *ui.Context, o KbdOptions) ui.Element {
 	e := ui.Row(c).Shrink(0).AlignSelf(ui.Start).AlignItems(ui.Center).
-		Gap(theme.Space4).Label(strings.Join(o.Keys, " "))
+		Gap(theme.Space(1)).Label(strings.Join(o.Keys, " "))
 	return e.Children(func() {
 		for _, key := range o.Keys {
 			Kbd(c, KbdOptions{Keys: []string{key}, Light: o.Light})

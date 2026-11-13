@@ -12,8 +12,8 @@ import (
 	"github.com/Cyenoch/mygoui/fonts"
 	"github.com/Cyenoch/mygoui/form"
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/layout"
 	"github.com/Cyenoch/mygoui/locale"
-	"github.com/Cyenoch/mygoui/overlay"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -30,16 +30,8 @@ func View(c *ui.Context, s *State) {
 	zoom(c, s)
 	applyAppearance(c, s)
 	overlaysStateOf(s).toasts.View(c)
-	t := theme.Colors(c)
-	compact := docsCompact(c)
-	sidebarOpen := sidebarShown(c, s)
-	// The landing page has no sidebar, so it navigates through the sheet as
-	// compact layouts do.
-	sheet := compact || isLanding(s)
-	if !sheet {
-		// Do not reopen the sheet when it comes back later.
-		s.NavOpen = false
-	}
+	mode := shellMode(s)
+	sheet := layout.Compact(c, mode)
 	c.OnShortcut(ui.Cmd, ui.KeyK, func() {
 		if sheet {
 			s.NavOpen = true
@@ -48,105 +40,61 @@ func View(c *ui.Context, s *State) {
 		}
 		s.SearchFocus.Focus(c)
 	})
-	ui.Row(c).Fill().MinWidth(0).Clip().AlignItems(ui.Stretch).
-		Background(t.Background).TextColor(t.Foreground).Children(func() {
-		if sidebarOpen {
-			sidebar(c, s)
-		}
-		content(c, s, compact, sidebarOpen)
+	layout.Scaffold(c, layout.ScaffoldOptions{
+		Compact: mode,
+		StartBar: layout.TitleBarOptions{
+			Label: "Sidebar title bar", MinHeight: TitleBarHeight,
+			Center: func() {
+				ui.Row(c).MinWidth(0).PaddingStart(theme.Scale(c, theme.Space4)).Children(func() { brand(c) })
+			},
+		},
+		Start: &layout.PaneOptions{
+			Label: "Gallery sidebar", Width: docsSidebarWidth, Fixed: true,
+			Collapsed: &s.SidebarClosed, Open: &s.NavOpen,
+			Body: func() { sidebar(c, s) },
+		},
+		TitleBar: pageHeader(c, s, mode),
+		Content:  func() { content(c, s) },
 	})
-	if sheet {
-		navigationSheet(c, s)
-	}
 }
 
-// headerControls is the number of buttons in the page title bar.
-const headerControls = 3
-
-// headerBand is the native title band the gallery covers.
-func headerBand(c *ui.Context) float32 {
-	return max(float32(TitleBarHeight)/c.Zoom(), c.TitleBar().Height)
-}
-
-// headerStacked reports whether the page title bar's controls cannot fit
-// between the native window controls; they then move below the band.
-func headerStacked(c *ui.Context, sidebarOpen bool) bool {
-	width, _ := c.Size()
-	if sidebarOpen {
-		width -= theme.Scale(c, docsSidebarWidth)
+// shellMode is how the shell shows its sidebar. The landing page has none,
+// so it navigates through the sheet at every width, as compact windows do.
+func shellMode(s *State) layout.CompactMode {
+	if isLanding(s) {
+		return layout.CompactAlways
 	}
-	bar := c.TitleBar()
-	pad := theme.Scale(c, theme.Space12)
-	need := headerControls*theme.Scale(c, theme.HeightButtonSM) + (headerControls-1)*theme.Space8
-	if !sidebarOpen {
-		width -= bar.Left
-	}
-	return need > width-bar.Right-2*pad
-}
-
-// headerHeight is shared by the sidebar brand row and the page title bar, so
-// their edges line up. It covers the native title band and grows with text
-// scale rather than letting controls overflow it.
-func headerHeight(c *ui.Context, stacked bool) float32 {
-	control := theme.Scale(c, theme.HeightButtonSM) + 2*theme.Scale(c, theme.Space8)
-	if stacked {
-		return headerBand(c) + control - theme.Scale(c, theme.Space8)
-	}
-	return max(headerBand(c), control)
+	return layout.CompactAuto
 }
 
 // brand is the gallery mark; it truncates rather than reach the window
 // controls.
 func brand(c *ui.Context) {
 	ui.Row(c).Grow(1).Basis(0).MinWidth(0).Gap(theme.Space8).AlignItems(ui.Center).Children(func() {
-		mygoui.Typography(c, "coss ui", mygoui.TypographyOptions{Type: theme.TypeH6, Truncate: true}).
+		mygoui.Typography(c, "MyGo UI", mygoui.TypographyOptions{Type: theme.TypeH6, Truncate: true}).
 			Shrink(1).MinWidth(0)
 		mygoui.Typography(c, "MyGo", mygoui.TypographyOptions{Type: theme.TypeBodyXS, Muted: true, Truncate: true}).
 			Shrink(2).MinWidth(0)
 	})
 }
 
+// sidebar is the navigation pane under its title band: search over the
+// scrolling page list. The compact sheet shows the same pane.
 func sidebar(c *ui.Context, s *State) {
 	t := theme.Colors(c)
-	bar := c.TitleBar()
 	pad := theme.Scale(c, theme.Space12)
-	ui.Column(c.Key("gallery-sidebar")).Width(theme.Scale(c, docsSidebarWidth)).FillHeight().Shrink(0).MinWidth(0).
-		Background(t.Sidebar).BorderWidth(0, theme.Hairline, 0, 0).BorderColor(t.SidebarBorder).Children(func() {
-		ui.Row(c).FillWidth().Height(headerHeight(c, headerStacked(c, true))).Shrink(0).DragWindow().
-			Padding(0, pad, 0, bar.Left+pad+theme.Scale(c, theme.Space4)).
-			AlignItems(ui.Center).Gap(theme.Space8).Label("Sidebar title bar").Children(func() { brand(c) })
-		ui.Column(c).FillWidth().Padding(0, pad, theme.Space8, pad).Children(func() { search(c, s) })
-		mygoui.ScrollArea(c, &s.Sidebar, mygoui.ScrollAreaOptions{
-			Axis:  mygoui.ScrollVertical,
-			Label: "Gallery navigation",
-			Fade: &mygoui.ScrollFadeOptions{
-				Mode: mygoui.SurfaceFade, Edges: mygoui.FadeTop | mygoui.FadeBottom, Surface: t.Sidebar,
-			},
-		}, func() {
-			ui.Column(c).FillWidth().Padding(theme.Space4, pad, theme.Space16, pad).Children(func() {
-				pageList(c, s, &s.Sidebar, func(page Page) { selectPage(s, page) })
-			})
-		}).Grow(1).Basis(0).MinHeight(0)
-	})
-}
-
-// navigationToggle opens the sidebar, or the navigation sheet when compact.
-func navigationToggle(c *ui.Context, s *State, compact bool) {
-	icon, open := lucide.PanelLeft(), !s.SidebarClosed
-	if compact {
-		icon, open = lucide.Menu(), s.NavOpen
-	}
-	mygoui.Button(c, mygoui.ButtonOptions{
-		Label: "Toggle navigation", Icon: icon, IconOnly: true,
-		Variant: mygoui.ButtonGhost, Size: theme.ButtonSmall,
-		OnClick: func() {
-			if compact {
-				s.NavOpen = !s.NavOpen
-			} else {
-				s.SidebarClosed = !s.SidebarClosed
-			}
+	ui.Column(c).FillWidth().Padding(0, pad, theme.Space8, pad).Children(func() { search(c, s) })
+	mygoui.ScrollArea(c, &s.Sidebar, mygoui.ScrollAreaOptions{
+		Axis:  mygoui.ScrollVertical,
+		Label: "Gallery navigation",
+		Fade: &mygoui.ScrollFadeOptions{
+			Mode: mygoui.SurfaceFade, Edges: mygoui.FadeTop | mygoui.FadeBottom, Surface: t.Sidebar,
 		},
-	}).Role(ui.RoleToggleButton).Checked(open).Shrink(0).AlignSelf(ui.Center)
+	}, func() {
+		ui.Column(c).FillWidth().Padding(theme.Space4, pad, theme.Space16, pad).Children(func() {
+			pageList(c, s, &s.Sidebar, func(page Page) { selectPage(s, page) })
+		})
+	}).Grow(1).Basis(0).MinHeight(0)
 }
 
 func buttonFor(on bool) mygoui.ButtonVariant {
@@ -477,64 +425,75 @@ func swatches(c *ui.Context, s *State) {
 	})
 }
 
-func content(c *ui.Context, s *State, compact, sidebarOpen bool) {
+func content(c *ui.Context, s *State) {
 	t := theme.Colors(c)
-	ui.Column(c.Key("workbench")).Grow(1).Basis(0).MinWidth(0).FillHeight().Children(func() {
-		pageHeader(c, s, compact, sidebarOpen)
-		ui.Row(c).FillWidth().Grow(1).Basis(0).MinHeight(0).Children(func() {
-			mygoui.ScrollArea(c.Key("workbench-content"), &s.Content, mygoui.ScrollAreaOptions{
-				Axis: mygoui.ScrollVertical, Label: "Component content",
-				Fade: &mygoui.ScrollFadeOptions{
-					Mode: mygoui.SurfaceFade, Edges: mygoui.FadeBottom, Surface: t.Background,
-				},
-			}, func() { docsPageColumn(c, s) }).Grow(1).Basis(0).MinWidth(0).FillHeight()
-			if page, ok := indexedPage(c, s); ok {
-				docsIndex(c, s, page)
-			}
-		})
+	area := ui.Row(c).FillWidth().Grow(1).Basis(0).MinHeight(0)
+	// Pages size themselves to the area; while the sidebar folds they follow
+	// the room it has left, a frame late.
+	laid := area.LayoutBounds().W
+	s.areaLaid = laid
+	area.DrawOver(func(_ *ui.Painter, r ui.Rect) {
+		if d := laid - r.W; d < -0.5 || d > 0.5 {
+			c.Invalidate()
+		}
+	})
+	area.Children(func() {
+		mygoui.ScrollArea(c.Key("workbench-content"), &s.Content, mygoui.ScrollAreaOptions{
+			Axis: mygoui.ScrollVertical, Label: "Component content",
+			Fade: &mygoui.ScrollFadeOptions{
+				Mode: mygoui.SurfaceFade, Edges: mygoui.FadeBottom, Surface: t.Background,
+			},
+		}, func() { docsPageColumn(c, s) }).Grow(1).Basis(0).MinWidth(0).FillHeight()
+		if page, ok := indexedPage(c, s); ok {
+			docsIndex(c, s, page)
+		}
 	})
 }
 
-// pageHeader is the draggable title bar over the page: navigation toggle,
-// location and window-level actions, clear of the native window controls.
-// When the controls cannot fit between those controls they sit below the
-// native band instead.
-func pageHeader(c *ui.Context, s *State, compact, sidebarOpen bool) {
-	t := theme.Colors(c)
-	bar := c.TitleBar()
-	pad := theme.Scale(c, theme.Space12)
-	stacked := headerStacked(c, sidebarOpen)
-	top, left, right := float32(0), pad, pad+bar.Right
-	if !sidebarOpen {
-		left += bar.Left
-	}
-	if stacked {
-		top, left, right = headerBand(c), pad, pad
-	}
-	ui.Row(c).FillWidth().Height(headerHeight(c, stacked)).Shrink(0).DragWindow().
-		Padding(top, right, 0, left).AlignItems(ui.Center).Gap(theme.Space8).
-		BorderWidth(0, 0, theme.Hairline, 0).BorderColor(t.Border).Label("Gallery title bar").
-		Children(func() {
-			if isLanding(s) && !compact {
-				landingNavigation(c, s)
-			} else {
-				navigationToggle(c, s, compact)
-				breadcrumb(c, s, compact)
+// pageHeader is the title bar over the page: navigation toggle, location
+// and window-level actions. The landing page shows the brand and the ways
+// into the catalog in place of the sidebar it does not have.
+func pageHeader(c *ui.Context, s *State, mode layout.CompactMode) layout.TitleBarOptions {
+	compact := docsCompact(c)
+	landing := isLanding(s) && !compact
+	o := layout.TitleBarOptions{
+		Label: "Gallery title bar", MinHeight: TitleBarHeight,
+		Leading: func() {
+			layout.PaneToggle(c, layout.PaneToggleOptions{
+				Collapsed: &s.SidebarClosed, Open: &s.NavOpen, Compact: mode, Label: "Toggle navigation",
+			})
+		},
+		Center: func() { breadcrumb(c, s, compact) },
+		Trailing: func() {
+			if landing {
+				mygoui.Button(c, mygoui.ButtonOptions{
+					Label: "Search components", Icon: lucide.Search(), IconOnly: true,
+					Variant: mygoui.ButtonGhost, Size: theme.ButtonSmall,
+					OnClick: func() {
+						s.NavOpen = true
+						s.SearchFocus.Focus(c)
+					},
+				})
 			}
 			services := c.Services()
 			mygoui.Button(c, mygoui.ButtonOptions{
 				Label: "GitHub", Icon: lucide.Github(), IconOnly: true,
 				Variant: mygoui.ButtonGhost, Size: theme.ButtonSmall,
 				OnClick: func() { services.OpenURL(RepositoryURL) },
-			}).Shrink(0).AlignSelf(ui.Center)
+			})
 			appearanceButton(c, s)
-		})
+		},
+	}
+	if landing {
+		o.Leading, o.Center = func() { landingLinks(c, s) }, nil
+	}
+	return o
 }
 
-// landingNavigation is the landing page's title bar: the brand, the ways
-// into the catalog and search, in place of the sidebar.
-func landingNavigation(c *ui.Context, s *State) {
-	ui.Row(c).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Gap(theme.Space4).Children(func() {
+// landingLinks is the landing page's leading title bar: the brand and the
+// ways into the catalog.
+func landingLinks(c *ui.Context, s *State) {
+	ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(theme.Space4).Children(func() {
 		ui.Row(c).Shrink(0).Padding(0, theme.Space12, 0, theme.Space4).Children(func() { brand(c) })
 		for _, link := range [...]struct{ label, page string }{
 			{"Components", "button"}, {"Theming", "theming"},
@@ -548,15 +507,6 @@ func landingNavigation(c *ui.Context, s *State) {
 				},
 			}).Shrink(0)
 		}
-		ui.Row(c).Grow(1)
-		mygoui.Button(c, mygoui.ButtonOptions{
-			Label: "Search components", Icon: lucide.Search(), IconOnly: true,
-			Variant: mygoui.ButtonGhost, Size: theme.ButtonSmall,
-			OnClick: func() {
-				s.NavOpen = true
-				s.SearchFocus.Focus(c)
-			},
-		}).Shrink(0)
 	})
 }
 
@@ -576,26 +526,6 @@ func breadcrumb(c *ui.Context, s *State, compact bool) {
 		}
 		ts.Weight = theme.WeightMedium
 		style.Text(ui.Text(c, page.Title), c, ts).SingleLine().MinWidth(0)
-	})
-}
-
-// navigationSheet is the compact navigation: search stays in the header
-// while the sheet body scrolls the page list.
-func navigationSheet(c *ui.Context, s *State) {
-	overlay.Sheet(c, &s.NavOpen, overlay.SheetOptions{
-		Side: mygoui.SideLeft, Width: theme.Scale(c, 300), HideClose: true, BodyLabel: "Gallery navigation",
-		Header: func() {
-			ui.Column(c).FillWidth().Gap(theme.Space12).Children(func() {
-				// The sheet covers the title band, so the brand clears
-				// leading window controls; the sheet's 24 DIP padding
-				// covers part of a taller band.
-				bar := c.TitleBar()
-				ui.Row(c).FillWidth().MinHeight(max(theme.Scale(c, theme.HeightButtonSM), bar.Height-theme.Space24)).
-					PaddingStart(bar.Left).AlignItems(ui.Center).Children(func() { brand(c) })
-				search(c, s)
-			})
-		},
-		Body: func() { pageList(c, s, nil, func(page Page) { selectPage(s, page) }) },
 	})
 }
 

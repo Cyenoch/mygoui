@@ -47,10 +47,10 @@ func SearchField(c *ui.Context, value *string, o SearchFieldOptions) ui.Element 
 			swapGlyph(c, theme.IconMD, shown, func() {
 				ui.Icon(c, lucide.Search()).Size(theme.Scale(c, theme.IconMD), theme.Scale(c, theme.IconMD)).
 					TextColor(t.FieldPlaceholder).Opacity(1 - shown)
-			}).MarginStart(theme.Space12)
+			}).MarginStart(theme.Space(3))
 
 			editor := ui.TextInputBase(c, value).Grow(1).MinWidth(0).
-				PaddingStart(theme.Space8).PaddingEnd(theme.Space8).PaddingY(theme.Scale(c, 5))
+				PaddingStart(theme.Space(2)).PaddingEnd(theme.Space(2)).PaddingY(theme.Scale(c, 5))
 			editor = fieldText(editor, c).Busy(o.Loading)
 			if o.Placeholder != "" {
 				editor.Placeholder(o.Placeholder)
@@ -66,19 +66,20 @@ func SearchField(c *ui.Context, value *string, o SearchFieldOptions) ui.Element 
 			if o.FullWidth {
 				editor.FillWidth()
 			}
-			editor.OnTextKey(func(k ui.TextKey) bool {
-				if k.Key != ui.KeyEscape || o.Disabled || o.ReadOnly || k.Text() == "" {
-					return false
-				}
-				k.SetText("")
+			clearable := *value != "" && !o.Disabled && !o.ReadOnly
+			clearValue := func() {
+				*value = ""
 				if o.OnClear != nil {
 					o.OnClear()
 				}
 				if o.OnChange != nil {
 					o.OnChange()
 				}
-				return true
-			})
+			}
+			// Escape clears the field before a surrounding shortcut sees it.
+			if clearable {
+				editor.OnShortcut(0, ui.KeyEscape, clearValue)
+			}
 			if o.OnChange != nil {
 				editor.OnChange(o.OnChange)
 			}
@@ -86,8 +87,8 @@ func SearchField(c *ui.Context, value *string, o SearchFieldOptions) ui.Element 
 				editor.OnSubmit(o.OnSubmit)
 			}
 
-			clear := ui.ButtonBase(c).Size(theme.Scale(c, theme.Space20), theme.Scale(c, theme.Space20)).
-				Center().Shrink(0).Padding(0).MarginEnd(theme.Space8).
+			clear := ui.ButtonBase(c).Size(theme.Scale(c, theme.Space(5)), theme.Scale(c, theme.Space(5))).
+				Center().Shrink(0).Padding(0).MarginEnd(theme.Space(2)).
 				Radius(theme.RadiusScale().SM).Label(locale.M().Clear).Tooltip(locale.M().Clear)
 			clear.TextColor(t.FieldPlaceholder)
 			clear = style.Background(clear, theme.RadiusScale().SM, ui.Transparent, t.Accent, t.Accent)
@@ -96,19 +97,11 @@ func SearchField(c *ui.Context, value *string, o SearchFieldOptions) ui.Element 
 			})
 			switch {
 			case *value == "":
-				clear.Opacity(0)
-			case o.Disabled || o.ReadOnly:
-				style.Disabled(clear, true)
+				clear.Invisible()
+			case clearable:
+				clear.OnClick(clearValue)
 			default:
-				clear.OnClick(func() {
-					*value = ""
-					if o.OnClear != nil {
-						o.OnClear()
-					}
-					if o.OnChange != nil {
-						o.OnChange()
-					}
-				})
+				style.Disabled(clear, true)
 			}
 		})
 		return row

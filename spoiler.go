@@ -1,7 +1,6 @@
 package mygoui
 
 import (
-	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -22,16 +21,12 @@ type spoilerOpenKey struct{}
 // spoilerSlack keeps a rounding difference from counting as overflow.
 const spoilerSlack = 0.5
 
-// spoilerFade is the height of the fade at the cut, in DIPs: about a line
-// and a half of body text.
-const spoilerFade = 32
-
 // Spoiler cuts body at MaxHeight, fading its last lines out, and adds a
 // control that shows the rest and hides it again. Content that fits shows whole, with no control. The
 // height is that of the last layout, so the control follows the content one
 // frame after it changes.
 func Spoiler(c *ui.Context, o SpoilerOptions, body func()) ui.Element {
-	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8).AlignItems(ui.Start)
+	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(2)).AlignItems(ui.Start)
 	expanded := o.Expanded
 	if expanded == nil {
 		expanded = ui.Local(root, "expanded", func() bool { return false })
@@ -47,7 +42,8 @@ func Spoiler(c *ui.Context, o SpoilerOptions, body func()) ui.Element {
 	if *expanded {
 		open = 1
 	}
-	open = root.AnimateTo(spoilerOpenKey{}, open, ui.Animation{Duration: motion.Reveal, Ease: ui.EaseInOut})
+	m := theme.Motion()
+	open = root.AnimateTo(spoilerOpenKey{}, open, ui.Animation{Duration: m.Reveal, Ease: m.Ease})
 	services := c.Services()
 	return root.Children(func() {
 		view := ui.Column(c).AlignSelf(ui.Stretch).MinWidth(0).AlignItems(ui.Stretch).Clip()
@@ -63,7 +59,7 @@ func Spoiler(c *ui.Context, o SpoilerOptions, body func()) ui.Element {
 		// and clears as the content opens. The mask works on any surface.
 		if overflows && open < 1 {
 			black := ui.RGB(0, 0, 0)
-			from := max(1-theme.Scale(c, spoilerFade)/limit, 0)
+			from := max(1-theme.Scale(c, theme.Effects().FadeEdge)/limit, 0)
 			view.MaskLinearGradient(ui.LinearGradient{Angle: 180, Stops: []ui.GradientStop{
 				{Color: black, At: from * (1 - open)}, {Color: black.Alpha(open), At: 1},
 			}})
@@ -99,7 +95,9 @@ func Spoiler(c *ui.Context, o SpoilerOptions, body func()) ui.Element {
 				label = locale.M().ShowLess
 			}
 		}
+		// It looks like a link but shows content in place, so it is a
+		// button: Space works too.
 		Link(c, LinkOptions{Label: label, OnClick: func() { *expanded = !*expanded }}).
-			Expanded(*expanded).Controls(view)
+			Role(ui.RoleButton).Expanded(*expanded).Controls(view)
 	})
 }

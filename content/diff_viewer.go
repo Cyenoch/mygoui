@@ -22,9 +22,9 @@ const (
 	DiffSplit
 )
 
-// DiffViewerOptions configures a read-only diff of Old against New. Title
-// adds a header naming the file, with the counts of added and deleted lines,
-// a toggle between the two layouts (Layout is where it starts, and follows
+// DiffViewerOptions configures a read-only diff of Old against New. Its
+// header names the file by Title, which also names the viewer, and shows
+// the counts of added and deleted lines, a toggle between the two layouts (Layout is where it starts, and follows
 // the option when that changes), a way to step through the changes while
 // Height makes the viewer scroll (also F7 and Shift+F7) and a button
 // copying New. ContextLines is how many unchanged lines stay around each
@@ -72,9 +72,9 @@ func DiffViewer(c *ui.Context, o DiffViewerOptions) ui.Element {
 	t := theme.Colors(c)
 	root := ui.Column(c).AlignSelf(ui.Stretch).MinWidth(0).Clip().Radius(theme.RadiusScale().XL).
 		Background(t.Code).TextColor(t.CodeForeground).
-		BorderWidth(theme.Hairline).BorderColor(t.Border).Role(ui.RoleGroup)
+		BorderWidth(theme.Hairline).BorderColor(t.Border)
 	if o.Title != "" {
-		root.Label(o.Title)
+		root.Role(ui.RoleGroup).Label(o.Title)
 	}
 	st := ui.Local(root, diffViewerStateKey{}, func() diffViewerState { return diffViewerState{} })
 	d := &st.view
@@ -109,12 +109,10 @@ func DiffViewer(c *ui.Context, o DiffViewerOptions) ui.Element {
 		root.OnShortcut(ui.Shift, ui.KeyF7, func() { st.step(-1) })
 	}
 	return root.Children(func() {
-		if o.Title != "" {
-			diffViewerHeader(c, t, st, &o, steps)
-		}
+		diffViewerHeader(c, t, st, &o, steps)
 		if st.hunks == 0 && o.Old == o.New {
 			style.Text(ui.Text(c, locale.M().NoChanges), c, theme.SM()).TextColor(t.Muted).
-				Padding(theme.Scale(c, theme.Space16)).Unselectable()
+				Padding(theme.Scale(c, theme.Space(4))).Unselectable()
 			return
 		}
 		view := editor.DiffView(c, d).FillWidth().MinWidth(0)
@@ -145,14 +143,15 @@ func diffViewerHeader(c *ui.Context, t theme.Palette, st *diffViewerState, o *Di
 	count := theme.XS()
 	count.Mono = true
 	ui.Row(c).FillWidth().MinWidth(0).MinHeight(theme.Scale(c, 40)).
-		AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space8)).
-		Padding(0, theme.Scale(c, 10), 0, theme.Scale(c, theme.Space16)).
+		AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space(2))).
+		Padding(0, theme.Scale(c, 10), 0, theme.Scale(c, theme.Space(4))).
 		BorderWidth(0, 0, theme.Hairline, 0).BorderColor(t.Border).
 		Children(func() {
+			// The title, or the room it would take, keeps the rest at the end.
 			style.Text(ui.Text(c, o.Title), c, ts).Grow(1).MinWidth(0).SingleLine().Unselectable()
 			if st.hunks > 0 {
 				// Counts read left to right, as the code does.
-				ui.Row(c).Shrink(0).Gap(theme.Scale(c, theme.Space8)).Direction(ui.LeftToRight).Children(func() {
+				ui.Row(c).Shrink(0).Gap(theme.Scale(c, theme.Space(2))).Direction(ui.LeftToRight).Children(func() {
 					style.Text(ui.Text(c, "+"+strconv.Itoa(st.added)), c, count).
 						TextColor(t.SuccessForeground).Unselectable()
 					style.Text(ui.Text(c, "−"+strconv.Itoa(st.deleted)), c, count).
@@ -161,14 +160,14 @@ func diffViewerHeader(c *ui.Context, t theme.Palette, st *diffViewerState, o *Di
 			}
 			// A button keeps its own alignment, so the row around them
 			// centers them in the header.
-			ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space4)).Children(func() {
+			ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space(1))).Children(func() {
 				if steps {
 					position := strconv.Itoa(st.hunks)
 					if st.hunk >= 0 {
 						position = strconv.Itoa(st.hunk+1) + " / " + position
 					}
 					style.Text(ui.Text(c.Key("position"), position), c, count).TextColor(t.Muted).Direction(ui.LeftToRight).
-						Shrink(0).Unselectable()
+						Shrink(0).Unselectable().Role(ui.RoleStatus)
 					for _, b := range []struct {
 						label string
 						icon  *ui.SVG
@@ -191,7 +190,7 @@ func diffViewerHeader(c *ui.Context, t theme.Palette, st *diffViewerState, o *Di
 						}
 					},
 				})
-				CopyButton(c.Key("copy"), CopyButtonOptions{Text: o.New, Size: theme.ButtonSmall, OnError: o.OnError})
+				CopyButton(c.Key("copy"), CopyButtonOptions{Text: o.New, Label: copyLabel(o.Title), Size: theme.ButtonSmall, OnError: o.OnError})
 			})
 		})
 }

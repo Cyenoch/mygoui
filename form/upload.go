@@ -58,15 +58,16 @@ type UploadOptions struct {
 // Upload is a dashed zone that takes files dropped from other applications
 // and highlights while they hover over it.
 func Upload(c *ui.Context, o UploadOptions) ui.Element {
-	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space12)
+	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(3))
 	root.Children(func() {
 		uploadZone(c, o)
 		if len(o.Files) == 0 {
 			return
 		}
-		ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8).Children(func() {
+		ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(2)).Role(ui.RoleList).Children(func() {
 			for i, f := range o.Files {
-				uploadFileRow(c.Key(i), f, o.Disabled, func() { o.OnRemove(i) }, o.OnRemove != nil)
+				uploadFileRow(c.Key(i), f, o.Disabled, func() { o.OnRemove(i) }, o.OnRemove != nil).
+					PositionInSet(i+1, len(o.Files))
 			}
 		})
 	})
@@ -76,7 +77,7 @@ func Upload(c *ui.Context, o UploadOptions) ui.Element {
 func uploadZone(c *ui.Context, o UploadOptions) {
 	t := theme.Colors(c)
 	zone := ui.Column(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Justify(ui.Center).
-		Gap(theme.Space12).Padding(theme.Space24).Radius(theme.RadiusScale().XL).
+		Gap(theme.Space(3)).Padding(theme.Space(6)).Radius(theme.RadiusScale().XL).
 		BorderStyle(ui.BorderDashed).Role(ui.RoleGroup).Label(o.Title)
 	zone = style.Disabled(zone, o.Disabled)
 	// A disabled zone is no drop target, so MyGo hands it nothing.
@@ -96,7 +97,7 @@ func uploadZone(c *ui.Context, o UploadOptions) {
 			ui.Icon(c, lucide.Upload()).Size(theme.Scale(c, 18), theme.Scale(c, 18)).TextColor(t.Foreground)
 		})
 		if o.Title != "" || o.Description != "" {
-			ui.Column(c).MinWidth(0).AlignItems(ui.Center).Gap(theme.Space2).Children(func() {
+			ui.Column(c).MinWidth(0).AlignItems(ui.Center).Gap(theme.Space(0.5)).Children(func() {
 				if o.Title != "" {
 					style.Text(ui.Text(c, o.Title), c, theme.SM()).FontWeight(theme.WeightMedium).
 						TextColor(t.Foreground).TextAlign(ui.Center)
@@ -145,15 +146,15 @@ func uploadAccepts(path string, accept []string) bool {
 	return false
 }
 
-func uploadFileRow(c *ui.Context, f UploadFile, disabled bool, remove func(), removable bool) {
+func uploadFileRow(c *ui.Context, f UploadFile, disabled bool, remove func(), removable bool) ui.Element {
 	t := theme.Colors(c)
 	iconSize := theme.Scale(c, theme.IconMD)
-	row := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(theme.Space12).
-		Padding(theme.Space8, theme.Space12).Radius(theme.RadiusScale().LG).
-		Border(theme.Hairline, t.Border)
+	row := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(theme.Space(3)).
+		Padding(theme.Space(2), theme.Space(3)).Radius(theme.RadiusScale().LG).
+		Border(theme.Hairline, t.Border).Role(ui.RoleListItem).Label(f.Name)
 	row.Children(func() {
 		ui.Icon(c, lucide.File()).Size(iconSize, iconSize).Shrink(0).TextColor(t.MutedForeground)
-		ui.Column(c).Grow(1).MinWidth(0).Gap(theme.Space2).Children(func() {
+		ui.Column(c).Grow(1).MinWidth(0).Gap(theme.Space(0.5)).Children(func() {
 			style.Text(ui.Text(c, f.Name), c, theme.SM()).FontWeight(theme.WeightMedium).
 				TextColor(t.Foreground).SingleLine().MinWidth(0)
 			if f.Detail != "" {
@@ -172,10 +173,10 @@ func uploadFileRow(c *ui.Context, f UploadFile, disabled bool, remove func(), re
 		switch f.Status {
 		case UploadDone:
 			ui.Icon(c, mygoui.StatusIcon(mygoui.ColorSuccess)).Size(iconSize, iconSize).Shrink(0).
-				TextColor(t.SuccessForeground)
+				TextColor(t.SuccessForeground).Label(locale.M().Uploaded)
 		case UploadFailed:
 			ui.Icon(c, mygoui.StatusIcon(mygoui.ColorDanger)).Size(iconSize, iconSize).Shrink(0).
-				TextColor(t.DestructiveForeground)
+				TextColor(t.DestructiveForeground).Label(locale.M().UploadFailed)
 		}
 		if removable {
 			mygoui.Button(c, mygoui.ButtonOptions{
@@ -185,4 +186,5 @@ func uploadFileRow(c *ui.Context, f UploadFile, disabled bool, remove func(), re
 			})
 		}
 	})
+	return row
 }

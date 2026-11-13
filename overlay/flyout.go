@@ -31,7 +31,7 @@ type FlyoutOptions struct {
 	Surface FlyoutSurfaceOptions
 }
 
-// FlyoutSurfaceOptions describes the coss popover content of a flyout.
+// FlyoutSurfaceOptions describes the popover content of a flyout.
 // Header replaces the default title and description when provided.
 type FlyoutSurfaceOptions struct {
 	Title, Description, Label string
@@ -116,10 +116,10 @@ func FlyoutSurface(c *ui.Context, o FlyoutSurfaceOptions) ui.Element {
 		panel.Description(o.Description)
 	}
 	panel.Children(func() {
-		ui.Scroll(c).Fill().MinWidth(0).MinHeight(0).Padding(theme.Space16).Children(func() {
-			ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space12).Children(func() {
+		ui.Scroll(c).Fill().MinWidth(0).MinHeight(0).Padding(theme.Space(4)).Children(func() {
+			ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(3)).Children(func() {
 				if o.Header != nil || o.Title != "" || o.Description != "" {
-					ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space4).Children(func() {
+					ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(1)).Children(func() {
 						if o.Header != nil {
 							o.Header(c)
 							return
@@ -137,7 +137,7 @@ func FlyoutSurface(c *ui.Context, o FlyoutSurfaceOptions) ui.Element {
 					ui.Column(c).FillWidth().MinWidth(0).Children(func() { o.Body(c) })
 				}
 				if o.Footer != nil {
-					ui.Row(c).FillWidth().Justify(ui.End).Gap(theme.Space8).Children(func() { o.Footer(c) })
+					ui.Row(c).FillWidth().Justify(ui.End).Gap(theme.Space(2)).Children(func() { o.Footer(c) })
 				}
 			})
 		})

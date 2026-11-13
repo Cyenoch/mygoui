@@ -60,6 +60,8 @@ type keyValueState struct {
 	// valueRow is the row, counted from one, whose value takes the focus.
 	valueRow int
 	pasted   []KeyValue
+	// removed is the row, counted from one, whose remove button was pressed.
+	removed int
 	// rows and generation tell when rows without an ID shifted: a removal
 	// renews their identity, so a shifted row never inherits the reveal of
 	// the row that stood in its place.
@@ -91,13 +93,21 @@ func KeyValueEditor(c *ui.Context, o KeyValueEditorOptions) ui.Element {
 	if o.AddLabel == "" {
 		o.AddLabel = m.Add
 	}
-	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8).
+	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(2)).
 		Role(ui.RoleGroup).Label(o.AriaLabel)
 	st := ui.Local(root, keyValueStateKey{}, func() keyValueState { return keyValueState{} })
 	focusLast := st.focusRow == len(o.Pairs)
+	// The focus goes from a removed row's button to the button now in its
+	// place, the last one, or the add button after the only row.
+	focusRemove, focusAdd := -1, false
 	if len(o.Pairs) < st.rows {
 		st.generation++
+		if st.removed > 0 {
+			focusRemove = min(st.removed-1, len(o.Pairs)-1)
+			focusAdd = len(o.Pairs) == 0
+		}
 	}
+	st.removed = 0
 	st.rows = len(o.Pairs)
 	st.focusRow = 0
 
@@ -116,9 +126,10 @@ func KeyValueEditor(c *ui.Context, o KeyValueEditorOptions) ui.Element {
 		for i, p := range o.Pairs {
 			row := keyValueRow{
 				index: i, pair: p,
-				duplicate: p.Key != "" && duplicates[p.Key] > 1,
-				focus:     focusLast && i == len(o.Pairs)-1,
-				last:      i == len(o.Pairs)-1,
+				duplicate:   p.Key != "" && duplicates[p.Key] > 1,
+				focus:       focusLast && i == len(o.Pairs)-1,
+				last:        i == len(o.Pairs)-1,
+				focusRemove: i == focusRemove,
 			}
 			next, submitted := row.build(c, o, st)
 			if next != p {
@@ -127,7 +138,7 @@ func KeyValueEditor(c *ui.Context, o KeyValueEditorOptions) ui.Element {
 			add = add || submitted
 		}
 		if o.OnAdd != nil {
-			mygoui.Button(c, mygoui.ButtonOptions{
+			add := mygoui.Button(c, mygoui.ButtonOptions{
 				Label: o.AddLabel, Icon: lucide.Plus(), Variant: mygoui.ButtonOutline,
 				Size: theme.ButtonSmall, Disabled: o.Disabled,
 				OnClick: func() {
@@ -135,6 +146,9 @@ func KeyValueEditor(c *ui.Context, o KeyValueEditorOptions) ui.Element {
 					o.OnAdd()
 				},
 			}).AlignSelf(ui.Start)
+			if focusAdd {
+				add.Focus()
+			}
 		}
 	})
 	// The caller edits its pairs here, after the rows were built from them.
@@ -158,7 +172,7 @@ func KeyValueEditor(c *ui.Context, o KeyValueEditorOptions) ui.Element {
 // keyValueColumns lays a row out as key, value and the remove button.
 func keyValueColumns(c *ui.Context, key any) ui.Element {
 	return ui.Grid(c.Key(key)).ColumnTracks(ui.Fr(1), ui.Fr(1), ui.FitContent()).
-		FillWidth().MinWidth(0).Gap(theme.Space8).AlignItems(ui.Start)
+		FillWidth().MinWidth(0).Gap(theme.Space(2)).AlignItems(ui.Start)
 }
 
 // keyValueActionSize is the width and height of the remove button.
@@ -172,7 +186,7 @@ func keyValueHeaders(c *ui.Context, o KeyValueEditorOptions) {
 	keyValueColumns(c, keyValueStateKey{}).Children(func() {
 		for _, title := range []string{o.KeyPlaceholder, o.ValuePlaceholder} {
 			style.Text(ui.Text(c, title), c, theme.XS()).FontWeight(theme.WeightMedium).
-				TextColor(t.MutedForeground).SingleLine().PaddingX(theme.Space12)
+				TextColor(t.MutedForeground).SingleLine().PaddingX(theme.Space(3))
 		}
 		if o.OnRemove != nil {
 			ui.Box(c).Width(keyValueActionSize(c))
@@ -189,6 +203,8 @@ type keyValueRow struct {
 	duplicate bool
 	focus     bool
 	last      bool
+	// focusRemove gives the remove button the focus.
+	focusRemove bool
 }
 
 // build renders the row and returns the pair as the editors now hold it, and
@@ -218,7 +234,7 @@ func (r keyValueRow) build(c *ui.Context, o KeyValueEditorOptions, st *keyValueS
 			}
 			return e
 		}
-		ui.Column(c).MinWidth(0).Gap(theme.Space4).Children(func() {
+		ui.Column(c).MinWidth(0).Gap(theme.Space(1)).Children(func() {
 			key := editor(&next.Key, o.KeyPlaceholder, inputCoreOptions{Invalid: r.duplicate}).Invalid(r.duplicate)
 			if r.focus {
 				key.AutoFocus()
@@ -230,7 +246,7 @@ func (r keyValueRow) build(c *ui.Context, o KeyValueEditorOptions, st *keyValueS
 				msg := locale.M().DuplicateKey
 				key.Description(msg)
 				style.Text(ui.Text(c, msg), c, theme.HelpText()).
-					TextColor(theme.Colors(c).Destructive).PaddingX(theme.Space2)
+					TextColor(theme.Colors(c).Destructive).PaddingX(theme.Space(0.5))
 			}
 		})
 		ui.Box(c).MinWidth(0).Children(func() {
@@ -245,8 +261,8 @@ func (r keyValueRow) build(c *ui.Context, o KeyValueEditorOptions, st *keyValueS
 			}
 			if r.pair.Secret {
 				size := keyValueActionSize(c)
-				value.PaddingEnd(size + theme.Scale(c, theme.Space2))
-				passwordToggle(c, revealed, size, o.Disabled, r.pair.Key).Absolute().End(theme.Scale(c, theme.Space2)).Top(0)
+				value.PaddingEnd(size + theme.Scale(c, theme.Space(0.5)))
+				passwordToggle(c, revealed, size, o.Disabled, r.pair.Key).Absolute().End(theme.Scale(c, theme.Space(0.5))).Top(0)
 			}
 		})
 		if o.OnRemove == nil {
@@ -258,11 +274,17 @@ func (r keyValueRow) build(c *ui.Context, o KeyValueEditorOptions, st *keyValueS
 			name = number
 		}
 		ui.Box(c).Height(theme.Scale(c, 32)).Center().Children(func() {
-			mygoui.Button(c, mygoui.ButtonOptions{
+			remove := mygoui.Button(c, mygoui.ButtonOptions{
 				Label: fmt.Sprintf(locale.M().RemoveNamed, name), Icon: lucide.X(), IconOnly: true,
 				Variant: mygoui.ButtonGhost, Size: theme.ButtonSmall, Disabled: o.Disabled,
-				OnClick: func() { o.OnRemove(r.index) },
+				OnClick: func() {
+					st.removed = r.index + 1
+					o.OnRemove(r.index)
+				},
 			})
+			if r.focusRemove {
+				remove.Focus()
+			}
 		})
 	})
 	return next, add

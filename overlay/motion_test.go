@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Cyenoch/mygoui"
-	"github.com/Cyenoch/mygoui/internal/anchored"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -137,7 +136,7 @@ func TestSurfacesPaintArrivalAndDeparture(t *testing.T) {
 				Title:     "Panel",
 			})
 		}, clickOpener("Open"), "Open"},
-		{"popover", anchored.MotionDuration, "Actions", func(c *ui.Context, open *bool) {
+		{"popover", popupMotionDuration, "Actions", func(c *ui.Context, open *bool) {
 			ui.Column(c).Padding(16).Children(func() {
 				anchor := ui.Button(c, "Options").OnClick(func() { *open = !*open })
 				Popover(c, anchor, open, PopoverOptions{
@@ -146,7 +145,7 @@ func TestSurfacesPaintArrivalAndDeparture(t *testing.T) {
 				})
 			})
 		}, clickOpener("Options"), "Options"},
-		{"tooltip", anchored.MotionDuration, "Help", func(c *ui.Context, open *bool) {
+		{"tooltip", popupMotionDuration, "Help", func(c *ui.Context, open *bool) {
 			anchor := ui.Button(c, "Hover me")
 			Tooltip(c, anchor, TooltipOptions{Text: "Help"})
 		}, func(t *testing.T, tt *ui.Tester) {
@@ -252,7 +251,7 @@ func TestReducedMotionSurfacesArriveAtRest(t *testing.T) {
 			ui.Button(c, "Open").OnClick(func() { *open = true })
 			BottomSheet(c, open, BottomSheetOptions{Title: "Actions"})
 		}, clickOpener("Open")},
-		{"tooltip", anchored.MotionDuration, "Help", func(c *ui.Context, open *bool) {
+		{"tooltip", popupMotionDuration, "Help", func(c *ui.Context, open *bool) {
 			anchor := ui.Button(c, "Hover me")
 			Tooltip(c, anchor, TooltipOptions{Text: "Help"})
 		}, func(t *testing.T, tt *ui.Tester) {
@@ -299,5 +298,59 @@ func TestReducedMotionSurfacesArriveAtRest(t *testing.T) {
 				t.Error("reduced motion kept painting after the surface closed")
 			}
 		})
+	}
+}
+
+// TestScrimsOfOneKindDarkenAlike protects one motion per kind of modal
+// surface: halfway through its entrance, the scrim of each dialog-like
+// surface is as dark as every other's, and so is each drawer-like one's.
+func TestScrimsOfOneKindDarkenAlike(t *testing.T) {
+	type surface struct {
+		name  string
+		build func(c *ui.Context, open *bool)
+	}
+	shade := func(s surface, half time.Duration) uint8 {
+		open := false
+		tt := ui.NewTester(func(c *ui.Context) {
+			theme.Apply(c)
+			ui.Box(c).Fill().Background(ui.RGB(255, 255, 255))
+			ui.Button(c, "Open").OnClick(func() { open = true })
+			s.build(c, &open)
+		}, 640, 480)
+		tt.SetPreferences(ui.Preferences{TextScale: 1})
+		if err := tt.Click("Open"); err != nil {
+			t.Fatal(err)
+		}
+		tt.Advance(half)
+		// A corner the panels of every surface leave to the scrim.
+		return tt.Image().RGBAAt(630, 6).R
+	}
+	for _, kind := range []struct {
+		half     time.Duration
+		surfaces []surface
+	}{
+		{dialogMotionDuration / 2, []surface{
+			{"dialog", func(c *ui.Context, open *bool) { Dialog(c, open, DialogOptions{Title: "Panel"}) }},
+			{"modal", func(c *ui.Context, open *bool) { Modal(c, open, ModalOptions{Title: "Panel"}) }},
+			{"alert dialog", func(c *ui.Context, open *bool) {
+				AlertDialog(c, open, AlertDialogOptions{Title: "Panel", OnCancel: func() {}})
+			}},
+		}},
+		{drawerMotionDuration / 2, []surface{
+			{"drawer", func(c *ui.Context, open *bool) { Drawer(c, open, DrawerOptions{Title: "Panel"}) }},
+			{"bottom sheet", func(c *ui.Context, open *bool) {
+				BottomSheet(c, open, BottomSheetOptions{Title: "Panel", Height: 120})
+			}},
+		}},
+	} {
+		first := shade(kind.surfaces[0], kind.half)
+		if first == 255 {
+			t.Fatalf("%s: no scrim halfway in", kind.surfaces[0].name)
+		}
+		for _, s := range kind.surfaces[1:] {
+			if got := shade(s, kind.half); max(got, first)-min(got, first) > 3 {
+				t.Errorf("%s scrim halfway in is %d, %s's is %d", s.name, got, kind.surfaces[0].name, first)
+			}
+		}
 	}
 }

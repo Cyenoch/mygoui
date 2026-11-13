@@ -70,28 +70,47 @@ func stepStateOf(i, current int, status StepStatus) stepState {
 
 // Steps shows the numbered steps of a process joined by connectors. A
 // completed step shows a check in place of its number, and the current step
-// is exposed as such to assistive technology.
+// is exposed as such to assistive technology. Pressable steps are each a Tab
+// stop; the arrows along them move the focus, Home and End to the ends.
 func Steps(c *ui.Context, o StepsOptions) ui.Element {
 	vertical := o.Orientation == StepsVertical
 	var root ui.Element
 	if vertical {
 		root = ui.Column(c).AlignItems(ui.Stretch)
 	} else {
-		root = ui.Row(c).AlignItems(ui.Start).Gap(scale(c, theme.Space8))
+		root = ui.Row(c).AlignItems(ui.Start).Gap(scale(c, theme.Space(2)))
 	}
 	root.FillWidth().MinWidth(0).Role(ui.RoleList)
 	if o.Label != "" {
 		root.Label(o.Label)
 	}
+	// keys moves the focus among pressable steps: the arrows along the
+	// steps, Home and End to the ends.
+	keys := stepKeys{focus: ui.Local(root, "steps-focus", func() int { return -1 }), back: ui.KeyUp, forth: ui.KeyDown}
+	if !vertical {
+		keys.back, keys.forth = ui.KeyLeft, ui.KeyRight
+		if c.Direction() == ui.RightToLeft {
+			keys.back, keys.forth = keys.forth, keys.back
+		}
+	}
 	root.Children(func() {
 		for i, it := range o.Items {
-			buildStep(c, o, i, it, vertical)
+			buildStep(c, o, i, it, vertical, keys)
 		}
 	})
 	return root
 }
 
-func buildStep(c *ui.Context, o StepsOptions, i int, it StepItem, vertical bool) {
+// stepKeys are the keys that move the focus among pressable steps and the
+// step to focus as it is built.
+type stepKeys struct {
+	focus       *int
+	back, forth ui.Key
+}
+
+func anyStep(int) bool { return true }
+
+func buildStep(c *ui.Context, o StepsOptions, i int, it StepItem, vertical bool, keys stepKeys) {
 	t := theme.Colors(c)
 	state := stepStateOf(i, o.Current, it.Status)
 	last := i == len(o.Items)-1
@@ -102,8 +121,8 @@ func buildStep(c *ui.Context, o StepsOptions, i int, it StepItem, vertical bool)
 	connector := func(e ui.Element) ui.Element {
 		return e.Radius(1).Background(motion.Color(e, "line", line))
 	}
-	gap := scale(c, theme.Space8)
-	side := scale(c, theme.Space24)
+	gap := scale(c, theme.Space(2))
+	side := scale(c, theme.Space(6))
 
 	item := ui.Row(c.Key(i)).Gap(gap).MinWidth(0).Role(ui.RoleListItem)
 	// A pressable step names its button; the item is only its container.
@@ -132,11 +151,12 @@ func buildStep(c *ui.Context, o StepsOptions, i int, it StepItem, vertical bool)
 		// pad is the room a pressable step keeps for its hover face.
 		var pad float32
 		if o.OnSelect != nil {
-			pad = scale(c, theme.Space4)
+			pad = scale(c, theme.Space(1))
 			head = ui.ButtonBase(c).FocusRing(true).Padding(pad)
 			describe(head)
 			head = style.Background(head, theme.RadiusScale().LG, ui.Transparent, t.Accent, t.Accent)
 			head.OnClick(func() { o.OnSelect(i) })
+			rove(head, keys.focus, i, len(o.Items), anyStep, keys.back, keys.forth)
 		} else {
 			head = ui.Box(c)
 		}
@@ -148,12 +168,12 @@ func buildStep(c *ui.Context, o StepsOptions, i int, it StepItem, vertical bool)
 		}
 		head.Children(func() {
 			if vertical {
-				rail := ui.Column(c).AlignItems(ui.Center).Gap(scale(c, theme.Space4)).Shrink(0)
+				rail := ui.Column(c).AlignItems(ui.Center).Gap(scale(c, theme.Space(1))).Shrink(0)
 				rail.Children(func() {
 					stepIndicator(c, t, i, state, side)
 					if !last {
-						connector(ui.Box(c).Width(2).Grow(1).MinHeight(scale(c, theme.Space16)).
-							Margin(0, 0, scale(c, theme.Space4)-pad, 0))
+						connector(ui.Box(c).Width(2).Grow(1).MinHeight(scale(c, theme.Space(4))).
+							Margin(0, 0, scale(c, theme.Space(1))-pad, 0))
 					}
 				})
 			} else {
@@ -163,7 +183,7 @@ func buildStep(c *ui.Context, o StepsOptions, i int, it StepItem, vertical bool)
 		})
 		if !vertical && !last {
 			// The connector sits on the indicator's center line.
-			connector(ui.Box(c).Height(2).Grow(1).MinWidth(scale(c, theme.Space16)).
+			connector(ui.Box(c).Height(2).Grow(1).MinWidth(scale(c, theme.Space(4))).
 				Margin(pad+side/2-1, 0, 0, 0))
 		}
 	})
@@ -209,9 +229,9 @@ func stepText(c *ui.Context, t theme.Palette, it StepItem, state stepState, side
 	title := theme.SM()
 	// Center a one-line title on the indicator.
 	top := max(0, (side-theme.Scale(c, title.LineHeight))/2)
-	body := ui.Column(c).MinWidth(0).Shrink(1).Gap(scale(c, theme.Space2)).Padding(top, 0, 0, 0)
+	body := ui.Column(c).MinWidth(0).Shrink(1).Gap(scale(c, theme.Space(0.5))).Padding(top, 0, 0, 0)
 	if spaced {
-		body.Padding(top, 0, scale(c, theme.Space16), 0)
+		body.Padding(top, 0, scale(c, theme.Space(4)), 0)
 	}
 	body.Children(func() {
 		if it.Title != "" {

@@ -15,10 +15,11 @@ type EmptyStateOptions struct {
 }
 
 // EmptyState centers an icon, title, description and optional recovery action.
-// With no content it shows the localized empty placeholder.
+// The title is a level-3 heading. With no content it shows the localized
+// empty placeholder.
 func EmptyState(c *ui.Context, o EmptyStateOptions) ui.Element {
 	t := theme.Colors(c)
-	e := ui.Column(c).Gap(theme.Space24).Padding(theme.Space48, theme.Space24).
+	e := ui.Column(c).Gap(theme.Space(6)).Padding(theme.Space(12), theme.Space(6)).
 		MinWidth(0).FillWidth().AlignItems(ui.Center).Justify(ui.Center)
 	e.Children(func() {
 		if o.Icon == nil && o.Title == "" && o.Description == "" && o.Action == nil {
@@ -32,7 +33,7 @@ func EmptyState(c *ui.Context, o EmptyStateOptions) ui.Element {
 						Radius(theme.RadiusScale().MD).Border(theme.Hairline, t.Border).
 						Background(t.Card).Center()
 					if o.Title != "" || o.Description != "" {
-						icon.Margin(0, 0, theme.Space24, 0)
+						icon.Margin(0, 0, theme.Space(6), 0)
 					}
 					style.Shadow(icon, c, theme.SurfaceShadows(c.Theme().Dark)).Children(func() {
 						ui.Icon(c, o.Icon).Size(18, 18).TextColor(t.Foreground)
@@ -41,19 +42,20 @@ func EmptyState(c *ui.Context, o EmptyStateOptions) ui.Element {
 				if o.Title != "" {
 					ts := theme.XL()
 					ts.Heading, ts.Weight = true, theme.WeightBold
-					style.Text(ui.Text(c, o.Title), c, ts).TextColor(t.Foreground).TextAlign(ui.Center)
+					style.Text(ui.Text(c, o.Title), c, ts).TextColor(t.Foreground).TextAlign(ui.Center).
+						Role(ui.RoleHeading).Level(3)
 				}
 				if o.Description != "" {
 					description := style.Text(ui.Text(c, o.Description), c, theme.SM()).
 						TextColor(t.MutedForeground).TextAlign(ui.Center)
 					if o.Title != "" {
-						description.Margin(theme.Space4, 0, 0, 0)
+						description.Margin(theme.Space(1), 0, 0, 0)
 					}
 				}
 			})
 		}
 		if o.Action != nil {
-			ui.Row(c).FillWidth().MinWidth(0).Wrap().Gap(theme.Space8).
+			ui.Row(c).FillWidth().MinWidth(0).Wrap().Gap(theme.Space(2)).
 				Justify(ui.Center).Children(o.Action)
 		}
 	})
@@ -71,6 +73,6 @@ func Header(c *ui.Context, o HeaderOptions) ui.Element {
 	ts.Weight = theme.WeightMedium
 	return style.Text(ui.Text(c, o.Text), c, ts).
 		TextColor(theme.Colors(c).Muted).
-		Padding(theme.Space6, theme.Space8, theme.Space4, theme.Space8).
+		Padding(theme.Space(1.5), theme.Space(2), theme.Space(1), theme.Space(2)).
 		FillWidth()
 }

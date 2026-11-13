@@ -32,6 +32,9 @@ type ColorPickerOptions struct {
 	Disabled                                              bool
 	// OnChange reports that the user picked another color.
 	OnChange func()
+	// OnOpenChange reports the panel opening or closing through the trigger,
+	// Escape or a click outside.
+	OnOpenChange func(bool)
 }
 
 // defaultSwatchList is the shared palette the picker reads without copying;
@@ -68,7 +71,7 @@ func ColorPicker(c *ui.Context, o ColorPickerOptions) ui.Element {
 	root := ui.Row(c).Shrink(0).AlignItems(ui.Center)
 	root.Children(func() {
 		trigger := ui.ButtonBase(c).
-			Radius(theme.RadiusScale().SM).Gap(theme.Space12).
+			Radius(theme.RadiusScale().SM).Gap(theme.Space(3)).
 			Role(ui.RoleColorWell).Label(label).
 			Expanded(o.Open != nil && *o.Open).
 			Value(s.Hex())
@@ -76,6 +79,9 @@ func ColorPicker(c *ui.Context, o ColorPickerOptions) ui.Element {
 		trigger.OnClick(func() {
 			if o.Open != nil && !o.Disabled {
 				*o.Open = !*o.Open
+				if o.OnOpenChange != nil {
+					o.OnOpenChange(*o.Open)
+				}
 			}
 		})
 		trigger.Children(func() {
@@ -97,32 +103,38 @@ func ColorPicker(c *ui.Context, o ColorPickerOptions) ui.Element {
 			place.Align = mygoui.AlignStart
 		}
 		content := func(c *ui.Context) {
+			// Opening focuses the panel's first control.
+			first := !o.HideArea
 			if !o.HideArea {
 				// The picker stretches the area to the panel's
 				// content width (248 - 16 padding).
 				ColorArea(c, ColorAreaOptions{
 					Label: "Color area", State: s, Size: 232,
 					Disabled: o.Disabled, OnChange: o.OnChange,
+					autofocus: true,
 				})
 			}
 			if !o.HideHue {
 				ColorSlider(c, ColorSliderOptions{
 					Label: "Hue", State: s, Channel: ChannelHue,
 					ShowOutput: true, Disabled: o.Disabled,
-					OnChange: o.OnChange,
+					OnChange: o.OnChange, autofocus: !first,
 				})
+				first = true
 			}
 			if !o.HideAlpha {
 				ColorSlider(c, ColorSliderOptions{
 					Label: "Opacity", State: s, Channel: ChannelAlpha,
 					ShowOutput: true, Disabled: o.Disabled,
-					OnChange: o.OnChange,
+					OnChange: o.OnChange, autofocus: !first,
 				})
+				first = true
 			}
 			if !o.HideField {
 				ColorField(c, ColorFieldOptions{
 					Label: "Hex", State: s, FullWidth: true,
 					Disabled: o.Disabled, OnChange: o.OnChange,
+					autofocus: !first,
 				})
 			}
 			if !o.HideSwatches {
@@ -146,25 +158,42 @@ func ColorPicker(c *ui.Context, o ColorPickerOptions) ui.Element {
 				}
 			}
 		}
+		dismissed := func() {
+			if o.OnOpenChange != nil {
+				o.OnOpenChange(false)
+			}
+		}
 		if anchored.Flyout(c, o.Flyout, trigger, o.Open, anchored.FlyoutSpec{
 			Placement: place, Fallback: mygoui.SideBottom, Label: label,
+			OnDismiss: dismissed,
 			Body: func(c *ui.Context) {
-				ui.Column(c).Width(248).Gap(theme.Space12).
-					Padding(theme.Space8, theme.Space8, theme.Space12, theme.Space8).
+				ui.Column(c).Width(248).Gap(theme.Space(3)).
+					Padding(theme.Space(2), theme.Space(2), theme.Space(3), theme.Space(2)).
 					Children(func() { content(c) })
 			},
 		}) {
 			return
 		}
-		ui.PopoverBase(c, trigger, o.Open, func(panel ui.Element) {
+		// The panel's first control takes the focus as it opens, so MyGo
+		// notes that control, not the trigger, as the one to give the focus
+		// back to; the picker gives it back itself.
+		inPanel := false
+		popover := ui.PopoverBase(c, trigger, o.Open, func(panel ui.Element) {
+			inPanel = panel.FocusWithin()
 			panel = anchored.Apply(panel, trigger, place, mygoui.SideBottom)
 			panel = anchored.Surface(c, panel, theme.RadiusScale().LG)
-			panel.Width(248).Shrink(0).Column().Gap(theme.Space12).
-				Padding(theme.Space8, theme.Space8, theme.Space12, theme.Space8).
+			panel.Width(248).Shrink(0).Column().Gap(theme.Space(3)).
+				Padding(theme.Space(2), theme.Space(2), theme.Space(3), theme.Space(2)).
 				Label(label)
 			panel = anchored.Motion(c, panel, anchored.Side(place, mygoui.SideBottom), false)
 			panel.Children(func() { content(c) })
 		})
+		if popover.Dismissed() {
+			if inPanel {
+				trigger.Focus()
+			}
+			dismissed()
+		}
 	})
 	return root
 }

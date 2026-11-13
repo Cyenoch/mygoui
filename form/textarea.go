@@ -41,7 +41,7 @@ func TextArea(c *ui.Context, value *string, o TextAreaOptions) ui.Element {
 		} else {
 			e.MinWidth(theme.Scale(c, inputDefaultWidth))
 		}
-		e = e.PaddingX(theme.Space12).PaddingY(theme.Scale(c, 5)).Shrink(0)
+		e = e.PaddingX(theme.Space(3)).PaddingY(theme.Scale(c, 5)).Shrink(0)
 		if o.MinLines > 0 || o.MaxLines > 0 {
 			minLines := o.MinLines
 			if minLines <= 0 {

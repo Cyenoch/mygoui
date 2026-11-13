@@ -3,7 +3,6 @@ package color
 import (
 	"math"
 	"strconv"
-	"time"
 
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
@@ -24,11 +23,19 @@ type ColorAreaOptions struct {
 	Size float32
 	// OnChange reports that the user picked a new color.
 	OnChange func()
+
+	// autofocus focuses the area as it appears, when the picker's panel
+	// opens.
+	autofocus bool
 }
 
 // ColorArea is a saturation/brightness area: a square gradient with
 // a draggable thumb. Arrows move saturation and brightness by one percent, ten
-// with Shift; Home and End go to the extremes of saturation.
+// with Shift; PageUp and PageDown move brightness by ten; Home and End go to
+// the extremes of saturation. Right to left, saturation grows to the left.
+//
+// Assistive technology reads one slider whose number is the saturation and
+// whose value text holds both channels: a MyGo element exposes one range.
 func ColorArea(c *ui.Context, o ColorAreaOptions) ui.Element {
 	if c == nil || o.State == nil {
 		return ui.Element{}
@@ -49,6 +56,10 @@ func ColorArea(c *ui.Context, o ColorAreaOptions) ui.Element {
 		Label(label).Range(0, 100, s.Saturation()*100).Step(1).
 		Cursor(ui.CursorCrosshair).Bind(&areaHandle)
 	area = style.Disabled(area, o.Disabled)
+	if o.autofocus {
+		area.AutoFocus()
+	}
+	rtl := c.Direction() == ui.RightToLeft
 
 	notify := func(before ui.Color) {
 		if o.OnChange != nil && s.Value != before {
@@ -58,7 +69,11 @@ func ColorArea(c *ui.Context, o ColorAreaOptions) ui.Element {
 	set := func(x, y float32, width, height float32) {
 		before := s.Value
 		if width > 0 {
-			s.SetSaturation(float64(clamp(float64(x/width), 0, 1)))
+			f := clamp(float64(x/width), 0, 1)
+			if rtl {
+				f = 1 - f
+			}
+			s.SetSaturation(f)
 		}
 		if height > 0 {
 			s.SetBrightness(1 - float64(clamp(float64(y/height), 0, 1)))
@@ -91,11 +106,19 @@ func ColorArea(c *ui.Context, o ColorAreaOptions) ui.Element {
 				step = 0.1
 			}
 			before := s.Value
+			less, more := ui.KeyLeft, ui.KeyRight
+			if rtl {
+				less, more = more, less
+			}
 			switch ev.Key {
-			case ui.KeyLeft:
+			case less:
 				s.SetSaturation(s.Saturation() - step)
-			case ui.KeyRight:
+			case more:
 				s.SetSaturation(s.Saturation() + step)
+			case ui.KeyPageDown:
+				s.SetBrightness(s.Brightness() - 0.1)
+			case ui.KeyPageUp:
+				s.SetBrightness(s.Brightness() + 0.1)
 			case ui.KeyDown:
 				s.SetBrightness(s.Brightness() - step)
 			case ui.KeyUp:
@@ -125,8 +148,9 @@ func ColorArea(c *ui.Context, o ColorAreaOptions) ui.Element {
 	pressed, focused := area.Pressed(), area.FocusVisible()
 	thumbColor := s.Value
 	thumbSize := theme.Scale(c, 16)
+	angle := gradientAngle(false, rtl)
 	area.Draw(func(p *ui.Painter, r ui.Rect) {
-		p.FillGradient(r, ui.LinearGradient{From: white, To: hue, Angle: 90}, radius)
+		p.FillGradient(r, ui.LinearGradient{From: white, To: hue, Angle: angle}, radius)
 		p.FillGradient(r, ui.LinearGradient{From: clear, To: black, Angle: 180}, radius)
 		p.Stroke(r, ui.RGBA(0, 0, 0, 0.1), radius, 1)
 		if o.ShowDots {
@@ -144,17 +168,22 @@ func ColorArea(c *ui.Context, o ColorAreaOptions) ui.Element {
 		}
 	})
 	// The thumb is its own element so the native pose can grow it on press
-	// (16 → 20 DIP, 150 ms) in paint-only frames. Tracking it as a 1 DIP
-	// anchor keeps the pointer position exact and the scale centered.
+	// by Effects.ThumbPressScale over Motion.State in paint-only frames.
+	// Tracking it as a 1 DIP anchor keeps the pointer position exact and the
+	// scale centered.
 	scale := float32(1)
 	if pressed {
-		scale = 1.25
+		scale = theme.Effects().ThumbPressScale
+	}
+	thumbAt := float32(sat * 100)
+	if rtl {
+		thumbAt = 100 - thumbAt
 	}
 	area.Children(func() {
 		thumb := ui.Box(c.Key(colorAreaThumbKey{})).Absolute().Role(ui.RoleNone).
-			Size(1, 1).LeftPercent(float32(sat * 100)).TopPercent(float32((1 - bright) * 100))
-		thumb.AnimatePose(ui.Pose{Scale: scale},
-			ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut})
+			Size(1, 1).LeftPercent(thumbAt).TopPercent(float32((1 - bright) * 100))
+		m := theme.Motion()
+		thumb.AnimatePose(ui.Pose{Scale: scale}, ui.Animation{Duration: m.State, Ease: m.Ease})
 		thumb.Draw(func(p *ui.Painter, r ui.Rect) {
 			cx, cy := r.X+r.W/2, r.Y+r.H/2
 			paintThumb(p, cx, cy, thumbSize, thumbColor)

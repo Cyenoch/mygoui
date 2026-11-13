@@ -16,9 +16,18 @@ type SheetOptions struct {
 	Header, Body, Footer func()
 	BodyLabel            string
 	HideClose            bool
-	PreventDismiss       bool
-	OnDismiss            func()
+	// Flush hands the whole panel to Body, edge to edge and at the panel's
+	// height: no padding, header, footer, close button or scrolling of the
+	// sheet's own. Title and Description still name the panel. It is for a
+	// left or right sheet without Inset: a top or bottom sheet has no height
+	// for Body to fill, and an inset panel's corners do not clip Body.
+	Flush          bool
+	PreventDismiss bool
+	OnDismiss      func()
 }
+
+// sheetMode is what Sheet adds to a dialog: the slide, and a flush body.
+type sheetMode struct{ slide, flush bool }
 
 // Sheet builds an edge-aligned native modal. It slides 32 DIPs over 200 ms
 // and restores focus immediately when dismissed. A zero Width uses 448 DIPs
@@ -33,5 +42,5 @@ func Sheet(c *ui.Context, open *bool, o SheetOptions) ui.Element {
 		Title: o.Title, Description: o.Description, Header: o.Header,
 		Body: o.Body, Footer: o.Footer, BodyLabel: o.BodyLabel,
 		HideClose: o.HideClose, PreventDismiss: o.PreventDismiss, OnDismiss: o.OnDismiss,
-	}, true)
+	}, sheetMode{slide: true, flush: o.Flush})
 }

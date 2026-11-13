@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -113,5 +114,22 @@ func TestInputOTPReadOnlyPreservesCode(t *testing.T) {
 	tester.Key(0, ui.KeyBackspace)
 	if state.Value != "12" || changes != 0 || completed != 0 {
 		t.Fatalf("read-only: value %q changes %d completions %d", state.Value, changes, completed)
+	}
+}
+
+func TestFallbackNamesFollowMessages(t *testing.T) {
+	locale.Set(locale.Messages{VerificationCode: "Code", Submit: "Send"})
+	t.Cleanup(func() { locale.Set(locale.Messages{}) })
+	var otp OTPState
+	draft := "hi"
+	tt := formTextTester(t, func(c *ui.Context) {
+		InputOTP(c, &otp, OTPOptions{Length: 4})
+		Composer(c, &draft, ComposerOptions{OnSubmit: func(string) {}})
+	})
+	if _, ok := tt.AccessByRole(ui.RoleTextField, "Code"); !ok {
+		t.Fatal("the code field is not named by the messages")
+	}
+	if _, ok := tt.AccessByRole(ui.RoleButton, "Send"); !ok {
+		t.Fatal("the submit button is not named by the messages")
 	}
 }

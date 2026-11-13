@@ -29,6 +29,11 @@ type TimeFieldOptions struct {
 	// Placeholder shows while the field is empty. Empty uses "HH:MM", or
 	// "hh:mm AM" with Hour12.
 	Placeholder string
+	// Min and Max bound the time as offsets from midnight, inclusive; zero
+	// leaves that end open. Step is the interval a time must fall on, counted
+	// from Min (or midnight); zero accepts any minute. A time outside them is
+	// invalid and is not committed.
+	Min, Max, Step time.Duration
 
 	Handle   *ui.Handle
 	OnChange func(time.Time)
@@ -84,6 +89,9 @@ func TimeField(c *ui.Context, o TimeFieldOptions, st *TimeFieldState) ui.Element
 		width:       width,
 		loc:         loc,
 		now:         c.Now(),
+		min:         o.Min,
+		max:         o.Max,
+		step:        o.Step,
 		onChange:    o.OnChange,
 	}
 	buf := newTimeBuffer(root, spec)
@@ -109,7 +117,18 @@ type timeFieldSpec struct {
 	width       float32
 	loc         *time.Location
 	now         time.Time
+	min, max    time.Duration
+	step        time.Duration
 	onChange    func(time.Time)
+}
+
+// accepts reports whether a time of day, as an offset from midnight, lies
+// within Min and Max and on the step.
+func (s timeFieldSpec) accepts(clock time.Duration) bool {
+	if s.min > 0 && clock < s.min || s.max > 0 && clock > s.max {
+		return false
+	}
+	return s.step <= 0 || (clock-s.min)%s.step == 0
 }
 
 func timeField(c *ui.Context, spec timeFieldSpec, buf *timeBuffer) ui.Element {
@@ -171,7 +190,7 @@ func (b *timeBuffer) commit(spec timeFieldSpec) {
 		return
 	}
 	hour, minute, ok := parseClock(b.text, spec.hour12)
-	if !ok {
+	if !ok || !spec.accepts(time.Duration(hour)*time.Hour+time.Duration(minute)*time.Minute) {
 		b.invalid = true
 		return
 	}

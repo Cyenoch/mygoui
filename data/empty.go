@@ -38,7 +38,7 @@ func buildEmpty(c *ui.Context, o TableOptions, st *TableState, tl *tableLayout, 
 		}
 		body := ui.Column(c).Grow(1).MinWidth(0).
 			AlignItems(ui.Center).Justify(ui.Center).
-			Padding(theme.Space24)
+			Padding(theme.Space(6))
 		body.Children(func() {
 			if o.Empty != nil {
 				o.Empty(c)

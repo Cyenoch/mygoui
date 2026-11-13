@@ -2,6 +2,7 @@ package gallery
 
 import (
 	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/layout"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -10,17 +11,14 @@ const (
 	docsSidebarWidth = 260
 	docsMaxWidth     = 1000
 	landingMaxWidth  = 1120
-	docsCompactBelow = 760
+	docsCompactBelow = layout.CompactWidth
 	docsIndexWidth   = 208
 	// docsIndexAbove is the width beside the sidebar from which a component
 	// page keeps its index next to the content.
 	docsIndexAbove = 900
 )
 
-func docsCompact(c *ui.Context) bool {
-	width, _ := c.Size()
-	return width < theme.Scale(c, docsCompactBelow)
-}
+func docsCompact(c *ui.Context) bool { return layout.Compact(c, layout.CompactAuto) }
 
 func docsPadding(c *ui.Context) float32 {
 	if docsCompact(c) {
@@ -41,11 +39,15 @@ func sidebarShown(c *ui.Context, s *State) bool {
 	return !docsCompact(c) && !s.SidebarClosed && !isLanding(s)
 }
 
-// docsAreaWidth is the width right of the sidebar.
+// docsAreaWidth is the width right of the sidebar. A sidebar folding away
+// has not given its room up yet: the area is then what was laid out last.
 func docsAreaWidth(c *ui.Context, s *State) float32 {
 	width, _ := c.Size()
 	if sidebarShown(c, s) {
 		width -= theme.Scale(c, docsSidebarWidth)
+	}
+	if s.areaLaid > 0 && s.areaLaid < width {
+		return s.areaLaid
 	}
 	return width
 }

@@ -78,13 +78,15 @@ type State struct {
 	OnAppearanceChange func(bool)
 	Window             *mygo.Window
 	// Flyouts opens anchored popups as native flyouts of Window.
-	Flyouts        mygoui.FlyoutHost
-	zoomStep       int
-	Search         string
-	Primary        int
-	Radius         float32
-	NavOpen        bool
-	SidebarClosed  bool
+	Flyouts       mygoui.FlyoutHost
+	zoomStep      int
+	Search        string
+	Primary       int
+	Radius        float32
+	NavOpen       bool
+	SidebarClosed bool
+	// areaLaid is the width the content area had in the last frame's layout.
+	areaLaid       float32
 	AppearanceOpen bool
 	SystemFont     bool
 	// SystemFontOnly records that Cal Sans could not be registered, as in

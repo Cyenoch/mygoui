@@ -562,3 +562,47 @@ func TestDrawerGrabDoesNotCoverCloseButtonInNarrowWindow(t *testing.T) {
 			open, dismissals, tt.Focused("Open"))
 	}
 }
+
+// TestDrawerFacesTheWindowInRightToLeft protects a start drawer in a
+// right-to-left window: it sits on the right edge, rounds the corners that
+// face the window and is dismissed by a swipe towards the right.
+func TestDrawerFacesTheWindowInRightToLeft(t *testing.T) {
+	open, dismissals := true, 0
+	var panel ui.Rect
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		ui.Box(c).Fill().Background(ui.RGB(40, 70, 110))
+		if p := Drawer(c, &open, DrawerOptions{
+			Side: DrawerLeft, Width: 260, Backdrop: ModalBackdropTransparent,
+			OnDismiss: func() { dismissals++ },
+		}); p.Valid() {
+			panel = p.Bounds()
+		}
+	}, 640, 480)
+	tt.SetDirection(ui.RightToLeft)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
+	tt.Frame()
+	if panel.X+panel.W != 640 {
+		t.Fatalf("drawer at %+v, want it on the right edge", panel)
+	}
+	img := tt.Image()
+	inside := img.RGBAAt(int(panel.X+panel.W/2), int(panel.Y+panel.H/2))
+	rounded := func(x, y int) bool { return sheetColorDistance(img.RGBAAt(x, y), inside) > 40 }
+	if !rounded(int(panel.X)+2, int(panel.Y)+2) || rounded(int(panel.X+panel.W)-3, int(panel.Y)+2) {
+		t.Fatal("the drawer does not round the corners facing the window")
+	}
+	x, y := panel.X+12, panel.Y+panel.H/2
+	drawerSwipe(tt, x, y, -120, 0)
+	tt.Release(x-120, y)
+	tt.Frame()
+	if !open {
+		t.Fatal("an inward swipe dismissed the drawer")
+	}
+	drawerSwipe(tt, x, y, 120, 0)
+	tt.Advance(60 * time.Millisecond)
+	tt.Release(x+120, y)
+	tt.Frame()
+	if open || dismissals != 1 {
+		t.Fatalf("outward swipe: open=%v dismissals=%d", open, dismissals)
+	}
+}

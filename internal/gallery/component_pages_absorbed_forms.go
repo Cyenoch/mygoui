@@ -172,7 +172,7 @@ func init() {
         {Value: "grid", Label: "Grid", Image: grid},
         {Value: "rows", Label: "Rows", Image: rows},
     },
-    Value:    &layout,
+    Value:    &arrangement,
     OnChange: save,
 })`,
 		Params: []ComponentParam{

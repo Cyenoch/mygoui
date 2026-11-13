@@ -1,16 +1,11 @@
 package anchored
 
 import (
-	"time"
-
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
-
-// MotionDuration is the coss popover and tooltip transition.
-const MotionDuration = 150 * time.Millisecond
 
 // Surface paints the coss popup face: popover fill and text, hairline
 // border, radius and overlay elevation.
@@ -28,22 +23,33 @@ func Warm(c *ui.Context) {
 	ui.Overlay(c, func() {})
 }
 
-// Motion fades a popup in from 98% around the edge facing its anchor and
+// Still gives e a transition that shows every change at once, for reduced
+// motion, where e would otherwise move: the toolkit takes an element that
+// drops its transition while shown, as the preference turns on, for one that
+// went, and leaves an inert copy of it over the live one that takes its
+// focus. A negative Duration also keeps a theme change from fading its
+// colours and shadows over the toolkit's default 200 ms.
+func Still(e ui.Element) ui.Element { return e.Transition(stillTransition) }
+
+var stillTransition = ui.ElementTransition{Duration: -1}
+
+// Motion fades a popup in from the popup scale around the edge facing its anchor and
 // fades it out, as coss popovers do; zoomOut also shrinks it on exit, as coss
 // tooltips and preview cards do. The caller keys the panel before building its content and
 // calls Warm every frame. Reduced motion shows and hides it at once.
 func Motion(c *ui.Context, panel ui.Element, side mygoui.Side, zoomOut bool) ui.Element {
 	if theme.ReduceMotion(c) {
-		return panel
+		return Still(panel)
 	}
 	panel.TransformOrigin(origin(side))
-	enter := ui.Motion{Opacity: 0, Scale: 0.98}
+	m, scale := theme.Motion(), theme.Effects().PopupScale
+	enter := ui.Motion{Opacity: 0, Scale: scale}
 	exit := ui.Motion{Opacity: 0}
 	if zoomOut {
-		exit.Scale = 0.98
+		exit.Scale = scale
 	}
 	return panel.Transition(ui.ElementTransition{
-		Duration: MotionDuration, Ease: ui.EaseOut, Enter: &enter, Exit: &exit,
+		Duration: m.Popup, Ease: m.Ease, Enter: &enter, Exit: &exit,
 	})
 }
 

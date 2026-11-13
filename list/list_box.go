@@ -8,10 +8,12 @@
 package list
 
 import (
+	"runtime"
+	"strings"
+	"time"
 	"unicode"
 
 	"github.com/Cyenoch/mygoicons/lucide"
-	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -128,8 +130,13 @@ type ListBoxOptions struct {
 	// KeyboardHighlight paints the highlighted row while a separate editor
 	// drives navigation. Pointer movement updates the same highlight.
 	KeyboardHighlight bool
-	// IndicatorStart places selection checks before the label, as in Coss
-	// select and combobox menus. The default keeps checks at the end.
+	// Editor is bound to the element that keeps the focus while it drives
+	// the list, as a combo box's text input, built before the list. The
+	// highlighted row becomes its active descendant too, so assistive
+	// technology follows the arrows.
+	Editor *ui.Handle
+	// IndicatorStart places selection checks before the label, as in select
+	// and combobox menus. The default keeps checks at the end.
 	IndicatorStart bool
 	// OnAction reports a row activated by a click, Enter or Space.
 	OnAction func(key string)
@@ -149,8 +156,15 @@ type ListBoxState struct {
 	// Highlight is the flattened row under the keyboard or pointer.
 	Highlight int
 
-	rows       []listBoxRow
-	dim        rowDim
+	rows []listBoxRow
+	dim  rowDim
+	// typed is the prefix typed within typeWindow of typedAt; letters
+	// waits for the build, which knows the time.
+	typed   string
+	typedAt time.Time
+	letters []rune
+	// anchor is the row a Shift range of a multiple selection starts from.
+	anchor     string
 	pending    string
 	hasPending bool
 	pointerX   float32
@@ -213,6 +227,7 @@ func (s *ListBoxState) Toggle(mode SelectionMode, key string) {
 	case SelectionSingle:
 		s.SelectedKey = key
 	case SelectionMultiple:
+		s.anchor = key
 		if s.Selected.Has(key) {
 			s.Selected.Remove(key)
 		} else {
@@ -451,49 +466,108 @@ func indicator(mode SelectionMode, it *ListBoxItem) bool {
 	return mode != SelectionNone
 }
 
+// typeKeys are the keys that type a row's first letters. A list that does
+// not edit text gets keys, not text: MyGo types a row's letters from A to Z
+// and the digits only (ui/input.go, typedRune).
 var typeKeys = [...]ui.Key{
 	ui.KeyA, ui.KeyB, ui.KeyC, ui.KeyD, ui.KeyE, ui.KeyF, ui.KeyG, ui.KeyH,
 	ui.KeyI, ui.KeyJ, ui.KeyK, ui.KeyL, ui.KeyM, ui.KeyN, ui.KeyO, ui.KeyP,
 	ui.KeyQ, ui.KeyR, ui.KeyS, ui.KeyT, ui.KeyU, ui.KeyV, ui.KeyW, ui.KeyX,
-	ui.KeyY, ui.KeyZ,
+	ui.KeyY, ui.KeyZ, ui.Key0, ui.Key1, ui.Key2, ui.Key3, ui.Key4, ui.Key5,
+	ui.Key6, ui.Key7, ui.Key8, ui.Key9,
 }
 
 var typeRunes = [...]rune{
 	'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm',
 	'n', 'o', 'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z',
+	'0', '1', '2', '3', '4', '5', '6', '7', '8', '9',
 }
 
-// firstFold returns the first letter of s, folded to lower case, or 0.
-func firstFold(s string) rune {
-	for _, r := range s {
-		return unicode.ToLower(r)
+// typePrefix adds r to the prefix typed within typeWindow of the last
+// letter, and returns the prefix to find with whether to start after the
+// current row: one letter, or one repeated, steps on to the next row
+// starting with it; a longer prefix may match the row it is on.
+func typePrefix(typed *string, typedAt *time.Time, r rune, now time.Time) (prefix string, next bool) {
+	if now.Sub(*typedAt) > typeWindow {
+		*typed = ""
 	}
-	return 0
+	*typedAt = now
+	*typed += string(unicode.ToLower(r))
+	if first := []rune(*typed)[0]; strings.Count(*typed, string(first)) == len(*typed) {
+		return string(first), true
+	}
+	return *typed, false
 }
 
-// typeahead moves the highlight to the next row whose label starts with r.
-func (s *ListBoxState) typeahead(r rune) string {
+// typeahead moves the highlight to the row whose label starts with what was
+// typed, as typePrefix finds it.
+func (s *ListBoxState) typeahead(r rune, now time.Time) {
 	n := len(s.rows)
 	if n == 0 {
-		return ""
+		return
 	}
-	from := s.Highlight
-	if s.selectable(from) {
+	prefix, next := typePrefix(&s.typed, &s.typedAt, r, now)
+	from := max(s.Highlight, 0)
+	if next && s.selectable(from) {
 		from++
 	}
 	for d := range n {
 		i := (from + d) % n
-		if !s.selectable(i) {
-			continue
+		if s.selectable(i) && strings.HasPrefix(strings.ToLower(s.rows[i].label), prefix) {
+			s.Highlight = i
+			s.List.ScrollIntoView(i)
+			return
 		}
-		if firstFold(s.rows[i].label) != r {
-			continue
-		}
-		s.Highlight = i
-		s.List.ScrollIntoView(i)
-		return s.rows[i].key
 	}
-	return ""
+}
+
+// extend moves the highlight by step and chooses the rows from the anchor
+// to it, as Shift with an arrow does.
+func (s *ListBoxState) extend(o ListBoxOptions, step int) {
+	if s.anchorRow() < 0 {
+		s.anchor = s.HighlightKey()
+	}
+	before := s.Highlight
+	s.MoveHighlight(step)
+	if s.Highlight == before {
+		return
+	}
+	from, to := s.anchorRow(), s.Highlight
+	if from > to {
+		from, to = to, from
+	}
+	s.Selected.Clear()
+	for i := from; i <= to; i++ {
+		if s.selectable(i) {
+			s.Selected.Add(s.rows[i].key)
+		}
+	}
+	notify(o, s)
+}
+
+func (s *ListBoxState) anchorRow() int {
+	for i := range s.rows {
+		if s.selectable(i) && s.rows[i].key == s.anchor {
+			return i
+		}
+	}
+	return -1
+}
+
+// selectAll chooses every enabled row.
+func (s *ListBoxState) selectAll(o ListBoxOptions) {
+	for i := range s.rows {
+		if s.selectable(i) {
+			s.Selected.Add(s.rows[i].key)
+		}
+	}
+	notify(o, s)
+}
+
+// page moves the highlight by the rows in view.
+func (s *ListBoxState) page(dir int) {
+	first, last := s.List.Visible()
+	s.MoveHighlight(dir * max(last-first, 1))
 }
 
 // ListBox renders a list box. Rows are virtualized through the native
@@ -505,6 +579,10 @@ func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
 		panic("list: ListBox requires a caller-owned State")
 	}
 	s.buildRows(o)
+	for _, r := range s.letters {
+		s.typeahead(r, c.Now())
+	}
+	s.letters = s.letters[:0]
 	if s.List.Key == nil {
 		s.List.Key = s.keyAt
 		s.List.Label = s.labelAt
@@ -516,7 +594,7 @@ func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
 	n := len(s.rows)
 	padding := o.Padding
 	if padding == 0 {
-		padding = theme.Scale(c, theme.Space4)
+		padding = theme.Scale(c, theme.Space(1))
 	}
 	t := theme.Colors(c)
 	mode := o.Selection
@@ -524,28 +602,42 @@ func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
 		dim:     s.dim.value(),
 		palette: t,
 		radius:  theme.RadiusScale().SM,
-		padX:    theme.Scale(c, theme.Space8),
-		padY:    theme.Scale(c, theme.Space4),
-		gap:     theme.Scale(c, theme.Space8),
+		padX:    theme.Scale(c, theme.Space(2)),
+		padY:    theme.Scale(c, theme.Space(1)),
+		gap:     theme.Scale(c, theme.Space(2)),
 		// The trailing indicator reserves its own space alongside the label.
 		endPad:   theme.Scale(c, theme.Space(7)),
-		mark:     theme.Scale(c, theme.Space16),
+		mark:     theme.Scale(c, theme.Space(4)),
 		check:    theme.Scale(c, theme.Space(2.5)),
 		blockGap: 0,
 	}
 	// The list's focus is the same for every row built in this pass; resolve
 	// it once, when the first row is built and the list is bound.
 	var focused, focusKnown bool
+	var highlighted ui.Element
 	s.pointerHit = false
 	list := ui.List(c, &s.List, n, func(i int) {
 		if !focusKnown {
 			focused = c.Resolve(s.List.Handle).FocusVisible()
 			focusKnown = true
 		}
-		buildRow(c, s, o, i, st, focused)
+		if row := buildRow(c, s, o, i, st, focused); i == s.Highlight {
+			highlighted = row
+		}
 	}).Padding(padding).Gap(0).MinWidth(0).FillWidth().
-		Focusable().FocusRing(false).Label(o.Label)
+		Focusable().FocusRing(false).Role(ui.RoleListBox).Label(o.Label).
+		Multiselectable(mode == SelectionMultiple)
 	s.pointerIn = s.pointerHit
+	if highlighted.Valid() {
+		// The list holds the focus; this tells assistive technology which
+		// row the keys are on.
+		list.ActiveDescendant(highlighted)
+		if o.Editor != nil {
+			if editor := c.Resolve(*o.Editor); editor.Valid() {
+				editor.ActiveDescendant(highlighted)
+			}
+		}
+	}
 	if o.Height > 0 {
 		list.Height(o.Height)
 	}
@@ -566,7 +658,7 @@ func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
 	case o.Empty != "":
 		list.Children(func() {
 			style.Text(ui.Text(c, o.Empty), c, theme.SM()).
-				TextColor(t.Muted).Padding(theme.Scale(c, theme.Space8))
+				TextColor(t.Muted).Padding(theme.Scale(c, theme.Space(2)))
 		})
 	}
 	if !o.Disabled {
@@ -588,16 +680,17 @@ type rowStyle struct {
 	dim float32
 }
 
-func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, st rowStyle, focused bool) {
+// buildRow builds row i and returns its option, invalid for a header.
+func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, st rowStyle, focused bool) ui.Element {
 	r := s.rows[i]
 	gap := st.blockGapAfter(s, i)
 	if r.header {
 		sec := &o.Sections[r.section]
 		header := ui.Row(c).FillWidth().Shrink(0).
-			Gap(theme.Scale(c, theme.Space8)).AlignItems(ui.Center).
+			Gap(theme.Scale(c, theme.Space(2))).AlignItems(ui.Center).
 			Margin(0, 0, gap, 0).Opacity(st.dim).
-			Padding(theme.Scale(c, theme.Space(1.5)), theme.Scale(c, theme.Space8),
-				theme.Scale(c, theme.Space4), theme.Scale(c, theme.Space8))
+			Padding(theme.Scale(c, theme.Space(1.5)), theme.Scale(c, theme.Space(2)),
+				theme.Scale(c, theme.Space(1)), theme.Scale(c, theme.Space(2)))
 		header.Children(func() {
 			style.Text(ui.Text(c, sec.Label), c, theme.XS()).
 				FontWeight(theme.WeightMedium).TextColor(st.palette.Muted).
@@ -606,7 +699,7 @@ func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, st rowSty
 				sec.Options.End()
 			}
 		})
-		return
+		return ui.Element{}
 	}
 	var it *ListBoxItem
 	if r.section < 0 {
@@ -636,9 +729,9 @@ func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, st rowSty
 			row.PaddingEnd(st.endPad)
 		}
 	}
-	// The selected state is exposed to assistive technology; its indicator
-	// marks the choice while hover and keyboard highlight paint the surface.
-	row.Selected(selected).TextColor(fg).Background(ui.Transparent)
+	// The choice is exposed to assistive technology; its indicator marks it
+	// while hover and keyboard highlight paint the surface.
+	row.Role(ui.RoleOption).Selected(selected).TextColor(fg).Background(ui.Transparent)
 	// Snapshot the row's hover in the build: a retained copy of a leaving
 	// row paints in later passes, where row has expired.
 	enabled := !o.Disabled && !it.Disabled
@@ -697,7 +790,7 @@ func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, st rowSty
 			activate(c, s, o, r.key, o.Selection)
 		})
 	}
-	style.Disabled(row, !enabled)
+	return style.Disabled(row, !enabled)
 }
 
 // blockGapAfter returns the space below row i: none inside a section, and the
@@ -737,7 +830,8 @@ func indicatorMark(c *ui.Context, st rowStyle, fg ui.Color, selected, start bool
 		if selected {
 			pose = ui.Pose{}
 		}
-		check.AnimatePose(pose, ui.Animation{Duration: motion.State, Ease: ui.EaseOut, NonMotion: theme.ReduceMotion(c)})
+		m := theme.Motion()
+		check.AnimatePose(pose, ui.Animation{Duration: m.State, Ease: m.Ease, NonMotion: theme.ReduceMotion(c)})
 	})
 }
 
@@ -804,9 +898,20 @@ func bindKeys(c *ui.Context, s *ListBoxState, list ui.Element, o ListBoxOptions,
 			o.OnAction(key)
 		}
 	})
+	if mode == SelectionMultiple {
+		list.OnShortcut(ui.Shift, ui.KeyDown, func() { s.extend(o, 1) })
+		list.OnShortcut(ui.Shift, ui.KeyUp, func() { s.extend(o, -1) })
+		list.OnShortcut(ui.Cmd, ui.KeyA, func() { s.selectAll(o) })
+	}
+	// On macOS the page keys scroll, as in the toolkit's lists (MyGo
+	// ui/list.go, navigate); elsewhere they move the highlight a page.
+	if runtime.GOOS != "darwin" {
+		list.OnShortcut(0, ui.KeyPageDown, func() { s.page(1) })
+		list.OnShortcut(0, ui.KeyPageUp, func() { s.page(-1) })
+	}
 	for i := range typeKeys {
 		r := typeRunes[i]
-		list.OnShortcut(0, typeKeys[i], func() { s.typeahead(r) })
+		list.OnShortcut(0, typeKeys[i], func() { s.letters = append(s.letters, r) })
 	}
 }
 

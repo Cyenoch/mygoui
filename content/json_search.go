@@ -106,8 +106,8 @@ func (s *JSONViewerState) reveal(i int) {
 func jsonToolbar(c *ui.Context, t theme.Palette, st *JSONViewerState) {
 	m := locale.M()
 	f := &st.found
-	ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space8)).
-		Padding(theme.Scale(c, theme.Space6), theme.Scale(c, theme.Space8)).
+	ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space(2))).
+		Padding(theme.Scale(c, theme.Space(1.5)), theme.Scale(c, theme.Space(2))).
 		BorderWidth(0, 0, theme.Hairline, 0).BorderColor(t.Border).
 		Children(func() {
 			searchField(c, t, &st.Query, &st.search, func(k ui.TextKey) bool {
@@ -123,7 +123,7 @@ func jsonToolbar(c *ui.Context, t theme.Palette, st *JSONViewerState) {
 			})
 			// A button keeps its own alignment, so the row around them
 			// centers them against the field.
-			ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space4)).Children(func() {
+			ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space(1))).Children(func() {
 				if f.query != "" {
 					ts := theme.Code()
 					ts.Size, ts.LineHeight = codeFontSize-1, codeLineHeight
@@ -132,7 +132,8 @@ func jsonToolbar(c *ui.Context, t theme.Palette, st *JSONViewerState) {
 						at = f.current + 1
 					}
 					style.Text(ui.Text(c.Key("count"), groupDigits(at)+" / "+groupDigits(len(f.nodes))), c, ts).
-						TextColor(t.Muted).Shrink(0).MarginEnd(theme.Scale(c, theme.Space4)).Unselectable()
+						TextColor(t.Muted).Shrink(0).MarginEnd(theme.Scale(c, theme.Space(1))).Unselectable().
+						Role(ui.RoleStatus)
 				}
 				step := func(label string, icon *ui.SVG, d int) {
 					mygoui.Button(c.Key(label), mygoui.ButtonOptions{

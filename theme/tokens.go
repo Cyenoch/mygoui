@@ -1,6 +1,10 @@
 package theme
 
-import "github.com/egoist/mygo/ui"
+import (
+	"slices"
+
+	"github.com/egoist/mygo/ui"
+)
 
 // Sans is MyGo's native interface family list.
 const Sans = "-apple-system, BlinkMacSystemFont, Segoe UI, system-ui, sans-serif"
@@ -8,7 +12,7 @@ const Sans = "-apple-system, BlinkMacSystemFont, Segoe UI, system-ui, sans-serif
 // Mono is MyGo's native monospace family list.
 const Mono = "ui-monospace, SF Mono, SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace"
 
-// coss ui's spacing rhythm is 0.25rem at a 16 DIP root.
+// The built-in spacing rhythm is 4 DIPs, named by DIP value.
 const (
 	SpaceUnit = 4
 	Space2    = 2
@@ -27,8 +31,9 @@ const (
 	Space64   = 64
 )
 
-// Space returns n coss ui spacing units.
-func Space(n float32) float32 { return n * SpaceUnit }
+// Space returns n spacing units of the published theme. The constants above
+// are the steps of the built-in 4 DIP unit and do not follow a theme.
+func Space(n float32) float32 { return n * snapshot().theme.Spacing.Unit }
 
 // Text weights map to Element.FontWeight.
 const (
@@ -42,7 +47,7 @@ const (
 // coss ui sets it on every heading role and on prose headings.
 const TrackingTight = -0.025
 
-// TextStyle describes an unscaled coss ui type role. Tracking is letter
+// TextStyle describes an unscaled type role. Tracking is letter
 // spacing as a fraction of the font size: zero keeps the font's own spacing,
 // TrackingTight tightens headings.
 type TextStyle struct {
@@ -54,59 +59,49 @@ type TextStyle struct {
 	Heading    bool
 }
 
-// XS is text-xs: 12/16.
-func XS() TextStyle { return TextStyle{Size: 12, LineHeight: 16, Weight: WeightNormal} }
+// The type roles read the published theme.
 
-// SM is text-sm: 14/20.
-func SM() TextStyle { return TextStyle{Size: 14, LineHeight: 20, Weight: WeightNormal} }
+// XS is text-xs: 12/16 by default.
+func XS() TextStyle { return snapshot().theme.Typography.XS }
 
-// Base is text-base: 16/24.
-func Base() TextStyle { return TextStyle{Size: 16, LineHeight: 24, Weight: WeightNormal} }
+// SM is text-sm: 14/20 by default.
+func SM() TextStyle { return snapshot().theme.Typography.SM }
 
-// LG is text-lg: 18/28.
-func LG() TextStyle { return TextStyle{Size: 18, LineHeight: 28, Weight: WeightNormal} }
+// Base is text-base: 16/24 by default.
+func Base() TextStyle { return snapshot().theme.Typography.Base }
 
-// XL is text-xl: 20/28.
-func XL() TextStyle { return TextStyle{Size: 20, LineHeight: 28, Weight: WeightNormal} }
+// LG is text-lg: 18/28 by default.
+func LG() TextStyle { return snapshot().theme.Typography.LG }
 
-// H1 is coss ui's text-4xl heading role, 36/40 semibold and tracking-tight.
-func H1() TextStyle {
-	return TextStyle{Size: 36, LineHeight: 40, Weight: WeightSemibold, Tracking: TrackingTight, Heading: true}
-}
+// XL is text-xl: 20/28 by default.
+func XL() TextStyle { return snapshot().theme.Typography.XL }
 
-// H2 is coss ui's text-3xl heading role, 30/36 semibold and tracking-tight.
-func H2() TextStyle {
-	return TextStyle{Size: 30, LineHeight: 36, Weight: WeightSemibold, Tracking: TrackingTight, Heading: true}
-}
+// H1 is the first heading role: 36/40 semibold and tracking-tight by default.
+func H1() TextStyle { return snapshot().theme.Typography.H1 }
 
-// H3 is coss ui's text-2xl heading role, 24/32 semibold and tracking-tight.
-func H3() TextStyle {
-	return TextStyle{Size: 24, LineHeight: 32, Weight: WeightSemibold, Tracking: TrackingTight, Heading: true}
-}
+// H2 is the second heading role: 30/36 by default.
+func H2() TextStyle { return snapshot().theme.Typography.H2 }
 
-// H4 is coss ui's text-xl heading role, 20/28 semibold and tracking-tight.
-func H4() TextStyle {
-	return TextStyle{Size: 20, LineHeight: 28, Weight: WeightSemibold, Tracking: TrackingTight, Heading: true}
-}
+// H3 is the third heading role: 24/32 by default.
+func H3() TextStyle { return snapshot().theme.Typography.H3 }
 
-// H5 is coss ui's text-lg heading role, 18/28 semibold and tracking-tight.
-func H5() TextStyle {
-	return TextStyle{Size: 18, LineHeight: 28, Weight: WeightSemibold, Tracking: TrackingTight, Heading: true}
-}
+// H4 is the fourth heading role: 20/28 by default.
+func H4() TextStyle { return snapshot().theme.Typography.H4 }
 
-// H6 is coss ui's text-base heading role, 16/24 semibold and tracking-tight.
-func H6() TextStyle {
-	return TextStyle{Size: 16, LineHeight: 24, Weight: WeightSemibold, Tracking: TrackingTight, Heading: true}
-}
+// H5 is the fifth heading role: 18/28 by default.
+func H5() TextStyle { return snapshot().theme.Typography.H5 }
+
+// H6 is the sixth heading role: 16/24 by default.
+func H6() TextStyle { return snapshot().theme.Typography.H6 }
 
 // Code is the inline code role.
-func Code() TextStyle { return TextStyle{Size: 14, LineHeight: 20, Weight: WeightNormal, Mono: true} }
+func Code() TextStyle { return snapshot().theme.Typography.Code }
 
 // Label is the form label role.
-func Label() TextStyle { return TextStyle{Size: 14, LineHeight: 20, Weight: WeightMedium} }
+func Label() TextStyle { return snapshot().theme.Typography.Label }
 
 // HelpText is the form description role.
-func HelpText() TextStyle { return TextStyle{Size: 12, LineHeight: 16, Weight: WeightNormal} }
+func HelpText() TextStyle { return snapshot().theme.Typography.HelpText }
 
 // SemanticType is a coss ui Typography type.
 type SemanticType uint8
@@ -155,10 +150,10 @@ func (t SemanticType) Style() TextStyle {
 	return s
 }
 
-// RadiusBase returns the configured coss ui radius base.
-func RadiusBase() float32 { return snapshot().prefs.Radius }
+// RadiusBase returns the radius base in effect.
+func RadiusBase() float32 { return snapshot().radius }
 
-// Radii is coss ui's radius scale derived from the configured base.
+// Radii is the radius scale derived from the configured base.
 type Radii struct{ XS, SM, MD, LG, XL, XXL, XXXL, XXXXL, Field float32 }
 
 // radii follows coss's offset scale. At the default 10 DIP base the small,
@@ -236,42 +231,25 @@ type Shadow struct {
 	Inset              bool
 }
 
-// Coss layers a low-alpha bottom shadow with a crisp inset edge.
-var (
-	lightSurfaceShadows = []Shadow{{Y: 1, Blur: 2, Color: ui.RGBA(0, 0, 0, 0.05)}, {Y: 1, Color: ui.RGBA(0, 0, 0, 0.04), Inset: true}}
-	darkSurfaceShadows  = []Shadow{{Y: -1, Color: ui.RGBA(255, 255, 255, 0.06), Inset: true}}
-	lightFieldShadows   = []Shadow{{Y: 1, Blur: 2, Color: ui.RGBA(0, 0, 0, 0.05)}, {Y: 1, Color: ui.RGBA(0, 0, 0, 0.06), Inset: true}}
-	// Popups use shadow-lg/5 and tooltips shadow-md/5, over the same edge.
-	largeShadow  = []Shadow{{Y: 10, Blur: 15, Spread: -3, Color: ui.RGBA(0, 0, 0, 0.05)}, {Y: 4, Blur: 6, Spread: -4, Color: ui.RGBA(0, 0, 0, 0.05)}}
-	mediumShadow = []Shadow{{Y: 4, Blur: 6, Spread: -1, Color: ui.RGBA(0, 0, 0, 0.05)}, {Y: 2, Blur: 4, Spread: -2, Color: ui.RGBA(0, 0, 0, 0.05)}}
-)
-
-// SurfaceShadows returns an independent copy of the coss card elevation.
+// SurfaceShadows returns an independent copy of the card elevation.
 func SurfaceShadows(dark bool) []Shadow {
-	if dark {
-		return append([]Shadow{}, darkSurfaceShadows...)
-	}
-	return append([]Shadow{}, lightSurfaceShadows...)
+	return slices.Clone(snapshot().theme.Elevation.mode(dark).Surface)
 }
 
-// OverlayShadows returns the coss popup and dialog elevation.
-func OverlayShadows(dark bool) []Shadow { return withEdge(largeShadow, dark) }
-
-// TooltipShadows returns the lighter coss tooltip elevation.
-func TooltipShadows(dark bool) []Shadow { return withEdge(mediumShadow, dark) }
-
-func withEdge(drop []Shadow, dark bool) []Shadow {
-	edge := lightSurfaceShadows[1]
-	if dark {
-		edge = darkSurfaceShadows[0]
-	}
-	return append(append([]Shadow{}, drop...), edge)
+// OverlayShadows returns an independent copy of the popup and dialog
+// elevation.
+func OverlayShadows(dark bool) []Shadow {
+	return slices.Clone(snapshot().theme.Elevation.mode(dark).Overlay)
 }
 
-// FieldShadows returns the fine edge and lower shadow of an outlined input.
+// TooltipShadows returns an independent copy of the lighter tooltip
+// elevation.
+func TooltipShadows(dark bool) []Shadow {
+	return slices.Clone(snapshot().theme.Elevation.mode(dark).Tooltip)
+}
+
+// FieldShadows returns an independent copy of the fine edge and lower shadow
+// of an outlined control.
 func FieldShadows(dark bool) []Shadow {
-	if dark {
-		return append([]Shadow{}, darkSurfaceShadows...)
-	}
-	return append([]Shadow{}, lightFieldShadows...)
+	return slices.Clone(snapshot().theme.Elevation.mode(dark).Field)
 }

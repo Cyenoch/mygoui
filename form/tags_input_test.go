@@ -186,3 +186,14 @@ func TestTagsInputRefusedPiecesStayInTheEditor(t *testing.T) {
 		t.Fatalf("paste left tags %q and draft %q, want the refused dup kept in the editor", tags, info.Value)
 	}
 }
+
+func TestTagsInputTagsAreItemsOfASet(t *testing.T) {
+	tags := []string{"go", "ui"}
+	tt := formTextTester(t, func(c *ui.Context) {
+		TagsInput(c, &tags, TagsInputOptions{Label: "Tags"})
+	})
+	info, ok := tt.AccessByRole(ui.RoleListItem, "ui")
+	if !ok || info.PosInSet != 2 || info.SetSize != 2 {
+		t.Fatalf("tag ui: found %v, %d of %d", ok, info.PosInSet, info.SetSize)
+	}
+}

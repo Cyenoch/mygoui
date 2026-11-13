@@ -1,6 +1,8 @@
 package navigation
 
 import (
+	"slices"
+
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -26,9 +28,15 @@ type menuList struct {
 	// decided and long fix the panel's path for one opening: switching it
 	// while open would rebuild the rows and drop their focus and marks.
 	decided, long bool
+	// ahead is the type-ahead over every enabled item, built or not, and
+	// aheadRows the row of each.
+	ahead     menuAhead
+	aheadRows []int
 }
 
-func newMenuList() *menuList { return &menuList{focused: -1, pending: -1} }
+func newMenuList() *menuList {
+	return &menuList{focused: -1, pending: -1, ahead: menuAhead{want: -1}}
+}
 
 // menuRow is a section heading (item -1) or an item of a section. pos is
 // an item's place among the menu's items from 1, 0 for a heading or a
@@ -74,9 +82,14 @@ func buildMenuList(c *ui.Context, o MenuOptions, extra menuExtra, parent *menuSc
 		sc.selected = &ml.selected
 	}
 	sc.list, sc.keyed = ml, &ml.keyed
+	if extra.focusLast != nil && *extra.focusLast {
+		ml.focused = -1
+		ml.move(ui.KeyEnd)
+		*extra.focusLast = false
+	}
 	ml.focused = -1
 	list := ui.List(c, &ml.list, len(ml.rows), func(i int) { ml.build(c, o, sc, i) }).
-		Padding(scale(c, theme.Space4)).Gap(0).MinWidth(0).
+		Padding(scale(c, theme.Space(1))).Gap(0).MinWidth(0).
 		Role(ui.RoleMenu).FocusGroup(ui.Vertical)
 	if o.Label != "" {
 		list.Label(o.Label)
@@ -90,6 +103,7 @@ func buildMenuList(c *ui.Context, o MenuOptions, extra menuExtra, parent *menuSc
 // flatten lays the sections out as rows, reusing the rows' storage.
 func (ml *menuList) flatten(o MenuOptions) {
 	ml.rows, ml.items = ml.rows[:0], 0
+	ml.ahead.labels, ml.aheadRows = ml.ahead.labels[:0], ml.aheadRows[:0]
 	for si := range o.Sections {
 		section := &o.Sections[si]
 		if section.Title != "" {
@@ -101,6 +115,10 @@ func (ml *menuList) flatten(o MenuOptions) {
 			if !item.Separator {
 				ml.items++
 				r.pos = ml.items
+			}
+			if r.focusable {
+				ml.ahead.labels = append(ml.ahead.labels, item.Label)
+				ml.aheadRows = append(ml.aheadRows, len(ml.rows))
 			}
 			ml.rows = append(ml.rows, r)
 		}
@@ -119,13 +137,16 @@ func (ml *menuList) build(c *ui.Context, o MenuOptions, sc *menuScope, i int) {
 	} else {
 		ml.row = i
 		row = buildMenuItem(c, section.Items[r.item], sc)
+		if r.focusable {
+			row.HandleInput(ml.typed)
+		}
 		if r.pos > 0 {
 			// Screen readers read the place among all items, built or not.
 			row.PositionInSet(r.pos, ml.items)
 		}
 	}
 	if r.gap {
-		row.Margin(0, 0, scale(c, theme.Space4), 0)
+		row.Margin(0, 0, scale(c, theme.Space(1)), 0)
 	}
 }
 
@@ -150,6 +171,19 @@ func keyedRing(el ui.Element, keyed *bool) bool {
 		*keyed = false
 	}
 	return *keyed && el.Focused() && !el.FocusVisible()
+}
+
+// typed runs the type-ahead from the row holding the focus and moves the
+// focus to the row it found, scrolling it into view.
+func (ml *menuList) typed(ev ui.InputEvent) bool {
+	ml.ahead.focused = slices.Index(ml.aheadRows, ml.focused)
+	took := ml.ahead.input(ev)
+	if w := ml.ahead.want; w >= 0 {
+		ml.ahead.want = -1
+		ml.pending, ml.keyed = ml.aheadRows[w], true
+		ml.list.ScrollIntoView(ml.pending)
+	}
+	return took
 }
 
 // move moves the focus as a focus group's arrows, Home and End do, round

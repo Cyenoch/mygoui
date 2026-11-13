@@ -57,7 +57,7 @@ type settingsExpandedKey struct{}
 // whose rows are separated by hairlines.
 func SettingsGroup(c *ui.Context, o SettingsGroupOptions) ui.Element {
 	t := theme.Colors(c)
-	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space8)).Role(ui.RoleGroup)
+	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Scale(c, theme.Space(2))).Role(ui.RoleGroup)
 	if o.Title != "" {
 		root.Label(o.Title)
 	}
@@ -113,7 +113,7 @@ func settingsSkeletonRows(c *ui.Context, o *SettingsGroupOptions) {
 				}).Shrink(1).MinWidth(0)
 			}
 			settingsRowFrame(c, ui.Row(c.Key(i)).FillWidth(), 0).Children(func() {
-				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(theme.Scale(c, theme.Space8)).
+				ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(theme.Scale(c, theme.Space(2))).
 					Justify(ui.Center).AlignItems(ui.Start).Children(func() {
 					bar(loadingBarWidths[i%len(loadingBarWidths)]+32, 14)
 					bar(loadingBarWidths[(i+2)%len(loadingBarWidths)]+48, 12)
@@ -125,9 +125,9 @@ func settingsSkeletonRows(c *ui.Context, o *SettingsGroupOptions) {
 }
 
 func settingsHeader(c *ui.Context, t theme.Palette, o *SettingsGroupOptions) {
-	ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.End).Gap(theme.Scale(c, theme.Space12)).
-		Padding(0, theme.Scale(c, theme.Space4)).Children(func() {
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(theme.Scale(c, theme.Space2)).Children(func() {
+	ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.End).Gap(theme.Scale(c, theme.Space(3))).
+		Padding(0, theme.Scale(c, theme.Space(1))).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(theme.Scale(c, theme.Space(0.5))).Children(func() {
 			if o.Title != "" {
 				style.Text(ui.Text(c, o.Title), c, theme.SM()).TextColor(t.Foreground).
 					FontWeight(theme.WeightMedium)
@@ -159,10 +159,10 @@ func settingsRow(c *ui.Context, t theme.Palette, o *SettingsRow, inset float32) 
 // from the start edge.
 func settingsRowFrame(c *ui.Context, e ui.Element, inset float32) ui.Element {
 	e = e.MinWidth(0).MinHeight(theme.Scale(c, 52)).AlignItems(ui.Center).
-		Gap(theme.Scale(c, theme.Space12)).
-		Padding(theme.Scale(c, theme.Space8), theme.Scale(c, theme.Space16))
+		Gap(theme.Scale(c, theme.Space(3))).
+		Padding(theme.Scale(c, theme.Space(2)), theme.Scale(c, theme.Space(4)))
 	if inset > 0 {
-		e.PaddingStart(theme.Scale(c, theme.Space16) + inset)
+		e.PaddingStart(theme.Scale(c, theme.Space(4)) + inset)
 	}
 	return e
 }
@@ -173,7 +173,7 @@ func settingsTextInset(c *ui.Context, o *SettingsRow) float32 {
 	if o.Icon == nil {
 		return 0
 	}
-	return theme.Scale(c, theme.IconLG) + theme.Scale(c, theme.Space12)
+	return theme.Scale(c, theme.IconLG) + theme.Scale(c, theme.Space(3))
 }
 
 // settingsRowBody builds the leading icon, then the texts and, if trailing,
@@ -192,7 +192,7 @@ func settingsRowBody(c *ui.Context, t theme.Palette, o *SettingsRow, trailing bo
 	}
 	var title ui.Element
 	ui.Row(c).Grow(1).Basis(0).MinWidth(0).Wrap().AlignItems(ui.Center).
-		GapX(theme.Scale(c, theme.Space12)).GapY(theme.Scale(c, theme.Space8)).Children(func() {
+		GapX(theme.Scale(c, theme.Space(3))).GapY(theme.Scale(c, theme.Space(2))).Children(func() {
 		ui.Column(c).Grow(1).Basis(theme.Scale(c, 120)).MinWidth(0).Children(func() {
 			title = style.Text(ui.Text(c, o.Title), c, theme.SM()).FontWeight(theme.WeightMedium).TextColor(ink)
 			if o.Subtitle != "" {
@@ -210,7 +210,7 @@ func settingsTrailing(c *ui.Context, t theme.Palette, o *SettingsRow) {
 	if o.Trailing == nil {
 		return
 	}
-	ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space8)).
+	ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space(2))).
 		TextColor(t.Muted).Children(o.Trailing)
 }
 
@@ -242,7 +242,7 @@ func settingsActivatable(c *ui.Context, t theme.Palette, e ui.Element, o *Settin
 	e = style.Disabled(e.Label(o.Title).Description(o.Subtitle).FocusRing(false).Cursor(ui.CursorPointer), o.Disabled)
 	e = style.Background(e, 0, ui.Transparent, t.SurfaceHover, t.SurfaceHover)
 	if e.FocusVisible() {
-		inset := theme.Scale(c, theme.Space4)
+		inset := theme.Scale(c, theme.Space(1))
 		radius := theme.RadiusScale().MD
 		e.DrawOver(func(p *ui.Painter, r ui.Rect) {
 			p.FocusRing(ui.Rect{X: r.X + inset, Y: r.Y + inset, W: r.W - 2*inset, H: r.H - 2*inset},
@@ -285,7 +285,7 @@ func settingsExpanderRow(c *ui.Context, t theme.Palette, o *SettingsRow, inset f
 	// The rows below start where this row's title does.
 	childInset := inset + settingsTextInset(c, o)
 	if o.Icon == nil {
-		childInset = inset + theme.Scale(c, theme.Space16)
+		childInset = inset + theme.Scale(c, theme.Space(4))
 	}
 	root.Children(func() {
 		var parts ui.CollapsibleParts
@@ -312,8 +312,8 @@ func settingsExpanderRow(c *ui.Context, t theme.Palette, o *SettingsRow, inset f
 				// The control cannot sit inside the trigger button. It and the
 				// chevron, which ends the row, take the room after it, with the
 				// row's own padding at the end.
-				end := theme.Scale(c, theme.Space16)
-				slot := ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space12)).
+				end := theme.Scale(c, theme.Space(4))
+				slot := ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space(3))).
 					Padding(0, end, 0, 0)
 				if c.Direction() == ui.RightToLeft {
 					slot.Padding(0, 0, 0, end)

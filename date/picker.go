@@ -7,6 +7,7 @@ import (
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/anchored"
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -46,8 +47,7 @@ type DatePickerOptions struct {
 	Open *bool
 	// OpenLabel names the calendar trigger. Empty uses "Open calendar".
 	OpenLabel string
-	// Placement places the popup. The zero value uses bottom-center, as COSS
-	// does.
+	// Placement places the popup. The zero value uses bottom-center.
 	Placement mygoui.Placement
 	// Flyout opens the calendar as a native flyout of the host's window.
 	Flyout *mygoui.FlyoutHost
@@ -123,12 +123,12 @@ func DatePicker(c *ui.Context, o DatePickerOptions) ui.Element {
 
 	openLabel := o.OpenLabel
 	if openLabel == "" {
-		openLabel = "Open calendar"
+		openLabel = locale.M().OpenCalendar
 	}
 
 	root.Children(func() {
 		spec.suffix = func() {
-			trigger = triggerButton(c, openLabel, func() {
+			trigger = triggerButton(c, openLabel, *open, func() {
 				if *open {
 					return
 				}
@@ -215,13 +215,14 @@ func syncCalendar(state *CalendarState, value time.Time) {
 	}
 }
 
-// triggerButton is the calendar icon that opens a picker's popup.
-func triggerButton(c *ui.Context, label string, onClick func()) ui.Element {
+// triggerButton is the calendar icon that opens a picker's popup; it is
+// expanded while the popup shows.
+func triggerButton(c *ui.Context, label string, open bool, onClick func()) ui.Element {
 	t := theme.Colors(c)
 	size := theme.Scale(c, 24)
 	e := ui.ButtonBase(c).Size(size, size).Center().Shrink(0).
 		Radius(theme.RadiusScale().Field).FocusRing(true).Label(label).
-		Cursor(ui.CursorPointer)
+		Expanded(open).Cursor(ui.CursorPointer)
 	e = style.Background(e, theme.RadiusScale().Field, ui.Transparent, t.Accent, t.Accent)
 	if onClick != nil {
 		e = e.OnClick(onClick)
@@ -238,14 +239,14 @@ func flyoutCalendar(label string, place mygoui.Placement, body func(*ui.Context)
 	return anchored.FlyoutSpec{
 		Placement: place, Fallback: mygoui.SideBottom, Label: label, OnDismiss: dismissed,
 		Body: func(c *ui.Context) {
-			ui.Column(c).Padding(theme.Space8).Children(func() { body(c) })
+			ui.Column(c).Padding(theme.Space(2)).Children(func() { body(c) })
 		},
 	}
 }
 
 // popoverPanel gives the calendar the coss popover surface and motion.
 func popoverPanel(c *ui.Context, panel, anchor ui.Element, place mygoui.Placement) ui.Element {
-	p := anchored.Surface(c, panel.Padding(theme.Space8).Clip(), theme.RadiusScale().LG)
+	p := anchored.Surface(c, panel.Padding(theme.Space(2)).Clip(), theme.RadiusScale().LG)
 	p = anchored.Apply(p, anchor, place, mygoui.SideBottom)
 	return anchored.Motion(c, p, anchored.Side(place, mygoui.SideBottom), false)
 }

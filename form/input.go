@@ -87,7 +87,7 @@ func inputEditor(c *ui.Context, value *string, o inputCoreOptions) ui.Element {
 	} else {
 		e.MinWidth(theme.Scale(c, inputDefaultWidth))
 	}
-	e = e.PaddingX(theme.Space12).PaddingY(theme.Scale(c, 5)).
+	e = e.PaddingX(theme.Space(3)).PaddingY(theme.Scale(c, 5)).
 		MinHeight(theme.Scale(c, 32)).Shrink(0)
 	e = fieldSurface(e, c, o.Variant, o.Invalid, o.Disabled)
 	if o.OnChange != nil {
@@ -109,8 +109,8 @@ func loadingInput(c *ui.Context, value *string, o inputCoreOptions, loading bool
 	if !loading && shown == 0 {
 		return editor
 	}
-	size, inset := theme.Scale(c, busySize), theme.Scale(c, theme.Space12)
-	editor.PaddingEnd(inset + size + theme.Scale(c, theme.Space8))
+	size, inset := theme.Scale(c, busySize), theme.Scale(c, theme.Space(3))
+	editor.PaddingEnd(inset + size + theme.Scale(c, theme.Space(2)))
 	ink := theme.Colors(c).MutedForeground.Alpha(shown)
 	still := theme.ReduceMotion(c)
 	rtl := c.Direction() == ui.RightToLeft

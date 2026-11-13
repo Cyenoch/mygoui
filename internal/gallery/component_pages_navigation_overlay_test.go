@@ -35,7 +35,7 @@ func TestDefaultPaginationIsCenteredAndIndependent(t *testing.T) {
 				math.Abs(float64((previous.X+next.X+next.W)/2-float32(width)/2)) > 1 {
 				t.Fatalf("pagination is not centered: previous=%+v next=%+v", previous, next)
 			}
-			for _, label := range []string{"1", "2, Selected", "3", "More pages", "5"} {
+			for _, label := range []string{"1", "2", "3", "More pages", "5"} {
 				if _, ok := tt.Find(label); !ok {
 					t.Fatalf("default pagination is missing %q", label)
 				}

@@ -146,7 +146,7 @@ var open bool`
 	case "rate":
 		return "var rating float64"
 	case "imageselect":
-		return "var layout string; var grid, rows ui.ImageSource"
+		return "var arrangement string; var grid, rows ui.ImageSource"
 	case "upload":
 		return `var files []form.UploadFile
 var addFiles func([]string)

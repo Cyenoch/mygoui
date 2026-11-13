@@ -43,8 +43,8 @@ func disclosure(c *ui.Context, o DisclosureOptions, group *disclosureGroupScope)
 		header := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Shrink(0)
 		header.Children(func() {
 			parts = ui.CollapsibleBase(c, open)
-			tr = parts.Trigger.Grow(1).AlignItems(ui.Center).Gap(scale(c, theme.Space8)).
-				Padding(scale(c, theme.Space4), scale(c, theme.Space8)).
+			tr = parts.Trigger.Grow(1).AlignItems(ui.Center).Gap(scale(c, theme.Space(2))).
+				Padding(scale(c, theme.Space(1)), scale(c, theme.Space(2))).
 				Radius(theme.RadiusScale().MD).FocusRing(true).Label(o.Title)
 			progress := parts.Progress()
 			tr.Children(func() {
@@ -56,6 +56,9 @@ func disclosure(c *ui.Context, o DisclosureOptions, group *disclosureGroupScope)
 				})
 			})
 			tr = style.Disabled(tr, o.Disabled)
+			if group != nil && !o.Disabled {
+				rove(tr, group.focus, group.at, group.n, group.enabled, ui.KeyUp, ui.KeyDown)
+			}
 			if o.Actions != nil {
 				ui.Row(c).AlignItems(ui.Center).Shrink(0).Children(o.Actions)
 			}
@@ -66,7 +69,7 @@ func disclosure(c *ui.Context, o DisclosureOptions, group *disclosureGroupScope)
 			group.note(open, changed, o.Disabled)
 		}
 		if panel := parts.Panel(o.Body); panel.Valid() {
-			panel.FillWidth().MinWidth(0).Padding(scale(c, theme.Space8)).TextColor(t.Muted)
+			panel.FillWidth().MinWidth(0).Padding(scale(c, theme.Space(2))).TextColor(t.Muted)
 			fadePanel(panel, parts.Progress())
 		}
 	})
@@ -83,16 +86,22 @@ type DisclosureGroupOptions struct {
 }
 
 // DisclosureGroup builds a column of disclosures and, in single mode, closes
-// the others when one opens. Expansion stays in the *bool each disclosure
+// the others when one opens. Up and Down move the focus between the
+// triggers, Home and End to the first and the last; each stays a Tab stop. Expansion stays in the *bool each disclosure
 // was given.
 func DisclosureGroup(c *ui.Context, o DisclosureGroupOptions) ui.Element {
 	root := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Role(ui.RoleGroup)
 	if o.Label != "" {
 		root.Label(o.Label)
 	}
-	sc := &disclosureGroupScope{multiple: o.Multiple}
+	sc := &disclosureGroupScope{
+		multiple: o.Multiple, n: len(o.Items),
+		focus:   ui.Local(root, "disclosure-group-focus", func() int { return -1 }),
+		enabled: func(i int) bool { return !o.Items[i].Disabled },
+	}
 	root.Children(func() {
 		for i := range o.Items {
+			sc.at = i
 			disclosure(c, o.Items[i], sc)
 		}
 	})

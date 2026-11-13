@@ -50,3 +50,37 @@ func TestStepsSelectReportsThePressedStep(t *testing.T) {
 		t.Fatalf("selected %v, want [2 2]", selected)
 	}
 }
+
+// TestStepsArrowsMoveAlongPressableSteps protects keyboard movement among
+// pressable steps: the arrows follow the steps, in reading order, and Home
+// and End reach the ends.
+func TestStepsArrowsMoveAlongPressableSteps(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		dir         ui.Direction
+		orientation StepsOrientation
+		forth, back ui.Key
+	}{
+		{"horizontal", ui.LeftToRight, StepsHorizontal, ui.KeyRight, ui.KeyLeft},
+		{"right to left", ui.RightToLeft, StepsHorizontal, ui.KeyLeft, ui.KeyRight},
+		{"vertical", ui.LeftToRight, StepsVertical, ui.KeyDown, ui.KeyUp},
+	} {
+		tt := ui.NewTester(func(c *ui.Context) {
+			theme.Apply(c)
+			Steps(c, StepsOptions{Items: stepItems(), Orientation: tc.orientation, OnSelect: func(int) {}})
+		}, 480, 240)
+		tt.SetDirection(tc.dir)
+		if err := tt.Click("Account"); err != nil {
+			t.Fatal(err)
+		}
+		for _, step := range []struct {
+			key  ui.Key
+			want string
+		}{{tc.forth, "Profile"}, {tc.back, "Account"}, {tc.back, "Review"}, {ui.KeyHome, "Account"}, {ui.KeyEnd, "Review"}} {
+			tt.Key(0, step.key)
+			if !tt.Focused(step.want) {
+				t.Fatalf("%s: key %v did not focus %s", tc.name, step.key, step.want)
+			}
+		}
+	}
+}

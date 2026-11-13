@@ -134,6 +134,7 @@ type calendarFocusKey struct{}
 type yearScrollKey struct{}
 type yearScrollInitKey struct{}
 type yearFocusKey struct{}
+type yearOpenedKey struct{}
 
 // calendarSpec is the internal, shared configuration of both calendars.
 type calendarSpec struct {
@@ -185,7 +186,7 @@ func (s calendarSpec) years() string {
 	if s.yearLabel != "" {
 		return s.yearLabel
 	}
-	return "Choose year"
+	return locale.M().ChooseYear
 }
 
 func (s calendarSpec) monthText(t time.Time) string {
@@ -227,6 +228,17 @@ func (s calendarSpec) disabledDay(d time.Time) bool {
 	return s.disabledDates != nil && s.disabledDates(d)
 }
 
+// clampDay keeps d between Min and Max.
+func (s calendarSpec) clampDay(d time.Time) time.Time {
+	switch {
+	case !s.min.IsZero() && compareDay(d, s.min) < 0:
+		return time.Date(s.min.Year(), s.min.Month(), s.min.Day(), 0, 0, 0, 0, d.Location())
+	case !s.max.IsZero() && compareDay(d, s.max) > 0:
+		return time.Date(s.max.Year(), s.max.Month(), s.max.Day(), 0, 0, 0, 0, d.Location())
+	}
+	return d
+}
+
 // cellSelection decides how a day looks and what choosing it does. A nil
 // selected means no single-value highlight (range calendars use inRange,
 // start and end instead).
@@ -236,6 +248,10 @@ type cellSelection struct {
 	start    func(time.Time) bool
 	end      func(time.Time) bool
 	activate func(time.Time)
+	// pending is the endpoint a range calendar waits to complete, and
+	// cancel drops it; zero and nil for a single-day calendar.
+	pending time.Time
+	cancel  func()
 }
 
 // buildCalendar builds the header and the day grid or year grid shared by
@@ -256,7 +272,7 @@ func buildCalendar(c *ui.Context, spec calendarSpec, view *CalendarViewState, va
 	rowInset := float32(0)
 	rangeMode := sel.inRange != nil
 	if rangeMode {
-		rowInset = theme.Scale(c, theme.Space2)
+		rowInset = theme.Scale(c, theme.Space(0.5))
 	}
 	lead := (int(month.Weekday()) - int(spec.firstWeekday) + 7) % 7
 	start := month.AddDate(0, 0, -lead)
@@ -266,8 +282,12 @@ func buildCalendar(c *ui.Context, spec calendarSpec, view *CalendarViewState, va
 	root := ui.Column(c).Width(width).MinWidth(width).Shrink(0).Gap(0)
 	focusHeading := ui.Local(root, calendarFocusKey{}, func() bool { return false })
 
+	// Swapping the day and year grids is a change in place: every part of
+	// it, the grids, the header arrows and the chevron, takes the state
+	// motion.
+	swap := ui.Animation{Duration: theme.Motion().State, Ease: theme.Motion().Ease}
 	root.Children(func() {
-		buildHeader(c, spec, view, month, cursor, monthText, headerH, focusHeading)
+		buildHeader(c, spec, view, month, cursor, monthText, headerH, focusHeading, swap)
 		if view.YearOpen && spec.showYearPicker {
 			grid := buildYearGrid(c, spec, view, month, cursor, dayGridH, focusHeading)
 			// Fade the year grid in over the day grid, and remove it
@@ -276,7 +296,7 @@ func buildCalendar(c *ui.Context, spec calendarSpec, view *CalendarViewState, va
 			if !theme.ReduceMotion(c) {
 				fade := ui.Motion{Opacity: 0}
 				grid.Transition(ui.ElementTransition{
-					Duration: 200 * time.Millisecond, Ease: ui.EaseOut, Enter: &fade,
+					Duration: swap.Duration, Ease: swap.Ease, Enter: &fade,
 				})
 			}
 		} else {
@@ -290,7 +310,7 @@ func buildCalendar(c *ui.Context, spec calendarSpec, view *CalendarViewState, va
 			if !theme.ReduceMotion(c) {
 				fade := ui.Motion{Opacity: 0}
 				transition = ui.ElementTransition{
-					Duration: 120 * time.Millisecond, Ease: ui.EaseOut,
+					Duration: swap.Duration, Ease: swap.Ease,
 					Enter: &fade, Exit: &fade,
 				}
 			}
@@ -305,19 +325,19 @@ func buildCalendar(c *ui.Context, spec calendarSpec, view *CalendarViewState, va
 }
 
 func buildHeader(c *ui.Context, spec calendarSpec, view *CalendarViewState, month, cursor time.Time,
-	monthText string, height float32, focusHeading *bool) {
+	monthText string, height float32, focusHeading *bool, swap ui.Animation) {
 	t := theme.Colors(c)
 	radii := theme.RadiusScale()
 	ui.Row(c).AlignItems(ui.Center).Shrink(0).Children(func() {
 		open := view.YearOpen && spec.showYearPicker
 		previous := navButton(c, spec.prev(), radii.LG, height)
 		if !open && canShiftMonth(month, spec.min, spec.max, -1) {
-			previous = previous.OnClick(func() { shiftMonth(view, month, cursor, -1) })
+			previous = previous.OnClick(func() { shiftMonth(spec, view, month, cursor, -1) })
 		} else {
 			previous = style.Disabled(previous, true)
 		}
 		previous.AnimatePose(ui.Pose{Fade: fadeGone(open)},
-			ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut})
+			swap)
 		previous.Children(func() {
 			ui.Icon(c, lucide.ChevronLeft()).Size(theme.Scale(c, 16), theme.Scale(c, 16)).
 				TextColor(t.Foreground)
@@ -338,14 +358,14 @@ func buildHeader(c *ui.Context, spec calendarSpec, view *CalendarViewState, mont
 			})
 		}
 		heading.Children(func() {
-			ui.Row(c).AlignItems(ui.Center).Gap(theme.Space4).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(theme.Space(1)).Children(func() {
 				style.Text(ui.Text(c, monthText), c, theme.SM()).
 					FontWeight(theme.WeightMedium).TextColor(t.Foreground).SingleLine()
 				if spec.showYearPicker {
 					icon := ui.Icon(c, lucide.ChevronDown()).Size(theme.Scale(c, 12), theme.Scale(c, 12)).
 						TextColor(t.Foreground)
 					icon.AnimatePose(ui.Pose{Rotate: openDegrees(open)},
-						ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut})
+						swap)
 				}
 			})
 		})
@@ -356,12 +376,12 @@ func buildHeader(c *ui.Context, spec calendarSpec, view *CalendarViewState, mont
 
 		next := navButton(c, spec.next(), radii.LG, height)
 		if !open && canShiftMonth(month, spec.min, spec.max, 1) {
-			next = next.OnClick(func() { shiftMonth(view, month, cursor, 1) })
+			next = next.OnClick(func() { shiftMonth(spec, view, month, cursor, 1) })
 		} else {
 			next = style.Disabled(next, true)
 		}
 		next.AnimatePose(ui.Pose{Fade: fadeGone(open)},
-			ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut})
+			swap)
 		next.Children(func() {
 			ui.Icon(c, lucide.ChevronRight()).Size(theme.Scale(c, 16), theme.Scale(c, 16)).
 				TextColor(t.Foreground)
@@ -402,11 +422,13 @@ func buildDayGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel
 	rowH := cellH + 2*rowInset
 
 	grid := ui.Column(c.Key(dayGridKey{})).Shrink(0).Focusable().FocusRing(false).
-		Role(ui.RoleTable).Label(label)
+		Role(ui.RoleGrid).Label(label)
 	if spec.autofocus {
 		grid = grid.AutoFocus()
 	}
 	var cursorCell ui.Element
+	rtl := c.Direction() == ui.RightToLeft
+	preview := rangePreview(spec, sel, grid, rtl, start, weeks, cellW, weekdayH+gap, rowH)
 
 	grid.Children(func() {
 		ui.Row(c).Shrink(0).Height(weekdayH).Children(func() {
@@ -414,7 +436,7 @@ func buildDayGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel
 				day := time.Weekday((int(spec.firstWeekday) + i) % 7)
 				// Each day cell names its own full date.
 				cell := ui.Box(c).Width(cellW).Height(weekdayH).
-					Padding(0, 0, theme.Space8, 0).Center().Role(ui.RoleNone)
+					Padding(0, 0, theme.Space(2), 0).Center().Role(ui.RoleNone)
 				cell.Children(func() {
 					style.Text(ui.Text(c, spec.weekdayText(day)).Role(ui.RoleNone), c, theme.XS()).
 						FontWeight(theme.WeightMedium).TextColor(t.MutedForeground.Alpha(0.72)).SingleLine()
@@ -432,7 +454,7 @@ func buildDayGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel
 					for col := range 7 {
 						day := start.AddDate(0, 0, week*7+col)
 						cell := dayCell(c, spec, view, sel, day, month, cursor, today,
-							cellW, cellH, rowInset, rowH, col, grid)
+							cellW, cellH, rowInset, rowH, col, grid, preview)
 						if sameDay(day, cursor) {
 							cursorCell = cell
 						}
@@ -446,33 +468,41 @@ func buildDayGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel
 		grid.ActiveDescendant(cursorCell)
 	}
 
-	grid.OnShortcut(0, ui.KeyLeft, func() { moveCursor(view, month, cursor, -1) })
-	grid.OnShortcut(0, ui.KeyRight, func() { moveCursor(view, month, cursor, 1) })
-	grid.OnShortcut(0, ui.KeyUp, func() { moveCursor(view, month, cursor, -7) })
-	grid.OnShortcut(0, ui.KeyDown, func() { moveCursor(view, month, cursor, 7) })
-	grid.OnShortcut(0, ui.KeyPageUp, func() {
-		if canShiftMonth(month, spec.min, spec.max, -1) {
-			shiftMonth(view, month, cursor, -1)
+	// The arrows follow the grid, which mirrors right to left.
+	back, forth := -1, 1
+	if rtl {
+		back, forth = forth, back
+	}
+	move := func(days int) func() { return func() { moveCursor(spec, view, month, cursor, days) } }
+	page := func(months int) func() {
+		return func() {
+			if canShiftMonth(month, spec.min, spec.max, months) {
+				shiftMonth(spec, view, month, cursor, months)
+			}
 		}
-	})
-	grid.OnShortcut(0, ui.KeyPageDown, func() {
-		if canShiftMonth(month, spec.min, spec.max, 1) {
-			shiftMonth(view, month, cursor, 1)
-		}
-	})
-	grid.OnShortcut(0, ui.KeyHome, func() { moveCursorTo(view, month, month) })
-	grid.OnShortcut(0, ui.KeyEnd, func() {
-		last := time.Date(month.Year(), month.Month(), daysIn(month), 0, 0, 0, 0, month.Location())
-		moveCursorTo(view, month, last)
-	})
+	}
+	weekday := (int(cursor.Weekday()) - int(spec.firstWeekday) + 7) % 7
+	grid.OnShortcut(0, ui.KeyLeft, move(back))
+	grid.OnShortcut(0, ui.KeyRight, move(forth))
+	grid.OnShortcut(0, ui.KeyUp, move(-7))
+	grid.OnShortcut(0, ui.KeyDown, move(7))
+	grid.OnShortcut(0, ui.KeyHome, move(-weekday))
+	grid.OnShortcut(0, ui.KeyEnd, move(6-weekday))
+	grid.OnShortcut(0, ui.KeyPageUp, page(-1))
+	grid.OnShortcut(0, ui.KeyPageDown, page(1))
+	grid.OnShortcut(ui.Shift, ui.KeyPageUp, page(-12))
+	grid.OnShortcut(ui.Shift, ui.KeyPageDown, page(12))
 	grid.OnShortcut(0, ui.KeyEnter, func() { activateDay(spec, view, month, sel, cursor) })
 	grid.OnShortcut(0, ui.KeySpace, func() { activateDay(spec, view, month, sel, cursor) })
+	if !sel.pending.IsZero() && sel.cancel != nil {
+		grid.OnShortcut(0, ui.KeyEscape, sel.cancel)
+	}
 	return grid
 }
 
 func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cellSelection,
 	day, month, cursor, today time.Time, cellW, cellH, rowInset, rowH float32, col int,
-	grid ui.Element) ui.Element {
+	grid ui.Element, preview func(time.Time) bool) ui.Element {
 	t := theme.Colors(c)
 	outside := !sameMonth(day, month)
 	disabled := spec.disabledDay(day)
@@ -483,6 +513,8 @@ func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cell
 	isSelected := sel.selected != nil && sel.selected(day)
 	isToday := sameDay(day, today)
 	isCursor := sameDay(day, cursor)
+	// The preview follows the pointer, so it shows at once, as hover does.
+	previewed := !inRange && !outside && !disabled && preview(day)
 
 	ink := t.Foreground
 	switch {
@@ -518,7 +550,7 @@ func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cell
 	}
 	cell := ui.Box(c.Key(dayKey{day.Year(), day.Month(), day.Day()})).
 		Size(cellW, rowH).Center().Shrink(0).Radius(radius).
-		Role(ui.RoleButton).Label(spec.dayText(day)).
+		Role(ui.RoleCell).Label(spec.dayText(day)).
 		Checked(isSelected || inRange)
 	if !disabled && sel.activate != nil {
 		cell = cell.Cursor(ui.CursorPointer).OnClick(func() { activateDay(spec, view, month, sel, day) })
@@ -548,6 +580,9 @@ func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cell
 	dot, dotBottom := theme.Scale(c, 3), theme.Scale(c, 4)
 	cell.Draw(func(p *ui.Painter, r ui.Rect) {
 		inner := ui.Rect{X: r.X, Y: r.Y + rowInset, W: r.W, H: cellH}
+		if previewed {
+			p.Fill(inner, t.Accent, radius)
+		}
 		if band > 0 {
 			switch {
 			case outside || !inRange:
@@ -562,7 +597,7 @@ func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cell
 			} else {
 				p.Fill(inner, t.Primary.Alpha(chosen), radius)
 			}
-		} else if !disabled && !inRange && cellHovered {
+		} else if !disabled && !inRange && !previewed && cellHovered {
 			p.Fill(inner, t.Accent, radius)
 		}
 		if isToday {
@@ -604,8 +639,10 @@ func activateDay(spec calendarSpec, view *CalendarViewState, month time.Time, se
 	sel.activate(day)
 }
 
-func moveCursor(view *CalendarViewState, month, cursor time.Time, days int) {
-	next := cursor.AddDate(0, 0, days)
+// moveCursor moves the cursor by days, stopping at Min and Max, and follows
+// it into its month.
+func moveCursor(spec calendarSpec, view *CalendarViewState, month, cursor time.Time, days int) {
+	next := spec.clampDay(cursor.AddDate(0, 0, days))
 	if !sameMonth(next, month) {
 		view.Month = monthStart(next)
 	} else if view.Month.IsZero() {
@@ -614,17 +651,12 @@ func moveCursor(view *CalendarViewState, month, cursor time.Time, days int) {
 	view.Cursor = next
 }
 
-func moveCursorTo(view *CalendarViewState, month, day time.Time) {
-	view.Month = month
-	view.Cursor = day
-}
-
 // shiftMonth moves the visible month by delta, clamping the cursor's day to
-// the new month.
-func shiftMonth(view *CalendarViewState, month, cursor time.Time, delta int) {
+// the new month and to Min and Max.
+func shiftMonth(spec calendarSpec, view *CalendarViewState, month, cursor time.Time, delta int) {
 	next := month.AddDate(0, delta, 0)
 	view.Month = monthStart(next)
-	view.Cursor = clampToMonth(cursor, next)
+	view.Cursor = spec.clampDay(clampToMonth(cursor, next))
 }
 
 func canShiftMonth(month, min, max time.Time, delta int) bool {
@@ -659,7 +691,7 @@ func buildYearGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, mo
 	}
 	cellH := theme.Scale(c, 32)
 	radius := theme.RadiusScale().LG
-	itemH := cellH + theme.Space4
+	itemH := cellH + theme.Space(1)
 
 	scroll := ui.Scroll(c.Key(yearGridKey{})).Height(height).Shrink(0)
 	scroller := ui.Local(scroll, yearScrollKey{}, func() ui.ScrollState { return ui.ScrollState{} })
@@ -672,11 +704,15 @@ func buildYearGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, mo
 		*scrolled = true
 	}
 	wantScroll := ui.Local(scroll, yearFocusKey{}, func() bool { return false })
+	// Escape returns to the view the grid opened on.
+	opened := ui.Local(scroll, yearOpenedKey{}, func() CalendarViewState {
+		return CalendarViewState{Month: month, Cursor: cursor}
+	})
 
 	var grid ui.Element
 	var cursorCell ui.Element
 	scroll.Children(func() {
-		grid = ui.Grid(c).Columns(3).Gap(theme.Space4).Padding(theme.Space4).
+		grid = ui.Grid(c).Columns(3).Gap(theme.Space(1)).Padding(theme.Space(1)).
 			Focusable().FocusRing(false).Role(ui.RoleGroup).Label(spec.years())
 		if first {
 			// Focusing scrolls to the grid's top; keep the selected year's row.
@@ -743,6 +779,7 @@ func buildYearGrid(c *ui.Context, spec calendarSpec, view *CalendarViewState, mo
 	grid.OnShortcut(0, ui.KeyEnter, func() { chooseYear(view, month, cursor, cursorYear, focusHeading) })
 	grid.OnShortcut(0, ui.KeySpace, func() { chooseYear(view, month, cursor, cursorYear, focusHeading) })
 	grid.OnShortcut(0, ui.KeyEscape, func() {
+		view.Month, view.Cursor = opened.Month, opened.Cursor
 		view.YearOpen = false
 		*focusHeading = true
 	})
@@ -931,4 +968,32 @@ func clampToMonth(t, month time.Time) time.Time {
 		day = last
 	}
 	return time.Date(month.Year(), month.Month(), day, 0, 0, 0, 0, month.Location())
+}
+
+// rangePreview returns which days the pending range would cover if the day
+// under the pointer completed it. Only a range calendar waiting for its
+// second endpoint tracks the pointer, so other grids ask for no frames as it
+// moves.
+func rangePreview(spec calendarSpec, sel cellSelection, grid ui.Element, rtl bool, start time.Time,
+	weeks int, cellW, top, rowH float32) func(time.Time) bool {
+	none := func(time.Time) bool { return false }
+	if sel.pending.IsZero() || spec.disabled {
+		return none
+	}
+	x, y, over := grid.PointerPosition()
+	if !over || y < top {
+		return none
+	}
+	row, col := int((y-top)/rowH), int(x/cellW)
+	if row >= weeks || col < 0 || col > 6 {
+		return none
+	}
+	if rtl {
+		col = 6 - col
+	}
+	hovered := start.AddDate(0, 0, row*7+col)
+	if spec.disabledDay(hovered) {
+		return none
+	}
+	return DateRange{Start: sel.pending, End: hovered}.Contains
 }

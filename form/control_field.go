@@ -48,7 +48,7 @@ func ControlField(c *ui.Context, o ControlFieldOptions) ui.Element {
 	disabled := o.Disabled
 	errText := formstyle.ErrorText(o.Invalid, o.Error)
 
-	root := ui.Column(c).MinWidth(0).Gap(theme.Space4)
+	root := ui.Column(c).MinWidth(0).Gap(theme.Space(1))
 	root.Children(func() {
 		var row ui.Element
 		if o.Kind == ControlFieldCheckbox {
@@ -56,7 +56,7 @@ func ControlField(c *ui.Context, o ControlFieldOptions) ui.Element {
 		} else {
 			row = ui.SwitchBase(c, checked)
 		}
-		row = row.Gap(theme.Space12).FillWidth().MinWidth(0).AlignItems(ui.Center).
+		row = row.Gap(theme.Space(3)).FillWidth().MinWidth(0).AlignItems(ui.Center).
 			FocusRing(false).TextColor(t.Foreground).Label(o.Label)
 		if o.Handle != nil {
 			row.Bind(o.Handle)
@@ -72,7 +72,7 @@ func ControlField(c *ui.Context, o ControlFieldOptions) ui.Element {
 		}
 
 		row.Children(func() {
-			ui.Column(c).MinWidth(0).FillWidth().Gap(theme.Space2).Children(func() {
+			ui.Column(c).MinWidth(0).FillWidth().Gap(theme.Space(0.5)).Children(func() {
 				if o.Label != "" {
 					Label(c, o.Label, LabelOptions{
 						Required: o.Required, Invalid: o.Invalid,

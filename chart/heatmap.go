@@ -28,14 +28,18 @@ func Heatmap(c *ui.Context, o HeatmapOptions) (ui.Element, error) {
 	if err := checkOptions(o.Options); err != nil {
 		return ui.Element{}, err
 	}
-	seen := make([]bool, len(o.Columns)*len(o.Rows))
+	// cellAt indexes the cells by row and column, -1 where none is.
+	cellAt := make([]int, len(o.Columns)*len(o.Rows))
+	for i := range cellAt {
+		cellAt[i] = -1
+	}
 	hi := 0.0
 	for i, v := range o.Cells {
 		inside := v.Column >= 0 && v.Column < len(o.Columns) && v.Row >= 0 && v.Row < len(o.Rows)
-		if !inside || seen[v.Row*len(o.Columns)+v.Column] || !finite(v.Value) || v.Value < 0 {
+		if !inside || cellAt[v.Row*len(o.Columns)+v.Column] >= 0 || !finite(v.Value) || v.Value < 0 {
 			return ui.Element{}, fmt.Errorf("heatmap: invalid, duplicate or out-of-range cell %d", i)
 		}
-		seen[v.Row*len(o.Columns)+v.Column] = true
+		cellAt[v.Row*len(o.Columns)+v.Column] = i
 		hi = max(hi, v.Value)
 	}
 	thresholds := o.Thresholds
@@ -64,6 +68,21 @@ func Heatmap(c *ui.Context, o HeatmapOptions) (ui.Element, error) {
 		}
 		return 4
 	}
+	// The arrows move across columns and rows, row 0 at the bottom, passing
+	// over missing cells.
+	o.navigate = func(from, dx, dy int) int {
+		if from < 0 {
+			return step(from, dx+dy, len(o.Cells))
+		}
+		column, row := o.Cells[from].Column+dx, o.Cells[from].Row-dy
+		for column >= 0 && column < len(o.Columns) && row >= 0 && row < len(o.Rows) {
+			if i := cellAt[row*len(o.Columns)+column]; i >= 0 {
+				return i
+			}
+			column, row = column+dx, row-dy
+		}
+		return -1
+	}
 	x, y := native.NewBand(o.Columns...), native.NewBand(o.Rows...)
 	describe := func(i int) string {
 		v := o.Cells[i]
@@ -85,12 +104,7 @@ func Heatmap(c *ui.Context, o HeatmapOptions) (ui.Element, error) {
 			}, func(px, py float32) int {
 				column := min(len(o.Columns)-1, int(px*float32(len(o.Columns))))
 				row := min(len(o.Rows)-1, int((1-py)*float32(len(o.Rows))))
-				for i, cell := range o.Cells {
-					if cell.Column == column && cell.Row == row {
-						return i
-					}
-				}
-				return -1
+				return cellAt[row*len(o.Columns)+column]
 			})
 		})
 	}), nil

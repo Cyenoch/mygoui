@@ -1,10 +1,12 @@
 package theme
 
 import (
+	"reflect"
+
 	"github.com/egoist/mygo/ui"
 )
 
-// Palette contains coss semantic colors. Translucent tokens stay translucent:
+// Palette contains the semantic colors. Translucent tokens stay translucent:
 // borders and subtle fills composite against the actual surface beneath them.
 // MutedBackground is CSS --muted; MutedForeground is CSS --muted-foreground.
 type Palette struct {
@@ -305,11 +307,54 @@ func clonePatch(p *PalettePatch) *PalettePatch {
 var white = ui.RGB(255, 255, 255)
 var black = ui.RGB(0, 0, 0)
 
-// buildPalette expresses coss's published styling tokens as native colors.
-// The MIT apps/ui/content/docs/(root)/styling.mdx at revision
-// 3d8ca28e7d90123e9e0f44665944dc240b026ccb is the token reference;
-// docs/references.md records the docs site's runtime color differences.
-func buildPalette(dark bool, prefs Preferences) Palette {
+// buildPalette is a built-in palette: its seed roles and the roles derived
+// from them.
+func buildPalette(dark bool) Palette {
+	p := seedPalette(dark)
+	deriveRoles(&p, dark, defaultHoverOpacity)
+	return p
+}
+
+// resolvePalette lays the preferences over a theme palette. A preference
+// replaces the roles it names and moves the roles the built-in relations
+// derive from them; every other role keeps the theme's value.
+func resolvePalette(base Palette, dark bool, prefs Preferences, hover float32) Palette {
+	patch := prefs.Palette.patch(dark)
+	if prefs.Accent.A == 0 && patch == nil {
+		return base
+	}
+	before, after := base, base
+	deriveRoles(&before, dark, hover)
+	overridePalette(&after, prefs.Accent, patch)
+	deriveRoles(&after, dark, hover)
+	out := base
+	if patch != nil {
+		applyConveniences(&after, patch, hover)
+	}
+	follow(&out, before, after)
+	if patch != nil {
+		// A convenience the host names wins even where it equals what the
+		// built-in relation derives.
+		applyConveniences(&out, patch, hover)
+	}
+	return out
+}
+
+// follow copies to dst each role that differs between before and after.
+func follow(dst *Palette, before, after Palette) {
+	d, b, a := reflect.ValueOf(dst).Elem(), reflect.ValueOf(before), reflect.ValueOf(after)
+	for i := range d.NumField() {
+		if a.Field(i).Interface() != b.Field(i).Interface() {
+			d.Field(i).Set(a.Field(i))
+		}
+	}
+}
+
+// seedPalette expresses the built-in seed roles as native colors. They came
+// from coss's MIT apps/ui/content/docs/(root)/styling.mdx at revision
+// 3d8ca28e7d90123e9e0f44665944dc240b026ccb; docs/references.md records the
+// docs site's runtime color differences.
+func seedPalette(dark bool) Palette {
 	ink := ui.Oklch(0.269, 0, 0)
 	p := Palette{
 		Background: white, Foreground: ink, Card: white, CardForeground: ink,
@@ -373,32 +418,42 @@ func buildPalette(dark bool, prefs Preferences) Palette {
 		p.CodeHighlight = white.Alpha(0.04)
 	}
 	p.SidebarForeground = mix(p.Foreground, p.Sidebar, 0.36)
-	if prefs.Accent.A != 0 {
-		p.Primary = prefs.Accent
+	return p
+}
+
+// overridePalette applies a host accent and patch to the seed roles.
+func overridePalette(p *Palette, accent ui.Color, patch *PalettePatch) {
+	if accent.A != 0 {
+		p.Primary = accent
 		p.PrimaryForeground = contrastInk(p.Primary)
 	}
-	patch := prefs.Palette.patch(dark)
-	if patch != nil {
-		patch.apply(&p)
-		if patch.Foreground != nil {
-			if patch.CardForeground == nil {
-				p.CardForeground = p.Foreground
-			}
-			if patch.PopoverForeground == nil {
-				p.PopoverForeground = p.Foreground
-			}
-			if patch.SecondaryForeground == nil {
-				p.SecondaryForeground = p.Foreground
-			}
-			if patch.AccentForeground == nil {
-				p.AccentForeground = p.Foreground
-			}
-			if patch.CodeForeground == nil {
-				p.CodeForeground = p.Foreground
-			}
+	if patch == nil {
+		return
+	}
+	patch.apply(p)
+	if patch.Foreground != nil {
+		if patch.CardForeground == nil {
+			p.CardForeground = p.Foreground
+		}
+		if patch.PopoverForeground == nil {
+			p.PopoverForeground = p.Foreground
+		}
+		if patch.SecondaryForeground == nil {
+			p.SecondaryForeground = p.Foreground
+		}
+		if patch.AccentForeground == nil {
+			p.AccentForeground = p.Foreground
+		}
+		if patch.CodeForeground == nil {
+			p.CodeForeground = p.Foreground
 		}
 	}
-	// These names are component-family conveniences, not a second token system.
+}
+
+// deriveRoles computes the roles the built-in design derives from the seed
+// roles. These names are component-family conveniences, not a second token
+// system. hover is the share of its alpha a fill keeps under the pointer.
+func deriveRoles(p *Palette, dark bool, hover float32) {
 	p.BackgroundSecondary = p.MutedBackground.Over(p.Background)
 	p.BackgroundTertiary = p.Input.Over(p.Background)
 	p.BackgroundInverse = p.Foreground
@@ -414,11 +469,11 @@ func buildPalette(dark bool, prefs Preferences) Palette {
 	p.Muted = p.MutedForeground
 	p.Default = p.Secondary
 	p.DefaultForeground = p.SecondaryForeground
-	p.DefaultHover = opacity(p.Secondary, 0.9)
+	p.DefaultHover = opacity(p.Secondary, hover)
 	p.DefaultSoft = p.Secondary
 	p.DefaultSoftForeground = p.SecondaryForeground
 	p.DefaultSoftHover = p.DefaultHover
-	p.AccentHover = opacity(p.Accent, 0.9)
+	p.AccentHover = opacity(p.Accent, hover)
 	p.AccentSoft = p.Accent
 	p.AccentSoftForeground = p.AccentForeground
 	p.AccentSoftHover = p.AccentHover
@@ -426,21 +481,21 @@ func buildPalette(dark bool, prefs Preferences) Palette {
 	if dark {
 		alpha = 0.16
 	}
-	p.SuccessHover = opacity(p.Success, 0.9)
+	p.SuccessHover = opacity(p.Success, hover)
 	p.SuccessSoft = opacity(p.Success, alpha)
 	p.SuccessSoftForeground = p.SuccessForeground
 	p.SuccessSoftHover = opacity(p.Success, alpha+0.04)
-	p.WarningHover = opacity(p.Warning, 0.9)
+	p.WarningHover = opacity(p.Warning, hover)
 	p.WarningSoft = opacity(p.Warning, alpha)
 	p.WarningSoftForeground = p.WarningForeground
 	p.WarningSoftHover = opacity(p.Warning, alpha+0.04)
 	p.Danger = p.Destructive
 	p.DangerForeground = white
-	p.DangerHover = opacity(p.Destructive, 0.9)
+	p.DangerHover = opacity(p.Destructive, hover)
 	p.DangerSoft = opacity(p.Destructive, alpha)
 	p.DangerSoftForeground = p.DestructiveForeground
 	p.DangerSoftHover = opacity(p.Destructive, alpha+0.04)
-	p.InfoHover = opacity(p.Info, 0.9)
+	p.InfoHover = opacity(p.Info, hover)
 	p.InfoSoft = opacity(p.Info, alpha)
 	p.InfoSoftForeground = p.InfoForeground
 	p.InfoSoftHover = opacity(p.Info, alpha+0.04)
@@ -470,13 +525,9 @@ func buildPalette(dark bool, prefs Preferences) Palette {
 	p.FieldBorderFocus = p.Ring
 	p.Backdrop = black.Alpha(0.32)
 	p.Scrollbar = opacity(p.Foreground, 0.2)
-	if patch != nil {
-		applyConveniences(&p, patch)
-	}
-	return p
 }
 
-func applyConveniences(p *Palette, o *PalettePatch) {
+func applyConveniences(p *Palette, o *PalettePatch, hover float32) {
 	if o.Surface != nil {
 		p.Surface = *o.Surface
 		p.Card = *o.Surface
@@ -494,7 +545,7 @@ func applyConveniences(p *Palette, o *PalettePatch) {
 	if o.Danger != nil {
 		p.Danger = *o.Danger
 		p.Destructive = *o.Danger
-		p.DangerHover = opacity(p.Danger, 0.9)
+		p.DangerHover = opacity(p.Danger, hover)
 		p.DangerSoft = opacity(p.Danger, 0.08)
 		p.DangerSoftHover = opacity(p.Danger, 0.12)
 	}
@@ -504,7 +555,7 @@ func applyConveniences(p *Palette, o *PalettePatch) {
 	if o.Hover != nil {
 		p.SurfaceHover = *o.Hover
 		p.Default = *o.Hover
-		p.DefaultHover = opacity(*o.Hover, 0.9)
+		p.DefaultHover = opacity(*o.Hover, hover)
 	}
 	if o.Selected != nil {
 		p.Selection = *o.Selected

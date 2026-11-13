@@ -30,14 +30,14 @@ type BreadcrumbsOptions struct {
 }
 
 // Breadcrumb builds one breadcrumb link, or the current page as plain text
-// with the current-page color. Separators belong to Breadcrumbs.
+// with the current-page color, exposed as the current page. Separators belong to Breadcrumbs.
 func Breadcrumb(c *ui.Context, o BreadcrumbOptions) ui.Element {
 	t := theme.Colors(c)
 	ts := theme.SM()
 	if o.Current {
 		e := ui.Text(c, o.Label)
 		e = style.Text(e, c, ts).TextColor(t.Foreground).SingleLine()
-		e.Role(ui.RoleText)
+		e.Role(ui.RoleText).Current(ui.CurrentPage)
 		return e
 	}
 	e := ui.ButtonBase(c).Padding(0).Gap(0).Shrink(0).FocusRing(true).Role(ui.RoleLink).Label(o.Label)
@@ -60,11 +60,12 @@ func Breadcrumb(c *ui.Context, o BreadcrumbOptions) ui.Element {
 // their own OnClick. Assistive technology sees a named group of links.
 func Breadcrumbs(c *ui.Context, o BreadcrumbsOptions) ui.Element {
 	t := theme.Colors(c)
-	root := ui.Row(c).AlignItems(ui.Center).MinWidth(0).Role(ui.RoleGroup)
-	if o.Label != "" {
-		root.Label(o.Label)
+	label := o.Label
+	if label == "" {
+		label = locale.M().Breadcrumbs
 	}
-	root.Gap(scale(c, 10))
+	root := ui.Row(c).AlignItems(ui.Center).MinWidth(0).Role(ui.RoleGroup).Label(label)
+	root.Gap(scale(c, theme.Space(2.5)))
 	if len(o.Items) == 0 {
 		return root
 	}
@@ -103,7 +104,7 @@ func Breadcrumbs(c *ui.Context, o BreadcrumbsOptions) ui.Element {
 		}
 		if tail < len(o.Items)-head {
 			slots = append(slots, func() {
-				btn := ui.ButtonBase(c).Size(scale(c, theme.Space24), scale(c, theme.Space24)).Center().
+				btn := ui.ButtonBase(c).Size(scale(c, theme.Space(6)), scale(c, theme.Space(6))).Center().
 					Radius(theme.RadiusScale().MD).FocusRing(true).Label(more).
 					Background(ui.Transparent).TextColor(t.Muted)
 				// Snapshot the button's states in the build, as above.
@@ -139,7 +140,7 @@ func Breadcrumbs(c *ui.Context, o BreadcrumbsOptions) ui.Element {
 			add(i)
 		}
 		for j := range slots {
-			item := ui.Row(c).AlignItems(ui.Center).Gap(scale(c, theme.Space6)).Shrink(0)
+			item := ui.Row(c).AlignItems(ui.Center).Gap(scale(c, theme.Space(1.5))).Shrink(0)
 			last := j == len(slots)-1
 			item.Children(func() {
 				slots[j]()

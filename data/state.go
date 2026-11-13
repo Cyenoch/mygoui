@@ -176,14 +176,28 @@ func (s *TableState) wire(o *TableOptions) {
 // afterBuild corrects a selection that landed on a disabled row and reports
 // whether the user changed the selection. nativeChanged is the toolkit's
 // change flag; it is also set by a sort click, which sortChanged identifies.
+// keys says the pointer took no part in this build's choice: the toolkit's
+// keys stop on a disabled row, which is passed in the direction they moved.
+// extend says Shift held them, extending the range rather than replacing it.
 // It updates the restore snapshot.
-func (s *TableState) afterBuild(o *TableOptions, nativeChanged, sortChanged bool) bool {
+func (s *TableState) afterBuild(o *TableOptions, nativeChanged, sortChanged, keys, extend bool) bool {
 	if !s.snapshotOK {
 		s.takeSnapshot()
 		s.leadUnder = s.underlying(s.Selection.Row)
 		s.rememberLead(o, s.leadUnder)
 	}
 	restored := false
+	if pos, from := s.Selection.Row, s.savedPosition(); keys && pos >= 0 && pos < len(s.order) && s.isDisabled(s.order[pos]) {
+		dir := 1
+		if from > pos {
+			dir = -1
+		}
+		// Home and End land on a disabled end row: the way back is on. A
+		// range extended to a disabled end stays as it was, restored below.
+		if !s.passDisabled(o, pos, dir, extend) && !extend {
+			s.passDisabled(o, pos, -dir, false)
+		}
+	}
 	if pos := s.Selection.Row; pos >= 0 && pos < len(s.order) && s.isDisabled(s.order[pos]) {
 		switch s.Selection.Mode {
 		case TableSelectionMultiple:
@@ -225,6 +239,27 @@ func (s *TableState) afterBuild(o *TableOptions, nativeChanged, sortChanged bool
 		s.takeSnapshot()
 	}
 	return changed
+}
+
+// passDisabled moves the choice from disabled position pos to the next
+// enabled row in dir, choosing it alone as an arrow does, or adding it to the
+// range when extend is set, and reports whether there was one.
+func (s *TableState) passDisabled(o *TableOptions, pos, dir int, extend bool) bool {
+	for pos += dir; pos >= 0 && pos < len(s.order); pos += dir {
+		if s.isDisabled(s.order[pos]) {
+			continue
+		}
+		s.Selection.Row = pos
+		if s.Selection.Mode == TableSelectionMultiple {
+			if !extend {
+				s.Selection.Rows.Clear()
+			}
+			s.Selection.Rows.Add(s.keyRow(o.RowKey, s.order[pos]))
+		}
+		s.List.ScrollIntoView(pos)
+		return true
+	}
+	return false
 }
 
 // removeDisabledKeys takes disabled rows out of a multiple selection, walking

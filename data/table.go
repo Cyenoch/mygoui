@@ -1,6 +1,8 @@
 package data
 
 import (
+	"slices"
+
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/busy"
 	"github.com/Cyenoch/mygoui/internal/style"
@@ -251,6 +253,9 @@ type TableOptions struct {
 	Loading bool
 	// LoadingRows is the number of placeholder rows; 0 shows 5.
 	LoadingRows int
+	// Disabled dims the table, takes it out of the Tab order and stops
+	// every key and click; the rows keep their state.
+	Disabled bool
 	// Footer builds the row under the body with vertical centering. Use it for a result
 	// summary and pagination; FillWidth or Grow its element to span the row.
 	Footer func(c *ui.Context) ui.Element
@@ -296,8 +301,8 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 		o.Rows, tl.skeleton = loadingRows(o.LoadingRows), true
 		tl.o = o
 	}
-	root.Busy(o.Loading)
 	if o.Rows <= 0 || len(tl.columns) == 0 {
+		root.Busy(o.Loading)
 		root.Children(func() { buildEmpty(c, o, st, tl, chrome) })
 		buildTableFooter(c, o, root)
 		return root
@@ -310,6 +315,7 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 	}
 	shown := busy.Show(root, o.Loading && !tl.skeleton)
 	var table ui.Element
+	keys := false
 	buildTable := func() {
 		original := c.Theme()
 		cellSelection := st.List.CellSelect && st.Selection.Mode == TableSelectionMultiple
@@ -340,7 +346,7 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 			}
 		}).
 			Grow(1).MinWidth(0).
-			Label(o.Label).
+			Label(o.Label).Busy(o.Loading).
 			// The native header inherits its font size; cells set theirs too.
 			FontSize(theme.Scale(c, 14))
 		if chrome != nil {
@@ -357,10 +363,20 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 			tl.hovered = table.Hovered()
 			tl.hoverY = table.LayoutBounds().Y + y
 		}
-		if tl.skeleton {
+		switch {
+		case o.Disabled:
+			table.Disabled(true)
+		case tl.skeleton:
 			table.IgnoreInput(true)
-		} else {
+		default:
 			busy.Dim(table, o.Loading, shown)
+			// A choice made while a key that moves it is down came from
+			// the keys, which afterBuild carries past a disabled row.
+			// Reading the keys draws a frame as they change, so only a
+			// table with disabled rows reads them.
+			keys = len(st.disabledSet) > 0 && slices.ContainsFunc(c.KeysDown(), func(k ui.Key) bool {
+				return slices.Contains(choiceKeys, k)
+			})
 		}
 	}
 	root.Children(func() {
@@ -373,7 +389,7 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 	})
 
 	if !tl.skeleton {
-		changed := st.afterBuild(&o, table.Changed(), sortChanged)
+		changed := st.afterBuild(&o, table.Changed(), sortChanged, keys, keys && c.Modifiers()&ui.Shift != 0)
 		if changed && o.OnSelectionChange != nil {
 			o.OnSelectionChange(st.Selection)
 		}
@@ -386,6 +402,9 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 	buildTableFooter(c, o, root)
 	return root
 }
+
+// choiceKeys are the toolkit's keys that move a table's choice.
+var choiceKeys = []ui.Key{ui.KeyDown, ui.KeyUp, ui.KeyHome, ui.KeyEnd, ui.KeyPageDown, ui.KeyPageUp}
 
 // tableChrome paints the card body under the native transparent header.
 func tableChrome(o TableOptions, t theme.Palette, hasHeader bool) func(p *ui.Painter, r ui.Rect) {
@@ -415,8 +434,8 @@ func buildTableFooter(c *ui.Context, o TableOptions, root ui.Element) {
 	}
 	root.Children(func() {
 		foot := ui.Row(c).FillWidth().Shrink(0).
-			Gap(theme.Scale(c, theme.Space8)).AlignItems(ui.Center).
-			Padding(theme.Scale(c, theme.Space10), theme.Scale(c, theme.Space16))
+			Gap(theme.Scale(c, theme.Space(2))).AlignItems(ui.Center).
+			Padding(theme.Scale(c, theme.Space(2.5)), theme.Scale(c, theme.Space(4)))
 		foot.Children(func() { o.Footer(c) })
 	})
 }
@@ -489,7 +508,7 @@ func newTableLayout(c *ui.Context, o TableOptions, st *TableState, t theme.Palet
 	// tint painted on the content box alone leaves seams of the native
 	// selected color between cells. Painting through Draw, which the cell
 	// does not clip to the content box, reaches the cell edges again.
-	padX, padY := float32(theme.Space10), float32(theme.Space6)
+	padX, padY := float32(theme.Space(2.5)), float32(theme.Space(1.5))
 	line := t.Border
 	base := t.Background
 	if o.Variant == TableSecondary {
@@ -626,9 +645,9 @@ func (tl *tableLayout) buildCell(c *ui.Context, row, col int) {
 	}
 	cell := ui.Box(c).FillWidth().FillHeight().MinWidth(0).TextColor(ink).
 		// MyGo provides the 10 DIP horizontal padding; add 4 DIP vertically.
-		FontSize(theme.Scale(c, theme.Space14)).
-		FixedLineHeight(theme.Scale(c, theme.Space20)).
-		PaddingY(theme.Scale(c, theme.Space4)).
+		FontSize(theme.Scale(c, theme.Space(3.5))).
+		FixedLineHeight(theme.Scale(c, theme.Space(5))).
+		PaddingY(theme.Scale(c, theme.Space(1))).
 		// The content box fills the cell so the row paint can reach its
 		// edges; the column's alignment therefore has to place the content
 		// here rather than in the toolkit's cell, and the content stays
@@ -637,7 +656,7 @@ func (tl *tableLayout) buildCell(c *ui.Context, row, col int) {
 	if tl.o.Variant == TableSecondary && col >= 0 && col < len(tl.headers) && tl.headers[col].W == 0 {
 		bounds := cell.LayoutBounds()
 		if bounds.W > 0 {
-			tl.headers[col] = ui.Rect{X: bounds.X - theme.Space10, W: bounds.W + 2*theme.Space10}
+			tl.headers[col] = ui.Rect{X: bounds.X - theme.Space(2.5), W: bounds.W + 2*theme.Space(2.5)}
 		}
 	}
 	switch column := cellColumn(tl, col); column.Align {
@@ -693,8 +712,8 @@ func (tl *tableLayout) buildCell(c *ui.Context, row, col int) {
 				return
 			}
 			tl.clipBody(p, func() {
-				p.Stroke(ui.Rect{X: box.X - theme.Space10, Y: box.Y - theme.Space6,
-					W: box.W + 2*theme.Space10, H: box.H + 2*theme.Space6}, border, 0, theme.Hairline)
+				p.Stroke(ui.Rect{X: box.X - theme.Space(2.5), Y: box.Y - theme.Space(1.5),
+					W: box.W + 2*theme.Space(2.5), H: box.H + 2*theme.Space(1.5)}, border, 0, theme.Hairline)
 			})
 		})
 	}

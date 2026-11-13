@@ -77,9 +77,9 @@ func StatusBar(c *ui.Context, o StatusBarOptions) ui.Element {
 		face = t.Destructive
 		ink = readableOn(face)
 	}
-	pad, gap := scale(c, theme.Space8), scale(c, theme.Space8)
+	pad, gap := scale(c, theme.Space(2)), scale(c, theme.Space(2))
 	root := ui.Row(c).FillWidth().MinWidth(0).Shrink(0).AlignItems(ui.Center).Clip().
-		Height(scale(c, theme.Space24)).PaddingX(pad).Gap(gap).
+		Height(scale(c, theme.Space(6))).PaddingX(pad).Gap(gap).
 		Background(face).TextColor(ink).
 		BorderWidth(hairline, 0, 0, 0).BorderColor(t.Border).Role(ui.RoleGroup)
 	if o.Label != "" {
@@ -96,7 +96,7 @@ func StatusBar(c *ui.Context, o StatusBarOptions) ui.Element {
 		if len(o.Items) == 0 {
 			return
 		}
-		row := ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(scale(c, theme.Space2)).FocusGroup(ui.Horizontal)
+		row := ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(scale(c, theme.Space(0.5))).FocusGroup(ui.Horizontal)
 		row.Children(func() {
 			items := make([]ui.Element, len(o.Items))
 			widths := make([]float32, len(o.Items))
@@ -108,7 +108,7 @@ func StatusBar(c *ui.Context, o StatusBarOptions) ui.Element {
 				items[i].DrawOver(func(_ *ui.Painter, r ui.Rect) { invalidateOnResize(c, w, r.W) })
 			}
 			room := avail - gap - scale(c, statusBarMessageMin)
-			shown := statusBarFit(o.Items, widths, room, scale(c, theme.Space2))
+			shown := statusBarFit(o.Items, widths, room, scale(c, theme.Space(0.5)))
 			for i, show := range shown {
 				if !show {
 					items[i].Absolute().Invisible()
@@ -208,8 +208,8 @@ func settleSeparators(separator, shown []bool) {
 // buildStatusBarItem builds one trailing item.
 func buildStatusBarItem(c *ui.Context, o StatusBarItemOptions, t theme.Palette, ink ui.Color, tone StatusBarTone) ui.Element {
 	if o.Separator {
-		return ui.Box(c).Width(hairline).Height(scale(c, theme.Space12)).Shrink(0).
-			Margin(0, scale(c, theme.Space4)).Background(ink.Alpha(0.32)).Role(ui.RoleNone)
+		return ui.Box(c).Width(hairline).Height(scale(c, theme.Space(3))).Shrink(0).
+			Margin(0, scale(c, theme.Space(1))).Background(ink.Alpha(0.32)).Role(ui.RoleNone)
 	}
 	var item ui.Element
 	if o.OnClick != nil {
@@ -226,8 +226,8 @@ func buildStatusBarItem(c *ui.Context, o StatusBarItemOptions, t theme.Palette, 
 	} else {
 		item = ui.Box(c)
 	}
-	item.Row().AlignItems(ui.Center).Shrink(0).Gap(scale(c, theme.Space4)).
-		Height(scale(c, theme.Space20)).PaddingX(scale(c, theme.Space6))
+	item.Row().AlignItems(ui.Center).Shrink(0).Gap(scale(c, theme.Space(1))).
+		Height(scale(c, theme.Space(5))).PaddingX(scale(c, theme.Space(1.5)))
 	// A text item is read as its text; a name is for the button, and for
 	// an icon standing alone.
 	switch {

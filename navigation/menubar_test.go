@@ -119,3 +119,22 @@ func TestMenubarRolesForAssistiveTechnology(t *testing.T) {
 		t.Fatalf("Tools title: %+v", tools)
 	}
 }
+
+// TestMenubarTabClosesTheOpenMenu protects the menubar pattern: Tab from an
+// open menu moves the focus on and closes the menu behind it.
+func TestMenubarTabClosesTheOpenMenu(t *testing.T) {
+	var open, chosen string
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		navigation.Menubar(c, navigation.MenubarOptions{Label: "Application", Open: &open, Menus: menubarMenus(&chosen)})
+		ui.Button(c, "After")
+	}, 480, 320)
+	if err := tt.Click("File"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(0, ui.KeyTab)
+	tt.Frame()
+	if open != "" || tt.HasText("New") || !tt.Focused("After") {
+		t.Fatalf("Tab: open %q, panel shown %v, After focused %v", open, tt.HasText("New"), tt.Focused("After"))
+	}
+}

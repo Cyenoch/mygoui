@@ -18,7 +18,7 @@ var skeletonWidths = [...]float32{60, 85, 45, 70}
 var treeSkeletonDepths = [...]float32{0, 1, 2, 2, 1, 0}
 
 func treeSkeletonIndent(i int) float32 {
-	return treeSkeletonDepths[i%len(treeSkeletonDepths)] * theme.Space16
+	return treeSkeletonDepths[i%len(treeSkeletonDepths)] * theme.Space(4)
 }
 
 // buildSkeletonRows builds n placeholder rows of the given height inside the

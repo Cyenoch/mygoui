@@ -16,7 +16,7 @@ func init() {
 	RegisterPage(Page{
 		ID:          "overview",
 		Title:       "Overview",
-		Description: "Coss component reference for MyGo, with live examples and native additions.",
+		Description: "MyGo UI component reference, with live examples and native additions.",
 		Group:       "Overview",
 		Order:       1,
 		Build:       buildOverview,
@@ -37,9 +37,9 @@ type galleryDownload struct {
 }
 
 var galleryDownloads = []galleryDownload{
-	{"macOS", "Apple silicon · DMG", "coss-ui-gallery-macos-arm64.dmg", lucide.Apple},
-	{"Windows", "x64 · EXE", "coss-ui-gallery-windows-amd64.exe", lucide.Monitor},
-	{"Linux", "x64 · tar.gz", "coss-ui-gallery-linux-amd64.tar.gz", lucide.Terminal},
+	{"macOS", "Apple silicon · DMG", "mygoui-gallery-macos-arm64.dmg", lucide.Apple},
+	{"Windows", "x64 · EXE", "mygoui-gallery-windows-amd64.exe", lucide.Monitor},
+	{"Linux", "x64 · tar.gz", "mygoui-gallery-linux-amd64.tar.gz", lucide.Terminal},
 	{"Web", "Opens in the browser", "", lucide.Globe},
 }
 
@@ -141,11 +141,11 @@ func overviewHero(c *ui.Context, s *State, st *overviewState, groups []pageGroup
 			style.Text(ui.Text(c, fmt.Sprintf("MyGo 0.9 · %d components", componentCount(groups))), c, pill).
 				TextColor(t.MutedForeground).SingleLine()
 		})
-		style.Text(ui.Text(c, "coss ui, native in Go"), c, display).
+		style.Text(ui.Text(c, "MyGo UI, native in Go"), c, display).
 			TextColor(t.Foreground).TextAlign(ui.Center).Role(ui.RoleHeading)
 		lead := theme.Base()
 		lead.Size, lead.LineHeight = 18, 28
-		style.Text(ui.Text(c, "Accessible desktop and web components with the coss look, built on MyGo."), c, lead).
+		style.Text(ui.Text(c, "Accessible desktop and web components, built on MyGo."), c, lead).
 			TextColor(t.MutedForeground).TextAlign(ui.Center).MaxWidth(theme.Scale(c, 520))
 		ui.Row(c).Wrap().Justify(ui.Center).Gap(theme.Space8).Padding(theme.Space8, 0, 0, 0).Children(func() {
 			mygoui.Button(c, mygoui.ButtonOptions{

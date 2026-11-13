@@ -7,8 +7,9 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// menuAheadQuiet is the pause after which typing starts a new prefix.
-const menuAheadQuiet = time.Second
+// menuTypeWindow is how long typed letters keep building one prefix: the
+// toolkit's pause (MyGo ui/input.go, typePause), as a tree's and a list's.
+const menuTypeWindow = time.Second
 
 // menuAhead moves the focus to the enabled item whose label starts with
 // what was typed: a letter pressed again steps through the items of that
@@ -51,7 +52,7 @@ func (a *menuAhead) input(ev ui.InputEvent) bool {
 	if strings.TrimSpace(typed) == "" {
 		return false
 	}
-	if ev.Time.Sub(a.at) > menuAheadQuiet {
+	if ev.Time.Sub(a.at) > menuTypeWindow {
 		a.prefix = ""
 	}
 	a.at = ev.Time

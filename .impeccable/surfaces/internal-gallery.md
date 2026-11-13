@@ -42,7 +42,7 @@ Preserve the custom native title bar, real OS control insets and draggable
 regions. The sidebar's top row and the page title bar share one height. The
 browser build has no window controls and uses the system font. Use the existing compact layout and scaling thresholds; keep navigation,
 content and overlay actions reachable at compact widths and enlarged text.
-Use the root visual system and pinned coss component appearance. Keep native
+Use the design language recorded in root DESIGN.md. Keep native
 focus, selection, window commands and accessible control naming.
 
 ## Review evidence

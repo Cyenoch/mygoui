@@ -85,6 +85,32 @@ func TestSwitchThumbSlidesAndSettles(t *testing.T) {
 	}
 }
 
+// The track's colour settles with the thumb, in the shared State duration.
+func TestSwitchTrackSettlesWithTheThumb(t *testing.T) {
+	var colors theme.Palette
+	on := false
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		colors = theme.Colors(c)
+		ui.Column(c).Fill().Padding(24).Background(colors.Background).Children(func() {
+			Switch(c, SwitchOptions{On: &on, Label: "Wifi"})
+		})
+	}, 400, 140)
+	row, ok := tt.Find("Wifi")
+	if !ok {
+		t.Fatal("switch missing")
+	}
+	if err := tt.Click("Wifi"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Advance(theme.Motion().State)
+	x, y := int(row.X)+5, int(row.Y+row.H/2)
+	// Exact: the last part of a longer fade differs by a few levels only.
+	if got := tt.Image().RGBAAt(x, y); got.R != colors.Primary.R || got.G != colors.Primary.G || got.B != colors.Primary.B {
+		t.Fatalf("track when the thumb arrives = %v, want %v", got, colors.Primary)
+	}
+}
+
 // TestSelectKeyboardCommitReturnsFocus checks the popup takes the keyboard
 // after the trigger opens it and returns focus to the trigger on a choice.
 func TestSelectKeyboardCommitReturnsFocus(t *testing.T) {

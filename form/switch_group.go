@@ -27,7 +27,7 @@ func SwitchGroup(c *ui.Context, o SwitchGroupOptions, body func()) ui.Element {
 	errText := formstyle.ErrorText(o.Invalid, o.Error)
 	disabled := o.Disabled
 
-	root := ui.Column(c).MinWidth(0).Gap(theme.Space24).
+	root := ui.Column(c).MinWidth(0).Gap(theme.Space(6)).
 		Role(ui.RoleGroup).Label(o.Label)
 	if o.FullWidth {
 		root.FillWidth()
@@ -40,7 +40,7 @@ func SwitchGroup(c *ui.Context, o SwitchGroupOptions, body func()) ui.Element {
 	}
 	root.Children(func() {
 		if o.Label != "" || o.Description != "" || errText != "" {
-			ui.Column(c).MinWidth(0).Gap(theme.Space4).Children(func() {
+			ui.Column(c).MinWidth(0).Gap(theme.Space(1)).Children(func() {
 				if o.Label != "" {
 					Label(c, o.Label, LabelOptions{
 						Required: o.Required, Invalid: o.Invalid,

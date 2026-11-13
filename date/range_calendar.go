@@ -56,6 +56,10 @@ type RangeCalendarState struct {
 	// when the range is complete or idle.
 	Anchor time.Time
 	CalendarViewState
+
+	// replaced is the range the pending endpoint replaced, which Escape
+	// restores.
+	replaced DateRange
 }
 
 // RangeCalendarOptions configures a RangeCalendar. Its labels follow
@@ -122,8 +126,13 @@ func RangeCalendar(c *ui.Context, o RangeCalendarOptions, st *RangeCalendarState
 		inRange: func(d time.Time) bool { return state.Value.Contains(d) },
 		start:   func(d time.Time) bool { return sameDay(d, state.Value.Start) },
 		end:     func(d time.Time) bool { return !state.Value.End.IsZero() && sameDay(d, state.Value.End) },
+		pending: state.Anchor,
+		cancel: func() {
+			state.Value, state.Anchor = state.replaced, time.Time{}
+		},
 		activate: func(d time.Time) {
 			if state.Anchor.IsZero() {
+				state.replaced = state.Value
 				state.Value = DateRange{Start: d}
 				state.Anchor = d
 				return
@@ -147,4 +156,5 @@ type rangeStateKey struct{}
 func (s *RangeCalendarState) Clear() {
 	s.Value = DateRange{}
 	s.Anchor = time.Time{}
+	s.replaced = DateRange{}
 }

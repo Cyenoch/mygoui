@@ -43,17 +43,17 @@ func GuideCard(c *ui.Context, o GuideCardOptions) ui.Element {
 			})
 			if o.OnDismiss != nil && !covered {
 				// Keep the title clear of the close button.
-				header.PaddingEnd(theme.Space24 + theme.Scale(c, theme.Space24))
+				header.PaddingEnd(theme.Space(6) + theme.Scale(c, theme.Space(6)))
 			}
 		}
 		if o.Actions != nil {
 			footer := CardFooter(c, o.Actions)
 			if o.Title != "" || o.Description != "" {
-				footer.Padding(0, theme.Space24, theme.Space24)
+				footer.Padding(0, theme.Space(6), theme.Space(6))
 			}
 		}
 		if o.OnDismiss != nil {
-			closer := ui.Box(c).Absolute().Top(theme.Space8).End(theme.Space8).
+			closer := ui.Box(c).Absolute().Top(theme.Space(2)).End(theme.Space(2)).
 				Radius(theme.RadiusScale().XL)
 			if covered {
 				// A cover can be any color; the button keeps its own ground.

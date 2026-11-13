@@ -9,7 +9,8 @@ Run `make refs` to populate it. Read public chart/utility/axis metadata under
 19 chart subjects, 14 non-axis utility subjects, and Axis (overview, X and Y).
 README and generated llms lists omit some subjects.
 
-Bklit supplies chart capabilities; coss remains the visual authority.
+Bklit supplies chart capabilities; root [DESIGN.md](../DESIGN.md) is the
+visual authority.
 [charts.md](charts.md) maps every subject and supported native subset. Chart
 components/registry are MIT; preserve the 2026 uixmat notice. Studio has a
 separate proprietary license; do not copy `packages/studio` or editor-only
@@ -24,26 +25,29 @@ is pinned at `5e5fea5ef9e225f79564770ef18f6d293a2e5d4a` in `references/lobe-mygo
 Run `make refs` to populate it. Read `pkg/<family>/*.go` with the matching
 `catalog/<slug>` example for behavior, options and MyGo usage.
 
-Lobe MyGo supplies native component capabilities; coss remains the visual
-authority. An absorbed component is rebuilt with coss anatomy, this module's
+Lobe MyGo supplies native component capabilities; root `DESIGN.md` is the
+visual authority. An absorbed component is rebuilt with the recorded anatomy, this module's
 semantic theme tokens, typed options and caller-owned state. Do not copy its
 Lobe UI tokens (`pkg/theme/tokens_gen.go`), shadows, motion presets or brand
 assets such as agent avatars. Use mygoicons instead of its `pkg/lucide`.
 It is MIT, copyright 2026 LobeHub; the
 [notice](../licenses/lobe-mygo-NOTICE.md) retains the exact text.
 
-## Current visual reference
+## coss ui: origin of the design language
 
-[coss ui documentation](https://coss.com/ui/docs) and the MIT `apps/ui`
-registry at commit **`3d8ca28e7d90123e9e0f44665944dc240b026ccb`** of
-[`cosscom/ui`](https://github.com/cosscom/ui/tree/3d8ca28e7d90123e9e0f44665944dc240b026ccb)
-are the reconstruction reference. Previous design and tokens are not
-constraints for this branch.
+The design language recorded in root [DESIGN.md](../DESIGN.md) was
+reconstructed from the [coss ui documentation](https://coss.com/ui/docs) and
+the MIT `apps/ui` registry at commit
+**`3d8ca28e7d90123e9e0f44665944dc240b026ccb`** of
+[`cosscom/ui`](https://github.com/cosscom/ui/tree/3d8ca28e7d90123e9e0f44665944dc240b026ccb).
+That record is now the authority; coss is where its rules came from and
+where the component catalog was taken. A rule that `DESIGN.md` does not
+state is added there through a change, not read from coss.
 
 Run `make refs` to populate `references/coss` at the pinned commit. It is
 a source-only development reference, not a runtime dependency or a prerequisite
 for consuming the Go module. Read the registry and MDX examples together when
-translating behavior into native MyGo components.
+tracing where a component's behavior or anatomy came from.
 
 | Purpose | Path in the pinned upstream checkout |
 | --- | --- |
@@ -120,6 +124,8 @@ not register it or establish browser-equivalent shaping.
    declaration before reusing any source or assets.
 2. Compare catalogs, relevant MIT registry files, MDX examples and published
    styling. Record new/removed subjects and real native limits in the matrix.
+   An upstream visual change is a proposal: it reaches mygoui only through a
+   change that updates `DESIGN.md`.
 3. Record numeric/runtime discrepancies explicitly instead of silently mixing
    token sources. Keep independent font provenance separate from coss source.
 4. Update capability/design/customization docs and the unreleased changelog.

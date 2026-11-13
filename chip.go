@@ -57,19 +57,19 @@ type (
 // Chip renders a compact status label. Its icon follows the label size.
 func Chip(c *ui.Context, o ChipOptions) ui.Element {
 	bg, fg := chipColors(c, o.Color, o.Variant)
-	paddingX, paddingY := float32(theme.Space8), float32(theme.Space2)
+	paddingX, paddingY := float32(theme.Space(2)), float32(theme.Space(0.5))
 	ts := theme.XS()
 	ts.LineHeight, ts.Weight = 20, theme.WeightMedium
 	switch o.Size {
 	case ChipSmall:
-		paddingX, paddingY = theme.Space4, 0
+		paddingX, paddingY = theme.Space(1), 0
 	case ChipLarge:
-		paddingX, paddingY = theme.Space12, theme.Space4
+		paddingX, paddingY = theme.Space(3), theme.Space(1)
 		ts = theme.SM()
 		ts.Weight = theme.WeightMedium
 	}
 	iconSize := theme.Scale(c, ts.Size)
-	e := ui.Row(c).Shrink(0).Center().Gap(theme.Space2).AlignSelf(ui.Start).
+	e := ui.Row(c).Shrink(0).Center().Gap(theme.Space(0.5)).AlignSelf(ui.Start).
 		Padding(paddingY, paddingX, paddingY, paddingX).Radius(theme.RadiusScale().SM).
 		Label(o.Label)
 	e.Background(motion.Color(e, chipFillKey{}, bg)).TextColor(motion.Color(e, chipInkKey{}, fg))
@@ -78,7 +78,7 @@ func Chip(c *ui.Context, o ChipOptions) ui.Element {
 			ui.Icon(c, o.Icon).Size(iconSize, iconSize).Shrink(0)
 		}
 		label := style.Text(ui.Text(c, o.Label), c, ts)
-		label.PaddingX(theme.Space2).SingleLine()
+		label.PaddingX(theme.Space(0.5)).SingleLine()
 	})
 	return e
 }
@@ -138,7 +138,7 @@ const (
 	BadgeBottomLeft
 )
 
-// BadgeOptions configures a coss ui badge.
+// BadgeOptions configures a badge.
 type BadgeOptions struct {
 	Label   string
 	Variant BadgeVariant
@@ -185,7 +185,7 @@ func Badge(c *ui.Context, o BadgeOptions) ui.Element {
 	}
 	e := ui.Row(c).Shrink(0).Center().AlignSelf(ui.Start).
 		MinHeight(theme.Scale(c, minSize)).MinWidth(theme.Scale(c, minSize)).
-		Radius(radius).Gap(theme.Space4).PaddingX(padding).Label(o.Label)
+		Radius(radius).Gap(theme.Space(1)).PaddingX(padding).Label(o.Label)
 	e.Background(motion.Color(e, chipFillKey{}, bg)).TextColor(motion.Color(e, chipInkKey{}, fg)).
 		Border(theme.Hairline, motion.Color(e, chipBorderKey{}, border))
 	e.Children(func() {

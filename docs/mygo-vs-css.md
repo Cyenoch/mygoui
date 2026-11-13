@@ -1,8 +1,10 @@
 # MyGo and CSS translation
 
-coss ui expresses appearance through Tailwind classes and Base UI parts.
-The native implementation uses MyGo layout, widget bases, effects and services.
-These are the translation rules, with source provenance in [references.md](references.md).
+The components originated in coss ui, which expresses appearance through
+Tailwind classes and Base UI parts. The native implementation uses MyGo layout,
+widget bases, effects and services, and root [DESIGN.md](../DESIGN.md)
+records the resulting appearance. These are the translation rules, with
+source provenance in [references.md](references.md).
 
 ## Layout and identity
 
@@ -40,23 +42,26 @@ A draw may run again after consumer content has left the live tree.
 Native keyboard focus rings can extend outside a control. Ancestor clipping
 or the next joined segment can cover them; joined controls need intentional
 inset-ring geometry instead of CSS z-index tricks. Disabled painting is native
-50% opacity, compared with the coss button reference's 64%.
+50% opacity (the coss button source uses 64%).
 
 `Element.Effect` renders an element and its native children to an intermediate
 layer. `ui/shader` supplies `ColorEffect`, `DistortionEffect` and `LayerEffect`
 entry points, with GPU execution and a CPU fallback. A ColorEffect can multiply
 subtree alpha for a real edge mask; painting an opaque surface gradient over
-content is a different treatment. ScrollFade's mask mode uses that native
-facility. See [scrollfade.md](scrollfade.md).
+content is a different treatment. ScrollFade's mask mode and the `effect`
+family use that native facility. See [scrollfade.md](scrollfade.md) and
+[effects.md](effects.md).
 
 The pinned `ui/effect.go` limits each effect-layer side to 8192 **pixels**,
 including scale and effect margins. Above that size MyGo paints the subtree
-without the effect. Embedded webviews do not show through an effect layer.
+without the effect and does not call it, so a fallback for that case is
+painted by the element itself. Embedded webviews do not show through an
+effect layer.
 Headless fallback output does not establish actual GPU presentation.
 
-Button feedback uses coss color/border/shadow states, without a pressed scale.
+Button feedback uses color, border and shadow states, without a pressed scale.
 MyGo has pose animation APIs for suitable native transitions; their existence
-does not require applying scale feedback to coss buttons.
+does not require applying scale feedback to buttons.
 
 ## Text, controls and services
 

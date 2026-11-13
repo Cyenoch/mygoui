@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -75,5 +76,22 @@ func TestUploadListRemovesAndChooses(t *testing.T) {
 	}
 	if chosen != 1 {
 		t.Fatalf("the choose action ran %d times, want 1", chosen)
+	}
+}
+
+func TestUploadFilesAreAListWithStatus(t *testing.T) {
+	tt := formTextTester(t, func(c *ui.Context) {
+		Upload(c, UploadOptions{Title: "Files", Files: []UploadFile{
+			{Name: "a.txt", Status: UploadDone},
+			{Name: "b.txt", Status: UploadFailed},
+		}})
+	})
+	if info, ok := tt.AccessByRole(ui.RoleListItem, "b.txt"); !ok || info.PosInSet != 2 || info.SetSize != 2 {
+		t.Fatalf("row b.txt: found %v, %d of %d", ok, info.PosInSet, info.SetSize)
+	}
+	for _, status := range []string{locale.M().Uploaded, locale.M().UploadFailed} {
+		if _, ok := tt.AccessByRole(ui.RoleImage, status); !ok {
+			t.Fatalf("no status %q", status)
+		}
 	}
 }

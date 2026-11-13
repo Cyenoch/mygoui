@@ -80,8 +80,8 @@ func TagsInput(c *ui.Context, tags *[]string, o TagsInputOptions) ui.Element {
 
 // tagsShell builds the field face holding the tokens and the editor.
 func tagsShell(c *ui.Context, tags *[]string, o TagsInputOptions) ui.Element {
-	shell := ui.Row(c).Wrap().AlignItems(ui.Center).Gap(theme.Space4).
-		Padding(theme.Space4, theme.Space6).MinHeight(theme.Scale(c, 32)).Shrink(0).
+	shell := ui.Row(c).Wrap().AlignItems(ui.Center).Gap(theme.Space(1)).
+		Padding(theme.Space(1), theme.Space(1.5)).MinHeight(theme.Scale(c, 32)).Shrink(0).
 		Cursor(ui.CursorText)
 	if o.FullWidth {
 		shell.FillWidth()
@@ -122,6 +122,7 @@ func tagsShell(c *ui.Context, tags *[]string, o TagsInputOptions) ui.Element {
 				*tags = slices.Delete(*tags, at, at+1)
 				changed()
 			})
+			chip.Role(ui.RoleListItem).Label(tag).PositionInSet(i+1, len(*tags))
 			if o.Disabled {
 				continue
 			}
@@ -194,7 +195,7 @@ func tagsShell(c *ui.Context, tags *[]string, o TagsInputOptions) ui.Element {
 // Enter and at each comma, and gives Backspace to the last tag while empty.
 func tagsEditor(c *ui.Context, tags *[]string, st *tagsState, o TagsInputOptions, full bool, changed func()) ui.Element {
 	e := ui.TextInputBase(c, &st.draft).FillWidth().MinWidth(0).
-		PaddingX(theme.Space6).PaddingY(theme.Scale(c, 2))
+		PaddingX(theme.Space(1.5)).PaddingY(theme.Scale(c, 2))
 	e = fieldText(e, c)
 	if o.Placeholder != "" && len(*tags) == 0 {
 		e.Placeholder(o.Placeholder)
@@ -349,7 +350,7 @@ func tagsCount(c *ui.Context, n, max int, refused bool) {
 		ink = t.Destructive
 	}
 	count := style.Text(ui.Text(c, strconv.Itoa(n)+"/"+strconv.Itoa(max)), c, theme.XS()).
-		SingleLine().Shrink(0).PaddingEnd(theme.Space4)
+		SingleLine().Shrink(0).PaddingEnd(theme.Space(1))
 	count.TextColor(motion.Color(count, "ink", ink))
 }
 
@@ -359,11 +360,11 @@ func tagsCount(c *ui.Context, n, max int, refused bool) {
 func tagsToken(c *ui.Context, tag string, disabled, refused bool, remove func()) ui.Element {
 	t := theme.Colors(c)
 	radius := theme.RadiusScale().SM
-	chip := ui.Row(c).AlignItems(ui.Center).Gap(theme.Space2).Shrink(0).MaxWidthPercent(100).
-		PaddingStart(theme.Space8).PaddingEnd(theme.Space2).Height(theme.Scale(c, 22)).
+	chip := ui.Row(c).AlignItems(ui.Center).Gap(theme.Space(0.5)).Shrink(0).MaxWidthPercent(100).
+		PaddingStart(theme.Space(2)).PaddingEnd(theme.Space(0.5)).Height(theme.Scale(c, 22)).
 		Radius(radius).FocusRing(false).
 		Transition(ui.ElementTransition{
-			Duration: motion.State, Ease: ui.EaseOut,
+			Duration: theme.Motion().State, Ease: theme.Motion().Ease,
 			Enter: &ui.Motion{}, Exit: &ui.Motion{},
 		})
 	tint := ui.Transparent

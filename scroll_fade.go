@@ -1,11 +1,9 @@
 package mygoui
 
 import (
-	"sync"
-
+	"github.com/Cyenoch/mygoui/internal/fx"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
-	"github.com/egoist/mygo/ui/shader"
 )
 
 // ScrollFadeMode selects a native edge treatment.
@@ -41,8 +39,9 @@ type ScrollFadeOptions struct {
 
 // ScrollFade decorates any native viewport tracking state, including existing
 // application scroll views. It preserves native hit testing and adds no timer.
-// MaskFade uses an effect on the viewport, replacing any existing effect;
-// MyGo draws oversized effect layers normally and excludes embedded web views.
+// MaskFade uses an effect on the viewport, replacing any existing effect.
+// Without a GPU, or for a viewport above MyGo's 8192-pixel effect layer, the
+// shadow stands in for the mask. Embedded web views do not show through it.
 func ScrollFade(c *ui.Context, viewport ui.Element, state *ui.ScrollState, o ScrollFadeOptions) ui.Element {
 	if state == nil {
 		panic("mygoui.ScrollFade: nil scroll state")
@@ -52,7 +51,7 @@ func ScrollFade(c *ui.Context, viewport ui.Element, state *ui.ScrollState, o Scr
 	}
 	depth := o.Size
 	if depth <= 0 {
-		depth = theme.Space24
+		depth = theme.Effects().FadeEdge
 	}
 	edges := o.Edges
 	if edges == 0 {
@@ -69,15 +68,15 @@ func ScrollFade(c *ui.Context, viewport ui.Element, state *ui.ScrollState, o Scr
 	}
 	rtl := c.Direction() == ui.RightToLeft
 	if o.Mode == MaskFade {
-		fx := ui.Local(viewport, scrollMaskKey{}, newScrollMask)
-		fx.state, fx.depth, fx.edges, fx.rtl = state, depth, edges, rtl
-		// Without a GPU the mask does not run; the shadow stands in for it.
+		mask := ui.Local(viewport, scrollMaskKey{}, newScrollMask)
+		mask.state, mask.depth, mask.edges, mask.rtl = state, depth, edges, rtl
+		// Where the mask does not run, the shadow stands in for it.
 		scrollEdgeLayer(c, viewport, func(p *ui.Painter, r ui.Rect) {
-			if !p.Accelerated() {
+			if !mask.runs(p, r) {
 				paintScrollEdges(p, r, state, depth, edges, rtl, ink)
 			}
 		})
-		return viewport.Effect(fx)
+		return viewport.Effect(mask)
 	}
 	scrollEdgeLayer(c, viewport.Clip(), func(p *ui.Painter, r ui.Rect) {
 		paintScrollEdges(p, r, state, depth, edges, rtl, ink)
@@ -102,26 +101,17 @@ func paintScrollEdges(p *ui.Painter, r ui.Rect, state *ui.ScrollState, depth flo
 		return
 	}
 	x, y := scrollOffsets(state, rtl)
-	paint := func(edge ScrollFadeEdges, remaining float32, box ui.Rect, angle float32, reverse bool) {
-		if edges&edge == 0 || remaining <= 0 {
-			return
-		}
-		length := box.H
-		if edge == FadeLeft || edge == FadeRight {
-			length = box.W
-		}
-		strength := min(float32(1), remaining/length)
-		from, to := ink.Alpha(strength), ink.Alpha(0)
-		if reverse {
-			from, to = to, from
-		}
-		p.FillGradient(box, ui.LinearGradient{From: from, To: to, Angle: angle}, 0)
-	}
 	w, h := min(depth, r.W/2), min(depth, r.H/2)
-	paint(FadeTop, y, ui.Rect{X: r.X, Y: r.Y, W: r.W, H: h}, 180, false)
-	paint(FadeBottom, state.MaxY-y, ui.Rect{X: r.X, Y: r.Y + r.H - h, W: r.W, H: h}, 180, true)
-	paint(FadeLeft, x, ui.Rect{X: r.X, Y: r.Y, W: w, H: r.H}, 90, false)
-	paint(FadeRight, state.MaxX-x, ui.Rect{X: r.X + r.W - w, Y: r.Y, W: w, H: r.H}, 90, true)
+	strength := func(edge ScrollFadeEdges, remaining, length float32) float32 {
+		if edges&edge == 0 || remaining <= 0 {
+			return 0
+		}
+		return min(1, remaining/length)
+	}
+	fx.PaintEdges(p, r, [4]float32{fx.Top: h, fx.Right: w, fx.Bottom: h, fx.Left: w}, [4]float32{
+		fx.Top: strength(FadeTop, y, h), fx.Right: strength(FadeRight, state.MaxX-x, w),
+		fx.Bottom: strength(FadeBottom, state.MaxY-y, h), fx.Left: strength(FadeLeft, x, w),
+	}, ink)
 }
 
 // scrollOffsets returns the clamped physical offsets from the left and top.
@@ -137,76 +127,52 @@ type scrollFadeLayerKey struct{}
 
 type scrollMaskKey struct{}
 
-var scrollMaskShader = sync.OnceValue(func() *shader.Shader {
-	return shader.MustCompile(`package main
-
-var Edges vec4
-
-func ColorEffect(pos vec2, color vec4) vec4 {
-	size := rectSize()
-	alpha := 1.0
-	if Edges.x > 0.0 {
-		alpha *= clamp(pos.y / Edges.x, 0.0, 1.0)
-	}
-	if Edges.y > 0.0 {
-		alpha *= clamp((size.x - pos.x) / Edges.y, 0.0, 1.0)
-	}
-	if Edges.z > 0.0 {
-		alpha *= clamp((size.y - pos.y) / Edges.z, 0.0, 1.0)
-	}
-	if Edges.w > 0.0 {
-		alpha *= clamp(pos.x / Edges.w, 0.0, 1.0)
-	}
-	return color * alpha
-}
-`)
-})
-
 type scrollMask struct {
-	state   *ui.ScrollState
-	values  *shader.Values
-	uniform shader.Uniform
-	effect  shader.Effect
-	depth   float32
-	edges   ScrollFadeEdges
-	rtl     bool
+	state  *ui.ScrollState
+	shader fx.Mask
+	depth  float32
+	edges  ScrollFadeEdges
+	rtl    bool
+	// forced makes a headless frame run the shader, for tests.
+	forced bool
 }
 
-func newScrollMask() scrollMask {
-	s := scrollMaskShader()
-	values := s.NewValues()
-	return scrollMask{
-		values: values, uniform: s.Uniform("Edges"),
-		effect: s.Effect(shader.Options{Values: values}),
-	}
+func newScrollMask() scrollMask { return scrollMask{} }
+
+// gpu reports whether the frame runs shaders: without a GPU MyGo would
+// interpret the mask per pixel.
+func (m *scrollMask) gpu(p *ui.Painter) bool { return m.forced || p.Accelerated() }
+
+// runs reports whether the mask shader draws the viewport box in this
+// frame. Above the layer limit MyGo paints the viewport without its effect.
+func (m *scrollMask) runs(p *ui.Painter, box ui.Rect) bool {
+	return m.gpu(p) && fx.Fits(box, p.Scale())
 }
 
-func (fx *scrollMask) EffectMargin() ui.Point { return ui.Point{} }
+func (m *scrollMask) EffectMargin() ui.Point { return ui.Point{} }
 
-// PaintEffect runs the shader only where it can change something and is cheap
-// enough: without a GPU MyGo interprets it per pixel, so the content, which
-// then holds ScrollFade's shadow layer, is drawn as is.
-func (fx *scrollMask) PaintEffect(p *ui.Painter, box ui.Rect, content *ui.Bitmap, inset ui.Point) {
-	x, y := scrollOffsets(fx.state, fx.rtl)
+// PaintEffect runs the shader only where it can change something: the
+// content otherwise holds ScrollFade's shadow layer and is drawn as it is.
+func (m *scrollMask) PaintEffect(p *ui.Painter, box ui.Rect, content *ui.Bitmap, inset ui.Point) {
+	x, y := scrollOffsets(m.state, m.rtl)
 	length := func(edge ScrollFadeEdges, remaining float32) float32 {
-		if fx.edges&edge == 0 {
+		if m.edges&edge == 0 {
 			return 0
 		}
-		return max(0, min(fx.depth, remaining))
+		return max(0, min(m.depth, remaining))
 	}
-	top, right := length(FadeTop, y), length(FadeRight, fx.state.MaxX-x)
-	bottom, left := length(FadeBottom, fx.state.MaxY-y), length(FadeLeft, x)
+	top, right := length(FadeTop, y), length(FadeRight, m.state.MaxX-x)
+	bottom, left := length(FadeBottom, m.state.MaxY-y), length(FadeLeft, x)
 	faded := top > 0 || right > 0 || bottom > 0 || left > 0
-	if faded && p.Accelerated() {
-		fx.paintMask(p, box, content, inset, top, right, bottom, left)
+	if faded && m.gpu(p) {
+		m.paintMask(p, box, content, inset, top, right, bottom, left)
 		return
 	}
-	paintEffectContent(p, box, content, inset)
+	fx.Plain(p, box, content, inset)
 }
 
-func (fx *scrollMask) paintMask(p *ui.Painter, box ui.Rect, content *ui.Bitmap, inset ui.Point, top, right, bottom, left float32) {
-	fx.values.Vec4(fx.uniform, top, right, bottom, left)
-	fx.effect.PaintEffect(p, box, content, inset)
+func (m *scrollMask) paintMask(p *ui.Painter, box ui.Rect, content *ui.Bitmap, inset ui.Point, top, right, bottom, left float32) {
+	m.shader.Paint(p, box, content, inset, [4]float32{fx.Top: top, fx.Right: right, fx.Bottom: bottom, fx.Left: left})
 }
 
 // ScrollAxis selects the axes of a native scroll area.
@@ -218,7 +184,7 @@ const (
 	ScrollBoth
 )
 
-// ScrollAreaOptions configures coss's scroll viewport with native scrollbars.
+// ScrollAreaOptions configures a scroll viewport with native scrollbars.
 type ScrollAreaOptions struct {
 	Axis   ScrollAxis
 	Height float32

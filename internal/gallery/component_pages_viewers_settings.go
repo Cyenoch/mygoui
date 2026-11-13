@@ -134,7 +134,7 @@ func viewersJSONSource(refresh int) string {
   "license": null,
   "stars": %d,
   "description": "A generic native component library with a shadcn-inspired look: typed options, caller-owned state, keyboard and screen reader support, and no global setup. Every control is built from MyGo's own widgets.",
-  "owner": {"login": "cyenoch", "site": "https://coss.com/ui/docs/components/native/json-viewer?tab=overview&ref=gallery"},
+  "owner": {"login": "cyenoch", "site": "https://github.com/Cyenoch/mygoui"},
   "empty": {},
   "topics": ["native", "go", "components"],
   "releases": [

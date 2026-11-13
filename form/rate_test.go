@@ -108,3 +108,23 @@ func TestRateKeyboardActivationIgnoresRestingPointer(t *testing.T) {
 		t.Fatalf("Space and Enter with the pointer on the first star gave %v, want 4", value)
 	}
 }
+
+// PageUp and PageDown move a rating by a whole star, from a half star too.
+func TestRatePageKeysMoveAWholeStar(t *testing.T) {
+	stars := 1.0
+	tt := formTextTester(t, func(c *ui.Context) {
+		Rate(c, &stars, RateOptions{AriaLabel: "Stars", AllowHalf: true})
+	})
+	formTextClick(t, tt, "Stars")
+	stars = 1
+	tt.Frame()
+	tt.Key(0, ui.KeyRight)
+	tt.Key(0, ui.KeyPageUp)
+	if stars != 2.5 {
+		t.Fatalf("Right then PageUp rated %v, want 2.5", stars)
+	}
+	tt.Key(0, ui.KeyPageDown)
+	if stars != 1.5 {
+		t.Fatalf("PageDown rated %v, want 1.5", stars)
+	}
+}

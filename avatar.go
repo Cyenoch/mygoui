@@ -1,12 +1,14 @@
 package mygoui
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 	"unicode"
 	"unicode/utf8"
 
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -63,11 +65,11 @@ func Avatar(c *ui.Context, o AvatarOptions) ui.Element {
 					// A newly loaded portrait fades in over the initials; an
 					// image already present on the first build shows at once.
 					ui.Image(c.Key(avatarImage{}), o.Image).Size(size, size).Fit(ui.Cover).Role(ui.RoleNone).
-						Transition(fadeTransition)
+						Transition(fadeTransition())
 					return
 				}
 				fallback := style.Text(ui.Text(c.Key(avatarInitialsKey{}), st.initials), c, ts)
-				fallback.TextColor(ink).SingleLine().Role(ui.RoleNone).Transition(fadeTransition)
+				fallback.TextColor(ink).SingleLine().Role(ui.RoleNone).Transition(fadeTransition())
 			})
 		if o.Badge != nil {
 			ui.Box(c).Absolute().Right(0).Bottom(0).Children(o.Badge)
@@ -139,14 +141,16 @@ type AvatarGroupOptions struct {
 }
 
 // AvatarGroup overlaps avatars by 30% of the group size and optionally adds
-// background-colored rings. A Total above the displayed count adds overflow.
+// background-colored rings. A Total above the displayed count adds overflow,
+// named by the locale's MoreCount. It is a group; name it with Label.
 func AvatarGroup(c *ui.Context, o AvatarGroupOptions) ui.Element {
 	var e ui.Element
 	if o.Grid {
-		e = ui.Row(c).Wrap().Gap(theme.Space12).AlignItems(ui.Center)
+		e = ui.Row(c).Wrap().Gap(theme.Space(3)).AlignItems(ui.Center)
 	} else {
 		e = ui.Row(c).Gap(0).AlignItems(ui.Center)
 	}
+	e.Role(ui.RoleGroup)
 	overlap := o.Overlap
 	if overlap == 0 {
 		size, _, _ := avatarMetrics(c, o.Size)
@@ -174,8 +178,10 @@ func AvatarGroup(c *ui.Context, o AvatarGroupOptions) ui.Element {
 		}
 		if o.Total > len(o.Avatars) {
 			dip, radius, ts := avatarMetrics(c, o.Size)
+			more := o.Total - len(o.Avatars)
 			count := ui.Row(c).Center().Shrink(0).
-				MinWidth(dip).MinHeight(dip).PaddingX(theme.Space6).Radius(radius).
+				Role(ui.RoleImage).Label(fmt.Sprintf(locale.M().MoreCount, more)).
+				MinWidth(dip).MinHeight(dip).PaddingX(theme.Space(1.5)).Radius(radius).
 				Background(t.Default.Over(t.Background)).TextColor(t.DefaultSoftForeground)
 			if len(o.Avatars) > 0 && !o.Grid {
 				count.MarginStart(-overlap)
@@ -184,8 +190,8 @@ func AvatarGroup(c *ui.Context, o AvatarGroupOptions) ui.Element {
 				count.Shadow(0, 0, 0, 2, t.Background)
 			}
 			count.Children(func() {
-				style.Text(ui.Text(c, "+"+strconv.Itoa(o.Total-len(o.Avatars))), c, ts).
-					SingleLine().FontFeatures("tnum")
+				style.Text(ui.Text(c, "+"+strconv.Itoa(more)), c, ts).
+					SingleLine().FontFeatures("tnum").Role(ui.RoleNone)
 			})
 		}
 	})

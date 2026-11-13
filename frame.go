@@ -16,10 +16,10 @@ type FrameOptions struct {
 func Frame(c *ui.Context, o FrameOptions, body func()) ui.Element {
 	padding, gap := o.Padding, o.Gap
 	if padding == 0 {
-		padding = theme.Space4
+		padding = theme.Space(1)
 	}
 	if gap == 0 {
-		gap = theme.Space4
+		gap = theme.Space(1)
 	}
 	t := theme.Colors(c)
 	return ui.Column(c).FillWidth().MinWidth(0).Padding(padding).Gap(gap).
@@ -30,7 +30,7 @@ func Frame(c *ui.Context, o FrameOptions, body func()) ui.Element {
 // FramePanel builds a bordered panel; callers can override native layout on return.
 func FramePanel(c *ui.Context, body func()) ui.Element {
 	t := theme.Colors(c)
-	e := ui.Column(c).FillWidth().MinWidth(0).Padding(theme.Space20).
+	e := ui.Column(c).FillWidth().MinWidth(0).Padding(theme.Space(5)).
 		Radius(theme.RadiusScale().XL).Border(theme.Hairline, t.Border).
 		Background(t.Background).TextColor(t.Foreground)
 	return style.Shadow(e, c, theme.SurfaceShadows(c.Theme().Dark)).Children(body)
@@ -38,14 +38,16 @@ func FramePanel(c *ui.Context, body func()) ui.Element {
 
 // FrameHeader groups a frame's title and description.
 func FrameHeader(c *ui.Context, body func()) ui.Element {
-	return ui.Column(c).FillWidth().MinWidth(0).Padding(theme.Space16, theme.Space20).Children(body)
+	return ui.Column(c).FillWidth().MinWidth(0).Padding(theme.Space(4), theme.Space(5)).Children(body)
 }
 
-// FrameTitle renders a compact semibold frame title.
+// FrameTitle renders a compact semibold frame title, a level-3 heading; set
+// another with Level on the returned element.
 func FrameTitle(c *ui.Context, title string) ui.Element {
 	ts := theme.SM()
 	ts.Weight = theme.WeightSemibold
-	return style.Text(ui.Text(c, title), c, ts).TextColor(theme.Colors(c).Foreground)
+	return style.Text(ui.Text(c, title), c, ts).TextColor(theme.Colors(c).Foreground).
+		Role(ui.RoleHeading).Level(3)
 }
 
 // FrameDescription renders the frame's secondary text.
@@ -55,8 +57,8 @@ func FrameDescription(c *ui.Context, text string) ui.Element {
 
 // FrameFooter hosts frame-level actions outside its panels.
 func FrameFooter(c *ui.Context, body func()) ui.Element {
-	return ui.Row(c).FillWidth().MinWidth(0).Wrap().Gap(theme.Space8).
-		Padding(theme.Space16, theme.Space20).Children(body)
+	return ui.Row(c).FillWidth().MinWidth(0).Wrap().Gap(theme.Space(2)).
+		Padding(theme.Space(4), theme.Space(5)).Children(body)
 }
 
 // GroupOptions configures joined controls. Each item receives its own corners

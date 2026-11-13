@@ -49,7 +49,7 @@ func Descriptions(c *ui.Context, o DescriptionsOptions) ui.Element {
 		minWidth = o.MinColumnWidth
 	}
 	stackBelow := theme.Scale(c, descriptionsStackWidth)
-	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space12).Role(ui.RoleGroup).Label(o.Title).Busy(o.Loading)
+	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(3)).Role(ui.RoleGroup).Label(o.Title).Busy(o.Loading)
 	// The width of the last layout; the first build has none and lays out
 	// the columns asked for.
 	width := root.Bounds().W
@@ -141,10 +141,10 @@ func descriptionSpan(it DescriptionsItem, columns int) int {
 func descriptionsGrid(c *ui.Context, t theme.Palette, items []DescriptionsItem, l descriptionsLayout) {
 	columns := l.columns
 	ui.Grid(c).Columns(columns).FillWidth().MinWidth(0).
-		GapX(theme.Space24).GapY(theme.Space16).Children(func() {
+		GapX(theme.Space(6)).GapY(theme.Space(4)).Children(func() {
 		descriptionSpans(items, columns, func(i, span int) {
 			it := items[i]
-			ui.Column(c.Key(i)).ColumnSpan(span).MinWidth(0).Gap(theme.Space2).
+			ui.Column(c.Key(i)).ColumnSpan(span).MinWidth(0).Gap(theme.Space(0.5)).
 				AlignItems(ui.Start).Role(ui.RoleGroup).Label(it.Label).Children(func() {
 				style.Text(ui.Text(c, it.Label), c, theme.XS()).TextColor(t.MutedForeground).MinWidth(0)
 				descriptionValue(c, t, it, l, i)
@@ -183,7 +183,7 @@ func descriptionsTable(c *ui.Context, t theme.Palette, items []DescriptionsItem,
 }
 
 func descriptionsLabelCell(c *ui.Context, t theme.Palette, it DescriptionsItem, l descriptionsLayout, key, span int) {
-	ui.Row(c.Key(key)).ColumnSpan(span).MinWidth(0).Padding(theme.Space8, theme.Space12).
+	ui.Row(c.Key(key)).ColumnSpan(span).MinWidth(0).Padding(theme.Space(2), theme.Space(3)).
 		AlignItems(ui.Start).Background(t.MutedBackground.Over(t.Background)).Children(func() {
 		label := style.Text(ui.Text(c, it.Label), c, theme.SM()).TextColor(t.MutedForeground).MinWidth(0)
 		if !l.stacked {
@@ -193,7 +193,7 @@ func descriptionsLabelCell(c *ui.Context, t theme.Palette, it DescriptionsItem, 
 }
 
 func descriptionsValueCell(c *ui.Context, t theme.Palette, it DescriptionsItem, l descriptionsLayout, key, span int) {
-	cell := ui.Row(c.Key(key)).ColumnSpan(span).MinWidth(0).Padding(theme.Space8, theme.Space12).
+	cell := ui.Row(c.Key(key)).ColumnSpan(span).MinWidth(0).Padding(theme.Space(2), theme.Space(3)).
 		AlignItems(ui.Start).Background(t.Background)
 	if l.stacked {
 		cell.Grow(1)

@@ -6,7 +6,7 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// AlertOptions configures a coss ui status callout.
+// AlertOptions configures a status callout.
 type AlertOptions struct {
 	Title, Description string
 	Status             StatusColor
@@ -16,8 +16,17 @@ type AlertOptions struct {
 	Action   func()
 }
 
-// Alert renders a status callout with an optional icon and action.
-// It exposes ui.RoleStatus; MyGo does not have a separate alert role.
+// messageRole is how urgently a message of status is announced.
+func messageRole(status StatusColor) ui.Role {
+	if status == ColorDanger {
+		return ui.RoleAlert
+	}
+	return ui.RoleStatus
+}
+
+// Alert renders a status callout with an optional icon and action. A danger
+// alert is an alert, which screen readers announce at once; the others are a
+// polite status.
 func Alert(c *ui.Context, o AlertOptions) ui.Element {
 	t := theme.Colors(c)
 	border, fill, iconInk := t.Border, ui.Transparent, t.MutedForeground
@@ -27,25 +36,25 @@ func Alert(c *ui.Context, o AlertOptions) ui.Element {
 	} else if c.Theme().Dark {
 		fill = t.Input.Alpha(0.32)
 	}
-	e := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Gap(theme.Space8).
-		Padding(theme.Space12, theme.Space14).
+	e := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Gap(theme.Space(2)).
+		Padding(theme.Space(3), theme.Space(3.5)).
 		Radius(theme.RadiusScale().XL).Background(fill).Border(theme.Hairline, border).
-		TextColor(t.SurfaceForeground).Role(ui.RoleStatus).Label(o.Title).Description(o.Description).
-		Transition(appearTransition)
+		TextColor(t.SurfaceForeground).Role(messageRole(o.Status)).Label(o.Title).Description(o.Description).
+		Transition(appearTransition())
 	e.Children(func() {
 		icon := o.Icon
 		if icon == nil && o.ShowIcon {
 			icon = StatusIcon(o.Status)
 		}
 		if icon != nil {
-			ui.Row(c).PaddingY(theme.Space2).Shrink(0).Children(func() {
+			ui.Row(c).PaddingY(theme.Space(0.5)).Shrink(0).Children(func() {
 				ui.Icon(c, icon).Size(theme.Scale(c, theme.IconMD), theme.Scale(c, theme.IconMD)).Shrink(0)
 			}).TextColor(iconInk)
 		}
-		ui.Row(c).Grow(1).Basis(0).MinWidth(0).Wrap().Gap(theme.Space8).
+		ui.Row(c).Grow(1).Basis(0).MinWidth(0).Wrap().Gap(theme.Space(2)).
 			AlignItems(ui.Center).Children(func() {
 			if o.Title != "" || o.Description != "" {
-				ui.Column(c).Grow(1).Basis(theme.Scale(c, 120)).MinWidth(0).Gap(theme.Space2).
+				ui.Column(c).Grow(1).Basis(theme.Scale(c, 120)).MinWidth(0).Gap(theme.Space(0.5)).
 					AlignItems(ui.Start).Children(func() {
 					if o.Title != "" {
 						ts := theme.SM()

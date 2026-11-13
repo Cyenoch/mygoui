@@ -155,3 +155,52 @@ func TestResizablePanelDragCollapses(t *testing.T) {
 		t.Fatalf("double click: collapsed=%v size=%v", collapsed, size)
 	}
 }
+
+// The handle is a Tab stop where it is on screen: before the content of a
+// panel resized from its start edge, after it otherwise. Either way it takes
+// the press on its own strip, over the content.
+func TestResizablePanelHandleFollowsItsEdgeInTabOrder(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		side          mygoui.PanelSide
+		first, second string
+	}{
+		{"end edge", mygoui.PanelEnd, "Open file", "Resize"},
+		{"start edge", mygoui.PanelStart, "Resize", "Open file"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			size := float32(200)
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, false)
+				ui.Row(c).Fill().Children(func() {
+					if tc.side == mygoui.PanelStart {
+						ui.Box(c).Grow(1)
+					}
+					mygoui.ResizablePanel(c, mygoui.ResizablePanelOptions{Side: tc.side, Size: &size, Min: 120, Max: 320}, func() {
+						ui.Column(c).Fill().Background(theme.Colors(c).Background).Children(func() {
+							ui.Button(c, "Open file")
+						})
+					})
+				})
+			}, 600, 300)
+			tt.SetPreferences(ui.Preferences{TextScale: 1, ReduceMotion: true})
+			tt.Frame()
+			tt.Key(0, ui.KeyTab)
+			if !tt.Focused(tc.first) {
+				t.Fatalf("Tab did not reach %q first", tc.first)
+			}
+			tt.Key(0, ui.KeyTab)
+			if !tt.Focused(tc.second) {
+				t.Fatalf("Tab did not go on to %q", tc.second)
+			}
+			grow := float32(40)
+			if tc.side == mygoui.PanelStart {
+				grow = -40
+			}
+			dragHandle(t, tt, grow)
+			if size != 240 {
+				t.Fatalf("dragging the handle over the content: size = %v, want 240", size)
+			}
+		})
+	}
+}

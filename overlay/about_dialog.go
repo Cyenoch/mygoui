@@ -60,19 +60,19 @@ func aboutHeader(c *ui.Context, o AboutDialogOptions) {
 	t := theme.Colors(c)
 	// The header keeps clear of the close button on its end side; the same
 	// room on the start side keeps the identity centered in the panel.
-	overlap := max(theme.Space8+theme.Scale(c, closeButtonSize)-theme.Space24, 0)
+	overlap := max(theme.Space(2)+theme.Scale(c, closeButtonSize())-theme.Space(6), 0)
 	identity := ui.Column(c).FillWidth().MinWidth(0).AlignItems(ui.Center).TextAlign(ui.Center).
-		Gap(theme.Space4).PaddingStart(overlap)
+		Gap(theme.Space(1)).PaddingStart(overlap)
 	identity.Children(func() {
 		if o.Icon != nil {
-			ui.Box(c).Shrink(0).Margin(0, 0, theme.Space8, 0).Children(o.Icon)
+			ui.Box(c).Shrink(0).Margin(0, 0, theme.Space(2), 0).Children(o.Icon)
 		}
 		if o.Name != "" {
 			style.Text(ui.Text(c, o.Name), c, theme.H4()).FontWeight(theme.WeightBold).
 				Role(ui.RoleHeading).Level(2)
 		}
 		if o.Version != "" || o.CopyInfo != "" {
-			ui.Row(c).AlignItems(ui.Center).Gap(theme.Space4).Children(func() {
+			ui.Row(c).AlignItems(ui.Center).Gap(theme.Space(1)).Children(func() {
 				if o.Version != "" {
 					style.Text(ui.Text(c, o.Version), c, theme.SM()).TextColor(t.MutedForeground)
 				}
@@ -83,16 +83,16 @@ func aboutHeader(c *ui.Context, o AboutDialogOptions) {
 		}
 		if o.Description != "" {
 			style.Text(ui.Text(c, o.Description), c, theme.SM()).TextColor(t.MutedForeground).
-				Margin(theme.Space8, 0, 0, 0)
+				Margin(theme.Space(2), 0, 0, 0)
 		}
 	})
 }
 
 func aboutBody(c *ui.Context, o AboutDialogOptions) {
 	t := theme.Colors(c)
-	ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space16).Padding(theme.Space8, 0, 0, 0).Children(func() {
+	ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(4)).Padding(theme.Space(2), 0, 0, 0).Children(func() {
 		if len(o.Links) > 0 {
-			ui.Row(c).FillWidth().MinWidth(0).Wrap().Justify(ui.Center).Gap(theme.Space16).Children(func() {
+			ui.Row(c).FillWidth().MinWidth(0).Wrap().Justify(ui.Center).Gap(theme.Space(4)).Children(func() {
 				for i, link := range o.Links {
 					mygoui.Link(c.Key(i), mygoui.LinkOptions{Label: link.Label, Icon: lucide.ArrowUpRight(), OnClick: link.OnClick})
 				}
@@ -103,7 +103,7 @@ func aboutBody(c *ui.Context, o AboutDialogOptions) {
 				aboutCollapsible(c.Key(i), section)
 				continue
 			}
-			ui.Column(c.Key(i)).FillWidth().MinWidth(0).Gap(theme.Space4).Children(func() {
+			ui.Column(c.Key(i)).FillWidth().MinWidth(0).Gap(theme.Space(1)).Children(func() {
 				if section.Title != "" {
 					style.Text(ui.Text(c, section.Title), c, theme.SM()).FontWeight(theme.WeightSemibold).
 						Role(ui.RoleHeading).Level(3)
@@ -124,14 +124,14 @@ func aboutCollapsible(c *ui.Context, section AboutSection) {
 	t := theme.Colors(c)
 	// The disclosure pads its trigger and panel by 8 DIPs; the wrapper gives
 	// that back so both line up with the sections around it.
-	ui.Column(c).MinWidth(0).Margin(0, -theme.Space8).Children(func() {
+	ui.Column(c).MinWidth(0).Margin(0, -theme.Space(2)).Children(func() {
 		navigation.Disclosure(c, navigation.DisclosureOptions{
 			Title: section.Title,
 			Body: func() {
 				ts := theme.Code()
 				ts.Size, ts.LineHeight = 12, 18
 				ui.Scroll(c).FillWidth().MinWidth(0).MaxHeight(theme.Scale(c, aboutBodyMaxHeight)).
-					Padding(theme.Space12).Radius(theme.RadiusScale().MD).Background(t.MutedBackground).
+					Padding(theme.Space(3)).Radius(theme.RadiusScale().MD).Background(t.MutedBackground).
 					Label(section.Title).Children(func() {
 					style.Text(ui.Text(c, section.Body), c, ts).TextColor(t.MutedForeground).Selectable()
 				})

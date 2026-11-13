@@ -1,10 +1,10 @@
 # Design and public contract
 
-`github.com/Cyenoch/mygoui` reconstructs suitable
-[coss ui](https://coss.com/ui/docs) components with native MyGo controls.
-The coss component catalog, MIT registry and published styling documentation
-are the design reference. Previous appearance and tokens impose no
-constraint on the `coss` branch.
+`github.com/Cyenoch/mygoui` is a native MyGo component library. Root
+[DESIGN.md](../DESIGN.md) is the design authority: it records the visual and
+motion language this document's contracts implement. The components and
+their first design were reconstructed from [coss ui](https://coss.com/ui/docs);
+[references.md](references.md) records that provenance.
 
 The [component matrix](components.md) records the complete catalog mapping,
 implemented subsets and gaps. Names in that matrix establish correspondence,
@@ -49,42 +49,62 @@ jobs. Application startup owns those policies.
 | Package | Responsibility |
 | --- | --- |
 | `mygoui` | Actions, surfaces, text, feedback, Frame, Group, Sidebar, ScrollArea and ScrollFade |
-| `theme` | Semantic colors, radius/spacing/type metrics and process-wide host preferences |
+| `effect` | Shader effects for an application's own elements: Mask, Shimmer, Reveal |
+| `theme` | The look as one `Theme` value (palettes, radius, type, spacing, elevation, motion and effect tokens) and process-wide host preferences layered on it |
 | `form` | Native fields, choices, editors, search and plain-text Composer |
 | `list` | Virtualized keyed ListBox, Tree and selection state |
 | `navigation` | Accordion/Disclosure, tabs, segments, breadcrumbs, pagination, toolbar, menus and commands |
 | `overlay` | Dialogs, sheets, drawers, popovers, previews, tooltips, tours and toast state |
+| `layout` | Window shell: custom title bar, split view of side panes, scaffold |
 | `date` | Gregorian calendars, date/range pickers and time editing |
 | `data` | Native virtualized table and column/selection state |
 | `chart` | Native charts, axes, legends, brush, annotations and caller-owned inspection |
 | `color` | Additional native color editing components |
+| `content` | Copy button, snippet, highlighted code, Markdown, diff, JSON and log viewers, QR code |
 | `locale` | Library messages; application language registration remains outside the library |
 | `fonts` | Opt-in embedded Cal Sans and explicit startup registration; no import-side registration |
 
 `internal/busy` holds the loading presentation components share: the
 crossfade to a spinner, the 150 ms wait before a region shows one, the dimmed
-refresh and its top line. `internal/motion` holds the shared state-change
-durations (State 150 ms, Reveal 200 ms, Roll 300 ms) and the colour and
-progress helpers built on them. Components use both instead of choosing their
-own timings; [DESIGN.md](../DESIGN.md) states the rules.
+refresh and its top line. `internal/motion` holds the colour and progress
+helpers for a state changing in place. Both read their timings from the
+published theme (`theme.Motion()`, `theme.Effects()`), as components do; a
+timing that belongs to one component is a named constant in its file.
+[DESIGN.md](../DESIGN.md) states the rules and [theme.md](theme.md) lists
+the tokens. `internal/fx` holds the three shaders (each compiled on first
+use), the edge-gradient painter and the layer-limit test that `effect` and
+the root's `ScrollFade` both draw with.
 
-Dependencies run one way: `theme` and `locale` import no family; the root
-imports only them and `internal`; `list` and `content` import the root;
+Dependencies run one way: `theme` and `locale` import no family; `effect`
+imports only `theme` and `internal`; the root imports only those three and
+`internal`; `list` and `content` import the root;
 `form` imports the root and `list`; `navigation` imports the root, `form`
 and `list` (menu accelerators use `form.Hotkey`); `overlay` imports the root,
 `content`, `form` and `navigation` (ActionBar, ShortcutsDialog and
-AboutDialog build on them); `date`, `color` and `chart` import `form`; `data`
+AboutDialog build on them); `layout` imports the root and `overlay` (a compact
+pane is a Sheet); `date`, `color` and `chart` import `form`; `data`
 imports the root. No package imports one that imports it.
 
 Public APIs live at the module root or in coherent family packages.
 `internal/gallery` and `examples/` are consumers, not an alternate API layer.
-Additional library families can remain useful without becoming coss guarantees.
+Additional library families can remain useful without matching an upstream catalog.
+
+A window that draws its own title bar builds it with `layout`.
+`layout.TitleBar` reads `c.TitleBar()` for the actual left/right system
+control insets and reserves them on the edges its `Span` reaches; its surface
+is the window's drag region and its controls take their own presses. It
+covers at least the native band (`MinHeight`, the window's
+`TitleBarHeight`) and grows with zoom or text scale; when its controls no
+longer fit between the window controls they move below the band. The window
+controls stay the system's. `layout.SplitView` docks side panes on
+`ResizablePanel` and shows them as flush Sheets in a compact window;
+`layout.Scaffold` composes both: the full-height start pane's top band
+reserves the leading insets, the title bar the trailing ones (and the leading
+ones while the pane is hidden). Sizes and the collapsed and open flags are
+caller-owned; the family persists nothing.
 
 The gallery is a native workbench consumer, not a web documentation clone. Its
-custom title bar reads `c.TitleBar()` for actual left/right system control
-insets, keeps draggable content regions, and uses native macOS traffic lights.
-The sidebar's top row reserves the leading insets; the page title bar reserves
-the trailing ones (and the leading ones when the sidebar is hidden). A grouped
+shell is a `layout.Scaffold` with native macOS traffic lights. A grouped
 sidebar, Cmd/Ctrl+K search and one document per component share
 window-owned component state; each example switches between its preview and
 its source, and the reference is generated from the library (`make generate`). Compact layouts preserve focus rather
@@ -93,9 +113,7 @@ examples; Drawer owns the native floating BottomSheet examples. Their Go APIs
 remain available, without duplicate top-level Gallery pages.
 
 Cmd/Ctrl `+`, `-` and `0` use native content zoom, not text-only scaling.
-The title bar covers at least the native 52 DIP band and grows with zoom or
-text scale; when its controls no longer fit between the window controls they
-move below the band. Windows caption buttons follow the explicit
+The title bar's native band is 52 DIPs. Windows caption buttons follow the explicit
 Gallery appearance. The Popover page demonstrates a Popover opened as a
 native flyout, and the appearance panel opens as one; it is not a duplicate
 overlay catalog entry.
@@ -125,8 +143,7 @@ sidebar and chart roles.
 The default radius base is 10 DIP, giving SM 6, MD 8, LG 10 and XL 14.
 Desktop buttons use 32 DIP by default, 28/36 for small/large and 24/40 for
 extra small/extra large. Button press feedback uses color and shadow changes,
-without a pressed scale. Native disabled painting uses 50% opacity, whereas
-the coss button reference specifies 64%.
+without a pressed scale. Native disabled painting uses 50% opacity.
 
 Default body/heading/mono families are native fallbacks. Configurable family
 names do not load a font. See [theme.md](theme.md) for role customization and
@@ -161,6 +178,11 @@ that would hide embedded WebViews, change fade behavior and impose texture limit
 - `ScrollFade` offers true subtree alpha masking through `MaskFade`, alongside
   shadow and opaque-surface edge treatments. Native effect layers have an
   8192-pixel side limit and omit embedded webviews.
+- An `effect` call changes paint only and installs MyGo's single effect slot
+  on the caller's element. Its shader runs on a GPU below the layer limit;
+  otherwise the documented fallback is drawn. It keeps no build-scoped value
+  and compiles its shader the first time that shader paints, so a build
+  and a fallback compile nothing. See [effects.md](effects.md).
 
 The library translates appearance and behavior using the toolkit's contracts.
 Tailwind selectors, DOM polymorphism, portals, contenteditable tokens and
@@ -168,10 +190,11 @@ React hooks do not become parallel native infrastructure.
 
 ## Verification and reference updates
 
-The coss snapshot and licensing boundary are recorded in
-[references.md](references.md). Read affected MIT registry files, their MDX
-examples and published styling before changing behavior. The pinned
-`references/coss` checkout is the only component design reference.
+A visual or motion change updates `DESIGN.md` in the same change. The
+origin snapshots and licensing boundary are recorded in
+[references.md](references.md); the pinned `references/coss` checkout shows
+where a component's anatomy came from and is read before reusing any of its
+source.
 
 Meaningful tests protect observable editing, activation, focus, selection,
 validation, dismissal and retained paint. `ui.NewTester` can exercise native

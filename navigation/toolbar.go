@@ -18,22 +18,22 @@ type ToolbarOptions struct {
 // Toolbar groups controls into one focus stop whose arrows move between
 // them: Left and Right in a horizontal toolbar, Up and Down in a vertical
 // one, with Home and End at the ends. Assistive technology sees a toolbar
-// named by Label.
+// named by Label, running the way of its orientation.
 func Toolbar(c *ui.Context, o ToolbarOptions) ui.Element {
 	t := theme.Colors(c)
 	vertical := o.Orientation == mygoui.Vertical
-	root := ui.Column(c).Shrink(0).MinWidth(0).Gap(scale(c, theme.Space8)).
-		Role(ui.RoleToolbar).FocusGroup(ui.Horizontal)
+	root := ui.Column(c).Shrink(0).MinWidth(0).Gap(scale(c, theme.Space(2))).
+		Role(ui.RoleToolbar).FocusGroup(ui.Horizontal).Orientation(ui.Horizontal)
 	if vertical {
 		root.Column().AlignItems(ui.Start).Justify(ui.Start)
-		root.FocusGroup(ui.Vertical)
+		root.FocusGroup(ui.Vertical).Orientation(ui.Vertical)
 	} else {
 		root.Row().AlignItems(ui.Center)
 	}
 	if o.Attached {
 		radius := theme.RadiusScale().XL
 		root.Background(t.Card).TextColor(t.CardForeground).Border(theme.Hairline, t.Border).Radius(radius).Clip().
-			Padding(scale(c, theme.Space4))
+			Padding(scale(c, theme.Space(1)))
 	}
 	if o.Label != "" {
 		root.Label(o.Label)
@@ -44,16 +44,16 @@ func Toolbar(c *ui.Context, o ToolbarOptions) ui.Element {
 
 // ToolbarSeparator draws a rule between groups of toolbar controls:
 // a short vertical rule in a horizontal toolbar and a short horizontal rule
-// in a vertical one. Orientation is explicit because Go composition has no
-// ambient toolbar context.
+// in a vertical one, exposed as a separator running that way. Orientation
+// is explicit because Go composition has no ambient toolbar context.
 func ToolbarSeparator(c *ui.Context, orientation mygoui.Orientation) ui.Element {
 	t := theme.Colors(c)
 	vertical := orientation == mygoui.Vertical
-	e := ui.Box(c).Shrink(0).Background(t.Separator).Role(ui.RoleNone)
+	e := ui.Box(c).Shrink(0).Background(t.Separator).Role(ui.RoleSeparator)
 	if vertical {
-		e.Width(scale(c, theme.Space20)).Height(hairline).AlignSelf(ui.Center)
+		e.Width(scale(c, theme.Space(5))).Height(hairline).AlignSelf(ui.Center).Orientation(ui.Horizontal)
 	} else {
-		e.Width(hairline).Height(scale(c, theme.Space20)).AlignSelf(ui.Center)
+		e.Width(hairline).Height(scale(c, theme.Space(5))).AlignSelf(ui.Center).Orientation(ui.Vertical)
 	}
 	return e
 }

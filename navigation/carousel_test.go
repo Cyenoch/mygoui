@@ -210,3 +210,48 @@ func TestCarouselJumpsWithHomeAndEndAndSaysItsPlaceAmongManyPages(t *testing.T) 
 		t.Fatal("pips that hold every page also show a count")
 	}
 }
+
+// TestCarouselKeepsTheFocusAndAnnouncesThePageAStepReaches protects the
+// carousel for keyboard and screen reader users: Next disabling at the last
+// slide hands the focus to the slides, whose arrows step on, and each step
+// announces the page it reached.
+func TestCarouselKeepsTheFocusAndAnnouncesThePageAStepReaches(t *testing.T) {
+	f := &carouselFixture{count: 3}
+	tt := ui.NewTester(f.view, 480, 200)
+	tt.UseScreenReader()
+	if err := tt.Click("Next"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(0, ui.KeyEnter)
+	tt.Frame()
+	if a, _ := tt.AccessByRole(ui.RoleGroup, "Photos"); f.index != 2 || !a.Focused {
+		t.Fatalf("index %d, slides focused %v", f.index, a.Focused)
+	}
+	tt.Key(0, ui.KeyLeft)
+	if want := []string{"Page 2", "Page 3", "Page 2"}; !slices.Equal(tt.Announcements(), want) || f.index != 1 {
+		t.Fatalf("announced %q, want %q; index %d", tt.Announcements(), want, f.index)
+	}
+}
+
+// TestCarouselTellsItsRolesInTheLocale pins the role descriptions: the
+// viewport reads as a carousel and each slide in view as a slide, in the
+// locale's words.
+func TestCarouselTellsItsRolesInTheLocale(t *testing.T) {
+	f := &carouselFixture{count: 3, perView: 2}
+	tt := ui.NewTester(f.view, 480, 200)
+	if a, _ := tt.AccessByRole(ui.RoleGroup, "Photos"); a.RoleDescription != "carousel" {
+		t.Fatalf("the viewport's role description is %q, want carousel", a.RoleDescription)
+	}
+	slides := 0
+	for _, a := range tt.AccessAll() {
+		if a.Role == ui.RoleGroup && a.SetSize == 3 {
+			slides++
+			if a.RoleDescription != "slide" {
+				t.Fatalf("slide %d's role description is %q, want slide", a.PosInSet, a.RoleDescription)
+			}
+		}
+	}
+	if slides != 2 {
+		t.Fatalf("found %d slides in view, want 2", slides)
+	}
+}

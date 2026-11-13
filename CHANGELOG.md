@@ -1,5 +1,194 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- `theme.Theme`: the whole look as one value (both palettes, radius, type
+  roles, spacing unit, shadow layers, motion and effects). `theme.Default()`
+  is the built-in look, `theme.Use` publishes a theme and `theme.Current`
+  reads it back. `Use` returns an error for a duration components cannot
+  run. Preferences keep applying on top; a `FontSize` or `Radius` equal to
+  the theme's value inherits it.
+- Motion and effect tokens, read by every component: `theme.Motion()`
+  (`State`, `Reveal`, `Roll`, `Shift`, `Page`, `Popup`, `Dialog`, `Drawer`
+  and three easings) and `theme.Effects()` (hover opacity, popup scale,
+  backdrop blur, fade edge, spinner and sweep periods, loading delay,
+  refresh opacity). `theme.Space(n)` follows the theme's spacing unit.
+- Gallery token cards show motion, spacing and effect tokens with the
+  published values.
+- Package `effect`: shader effects for an application's own elements.
+  `effect.Mask` fades selected edges to transparency, `effect.Shimmer`
+  sweeps one band across a region of placeholders, `effect.Reveal` wipes
+  arriving content in once. Each reads its parameters from the theme, runs
+  its shader only on a GPU below the 8192-pixel layer limit and draws a
+  documented fallback otherwise (`Fallback: true` forces it). See
+  [docs/effects.md](docs/effects.md). GPU presentation is not yet recorded
+  in `VALIDATION.md`.
+- `theme.EffectTokens`: `ShimmerPeriod`, `ShimmerPeak` and
+  `ShimmerPeakDark`, read by `Skeleton`, `SkeletonGroup` and
+  `effect.Shimmer`. `theme.Use` accepts a `ShimmerPeriod` of zero or less,
+  which keeps placeholders still.
+- `date.TimeFieldOptions.Min`, `Max` and `Step`;
+  `color.ColorPickerOptions.OnOpenChange`; `FocusSearch` on
+  `content.JSONViewerState` and `LogViewerState`, for a window's Find;
+  `theme.EffectTokens.ThumbPressScale`; `ResizablePanelOptions.Border`;
+  `Disabled` on `list.TreeOptions` and `data.TableOptions`; `ReturnFocus` on
+  `overlay.FloatingPanelOptions` and `FloatingSheetOptions`;
+  `list.ListBoxOptions.Editor`, which makes the highlighted row the active
+  descendant of the input driving the list.
+- `locale.Messages` fields `TitleBar`, `ToggleSidebar`, `ToggleInspector`,
+  `ChooseYear`, `OpenCalendar`, `StartDate`, `EndDate`, `NoData`, `Range`,
+  `Log`, `CopyNamed`, `VerificationCode`, `Submit`, `Uploaded`,
+  `UploadFailed`, `Sidebar`, `Success`, `MoreCount`, `MovedTo`, `Carousel`,
+  `Slide` and `Breadcrumbs`.
+
+### Changed
+
+- Components read durations, easings, spacing and effect parameters from
+  the theme. Apart from the changes listed here, the default theme renders
+  and times as before.
+- A `MaskFade` viewport larger than an effect layer (8192 pixels a side)
+  shows the `ShadowFade` overlay; it used to show no fade.
+- Elevation edges take the light from above: the inset line on surfaces,
+  overlays, tooltips and the controls that carry the field edge (outline
+  buttons, toggles, `form.InputOTP` slots and pagination buttons) sits at
+  the bottom in light and at the top in dark (it was the other way round).
+  `form.Input` draws no inset edge, as before.
+- A selected `Sidebar` item keeps its text weight, so the row no longer
+  widens; collapsing a sidebar or `ResizablePanel` eases out over 200 ms.
+- `CloseButton` and `PressableFeedback` show hover and press at once (they
+  faded). A `ResizablePanel` handle shows at once under the pointer and fades
+  in over 150 ms for keyboard focus.
+- `ScrollShadow` fades over 24 DIP (was 40) and `Spoiler` over 24 DIP (was
+  32); the spoiler opens and closes with ease-out.
+- `Skeleton` and `SkeletonGroup` pulse alike, alpha to half with
+  ease-in-out. The refresh line sweeps in and out wholly, as the progress
+  sweep does.
+- `list.Tree` typeahead waits 1 s between letters (was 700 ms), and its
+  expand arrow turns with ease-out.
+- `data.Table` and `list.Tree` page with PageUp and PageDown off macOS; macOS
+  keeps scrolling.
+- The sidebar toggle is named "Toggle sidebar".
+- `form.NumberField` keeps text it cannot read as a number ("abc", "-",
+  "1e") while the user types, and returns it to the last value only on
+  Enter or blur (it reverted at each key). A typed number outside Min and
+  Max is reported on commit, clamped, rather than at each key.
+- `overlay.Sheet`, `overlay.Drawer` and an edge `overlay.Dialog` slide
+  through the edge their side names in the layout direction, so a left or
+  right one mirrors right to left.
+- `overlay.Popover` (and `Popconfirm`) takes the focus into its panel as it
+  opens and closes when the focus moves on past the panel and its anchor.
+  Opened while a text field anchor holds the focus, it leaves the focus
+  there; the window ceasing to be active does not close it.
+
+### Fixed
+
+- `form.NumberField` no longer clamps each keystroke: with Min 10, typing
+  "50" gives 50. Enter and blur commit and clamp; PageUp and PageDown step
+  ten steps; the steppers keep the focus in the editor, leave the Tab order
+  and repeat while held.
+- `form.Select` returns the focus to its trigger on Escape, and its closed
+  typeahead cycles through options on a repeated letter and matches longer
+  prefixes.
+- `form.KeyValueEditor` moves the focus to a neighbouring remove button, or
+  the add button, after a removal.
+- `form.SearchField`, `form.ComboBox` and `form.Autocomplete` take Escape
+  before an enclosing shortcut. SearchField's hidden clear button is no Tab
+  stop; ComboBox and Autocomplete clear on Escape with the popup closed and
+  open and close with Alt+Down and Alt+Up.
+- `form.Rate` takes PageUp and PageDown.
+- Assistive technology: tags in `form.TagsInput` are list items, the
+  `form.HotkeyInput` recorder reports recording, choice cards report
+  Invalid, and `form.Upload` lists its files with named status.
+- `form.InputOTP` and `form.Composer` fallback names are localized
+  (`locale.Messages.VerificationCode`, `Submit`); `form.Upload` status uses
+  `Uploaded` and `UploadFailed`.
+- `list.ListBox` is a listbox of options with an active descendant, matches
+  typed prefixes (digits too), extends a multiple selection with Shift+arrows
+  and Cmd+A, and pages off macOS.
+- `list.Tree` reports multiple selection, opens its row menu from the menu
+  key and Shift+F10, and honours `Disabled`.
+- `list.SortableList` cancels a keyboard drag with Escape, reports each row's
+  position and the Alt+arrow shortcuts, and announces a move.
+- `data.Table` arrows, Home and End pass disabled rows (Shift+arrows extend
+  the range past them); the table reports Busy while loading.
+- Assistive technology across the root package: status marks are named,
+  titles are headings, `Sidebar` is a navigation landmark with a current
+  page, danger messages are alerts, `ListGroup` is a list, the avatar
+  overflow count is named, `SkeletonGroup` is busy and `ButtonGroup` joins a
+  toolbar. `LoadingOverlay` restores the focus when it clears.
+- `ScrollShadow` panics with a clear message on a nil state;
+  `ResizablePanel` pages by 64 DIP and ignores End without a `Max`.
+- `form.Switch`: the track colour fades over 150 ms with its thumb (was
+  200 ms), and a held thumb widens 1.2× over 150 ms without a delay, as a
+  slider thumb grows (was 10% after 100 ms).
+- `date`: day grids are grids of cells with the chosen day selected; the
+  arrows stop at Min and Max and mirror right to left; Home and End keep
+  the week and Shift+PageUp/PageDown move a year; Escape leaves the year
+  grid with the year it opened on and cancels a range's pending endpoint;
+  a range previews under the pointer; picker triggers report expanded;
+  names come from the locale. Calendar views swap over 150 ms
+  (`Motion.State`; were 200 and 120 ms).
+- `color`: ColorArea takes PageUp and PageDown for brightness and mirrors
+  right to left; a horizontal ColorSlider also steps with Up and Down; a
+  selected swatch says so; ColorSwatchPicker chooses with a nil Value;
+  ColorPicker focuses its first control on opening and returns the focus to
+  the trigger. A palette swatch grows on hover at once (was over 100 ms);
+  the colour-area thumb grows 1.2× when held (`Effects.ThumbPressScale`,
+  was 1.25×).
+- `chart`: with nothing selected Escape reaches the dialog around a chart;
+  a loading chart is busy and keeps its Tab stop; the focus ring shows only
+  for the keyboard; without a selection the value spans the data; a
+  selection made by the pointer ends when it leaves; PageUp and PageDown
+  move a tenth, horizontal bars step with Up and Down. Heatmap arrows move
+  by row and column, Gauge is a meter, Sankey's Right and Left follow the
+  flow, Sunburst's path is a Breadcrumbs and Escape goes up a level, and a
+  Choropleth with a Viewport zooms with the wheel and a pinch and pans with
+  a drag. Texts come from the locale ("Reset map" is now "Reset zoom").
+  Line and Choropleth frames allocate 93% and 90% fewer bytes.
+- `content`: Escape in a viewer's search field clears it before a dialog
+  sees the key; Clear and Jump to latest leave the focus in place; counts
+  are statuses and an invalid JSON document is an alert. LogViewer is a
+  named group whose lines take the focus (Up, Down and the context-menu
+  key) and read their level. Unnamed Highlighters and Snippets are no
+  longer groups; copy buttons of titled blocks are named after them. A
+  DiffViewer without a Title keeps its header controls.
+- `layout`: the title bar is the window's banner landmark; a splitter's
+  range is right before the first layout; a scaffold's resizable sidebar
+  edge uses `SidebarBorder`.
+- `effect`: Shimmer marks its element busy; Mask clips its element, so the
+  fallback cuts overflowing content as the shader does.
+- `navigation`: Dropdown, SplitButton and Menubar menus return the focus to
+  their button after a choice or Escape, open from Down (first item) and Up
+  (last item), and a Menubar menu closes on Tab. Type-ahead reaches every
+  row of a long menu.
+- `navigation`: Accordion headers, DisclosureGroup triggers and pressable
+  Steps move with the arrows, Home and End while each stays a Tab stop, so
+  Tab reaches an open panel's controls.
+- `navigation`: Pagination and Breadcrumbs mark the current page (the page
+  label is now just its number); a Previous or Next that disables keeps the
+  focus on the current page, and Carousel's on the slides, announcing the
+  page. Tabs' panel is a tab panel of its tab; Toolbar reports its
+  orientation and separators; Command's input is the one Tab stop and
+  Escape clears its query first.
+- `form.ComboBox`, `form.Autocomplete` and `navigation.Command` point their
+  input at the highlighted option, so screen readers follow the arrows.
+  Carousel reads as a carousel of slides, and Breadcrumbs without a Label is
+  named "Breadcrumbs".
+- `overlay`: TeachingTip returns the focus to its anchor on close;
+  FloatingPanel and FloatingSheet hand it to the new `ReturnFocus`.
+- `overlay`: AlertDialog cancels on Escape; ImageViewer steps mirrored
+  right to left.
+- `overlay`: FloatingPanel moves with Alt and the arrows; FloatingSheet's
+  handle reports its height range and goes to the limits with Home and End.
+- `overlay`: F6 moves the focus to the toasts, and closing a focused toast
+  hands the focus to the newest one left.
+- `overlay`: ActionBar appears and leaves at once under reduced motion.
+- `overlay`: Modal, ImageViewer and a side Dialog without slide fade with
+  ease-in-out (was ease-out); BottomSheet's backdrop fades on the drawer
+  curve (was ease-out).
+
 ## 0.2.0 - 2026-11-13
 
 ### Added

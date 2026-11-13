@@ -42,9 +42,9 @@ func Tooltip(c *ui.Context, anchor ui.Element, o TooltipOptions) ui.Element {
 		tip = tip.Key(tooltipKey{anchor.ID()})
 		side := arrowSide(tip, anchor, want)
 		tip = anchored.Motion(c, tip, side, true)
-		tip.MaxWidth(min(float32(320), max(float32(0), w-2*theme.Space8))).
-			MaxHeight(max(float32(0), h-2*theme.Space8)).
-			Padding(theme.Space4, theme.Space8).Radius(radius).
+		tip.MaxWidth(min(float32(320), max(float32(0), w-2*theme.Space(2)))).
+			MaxHeight(max(float32(0), h-2*theme.Space(2))).
+			Padding(theme.Space(1), theme.Space(2)).Radius(radius).
 			Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border)
 		tip = style.Shadow(tip, c, theme.TooltipShadows(c.Theme().Dark))
 		if o.Arrow {

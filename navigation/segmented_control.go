@@ -1,8 +1,6 @@
 package navigation
 
 import (
-	"time"
-
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -37,7 +35,7 @@ func SegmentedControl(c *ui.Context, o SegmentedControlOptions) ui.Element {
 	}
 	root.Children(func() {
 		parts := ui.SegmentedBase(c, selected, len(o.Items))
-		track := parts.Track.AlignItems(ui.Center).Padding(scale(c, 2)).Gap(scale(c, 2)).
+		track := parts.Track.AlignItems(ui.Center).Padding(scale(c, theme.Space(0.5))).Gap(scale(c, theme.Space(0.5))).
 			Radius(theme.RadiusScale().LG).Background(t.MutedBackground).Label(o.Label)
 		trackBox := track.LayoutBounds()
 		placed := *selected
@@ -47,7 +45,7 @@ func SegmentedControl(c *ui.Context, o SegmentedControlOptions) ui.Element {
 		var paintedTrack ui.Rect
 		track.Children(func() {
 			for i, item := range o.Items {
-				segment := parts.Segment(i).Height(scale(c, 30)).PaddingX(scale(c, 10)).
+				segment := parts.Segment(i).Height(scale(c, 30)).PaddingX(scale(c, theme.Space(2.5))).
 					Radius(theme.RadiusScale().MD).FocusRing(true).Label(item.Label)
 				fg := selectionInk(segment, "segment-ink", i == *selected, !item.Disabled && segment.Hovered(),
 					t.MutedForeground.Alpha(0.72), t.Foreground, t.MutedForeground)
@@ -99,7 +97,7 @@ func SegmentedControl(c *ui.Context, o SegmentedControlOptions) ui.Element {
 				animate := !theme.ReduceMotion(c) && (indicator.sel != placed || indicator.box == target)
 				follow := func(key any, value float32) float32 {
 					if animate {
-						return track.AnimateTo(key, value, ui.Animation{Duration: 200 * time.Millisecond, Ease: ui.EaseInOut})
+						return track.AnimateTo(key, value, slideMotion())
 					}
 					return track.Jump(key, value)
 				}

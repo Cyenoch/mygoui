@@ -4,7 +4,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -56,7 +55,8 @@ func NumberFlip(c *ui.Context, o NumberFlipOptions) ui.Element {
 
 	root := ui.Row(c).MinWidth(0).Role(ui.RoleText).Label(name)
 	st := ui.Local(root, numberFlipKey{}, func() numberFlipState { return numberFlipState{shown: o.Value} })
-	anim := ui.Animation{Duration: motion.Roll, NonMotion: true}
+	m := theme.Motion()
+	anim := ui.Animation{Duration: m.Roll, Ease: m.Ease, NonMotion: true}
 	if st.shown != o.Value {
 		st.from = root.AnimateTo(numberFlipKey{}, st.target, anim)
 		st.target++

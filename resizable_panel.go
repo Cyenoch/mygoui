@@ -1,8 +1,7 @@
 package mygoui
 
 import (
-	"time"
-
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -24,6 +23,10 @@ const (
 // always shown within [Min, Max], and a nonpositive Max sets no upper bound.
 // A nil Size is kept by the panel. A non-nil Collapsed makes the panel
 // collapsible. Label names the handle and defaults to the locale's Resize.
+//
+// Shown, when set, receives the size the panel has in this build, in DIPs
+// after the text scale: it runs behind Size while the panel collapses or
+// expands, for layout beside the panel that follows the motion.
 type ResizablePanelOptions struct {
 	Label            string
 	Side             PanelSide
@@ -32,11 +35,16 @@ type ResizablePanelOptions struct {
 	Collapsed        *bool
 	OnResize         func(size float32)
 	OnCollapseChange func(collapsed bool)
+	Shown            *float32
+	// Border colours the hairline on the edge at rest; zero uses the
+	// theme's Border.
+	Border ui.Color
 }
 
 const (
 	resizablePanelHit  = 8
 	resizablePanelStep = 16
+	resizablePanelPage = 4 * resizablePanelStep
 )
 
 type resizablePanelKey struct{}
@@ -129,9 +137,10 @@ func (p resizablePanel) drag(delta float32, held bool) {
 }
 
 // ResizablePanel sizes body along one axis and lets the user move the edge
-// on Side by pointer or keyboard: arrows step 16 DIPs, Home and End go to Min
-// and Max, and on a collapsible panel Enter or a double click toggles it. The
-// cross axis stretches to the parent.
+// on Side by pointer or keyboard: arrows step 16 DIPs, PageUp and PageDown
+// 64, Home goes to Min and End to Max, if there is one; on a collapsible
+// panel Enter or a double click toggles it. The cross axis stretches to the
+// parent.
 func ResizablePanel(c *ui.Context, o ResizablePanelOptions, body func()) ui.Element {
 	root := ui.Box(c).Shrink(0).AlignSelf(ui.Stretch).ZIndex(1)
 	st := ui.Local(root, resizablePanelKey{}, func() resizablePanelState { return resizablePanelState{} })
@@ -146,12 +155,23 @@ func ResizablePanel(c *ui.Context, o ResizablePanelOptions, body func()) ui.Elem
 	if !vertical {
 		far = (o.Side == PanelEnd) != (c.Direction() == ui.RightToLeft)
 	}
+	// On the edge the content starts from, the handle comes first in the
+	// flow, and so in Tab order.
+	leading := o.Side == PanelStart || o.Side == PanelTop
+	if leading && !vertical {
+		root.Row()
+	}
 	root.Children(func() {
+		if leading {
+			p.handle(c, vertical, far, true)
+		}
 		content := ui.Column(c).Fill().MinWidth(0).MinHeight(0).Clip()
 		if !p.collapsed() || st.shown > 0 {
 			content.Children(body)
 		}
-		p.handle(c, vertical, far)
+		if !leading {
+			p.handle(c, vertical, far, false)
+		}
 	})
 	target := theme.Scale(c, p.clamp(*p.size))
 	if p.collapsed() {
@@ -160,9 +180,11 @@ func ResizablePanel(c *ui.Context, o ResizablePanelOptions, body func()) ui.Elem
 	if st.dragging {
 		st.shown = root.Jump(resizablePanelKey{}, target)
 	} else {
-		st.shown = root.AnimateTo(resizablePanelKey{}, target, ui.Animation{
-			Duration: 200 * time.Millisecond, Ease: ui.EaseOut,
-		})
+		m := theme.Motion()
+		st.shown = root.AnimateTo(resizablePanelKey{}, target, ui.Animation{Duration: m.Reveal, Ease: m.Ease})
+	}
+	if o.Shown != nil {
+		*o.Shown = st.shown
 	}
 	if vertical {
 		return root.Height(st.shown)
@@ -171,37 +193,39 @@ func ResizablePanel(c *ui.Context, o ResizablePanelOptions, body func()) ui.Elem
 }
 
 // handle builds the splitter straddling the panel's edge and applies its
-// pointer and keyboard input.
-func (p resizablePanel) handle(c *ui.Context, vertical, far bool) {
+// pointer and keyboard input. A leading handle is in the flow before the
+// content, taking no room and painting above it; another is absolute.
+func (p resizablePanel) handle(c *ui.Context, vertical, far, leading bool) {
 	t := theme.Colors(c)
 	label := p.o.Label
 	if label == "" {
 		label = locale.M().Resize
 	}
-	h := ui.Box(c).Absolute().Focusable().FocusRing(false).
+	h := ui.Box(c).Focusable().FocusRing(false).
 		Role(ui.RoleSplitter).Label(label).
 		Range(float64(p.o.Min), float64(max(p.o.Max, *p.size)), float64(*p.size)).
 		Step(resizablePanelStep)
 	const out = -resizablePanelHit / 2
 	grow, shrink := ui.KeyRight, ui.KeyLeft
-	switch {
-	case vertical:
-		h.Left(0).Right(0).Height(resizablePanelHit).Cursor(ui.CursorResizeNS).
-			Orientation(ui.Horizontal)
+	if vertical {
+		h.Height(resizablePanelHit).Cursor(ui.CursorResizeNS).Orientation(ui.Horizontal)
 		grow, shrink = ui.KeyDown, ui.KeyUp
-		if far {
-			h.Bottom(out)
-		} else {
-			h.Top(out)
-		}
+	} else {
+		h.Width(resizablePanelHit).Cursor(ui.CursorResizeEW).Orientation(ui.Vertical)
+	}
+	switch {
+	case leading && vertical:
+		h.Sticky().Shrink(0).FillWidth().Margin(out, 0)
+	case leading:
+		h.Sticky().Shrink(0).AlignSelf(ui.Stretch).Margin(0, out)
+	case vertical && far:
+		h.Absolute().Left(0).Right(0).Bottom(out)
+	case vertical:
+		h.Absolute().Left(0).Right(0).Top(out)
+	case far:
+		h.Absolute().Top(0).Bottom(0).Right(out)
 	default:
-		h.Top(0).Bottom(0).Width(resizablePanelHit).Cursor(ui.CursorResizeEW).
-			Orientation(ui.Vertical)
-		if far {
-			h.Right(out)
-		} else {
-			h.Left(out)
-		}
+		h.Absolute().Top(0).Bottom(0).Left(out)
 	}
 	if !far {
 		grow, shrink = shrink, grow
@@ -223,6 +247,8 @@ func (p resizablePanel) handle(c *ui.Context, vertical, far bool) {
 	}
 	h.OnShortcut(0, grow, func() { p.step(resizablePanelStep) })
 	h.OnShortcut(0, shrink, func() { p.step(-resizablePanelStep) })
+	h.OnShortcut(0, ui.KeyPageUp, func() { p.step(resizablePanelPage) })
+	h.OnShortcut(0, ui.KeyPageDown, func() { p.step(-resizablePanelPage) })
 	h.OnShortcut(0, ui.KeyHome, func() { p.step(p.o.Min - *p.size) })
 	if p.o.Max > 0 {
 		h.OnShortcut(0, ui.KeyEnd, func() { p.step(p.o.Max - *p.size) })
@@ -233,17 +259,26 @@ func (p resizablePanel) handle(c *ui.Context, vertical, far bool) {
 	}
 
 	// A hairline on the edge; it thickens in the ring color while in use.
-	active := held || h.Hovered() || h.FocusVisible()
-	color, thick, at := t.Border, float32(theme.Hairline), float32(0)
+	// The pointer shows it at once; the keyboard focus fades it in.
+	rest := p.o.Border
+	if rest.A == 0 {
+		rest = t.Border
+	}
+	pointer := held || h.Hovered()
+	color, thick, at := rest, float32(theme.Hairline), float32(0)
+	if h.FocusVisible() {
+		color = t.Ring
+	}
+	color = motion.Color(h, resizablePanelKey{}, color)
 	switch {
-	case active:
-		color, thick, at = t.Ring, 2, -1
+	case pointer || h.FocusVisible():
+		thick, at = 2, -1
+		if pointer {
+			color = t.Ring
+		}
 	case far:
 		at = -theme.Hairline
 	}
-	color = h.AnimateColor(resizablePanelKey{}, color, ui.Animation{
-		Duration: 100 * time.Millisecond, Ease: ui.EaseOut,
-	})
 	// At rest the line lies inside the panel; in use it centers on the edge.
 	h.Draw(func(pt *ui.Painter, r ui.Rect) {
 		if vertical {

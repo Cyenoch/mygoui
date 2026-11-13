@@ -133,25 +133,55 @@ func Sankey(c *ui.Context, o SankeyOptions) (ui.Element, error) {
 	}
 	t := theme.Colors(c)
 	fontSize := theme.Scale(c, 12)
+	nodes := make(map[string]int, len(o.Nodes))
+	for i, node := range o.Nodes {
+		nodes[node.ID] = i
+	}
 	describe := func(i int) string {
 		if i < len(o.Nodes) {
 			return o.Nodes[i].Label
 		}
 		v := o.Links[i-len(o.Nodes)]
-		return v.Source + " → " + v.Target + ": " + number(v.Value)
+		return o.Nodes[nodes[v.Source]].Label + " → " + o.Nodes[nodes[v.Target]].Label + ": " + number(v.Value)
 	}
-	return surface(c, o.Options, len(o.Nodes)+len(o.Links), describe, func(p *ui.Painter, r ui.Rect, selected int) {
+	// Up and Down go through the nodes, then the links. Right follows the
+	// flow: from a node to its first outgoing link, from a link to its
+	// target. Left goes back: to a node's first incoming link, or a link's
+	// source.
+	count := len(o.Nodes) + len(o.Links)
+	o.navigate = func(from, dx, dy int) int {
+		if from < 0 || dx == 0 {
+			return step(from, dx+dy, count)
+		}
+		if from >= len(o.Nodes) {
+			link := o.Links[from-len(o.Nodes)]
+			if dx > 0 {
+				return nodes[link.Target]
+			}
+			return nodes[link.Source]
+		}
+		id := o.Nodes[from].ID
+		for i, link := range o.Links {
+			if dx > 0 && link.Source == id || dx < 0 && link.Target == id {
+				return len(o.Nodes) + i
+			}
+		}
+		return -1
+	}
+	// One path outlines every ribbon in turn.
+	var path ui.Path
+	return surface(c, o.Options, count, describe, func(p *ui.Painter, r ui.Rect, selected int) {
 		for i, ribbon := range ribbons {
 			x1, x2 := r.X+ribbon.x1*r.W, r.X+ribbon.x2*r.W
 			y1, y2 := r.Y+ribbon.y1*r.H, r.Y+ribbon.y2*r.H
 			h, middle := ribbon.height*r.H, (x1+x2)/2
-			path := (&ui.Path{}).MoveTo(x1, y1).CubeTo(middle, y1, middle, y2, x2, y2).
+			path.Reset().MoveTo(x1, y1).CubeTo(middle, y1, middle, y2, x2, y2).
 				LineTo(x2, y2+h).CubeTo(middle, y2+h, middle, y1+h, x1, y1+h).Close()
 			fill := SeriesColor(c, i).Alpha(.3)
 			if selected == len(o.Nodes)+i || (selected >= 0 && selected < len(o.Nodes) && (o.Nodes[selected].ID == o.Links[i].Source || o.Nodes[selected].ID == o.Links[i].Target)) {
 				fill = SeriesColor(c, i).Alpha(.65)
 			}
-			p.FillPath(path, fill)
+			p.FillPath(&path, fill)
 		}
 		for i, box := range boxes {
 			rb := ui.Rect{X: r.X + box.x*r.W, Y: r.Y + box.y*r.H, W: box.width * r.W, H: max(1, box.height*r.H)}

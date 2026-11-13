@@ -32,13 +32,17 @@ type teachingTipKey struct{ open *bool }
 // instead, without an arrow. It is non-modal and takes no focus: the window
 // stays usable, an outside press leaves it open, and its controls follow the
 // anchor in the Tab order. Its close button, or Escape while the focus is
-// inside it, sets *open to false.
+// inside it, sets *open to false; closing with the focus inside returns it
+// to the anchor.
 func TeachingTip(c *ui.Context, anchor ui.Element, open *bool, o TeachingTipOptions) ui.Element {
 	if open == nil {
 		return ui.Element{}
 	}
-	anchored.Warm(c)
+	focus := overlayFocusReturn(c, open)
 	if !*open {
+		if anchor.Valid() {
+			focus.closed(func() { anchor.Focus() })
+		}
 		return ui.Element{}
 	}
 	dismiss := func() {
@@ -53,11 +57,11 @@ func TeachingTip(c *ui.Context, anchor ui.Element, open *bool, o TeachingTipOpti
 	if width <= 0 {
 		width = 320
 	}
-	width = min(width, max(float32(0), w-2*theme.Space8))
+	width = min(width, max(float32(0), w-2*theme.Space(2)))
 	var panel ui.Element
 	ui.Overlay(c, func() {
-		panel = ui.Column(c.Key(teachingTipKey{open})).Width(width).Gap(theme.Space12).
-			Padding(theme.Space16).Role(ui.RoleDialog)
+		panel = ui.Column(c.Key(teachingTipKey{open})).Width(width).Gap(theme.Space(3)).
+			Padding(theme.Space(4)).Role(ui.RoleDialog)
 		switch {
 		case o.Title == "":
 			panel.Label(o.Body)
@@ -69,7 +73,7 @@ func TeachingTip(c *ui.Context, anchor ui.Element, open *bool, o TeachingTipOpti
 		if anchor.Valid() {
 			teachingTipAttach(c, panel, anchor, o.Placement)
 		} else {
-			panel.Absolute().Left((w - width) / 2).Bottom(theme.Space16)
+			panel.Absolute().Left((w - width) / 2).Bottom(theme.Space(4))
 			panel = anchored.Motion(c, panel, mygoui.SideTop, false)
 		}
 		panel = anchored.Surface(c, panel, theme.RadiusScale().LG)
@@ -83,9 +87,10 @@ func TeachingTip(c *ui.Context, anchor ui.Element, open *bool, o TeachingTipOpti
 			}
 			if o.Footer != nil {
 				ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Justify(ui.End).
-					Gap(theme.Space8).Children(o.Footer)
+					Gap(theme.Space(2)).Children(o.Footer)
 			}
 		})
+		focus.note(panel)
 	})
 	return panel
 }
@@ -110,7 +115,7 @@ func teachingTipHeader(c *ui.Context, o TeachingTipOptions, dismiss func()) {
 	if o.Title == "" && o.HideClose {
 		return
 	}
-	ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Justify(ui.End).Gap(theme.Space8).Children(func() {
+	ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Justify(ui.End).Gap(theme.Space(2)).Children(func() {
 		if o.Title != "" {
 			style.Text(ui.Text(c, o.Title), c, theme.SM()).FontWeight(theme.WeightSemibold).
 				Grow(1).Basis(0).MinWidth(0).Role(ui.RoleHeading).Level(3)
@@ -119,7 +124,7 @@ func teachingTipHeader(c *ui.Context, o TeachingTipOptions, dismiss func()) {
 			// Pull the button into the padding so its glyph lines up with
 			// the text edge.
 			mygoui.CloseButton(c, mygoui.CloseButtonOptions{Label: locale.M().Close, OnClick: dismiss}).
-				Margin(-theme.Space4, 0, 0, 0).MarginEnd(-theme.Space4)
+				Margin(-theme.Space(1), 0, 0, 0).MarginEnd(-theme.Space(1))
 		}
 	})
 }

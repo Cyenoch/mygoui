@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/navigation"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 	native "github.com/egoist/mygo/ui/chart"
@@ -115,6 +115,13 @@ func Sunburst(c *ui.Context, o SunburstOptions) (ui.Element, error) {
 			partition(focus, 0, 0, 2*math.Pi)
 		}
 	}
+	if o.Drill != nil && focus != o.Root {
+		// Escape with nothing selected goes up a level.
+		o.up = func() {
+			o.Drill.FocusID = parents[focus.ID].ID
+			o.Drill.Selected = -1
+		}
+	}
 	activate := o.OnActivate
 	o.OnActivate = func(i int) {
 		if o.Drill != nil && len(segments[i].node.Children) > 0 {
@@ -128,19 +135,19 @@ func Sunburst(c *ui.Context, o SunburstOptions) (ui.Element, error) {
 	t := theme.Colors(c)
 	// The draw callback runs after the build, once the total is shaped.
 	var totalLabel *ui.TextLayout
-	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space8).Children(func() {
+	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(2)).Children(func() {
 		if focus != nil && o.Drill != nil {
 			ancestors := []*HierarchyNode{}
 			for node := focus; node != nil; node = parents[node.ID] {
 				ancestors = append(ancestors, node)
 			}
-			ui.Row(c).FillWidth().Wrap().Gap(theme.Space4).Children(func() {
-				for i := len(ancestors) - 1; i >= 0; i-- {
-					node := ancestors[i]
-					mygoui.Button(c.Key(node.ID), mygoui.ButtonOptions{Label: node.Label, Variant: mygoui.ButtonGhost, Size: theme.ButtonSmall, Disabled: o.Disabled,
-						OnClick: func() { o.Drill.FocusID = node.ID; o.Drill.Selected = -1 }})
-				}
-			})
+			path := make([]navigation.BreadcrumbOptions, 0, len(ancestors))
+			for i := len(ancestors) - 1; i >= 0; i-- {
+				node := ancestors[i]
+				path = append(path, navigation.BreadcrumbOptions{Label: node.Label, Disabled: o.Disabled,
+					OnClick: func() { o.Drill.FocusID = node.ID; o.Drill.Selected = -1 }})
+			}
+			navigation.Breadcrumbs(c, navigation.BreadcrumbsOptions{Items: path})
 		}
 		area := surface(c, o.Options, len(segments), func(i int) string { return segments[i].node.Label + ": " + number(segments[i].value) },
 			func(p *ui.Painter, r ui.Rect, selected int) {

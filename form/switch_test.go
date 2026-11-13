@@ -132,6 +132,41 @@ func TestSwitchThumbStretchesWhilePressed(t *testing.T) {
 	}
 }
 
+// A held thumb takes the slider's press treatment: 1.2 times its width
+// within the State duration, with no delay.
+func TestSwitchHeldThumbGrowsAsASliderThumb(t *testing.T) {
+	on := false
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		ui.Column(c).Padding(20).Children(func() {
+			Switch(c, SwitchOptions{On: &on, Label: "Wi-Fi"})
+		})
+	}, 280, 120)
+	r, ok := tt.Find("Wi-Fi")
+	if !ok {
+		t.Fatal("switch not found")
+	}
+	y := int(r.Y + r.H/2)
+	trackPixels := func() int {
+		img, n := tt.Image(), 0
+		for x := int(r.X); x < int(r.X)+40; x++ {
+			if v := img.RGBAAt(x, y).R; v > 200 && v < 240 {
+				n++
+			}
+		}
+		return n
+	}
+	rest := trackPixels()
+	tt.Press(r.X+8, float32(y))
+	tt.Advance(theme.Motion().State)
+	covered := rest - trackPixels()
+	tt.Release(r.X+8, float32(y))
+	// The 16-pixel thumb grows by 3.2 pixels over the track.
+	if covered < 2 || covered > 4 {
+		t.Fatalf("held thumb covers %d more track pixels, want 3", covered)
+	}
+}
+
 // TestSwitchLoadingKeepsValueAndBlocksPress pins the pending contract: the
 // value stays, no change is reported, the row stays focusable and busy.
 func TestSwitchLoadingKeepsValueAndBlocksPress(t *testing.T) {

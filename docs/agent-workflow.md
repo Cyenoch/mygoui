@@ -37,6 +37,7 @@ Claude and Codex share physical files:
 | --- | --- |
 | Codex skills | `.agents/skills/` |
 | `.claude/skills` | Symlink to `../.agents/skills` |
+| `.agents/skills/mygoui-*` | Symlinks to `../../skills/mygoui-*` (published skills) |
 | `.claude/agents` | Symlink to `../.agents/claude-agents` (official Claude profiles) |
 | `.codex/agents` | Symlink to `../.agents/skills/impeccable/agents` (official Codex profiles) |
 | `CLAUDE.md` | Imports `AGENTS.md`; Codex reads `AGENTS.md` directly |
@@ -45,6 +46,13 @@ Edit the canonical source; preserve the links. Setup creates missing links
 and refuses conflicting directories without replacing user content.
 Windows checkouts need directory-symlink support and Git symlink preservation;
 plain files containing a link target cannot supply shared skills.
+
+`skills/` holds the published `mygoui-*` skills, which applications install
+with `npx skills add`. Each `SKILL.md` states the public contract and points
+at the owning records; maintainer material sits in its `MAINTAINING.md`. A
+change to public behavior, a token or a rule a skill states updates that skill
+in the same change and lists it among the change's tasks. Recompile a changed
+example against the checkout.
 
 Use `make agents-update` to intentionally refresh generated integrations.
 Review the resulting diff: Impeccable's updater fetches the current skill
@@ -162,8 +170,9 @@ The gallery is an Operate surface; documentation is Read.
 For new flows, use `$impeccable shape <target>`. For existing interfaces,
 start with `$impeccable critique <target>` for UX or
 `$impeccable audit <target>` for technical quality. Put actionable findings,
-decisions and checks in the active change. Preserve the coss system during
-refinement; a redesign requires a redesign request. In Claude, use
+decisions and checks in the active change. Preserve the design language in
+root `DESIGN.md` during refinement; a missing rule is added there through a
+change, and a redesign requires a redesign request. In Claude, use
 `/impeccable` with the same arguments.
 
 Choose the playbook that answers the finding:
@@ -180,7 +189,7 @@ Choose the playbook that answers the finding:
 
 Load the command's reference and craft floor before editing UI. Reuse
 existing components and `theme` APIs. `extract` needs real repetition;
-`bolder`, `colorize` and `overdrive` must still honor the visual reference,
+`bolder`, `colorize` and `overdrive` must still honor `DESIGN.md`,
 native behavior and reduced motion. Keep unrequested aesthetics out of a
 focused fix.
 

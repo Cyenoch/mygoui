@@ -2,7 +2,6 @@ package navigation
 
 import (
 	"strings"
-	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
@@ -53,7 +52,11 @@ type navStackState struct {
 	mounted bool
 }
 
-var navStackMotion = ui.Animation{Duration: 250 * time.Millisecond, Ease: ui.EaseOut}
+// navStackMotion is one page sliding over another.
+func navStackMotion() ui.Animation {
+	m := theme.Motion()
+	return ui.Animation{Duration: m.Page, Ease: m.Ease}
+}
 
 // NavigationStack shows the last of Pages under a header with its title and
 // a back button. A deeper page slides in over the one it covers and slides
@@ -128,7 +131,7 @@ func NavigationStack(c *ui.Context, o NavigationStackOptions) ui.Element {
 // return to, which names it in its tooltip, the title, and the actions.
 func navStackHeader(c *ui.Context, title, parent string, canPop bool, pop, actions func()) {
 	row := ui.Row(c).FillWidth().MinWidth(0).Shrink(0).AlignItems(ui.Center).
-		Gap(scale(c, theme.Space4)).MinHeight(scale(c, theme.Space40))
+		Gap(scale(c, theme.Space(1))).MinHeight(scale(c, theme.Space(10)))
 	row.Children(func() {
 		if canPop {
 			icon := lucide.ChevronLeft()
@@ -146,7 +149,7 @@ func navStackHeader(c *ui.Context, title, parent string, canPop bool, pop, actio
 		style.Text(ui.Text(c, title), c, theme.SM()).FontWeight(theme.WeightSemibold).
 			SingleLine().Grow(1).Basis(0).MinWidth(0).Role(ui.RoleHeading)
 		if actions != nil {
-			ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(scale(c, theme.Space4)).Children(actions)
+			ui.Row(c).Shrink(0).AlignItems(ui.Center).Gap(scale(c, theme.Space(1))).Children(actions)
 		}
 	})
 }
@@ -169,12 +172,12 @@ func navStackPage(c *ui.Context, st *navStackState, page *NavigationPage, shown,
 	case theme.ReduceMotion(c):
 		x = el.Jump(navPageSlideKey{}, rest)
 	case *entered:
-		x = el.AnimateTo(navPageSlideKey{}, rest, navStackMotion)
+		x = el.AnimateTo(navPageSlideKey{}, rest, navStackMotion())
 	case shown && changed:
 		// A page built for this change comes from the side it was on: the
 		// inline end going deeper, the inline start going back.
 		el.Jump(navPageSlideKey{}, -away*st.dir)
-		x = el.AnimateTo(navPageSlideKey{}, rest, navStackMotion)
+		x = el.AnimateTo(navPageSlideKey{}, rest, navStackMotion())
 	default:
 		x = el.Jump(navPageSlideKey{}, rest)
 	}
@@ -187,7 +190,7 @@ func navStackPage(c *ui.Context, st *navStackState, page *NavigationPage, shown,
 	// Exit: once popped it is no longer the caller's to build, so an inert
 	// copy of it slides back to the inline end.
 	transition := ui.ElementTransition{
-		Colors: true, Duration: navStackMotion.Duration, Ease: navStackMotion.Ease,
+		Colors: true, Duration: navStackMotion().Duration, Ease: navStackMotion().Ease,
 	}
 	if shown {
 		el.Grow(1).TabStop(false).FocusRing(false)

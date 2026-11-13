@@ -127,7 +127,7 @@ func HotkeyInput(c *ui.Context, value *Hotkey, o HotkeyInputOptions) ui.Element 
 	ringed := false
 	row.Children(func() {
 		recorder := ui.ButtonBase(c).Grow(1).MinWidth(0).AlignSelf(ui.Stretch).Justify(ui.Start).
-			PaddingX(theme.Space12).Cursor(ui.CursorPointer).FocusRing(false).
+			PaddingX(theme.Space(3)).Cursor(ui.CursorPointer).FocusRing(false).
 			Label(inputAccessibleName("", o.AriaLabel, o.Placeholder)).Value(strings.Join(keys, "+"))
 		if !disabled {
 			if !recorder.Focused() {
@@ -152,6 +152,7 @@ func HotkeyInput(c *ui.Context, value *Hotkey, o HotkeyInputOptions) ui.Element 
 				return true
 			})
 		}
+		recorder.Role(ui.RoleToggleButton).Checked(*recording)
 		// The ring marks recording, not mere focus: a focused recorder
 		// still lets Tab, Enter and Space through.
 		ringed = *recording || recorder.FocusVisible()
@@ -173,8 +174,8 @@ func HotkeyInput(c *ui.Context, value *Hotkey, o HotkeyInputOptions) ui.Element 
 // hotkeyClear is the trailing button that removes the shortcut.
 func hotkeyClear(c *ui.Context, clear func()) {
 	t := theme.Colors(c)
-	b := ui.ButtonBase(c).Size(theme.Scale(c, theme.Space20), theme.Scale(c, theme.Space20)).
-		Center().Shrink(0).Padding(0).MarginEnd(theme.Space8).
+	b := ui.ButtonBase(c).Size(theme.Scale(c, theme.Space(5)), theme.Scale(c, theme.Space(5))).
+		Center().Shrink(0).Padding(0).MarginEnd(theme.Space(2)).
 		Label(locale.M().Clear).Tooltip(locale.M().Clear).TextColor(t.FieldPlaceholder)
 	b = style.Background(b, theme.RadiusScale().SM, ui.Transparent, t.Accent, t.Accent)
 	b.OnClick(clear).Children(func() {

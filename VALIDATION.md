@@ -1,5 +1,41 @@
 # Validation
 
+## Complete native UI solution: tokens, layout, effects, behavior reference
+
+2026-11-14, release 0.3.0 prepared on 85a177c, macOS arm64, Go 1.27.3,
+MyGo 0.9.0. Changes: `complete-native-ui-solution`,
+`extract-design-language`, `publish-agent-skills`, `open-theme-tokens`,
+`component-behavior-reference`, `app-layouts`, `native-effects`,
+`settle-recorded-defects`.
+
+- `make check`, `make race`, `golangci-lint run ./...` (zero issues),
+  `make wasm`, `make workflows` and `make spec-check` pass.
+- Each change was reviewed by an independent agent and its findings fixed.
+  The last review compared the tree with v0.2.0: `apidiff` reports additions
+  only; four behavior regressions (NumberField adopting a programmatic
+  value, Popover focus while typing, Popover on window deactivation, Table
+  Shift+arrow at a disabled row) were fixed with tests that failed first.
+- Headless: every row marked `[T]` or `[N]` in `docs/behavior/` cites an
+  existing test; shader effects run through MyGo's CPU interpreter; scroll
+  fade and skeleton pixels are identical to v0.2.0 under the default theme
+  before the settled design findings listed in `CHANGELOG.md`.
+- Headless captures reviewed, light and dark: gallery shell mid-fold, layout
+  pages, effect pages (also at 400 DIP and text scale 1.75), effect
+  specimens.
+
+Not verified, and pending for these changes:
+
+- Real windows on macOS, Windows and Linux: window drag and double-click
+  maximize from `layout.TitleBar`, traffic-light and caption-button
+  clearance, divider cursor, Popover behavior on window deactivation.
+- GPU presentation of `effect.Mask`, `effect.Shimmer` and `effect.Reveal`.
+- Screen readers: splitter range, active descendant, carousel and slide
+  role descriptions, announcements in the viewers.
+- Paging keys in ListBox, Tree and Table off macOS (tests branch on the
+  platform and ran on darwin only).
+- The published skills in Codex, installation from GitHub, and
+  `make agents-update`.
+
 ## Gallery document pages and landing page
 
 2026-11-13, uncommitted change `gallery-docs-pages` on 0455c4d, macOS arm64,

@@ -100,7 +100,7 @@ func TestHighlighterUnknownLanguageRendersPlainAndCopies(t *testing.T) {
 	if bytes.Equal(known.Image().Pix, plain.Image().Pix) {
 		t.Fatal("a known language is not coloured")
 	}
-	if err := unknown.Click("Copy"); err != nil {
+	if err := unknown.Click("Copy snippet"); err != nil {
 		t.Fatal(err)
 	}
 	if got := unknown.Clipboard(); got != code {

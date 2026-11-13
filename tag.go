@@ -91,13 +91,13 @@ type TagGroupOptions struct {
 // than buttons and expose native focus and removal actions.
 func TagGroup(c *ui.Context, o TagGroupOptions, tags []TagOptions) ui.Element {
 	t := theme.Colors(c)
-	e := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space4).Label(o.Label).
+	e := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(1)).Label(o.Label).
 		Description(o.Description)
 	e.Children(func() {
 		if o.Label != "" {
 			style.Text(ui.Text(c, o.Label), c, theme.Label()).TextColor(t.Foreground)
 		}
-		ui.Row(c).FillWidth().Wrap().Gap(theme.Space6).Role(ui.RoleList).Label(o.Label).FocusGroup(ui.Horizontal).Children(func() {
+		ui.Row(c).FillWidth().Wrap().Gap(theme.Space(1.5)).Role(ui.RoleList).Label(o.Label).FocusGroup(ui.Horizontal).Children(func() {
 			resolved := tagResolved{Size: o.Size, Variant: o.Variant}
 			for i := range tags {
 				tag := tags[i]
@@ -149,10 +149,6 @@ type tagResolved struct {
 
 type tagInkKey struct{}
 
-// tagMotionDuration is the background-color transition for a tag. It
-// doubles as the fade of a removed tag's exit copy.
-const tagMotionDuration = motion.State
-
 // Tag renders one tag. Most callers use TagGroup; Tag is available for
 // a standalone label.
 func Tag(c *ui.Context, o TagOptions) ui.Element {
@@ -165,14 +161,14 @@ func Tag(c *ui.Context, o TagOptions) ui.Element {
 // the tag the caller removed.
 func tagView(c *ui.Context, o TagOptions, r tagResolved) ui.Element {
 	t := theme.Colors(c)
-	paddingX, paddingY := float32(theme.Space8), float32(theme.Space4)
+	paddingX, paddingY := float32(theme.Space(2)), float32(theme.Space(1))
 	radius := theme.RadiusScale().XL
 	ts := theme.XS()
 	switch r.Size {
 	case TagSmall:
-		paddingY = theme.Space2
+		paddingY = theme.Space(0.5)
 	case TagLarge:
-		paddingX, paddingY = theme.Space10, theme.Space6
+		paddingX, paddingY = theme.Space(2.5), theme.Space(1.5)
 		radius = theme.RadiusScale().XXL
 		ts = theme.SM()
 	}
@@ -191,7 +187,7 @@ func tagView(c *ui.Context, o TagOptions, r tagResolved) ui.Element {
 	if o.Key != "" {
 		c.Key(o.Key)
 	}
-	e := ui.Row(c).Shrink(0).Center().AlignSelf(ui.Start).Gap(theme.Space4).
+	e := ui.Row(c).Shrink(0).Center().AlignSelf(ui.Start).Gap(theme.Space(1)).
 		Padding(paddingY, paddingX, paddingY, paddingX).
 		Radius(radius).Label(o.Label).
 		Role(ui.RoleListItem).Selected(r.Selected)
@@ -210,9 +206,11 @@ func tagView(c *ui.Context, o TagOptions, r tagResolved) ui.Element {
 	e.Background(fill)
 	// Declare the transition in every build: omitting it reads as the tag
 	// leaving and paints a fading copy over the live tag. Reduced motion
-	// keeps the fades and drops the scale.
+	// keeps the fades and drops the scale. The state duration doubles as
+	// the fade of a removed tag's exit copy.
+	m := theme.Motion()
 	e = e.Transition(ui.ElementTransition{
-		Duration: tagMotionDuration, Ease: ui.EaseOut, Colors: true,
+		Duration: m.State, Ease: m.Ease, Colors: true,
 		Exit: &ui.Motion{Opacity: 0, Scale: 0.96},
 	})
 	if o.OnClick != nil && !o.Disabled {
@@ -231,7 +229,7 @@ func tagView(c *ui.Context, o TagOptions, r tagResolved) ui.Element {
 		})
 	}
 	iconSize := theme.Scale(c, theme.IconXS)
-	removeSize := theme.Scale(c, theme.Space12)
+	removeSize := theme.Scale(c, theme.Space(3))
 	e.Children(func() {
 		if o.Icon != nil {
 			ui.Icon(c, o.Icon).Size(iconSize, iconSize).Shrink(0)

@@ -3,7 +3,7 @@
 ## Purpose
 
 Let native Go applications visualize and inspect caller-owned data with chart
-families and composable utilities that inherit the existing coss theme.
+families and composable utilities that inherit the semantic theme.
 
 ## Requirements
 
@@ -52,7 +52,8 @@ and native value metadata SHALL describe the inspected measurement.
 
 ### Requirement: Charts compose with semantic theme and utilities
 
-Charts SHALL use existing coss chart, surface, typography and state tokens.
+Charts SHALL use the semantic theme's chart, surface, typography and state
+tokens.
 Consumers SHALL be able to compose axes, grid, background, legend, tooltip,
 brush, markers, reference areas, bands, projection lines, weekend shading,
 deadlines, trend lines and custom indicators. Layout SHALL follow available

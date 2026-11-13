@@ -29,7 +29,7 @@ func Field(c *ui.Context, o FieldOptions, body func()) ui.Element {
 	if o.Required && label != "" {
 		label += " *"
 	}
-	f := ui.Field(c, label, body).Gap(theme.Space8).MinWidth(0).
+	f := ui.Field(c, label, body).Gap(theme.Space(2)).MinWidth(0).
 		FontSize(theme.Scale(c, theme.Label().Size)).
 		FontWeight(theme.WeightNormal).
 		TextColor(theme.Colors(c).Foreground)
@@ -75,7 +75,7 @@ func Label(c *ui.Context, text string, o LabelOptions) ui.Element {
 	}
 	e := style.Text(ui.Text(c, text), c, theme.Label()).TextColor(ink)
 	if o.Required {
-		e = ui.Row(c).Gap(theme.Space2).Children(func() {
+		e = ui.Row(c).Gap(theme.Space(0.5)).Children(func() {
 			style.Text(ui.Text(c, text), c, theme.Label()).TextColor(ink)
 			style.Text(ui.Text(c, "*"), c, theme.Label()).TextColor(t.Danger)
 		})
@@ -116,7 +116,7 @@ type FieldsetOptions struct {
 // Fieldset renders a group with a semibold legend.
 func Fieldset(c *ui.Context, o FieldsetOptions, body func()) ui.Element {
 	t := theme.Colors(c)
-	e := ui.Column(c).Gap(theme.Space24).MinWidth(0).Shrink(0).Disabled(o.Disabled)
+	e := ui.Column(c).Gap(theme.Space(6)).MinWidth(0).Shrink(0).Disabled(o.Disabled)
 	if o.FullWidth {
 		e.FillWidth()
 	}
@@ -128,19 +128,19 @@ func Fieldset(c *ui.Context, o FieldsetOptions, body func()) ui.Element {
 		if o.Description != "" {
 			Description(c, o.Description)
 		}
-		ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space16).Children(body)
+		ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(4)).Children(body)
 	})
 	return e
 }
 
 // FieldGroup spaces a column of fields.
 func FieldGroup(c *ui.Context, body func()) ui.Element {
-	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space16).Children(body)
+	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(4)).Children(body)
 }
 
 // FieldActions is a footer row for form actions.
 func FieldActions(c *ui.Context, body func()) ui.Element {
-	return ui.Row(c).Gap(theme.Space8).AlignItems(ui.Center).Children(body)
+	return ui.Row(c).Gap(theme.Space(2)).AlignItems(ui.Center).Children(body)
 }
 
 // FormOptions configures a form container.
@@ -154,7 +154,7 @@ type FormOptions struct {
 // submit action; the container only lays out a top-level error.
 func Form(c *ui.Context, o FormOptions, body func()) ui.Element {
 	message := formstyle.ErrorText(o.Invalid, o.Error)
-	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space24).
+	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(6)).
 		Label(o.Label).Children(func() {
 		if message != "" {
 			FieldError(c, message)

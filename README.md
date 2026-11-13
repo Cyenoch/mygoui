@@ -1,8 +1,10 @@
 # MyGo UI
 
-A native Go component library for [MyGo](https://github.com/egoist/mygo),
-reconstructing the component catalog and visual language of
-[coss ui](https://coss.com/ui/docs).
+A complete native UI solution for [MyGo](https://github.com/egoist/mygo)
+applications: theme tokens, a component library, a design and behavior
+reference, and agent skills. Its current visual language reconstructs
+[coss ui](https://coss.com/ui/docs); [PRODUCT.md](PRODUCT.md) records what
+is delivered and what is planned.
 
 Typed options, explicit application state, semantic light/dark colors, and
 native editing, selection, focus and scrolling. Components compose through Go
@@ -10,12 +12,11 @@ callbacks and typed collections. Applications run without a JavaScript runtime
 or WebView.
 
 The native [`chart` family](docs/charts.md) adds the 19 Bklit chart subjects and
-composable axes, legends, brush and annotations, using the same coss theme.
+composable axes, legends, brush and annotations, using the same semantic theme.
 Its capability matrix records native subsets rather than full React parity.
 
-The `coss` branch replaces the previous design and tokens. The
-[capability matrix](docs/components.md) maps every component found across the
-pinned coss catalogs, plus their two documented hooks. A mapping records the
+The [capability matrix](docs/components.md) maps every component found across the
+pinned coss catalogs, where the components originated, plus their two documented hooks. A mapping records the
 native implementation and its limits; it does not certify visual or behavioral
 parity. Current verification belongs in [VALIDATION.md](VALIDATION.md).
 
@@ -32,6 +33,7 @@ Codex, sharing `.agents/skills` through `.claude/skills`. Start with
 ```sh
 go run ./examples/basic
 go run ./examples/gallery
+go run ./examples/shell
 
 make dev
 make app
@@ -87,6 +89,10 @@ func (s *settings) View(c *ui.Context) {
     })
 }
 ```
+
+A window with its own title bar, a sidebar and an inspector starts from
+`layout.Scaffold`; `layout.TitleBar` and `layout.SplitView` are its parts.
+`go run ./examples/shell` shows them with caller-owned pane state.
 
 `ui.Element`, custom parts and `*ui.Context` belong to the current build.
 Retain model values, component state and `ui.Handle` instead. Use native
@@ -148,9 +154,27 @@ surface color. Effect layers have an 8192-pixel side limit and exclude embedded
 webviews; GPU/platform checks remain separate from headless rendering.
 See [scroll examples and limits](docs/scrollfade.md).
 
+Package `effect` applies the same kind of shader to your own elements:
+`effect.Mask`, `effect.Shimmer` and `effect.Reveal`, each with a fallback
+where no GPU runs it. See [effects](docs/effects.md).
+
+## Agent skills
+
+Five skills teach a coding agent to build with mygoui: components, theme,
+design and behavior, motion, and shader effects.
+
+```sh
+npx skills add https://github.com/Cyenoch/mygoui/tree/main/skills
+npx skills add Cyenoch/mygoui --skill mygoui-components
+```
+
+They live in [`skills/`](skills) and defer to the records shipped with the
+module version your application uses.
+
 ## References and license
 
-The visual reference is coss ui commit
+[DESIGN.md](DESIGN.md) is the visual authority. The design language
+originated in coss ui commit
 `3d8ca28e7d90123e9e0f44665944dc240b026ccb`.
 Run `make refs` to check out its source at `references/coss`.
 [Reference provenance](docs/references.md) identifies the MIT `apps/ui`

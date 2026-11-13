@@ -80,7 +80,7 @@ func pathShell(c *ui.Context, value *string, o PathFieldOptions) ui.Element {
 // that cuts the same text in the middle; the editor still owns focus, input
 // and the accessible value.
 func pathEditor(c *ui.Context, value *string, o PathFieldOptions) ui.Element {
-	padX, padY := float32(theme.Space12), theme.Scale(c, 5)
+	padX, padY := float32(theme.Space(3)), theme.Scale(c, 5)
 	e := ui.TextInputBase(c, value).FillWidth().MinWidth(0).PaddingX(padX).PaddingY(padY)
 	e = fieldText(e, c)
 	if o.Placeholder != "" {
@@ -120,7 +120,7 @@ func pathBrowseButton(c *ui.Context, o PathFieldOptions, height float32) {
 	if label == "" {
 		label = locale.M().Browse
 	}
-	b := ui.ButtonBase(c).Height(height).Center().Shrink(0).PaddingX(theme.Space12).
+	b := ui.ButtonBase(c).Height(height).Center().Shrink(0).PaddingX(theme.Space(3)).
 		Radius(0).FocusRing(false)
 	b = style.Disabled(b, o.Disabled || o.OnBrowse == nil)
 	rest := ui.Transparent

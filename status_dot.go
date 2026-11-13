@@ -31,9 +31,9 @@ const (
 	statusDotBreath = 1600 * time.Millisecond
 )
 
-// StatusDot shows a small colored dot before an optional label. The dot is
-// decoration: without a visible Label, name the returned element with Label
-// so the status does not rest on color alone. The dot takes its own size
+// StatusDot shows a small colored dot before an optional label. A success,
+// warning, danger or info dot is an image named by its status, so the status
+// does not rest on colour alone. The dot takes its own size
 // only: a pulse's ring grows past it, over what is around. The motion only
 // repaints the dot; a still dot asks for no frames.
 func StatusDot(c *ui.Context, o StatusDotOptions) ui.Element {
@@ -44,10 +44,10 @@ func StatusDot(c *ui.Context, o StatusDotOptions) ui.Element {
 	}
 	still := theme.ReduceMotion(c)
 	pulse, breathe := o.Pulse && !still, o.Breathe && !still
-	root := ui.Row(c).MinWidth(0).Gap(theme.Space8).AlignItems(ui.Center)
+	root := ui.Row(c).MinWidth(0).Gap(theme.Space(2)).AlignItems(ui.Center)
 	return root.Children(func() {
-		side := theme.Scale(c, theme.Space8)
-		dot := ui.Box(c).Size(side, side).Shrink(0).Role(ui.RoleNone)
+		side := theme.Scale(c, theme.Space(2))
+		dot := statusMark(ui.Box(c), o.Status).Size(side, side).Shrink(0)
 		ink := motion.Color(dot, statusDotInkKey{}, ink)
 		dot.Draw(func(p *ui.Painter, r ui.Rect) {
 			body := ink

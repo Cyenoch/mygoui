@@ -2,6 +2,7 @@ package form
 
 import (
 	"strings"
+	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
@@ -268,7 +269,7 @@ func Select(c *ui.Context, o SelectOptions) ui.Element {
 	invalid := o.Invalid
 	errText := formstyle.ErrorText(invalid, o.Error)
 
-	root := ui.Column(c).MinWidth(0).Gap(theme.Space4)
+	root := ui.Column(c).MinWidth(0).Gap(theme.Space(1))
 	if o.FullWidth {
 		root.FillWidth()
 	}
@@ -282,7 +283,7 @@ func Select(c *ui.Context, o SelectOptions) ui.Element {
 		placeholder := value == ""
 
 		trigger := ui.ButtonBase(c).MinHeight(theme.Scale(c, 32)).
-			Padding(0, theme.Space12, 0, theme.Space12).Gap(theme.Space8).
+			Padding(0, theme.Space(3), 0, theme.Space(3)).Gap(theme.Space(2)).
 			AlignItems(ui.Center).Shrink(0).FocusRing(false).
 			Role(ui.RolePopUpButton).Expanded(s.Open).Value(value)
 		if o.FullWidth {
@@ -319,7 +320,7 @@ func Select(c *ui.Context, o SelectOptions) ui.Element {
 		}
 		if mode == list.SelectionSingle && !o.Disabled {
 			typeahead := *ui.Local(trigger, "typeahead", newTypeaheadHandlers)
-			typeahead.options = o
+			typeahead.options, typeahead.now = o, c.Now()
 			for i, fn := range typeahead.handlers {
 				trigger.OnShortcut(0, selectTypeKeys[i], fn)
 			}
@@ -407,10 +408,16 @@ func selectClear(c *ui.Context, o SelectOptions, s *SelectState) {
 	selectNotify(o, s)
 }
 
+// selectTypePause ends a typed prefix, as the toolkit's list typeahead does.
+const selectTypePause = time.Second
+
 // typeaheadHandlers are one Select's letter shortcuts, made once so frames
-// do not allocate them; each build gives them its options.
+// do not allocate them; each build gives them its options and time. typed
+// is the prefix being typed and at when its last letter came.
 type typeaheadHandlers struct {
 	options  SelectOptions
+	now, at  time.Time
+	typed    string
 	handlers [len(selectTypeKeys)]func()
 }
 
@@ -418,29 +425,48 @@ func newTypeaheadHandlers() *typeaheadHandlers {
 	t := &typeaheadHandlers{}
 	for i := range t.handlers {
 		r := selectTypeRunes[i]
-		t.handlers[i] = func() { selectTypeahead(t.options, t.options.State, r) }
+		t.handlers[i] = func() { t.choose(r) }
 	}
 	return t
 }
 
-// selectTypeahead chooses the next item whose label starts with r.
-func selectTypeahead(o SelectOptions, s *SelectState, r rune) {
+// choose extends the typed prefix with r and selects the item it names. A
+// letter typed again cycles through the items starting with it; a longer
+// prefix keeps the current item while it still matches.
+func (t *typeaheadHandlers) choose(r rune) {
+	o, s := t.options, t.options.State
 	if o.Disabled {
 		return
 	}
-	found := ""
+	if t.now.Sub(t.at) > selectTypePause {
+		t.typed = ""
+	}
+	t.at = t.now
 	letter := strings.ToLower(string(r))
+	t.typed += letter
+	prefix, skip := t.typed, 0
+	if strings.Count(t.typed, letter) == len(t.typed) {
+		prefix, skip = letter, 1
+	}
+	var keys []string
+	current := -1
 	eachSelectItem(o.Items, o.Sections, func(it *list.ListBoxItem) bool {
-		if it.Disabled || it.Label == "" {
-			return true
-		}
-		if hasPrefixFold(it.Label, letter) {
-			found = itemKey(it)
-			return false
+		if !it.Disabled && hasPrefixFold(it.Label, prefix) {
+			if itemKey(it) == s.List.SelectedKey {
+				current = len(keys)
+			}
+			keys = append(keys, itemKey(it))
 		}
 		return true
 	})
-	if found == "" || s.List.SelectedKey == found {
+	if len(keys) == 0 {
+		return
+	}
+	found := keys[0]
+	if current >= 0 {
+		found = keys[(current+skip)%len(keys)]
+	}
+	if s.List.SelectedKey == found {
 		return
 	}
 	s.List.SelectedKey = found
@@ -460,7 +486,7 @@ func selectPopup(c *ui.Context, o SelectOptions, s *SelectState, trigger ui.Elem
 			Sections:       o.Sections,
 			Selection:      mode,
 			State:          &s.List,
-			Padding:        theme.Space4,
+			Padding:        theme.Space(1),
 			MaxHeight:      maxHeight,
 			Empty:          locale.M().NoResults,
 			IndicatorStart: true,
@@ -497,12 +523,16 @@ func selectPopup(c *ui.Context, o SelectOptions, s *SelectState, trigger ui.Elem
 	}
 	radius := theme.RadiusScale().LG
 	anchor := trigger
-	ui.PopoverBase(c, trigger, &s.Open, func(panel ui.Element) {
+	panel := ui.PopoverBase(c, trigger, &s.Open, func(panel ui.Element) {
 		panel.MinWidth(anchor.Bounds().W)
 		panel = anchored.Surface(c, panel.Padding(0).Clip(), radius)
 		anchored.Apply(panel, anchor, o.Placement, mygoui.SideBottom)
 		popupList(c, func() { s.Trigger.Focus(c) })
 	})
+	// Escape, or a press on nothing focusable, leaves the focus to the trigger.
+	if panel.Valid() && panel.Dismissed() && s.List.FocusWithin(c) {
+		s.Trigger.Focus(c)
+	}
 }
 
 func selectClearButton(c *ui.Context, clear func()) {
@@ -558,8 +588,8 @@ func loadingList(c *ui.Context, o list.ListBoxOptions, loading bool, rows int) u
 
 // loadingRow is the popup's muted Loading row.
 func loadingRow(c *ui.Context) {
-	ui.Row(c).Gap(theme.Space8).AlignItems(ui.Center).
-		Padding(theme.Space8, theme.Space8, theme.Space8, theme.Space8).Children(func() {
+	ui.Row(c).Gap(theme.Space(2)).AlignItems(ui.Center).
+		Padding(theme.Space(2), theme.Space(2), theme.Space(2), theme.Space(2)).Children(func() {
 		busy.Spinner(c, busySize, theme.Colors(c).MutedForeground)
 		style.Text(ui.Text(c, locale.M().Loading), c, theme.SM()).TextColor(theme.Colors(c).Muted)
 	})

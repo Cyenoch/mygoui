@@ -17,12 +17,12 @@ func main() {
 		log.Fatal(err)
 	}
 	theme.Configure(theme.Preferences{FontFamily: fonts.Family, HeadingFontFamily: fonts.Family})
-	mygo.App.SetName("Coss UI · MyGo")
+	mygo.App.SetName("MyGo UI")
 	mygo.App.OnWindowAllClosed(func() { mygo.App.Quit() })
 	mygo.App.WhenReady(func() {
 		count := 0
 		mygo.NewWindow(mygo.WindowOptions{
-			Title: "Coss UI · MyGo", Width: 520, Height: 380,
+			Title: "MyGo UI", Width: 520, Height: 380,
 			Content: ui.View(func(c *ui.Context) {
 				theme.Apply(c)
 				colors := theme.Colors(c)
@@ -30,7 +30,7 @@ func main() {
 					Background(colors.Background).TextColor(colors.Foreground).Children(func() {
 					mygoui.Card(c, mygoui.CardOptions{}, func() {
 						mygoui.CardHeader(c, func() {
-							mygoui.CardTitle(c, "Coss components for MyGo")
+							mygoui.CardTitle(c, "MyGo UI components")
 							mygoui.CardDescription(c, "Caller-owned state. Native controls.")
 						})
 						mygoui.CardContent(c, func() {

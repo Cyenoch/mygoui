@@ -1,9 +1,9 @@
 package list
 
 import (
+	"runtime"
 	"strings"
 	"time"
-	"unicode"
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui/internal/busy"
@@ -71,6 +71,9 @@ type TreeOptions struct {
 	Loading bool
 	// LoadingRows is the number of placeholder rows; 0 shows 5.
 	LoadingRows int
+	// Disabled dims the tree, takes it out of the Tab order and stops every
+	// key and click.
+	Disabled bool
 	// OnAction reports a row activated by a click or Enter, not by Space.
 	OnAction func(key string)
 	// OnSelectionChange reports the chosen keys after a user change.
@@ -121,6 +124,10 @@ type TreeState struct {
 	typed   string
 	typedAt time.Time
 	letters []rune
+	// typing holds the type-ahead key handlers, made once for the state
+	// they belong to rather than on every build.
+	typing      [len(typeKeys)]func()
+	typingOwner *TreeState
 
 	// reveal is the branch the user last opened, -1 for none, and revealAt
 	// when its rows first showed; revealNew asks the next build to stamp it.
@@ -159,8 +166,9 @@ func (e *treeEntry) branch() bool {
 	return len(e.node.Children) > 0 || e.node.Lazy || e.node.Loading
 }
 
-// typeWindow is how long typed letters keep building one prefix.
-const typeWindow = 700 * time.Millisecond
+// typeWindow is how long typed letters keep building one prefix: the
+// toolkit's pause (MyGo ui/input.go, typePause), as a menu's.
+const typeWindow = time.Second
 
 // Focus gives the tree the keyboard focus and reports whether it was built
 // in the current pass. Call it after building the tree.
@@ -386,6 +394,20 @@ func (s *TreeState) move(step int) {
 	}
 }
 
+// page moves the keyboard by the rows in view, stopping at the last enabled
+// row on the way.
+func (s *TreeState) page(dir int) {
+	first, last := s.List.Visible()
+	r := s.rowOf(s.cursor)
+	to := min(max(r+dir*max(last-first, 1), 0), len(s.rows)-1)
+	for t := to; t != r && t >= 0; t -= dir {
+		if !s.entries[s.rows[t]].disabled {
+			s.setCursor(t)
+			return
+		}
+	}
+}
+
 // edge moves the keyboard to the first or the last enabled row.
 func (s *TreeState) edge(last bool) {
 	s.cursor = -1
@@ -397,17 +419,12 @@ func (s *TreeState) edge(last bool) {
 }
 
 // typeahead moves the keyboard to the row whose label starts with what was
-// typed within typeWindow. One letter, or one repeated, steps on to the next
-// row starting with it; a longer prefix may match the row it is on.
+// typed, as typePrefix finds it.
 func (s *TreeState) typeahead(r rune, now time.Time) {
-	if now.Sub(s.typedAt) > typeWindow {
-		s.typed = ""
-	}
-	s.typedAt = now
-	s.typed += string(unicode.ToLower(r))
-	prefix, from := s.typed, max(s.rowOf(s.cursor), 0)
-	if first := []rune(prefix)[0]; strings.Count(prefix, string(first)) == len(prefix) {
-		prefix, from = string(first), s.rowOf(s.cursor)+1
+	prefix, next := typePrefix(&s.typed, &s.typedAt, r, now)
+	from := max(s.rowOf(s.cursor), 0)
+	if next {
+		from = s.rowOf(s.cursor) + 1
 	}
 	n := len(s.rows)
 	for d := range n {
@@ -709,18 +726,18 @@ func Tree(c *ui.Context, o TreeOptions) ui.Element {
 		dim:     s.dim.value(),
 		palette: theme.Colors(c),
 		radius:  theme.RadiusScale().SM,
-		padX:    theme.Scale(c, theme.Space8),
+		padX:    theme.Scale(c, theme.Space(2)),
 		gap:     theme.Scale(c, theme.Space(1.5)),
-		indent:  theme.Scale(c, theme.Space16),
+		indent:  theme.Scale(c, theme.Space(4)),
 		height:  theme.Scale(c, 28),
-		mark:    theme.Scale(c, theme.Space16),
+		mark:    theme.Scale(c, theme.Space(4)),
 		rtl:     c.Direction() == ui.RightToLeft,
 		guides:  o.Guides,
 	}
 	if s.revealNew {
 		s.revealAt, s.revealNew = c.Now(), false
 	}
-	if s.reveal >= 0 && c.Now().Sub(s.revealAt) < motion.Reveal+revealSlack {
+	if s.reveal >= 0 && c.Now().Sub(s.revealAt) < theme.Motion().Reveal+revealSlack {
 		st.reveal, st.reduced = true, theme.ReduceMotion(c)
 	}
 	var focused, focusKnown bool
@@ -733,8 +750,9 @@ func Tree(c *ui.Context, o TreeOptions) ui.Element {
 		if e := buildTreeRow(c, s, o, row, st, focused); s.cursor == s.rows[row] {
 			cursorRow = e
 		}
-	}).Padding(theme.Scale(c, theme.Space4)).Gap(0).MinWidth(0).FillWidth().
-		Focusable().FocusRing(false).Role(ui.RoleTree).Label(o.Label)
+	}).Padding(theme.Scale(c, theme.Space(1))).Gap(0).MinWidth(0).FillWidth().
+		Focusable().FocusRing(false).Role(ui.RoleTree).Label(o.Label).
+		Multiselectable(o.Selection == SelectionMultiple)
 	if o.Height > 0 {
 		list.Height(o.Height)
 	}
@@ -755,7 +773,26 @@ func Tree(c *ui.Context, o TreeOptions) ui.Element {
 	case len(s.rows) > 0:
 		s.dim.set(c, refreshing(c, list, o.Loading))
 	}
+	if o.Disabled {
+		return list.Disabled(true)
+	}
 	bindTreeKeys(s, list, o, st.rtl)
+	if o.OnContextMenu != nil {
+		// Shift+F10 and the menu key open the menu of the row the keys are
+		// on; a row's own menu takes the pointer's.
+		services := c.Services()
+		list.ContextMenu(func(m *ui.Menu) {
+			e := s.current()
+			if e == nil || e.disabled {
+				return
+			}
+			key := e.node.key()
+			if s.selectForMenu(o, key) {
+				services.Invalidate()
+			}
+			o.OnContextMenu(key, m)
+		})
+	}
 	return list
 }
 
@@ -805,7 +842,7 @@ func buildTreeRow(c *ui.Context, s *TreeState, o TreeOptions, r int, st treeStyl
 	if e.branch() {
 		row.Expanded(open).Busy(n.Loading)
 	}
-	enabled := !e.disabled
+	enabled := !e.disabled && !o.Disabled
 	current := s.cursor == i
 	depth := e.depth
 	row.Draw(func(p *ui.Painter, box ui.Rect) {
@@ -830,7 +867,8 @@ func buildTreeRow(c *ui.Context, s *TreeState, o TreeOptions, r int, st treeStyl
 			enter = &ui.Motion{Collapse: true}
 		}
 		in := s.reveal < i && i < s.entries[s.reveal].end
-		t := ui.ElementTransition{Duration: motion.Reveal, Position: !st.reduced, Colors: st.reduced}
+		m := theme.Motion()
+		t := ui.ElementTransition{Duration: m.Reveal, Ease: m.Ease, Position: !st.reduced, Colors: st.reduced}
 		if in {
 			t.Enter = enter
 		}
@@ -914,7 +952,8 @@ func buildTreeArrow(c *ui.Context, s *TreeState, o TreeOptions, i int32, open bo
 	}
 	// The branch's rows come and go at once, so its arrow is what shows the
 	// change: it turns over the reveal time, or settles under reduced motion.
-	angle = arrow.AnimateTo("turn", angle, ui.Animation{Duration: motion.Reveal, Ease: ui.EaseInOut})
+	m := theme.Motion()
+	angle = arrow.AnimateTo("turn", angle, ui.Animation{Duration: m.Reveal, Ease: m.Ease})
 	arrow.Children(func() {
 		if e.node.Loading {
 			busy.Spinner(c, 12, st.palette.Muted)
@@ -925,7 +964,7 @@ func buildTreeArrow(c *ui.Context, s *TreeState, o TreeOptions, i int32, open bo
 			icon.Rotate(angle)
 		}
 	})
-	if !e.disabled {
+	if !e.disabled && !o.Disabled {
 		arrow.OnClick(func() {
 			take()
 			s.toggleExpanded(o, i)
@@ -970,7 +1009,7 @@ func buildTreeCheck(c *ui.Context, s *TreeState, o TreeOptions, i int32, st tree
 		drawTick(p, path, mark, tick, on, ink)
 		drawDash(p, path, mark, dash, mixed, ink)
 	})
-	if !e.disabled {
+	if !e.disabled && !o.Disabled {
 		box.OnClick(func() {
 			take()
 			s.toggleChecked(o, i)
@@ -1010,9 +1049,20 @@ func bindTreeKeys(s *TreeState, list ui.Element, o TreeOptions, rtl bool) {
 		list.OnShortcut(ui.Shift, ui.KeyUp, func() { s.extend(o, -1) })
 		list.OnShortcut(ui.Cmd, ui.KeyA, func() { s.selectAll(o) })
 	}
-	for i := range typeKeys {
-		r := typeRunes[i]
-		list.OnShortcut(0, typeKeys[i], func() { s.letters = append(s.letters, r) })
+	// As in ListBox, the page keys scroll on macOS and move a page elsewhere.
+	if runtime.GOOS != "darwin" {
+		list.OnShortcut(0, ui.KeyPageDown, func() { s.page(1) })
+		list.OnShortcut(0, ui.KeyPageUp, func() { s.page(-1) })
+	}
+	if s.typingOwner != s {
+		for i := range typeKeys {
+			r := typeRunes[i]
+			s.typing[i] = func() { s.letters = append(s.letters, r) }
+		}
+		s.typingOwner = s
+	}
+	for i, key := range typeKeys {
+		list.OnShortcut(0, key, s.typing[i])
 	}
 }
 

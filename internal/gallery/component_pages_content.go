@@ -22,7 +22,7 @@ func contentStateOf(s *State) *contentState {
 	if !st.ready {
 		st.ready = true
 		st.copyText = "go get github.com/Cyenoch/mygoui"
-		st.qrValue = "https://coss.com/ui"
+		st.qrValue = "https://github.com/Cyenoch/mygoui"
 	}
 	return st
 }
@@ -36,7 +36,7 @@ func Greet(name string) string {
 }`
 
 const contentMarkdownSample = "## Release notes\n\n" +
-	"Version **0.9** adds *native* Markdown with [links](https://coss.com/ui) and `inline code`.\n\n" +
+	"Version **0.9** adds *native* Markdown with [links](https://github.com/Cyenoch/mygoui) and `inline code`.\n\n" +
 	"- Themed headings and lists\n- Highlighted code blocks\n- [x] Task items\n\n" +
 	"> Text stays selectable.\n\n" +
 	"```go\nfmt.Println(\"hello\")\n```\n\n" +
@@ -165,7 +165,7 @@ func init() {
 				Demo: func(c *ui.Context, s *State) { qrCodeIconBody(c) }},
 		},
 		Code: `if _, err := content.QRCode(c, content.QRCodeOptions{
-    Value: "https://coss.com/ui",
+    Value: "https://github.com/Cyenoch/mygoui",
     Size:  160,
     Level: content.QRQuartile,
 }); err != nil {

@@ -77,7 +77,7 @@ func ImageSelect(c *ui.Context, o ImageSelectOptions) ui.Element {
 			}
 		})
 	}
-	group.Row().Wrap().MinWidth(0).Gap(theme.Space12).Label(o.AriaLabel)
+	group.Row().Wrap().MinWidth(0).Gap(theme.Space(3)).Label(o.AriaLabel)
 	return style.Disabled(group, disabled)
 }
 
@@ -95,7 +95,7 @@ func imageSelectToggle(values []string, value string) []string {
 func imageSelectTile(c *ui.Context, tile ui.Element, it ImageSelectItem, on bool, o ImageSelectOptions) {
 	t := theme.Colors(c)
 	radius := theme.RadiusScale().LG
-	tile = style.Disabled(tile.Column().AlignItems(ui.Center).Gap(theme.Space8).Shrink(0).
+	tile = style.Disabled(tile.Column().AlignItems(ui.Center).Gap(theme.Space(2)).Shrink(0).
 		FocusRing(false).Cursor(ui.CursorPointer).Label(it.Label), it.Disabled)
 	hovered, focused := tile.Hovered(), tile.FocusVisible()
 	ink := t.MutedForeground
@@ -134,9 +134,9 @@ func imageSelectTile(c *ui.Context, tile ui.Element, it ImageSelectItem, on bool
 			if chosen == 0 {
 				return
 			}
-			dot := ui.Rect{X: r.X + r.W - badge - theme.Space6, Y: r.Y + theme.Space6, W: badge, H: badge}
+			dot := ui.Rect{X: r.X + r.W - badge - theme.Space(1.5), Y: r.Y + theme.Space(1.5), W: badge, H: badge}
 			if rtl {
-				dot.X = r.X + theme.Space6
+				dot.X = r.X + theme.Space(1.5)
 			}
 			drawn := float32(1)
 			if on {

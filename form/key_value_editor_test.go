@@ -187,3 +187,18 @@ func TestKeyValueEditorRemovingARowKeepsLaterSecretsConcealed(t *testing.T) {
 		t.Fatal("removing a revealed row revealed the secret that moved into its place")
 	}
 }
+
+func TestKeyValueEditorRemoveMovesFocusToNeighbour(t *testing.T) {
+	f := &keyValueFixture{pairs: []KeyValue{{Key: "A"}, {Key: "B"}, {Key: "C"}}}
+	tt := f.tester(t)
+	remove := func(key string) string { return locale.M().Remove + " " + key }
+	for _, step := range []struct{ remove, focus string }{
+		{"A", remove("B")}, {"C", remove("B")}, {"B", locale.M().Add},
+	} {
+		formTextClick(t, tt, remove(step.remove))
+		tt.Frame()
+		if !tt.Focused(step.focus) {
+			t.Fatalf("after removing %s the focus is not on %q", step.remove, step.focus)
+		}
+	}
+}

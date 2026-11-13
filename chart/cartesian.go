@@ -176,6 +176,11 @@ func cartesian(c *ui.Context, o CartesianOptions, kind SeriesKind, force bool) (
 	if o.Horizontal {
 		axes = Axes(c, PlotContext{X: y, Y: x}, o.YAxis, o.XAxis)
 	}
+	if o.Horizontal {
+		// The bars run up the plot, so Up moves forward through them.
+		count := len(xs)
+		o.navigate = func(from, dx, dy int) int { return step(from, dx-dy, count) }
+	}
 	barCount := 0
 	for _, s := range series {
 		if s.Kind == BarSeries {
@@ -183,8 +188,10 @@ func cartesian(c *ui.Context, o CartesianOptions, kind SeriesKind, force bool) (
 		}
 	}
 	return plotFrame(c, o.Options, axes, len(xs), describe, func(area ui.Element, inner Options) {
+		// The draw callback runs after the build, once the buffers are found.
+		var buffers []seriesPaint
 		area.Children(func() {
-			surface(c, inner, len(xs), describe, func(p *ui.Painter, r ui.Rect, selected int) {
+			plot := surface(c, inner, len(xs), describe, func(p *ui.Painter, r ui.Rect, selected int) {
 				if o.Background != BackgroundSolid {
 					Background(p, r, ui.Transparent, t.Border, o.Background)
 				}
@@ -204,7 +211,7 @@ func cartesian(c *ui.Context, o CartesianOptions, kind SeriesKind, force bool) (
 					if color == (ui.Color{}) {
 						color = SeriesColor(c, i)
 					}
-					drawSeries(p, r, ctx, s, barIndex, barCount, o, stacks[i], color, t)
+					drawSeries(p, r, ctx, s, barIndex, barCount, o, stacks[i], color, t, &buffers[i])
 					if s.Kind == BarSeries {
 						barIndex++
 					}
@@ -254,6 +261,11 @@ func cartesian(c *ui.Context, o CartesianOptions, kind SeriesKind, force bool) (
 				}
 				return min(len(xs)-1, i)
 			})
+			kept := ui.Local(plot, "chart.series.paint", func() []seriesPaint { return nil })
+			if len(*kept) != len(series) {
+				*kept = make([]seriesPaint, len(series))
+			}
+			buffers = *kept
 			if o.Build != nil {
 				ctx.Selected = -1
 				if o.State != nil {
@@ -492,38 +504,49 @@ func Axes(c *ui.Context, ctx PlotContext, x, y Axis) native.Axes {
 		}}
 }
 
+// seriesPaint keeps one series' paint buffers between frames, so painting
+// it again refills them instead of allocating.
+type seriesPaint struct {
+	path                      ui.Path
+	xs, ys, low, thinX, thinY []float32
+}
+
 func drawSeries(p *ui.Painter, r ui.Rect, ctx PlotContext, s Series, index, count int,
-	o CartesianOptions, stack []native.Segment, color ui.Color, t theme.Palette,
+	o CartesianOptions, stack []native.Segment, color ui.Color, t theme.Palette, buf *seriesPaint,
 ) {
-	xs, ys, low := make([]float32, len(s.Points)), make([]float32, len(s.Points)), make([]float32, len(s.Points))
+	xs, ys, low := buf.xs[:0], buf.ys[:0], buf.low[:0]
 	for i, pt := range s.Points {
-		xs[i], ys[i], low[i] = ctx.X.At(pt.X), ctx.Y.At(pt.Y), ctx.Y.At(0)
+		x, y, lo := ctx.X.At(pt.X), ctx.Y.At(pt.Y), ctx.Y.At(0)
 		if len(stack) > 0 {
-			ys[i], low[i] = ctx.Y.At(stack[i].Hi), ctx.Y.At(stack[i].Lo)
+			y, lo = ctx.Y.At(stack[i].Hi), ctx.Y.At(stack[i].Lo)
 			if math.IsNaN(pt.Y) {
-				ys[i], low[i] = float32(math.NaN()), float32(math.NaN())
+				y, lo = float32(math.NaN()), float32(math.NaN())
 			}
 		}
+		xs, ys, low = append(xs, x), append(ys, y), append(low, lo)
 	}
+	buf.xs, buf.ys, buf.low = xs, ys, low
 	switch s.Kind {
 	case AreaSeries:
 		if columns := max(1, int(r.W)); len(xs) > int(r.W)*4 {
 			if len(stack) == 0 {
 				// Unstacked areas share one baseline, so the outline can thin.
-				xs, ys = native.MinMax(nil, nil, xs, ys, columns)
+				buf.thinX, buf.thinY = native.MinMax(buf.thinX, buf.thinY, xs, ys, columns)
+				xs, ys = buf.thinX, buf.thinY
 				low = low[:len(xs)]
 			} else {
 				xs, low, ys = thinBand(xs, low, ys, columns)
 			}
 		}
 		p.FillPath(native.Area(r, xs, low, ys, o.Curve), color.Alpha(0.18))
-		p.StrokePath(native.Line(r, xs, ys, o.Curve), 2, color)
+		p.StrokePath(native.LineInto(&buf.path, r, xs, ys, o.Curve), 2, color)
 	case LineSeries:
 		drawX, drawY := xs, ys
 		if len(xs) > int(r.W)*4 {
-			drawX, drawY = native.MinMax(nil, nil, xs, ys, max(1, int(r.W)))
+			buf.thinX, buf.thinY = native.MinMax(buf.thinX, buf.thinY, xs, ys, max(1, int(r.W)))
+			drawX, drawY = buf.thinX, buf.thinY
 		}
-		p.StrokePath(native.Line(r, drawX, drawY, o.Curve), 2, color)
+		p.StrokePath(native.LineInto(&buf.path, r, drawX, drawY, o.Curve), 2, color)
 		if len(xs) == 1 {
 			a := point(r, xs[0], ys[0])
 			p.Fill(ui.Rect{X: a.X - 3, Y: a.Y - 3, W: 6, H: 6}, color, 3)

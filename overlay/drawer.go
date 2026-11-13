@@ -7,8 +7,6 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-var drawerEase = ui.CubicBezier(0.32, 0.72, 0, 1)
-
 // DrawerSide is the window edge a drawer slides from.
 type DrawerSide uint8
 
@@ -65,13 +63,24 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 	w, h := c.Size()
 	inset := float32(0)
 	if o.Inset && w >= 640 {
-		inset = theme.Space16
+		inset = theme.Space(4)
 	}
 	availW := max(float32(0), w-2*inset)
 	availH := max(float32(0), h-2*inset)
-	capW := max(float32(0), min(availW, w-theme.Space48))
-	capH := max(float32(0), min(availH, h-theme.Space48))
+	capW := max(float32(0), min(availW, w-theme.Space(12)))
+	capH := max(float32(0), min(availH, h-theme.Space(12)))
 	side := o.Side
+	// A left or right drawer sits on the edge its side names in the layout
+	// direction; its corners and swipe follow the edge it sits on.
+	edge := side
+	if c.Direction() == ui.RightToLeft {
+		switch side {
+		case DrawerLeft:
+			edge = DrawerRight
+		case DrawerRight:
+			edge = DrawerLeft
+		}
+	}
 	motionSide := mygoui.SideBottom
 	distance := capH + inset
 	switch side {
@@ -91,7 +100,7 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 	} else if o.Height > 0 {
 		distance = min(o.Height, capH) + inset
 	}
-	scrim := modalScrim(c, open, o.Backdrop, drawerMotionDuration, drawerEase)
+	scrim := modalScrim(c, open, o.Backdrop, theme.Motion().Drawer, theme.Motion().EaseDrawer)
 	if *open {
 		c.Key(dialogKey{open})
 	}
@@ -102,7 +111,7 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 				distance = height + inset
 			}
 		}
-		back = edgeExit(c, back, motionSide, distance, drawerMotionDuration, drawerEase)
+		back = edgeExit(c, back, motionSide, distance, theme.Motion().Drawer, theme.Motion().EaseDrawer)
 		layoutDrawer(back, side, inset)
 		t := theme.Colors(c)
 		panel.Column().Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border).
@@ -117,7 +126,7 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 				width = 448
 			}
 			panel.Width(min(width, capW)).MaxWidth(capW).Height(availH)
-			if side == DrawerLeft {
+			if edge == DrawerLeft {
 				corners = [4]float32{0, radius, radius, 0}
 			} else {
 				corners = [4]float32{radius, 0, 0, radius}
@@ -139,13 +148,13 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 			corners = [4]float32{radius, radius, radius, radius}
 		}
 		panel.Radius(corners[0], corners[1], corners[2], corners[3])
-		edgeEnter(c, panel, motionSide, distance, drawerMotionDuration, drawerEase)
+		edgeEnter(c, panel, motionSide, distance, theme.Motion().Drawer, theme.Motion().EaseDrawer)
 		panel.Label(o.Title)
 		if o.Description != "" {
 			panel.Description(o.Description)
 		}
 		if distance > 0 {
-			offset, dismiss := drawerDrag(c, panel, distance, o)
+			offset, dismiss := drawerDrag(c, panel, edge, distance, o)
 			swiped = swiped || dismiss
 			panel.Translate(offset.X, offset.Y)
 			moved := offset.Y
@@ -155,7 +164,7 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 			scrim.Opacity(1 - min(max(moved, -moved)/distance, 1))
 		}
 		if o.Handle && side == DrawerBottom {
-			drawerHandle(c, theme.Space8).Margin(theme.Space24, 0, 0, 0)
+			drawerHandle(c, theme.Space(2)).Margin(theme.Space(6), 0, 0, 0)
 		}
 		contentHeight := capH
 		if side == DrawerLeft || side == DrawerRight {
@@ -164,7 +173,7 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 			contentHeight = min(o.Height, capH)
 		}
 		if o.Handle && (side == DrawerBottom || side == DrawerTop) {
-			contentHeight -= theme.Space24 + theme.Space4 + theme.Space8
+			contentHeight -= theme.Space(6) + theme.Space(1) + theme.Space(2)
 		}
 		fillPanel(c, panel, chrome{
 			title:            o.Title,
@@ -177,19 +186,19 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 			onClose:          close,
 			titleStyle:       theme.H4(),
 			descriptionStyle: theme.SM(),
-			padding:          theme.Space24,
-			headerGap:        theme.Space8,
+			padding:          theme.Space(6),
+			headerGap:        theme.Space(2),
 			maxHeight:        contentHeight,
 			fillHeight:       side == DrawerLeft || side == DrawerRight || o.Height > 0,
 			corners:          innerCorners(corners),
 		})
 		if o.Handle && side == DrawerTop {
 			// Keep the handle near the edge, below the content.
-			panel.Padding(0, 0, theme.Space8, 0)
+			panel.Padding(0, 0, theme.Space(2), 0)
 			handle := drawerHandle(c, 0)
 			if o.Height > 0 {
-				panel.Padding(0, 0, theme.Space12, 0)
-				handle.Absolute().Left(0).Right(0).Bottom(theme.Space8)
+				panel.Padding(0, 0, theme.Space(3), 0)
+				handle.Absolute().Left(0).Right(0).Bottom(theme.Space(2))
 			}
 		}
 	})
@@ -212,17 +221,18 @@ type (
 )
 
 // drawerDrag keeps the swipe separate from the scrollable body and controls.
-func drawerDrag(c *ui.Context, panel ui.Element, travel float32, o DrawerOptions) (ui.Point, bool) {
+// edge is the window edge the panel sits on.
+func drawerDrag(c *ui.Context, panel ui.Element, edge DrawerSide, travel float32, o DrawerOptions) (ui.Point, bool) {
 	off := ui.Local(panel, drawerDragKey{}, func() ui.Point { return ui.Point{} })
 	grab := ui.Box(c.Key(drawerGrabKey{})).Absolute().Role(ui.RoleNone).KeepFocus()
-	const grabLength = theme.Space48 + theme.Space24
-	const grabWidth = theme.Space32
+	grabLength := theme.Space(12) + theme.Space(6)
+	grabWidth := theme.Space(8)
 	var centerX, centerY float32
 	var target ui.Point
 	var extent float32
 	axis := ui.Vertical
 	bounds := ui.Rect{}
-	switch o.Side {
+	switch edge {
 	case DrawerLeft:
 		grab.Right(0).TopPercent(50).Size(grabWidth, grabLength)
 		centerY = -grabLength / 2
@@ -247,7 +257,7 @@ func drawerDrag(c *ui.Context, panel ui.Element, travel float32, o DrawerOptions
 	dismiss := false
 	grab.Draggable(off, ui.DraggableOptions{
 		Axis: axis, Bounds: &bounds, Rigid: true,
-		Animation: ui.Animation{Duration: drawerMotionDuration, Ease: drawerEase},
+		Animation: sheetEnterAnimation(),
 		Snap: func(p ui.Point) ui.Point {
 			moved := p.Y
 			if axis == ui.Horizontal {
@@ -265,7 +275,7 @@ func drawerDrag(c *ui.Context, panel ui.Element, travel float32, o DrawerOptions
 	grab.Translate(centerX-shown.X, centerY-shown.Y)
 	if o.Handle && axis == ui.Horizontal {
 		grab.Center().Children(func() {
-			ui.Box(c).Width(theme.Space4).Height(theme.Space48).
+			ui.Box(c).Width(theme.Space(1)).Height(theme.Space(12)).
 				Radius(theme.RadiusScale().XS).Background(theme.Colors(c).Input)
 		})
 	}
@@ -309,7 +319,7 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 		}
 	}
 	w, h := c.Size()
-	const margin = theme.Space16
+	margin := theme.Space(4)
 	availW := max(float32(0), w-2*margin)
 	availH := max(float32(0), h-2*margin)
 	// The panel keeps the window margin and 85% cap, whichever is
@@ -325,7 +335,7 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 	swipedOut := false
 	p := ui.DialogBase(c, open, func(back, panel ui.Element) {
 		back = paintBackdrop(c, back, o.Backdrop)
-		back = dialogMotion(c, back, drawerMotionDuration)
+		back = surfaceMotion(c, back, theme.Motion().Drawer, theme.Motion().EaseDrawer)
 		layoutEdge(back, DrawerBottom)
 		t := theme.Colors(c)
 		panel.Column().FillWidth().MaxWidth(availW).MaxHeight(capH).MinHeight(0).
@@ -340,7 +350,7 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 			panel.Description(o.Description)
 		}
 		if !o.HideHandle {
-			drawerHandle(c, theme.Space8).Margin(theme.Space24, 0, 0, 0)
+			drawerHandle(c, theme.Space(2)).Margin(theme.Space(6), 0, 0, 0)
 		}
 		dismiss := ui.Local(panel, sheetDismissKey{}, func() bool { return false })
 		contentHeight := capH
@@ -348,7 +358,7 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 			contentHeight = min(o.Height, capH)
 		}
 		if !o.HideHandle {
-			contentHeight -= theme.Space24 + theme.Space4 + theme.Space8
+			contentHeight -= theme.Space(6) + theme.Space(1) + theme.Space(2)
 		}
 		fillPanel(c, panel, chrome{
 			title:       o.Title,
@@ -368,8 +378,8 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 			},
 			titleStyle:       theme.H4(),
 			descriptionStyle: theme.SM(),
-			padding:          theme.Space24,
-			headerGap:        theme.Space8,
+			padding:          theme.Space(6),
+			headerGap:        theme.Space(2),
 			maxHeight:        contentHeight,
 			fillHeight:       o.Height > 0,
 			corners:          innerCorners([4]float32{overlayRadius(), overlayRadius(), overlayRadius(), overlayRadius()}),
@@ -395,7 +405,7 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 			// dialog to close and fading for another transition.
 			back.Opacity(1 - min(drop/travel, 1))
 		}
-		enter := panel.AnimateTo(sheetEnterKey{}, enterY, sheetEnterAnimation)
+		enter := panel.AnimateTo(sheetEnterKey{}, enterY, sheetEnterAnimation())
 		panel.Translate(0, enter+drop)
 	})
 	if swipedOut {
@@ -421,14 +431,18 @@ type (
 	sheetDismissKey struct{}
 )
 
-// sheetEnterAnimation slides the sheet up from below the window, over the
-// drawer backdrop's duration and curve.
-var sheetEnterAnimation = ui.Animation{Duration: drawerMotionDuration, Ease: drawerEase}
+// sheetEnterAnimation slides a sheet or drawer from its edge and settles a
+// dragged one, over the drawer duration and curve.
+func sheetEnterAnimation() ui.Animation {
+	m := theme.Motion()
+	return ui.Animation{Duration: m.Drawer, Ease: m.EaseDrawer}
+}
+
+// sheetGrabHeight is the strip that drags the sheet: the panel's padding of
+// five units and the handle's one-unit bar and two-unit gutter.
+func sheetGrabHeight() float32 { return theme.Space(5) + theme.Space(1) + theme.Space(2) }
 
 const (
-	// sheetGrabHeight is the strip that drags the sheet: the panel's 20 DIP
-	// padding and the handle's 4 DIP bar and 8 DIP gutter.
-	sheetGrabHeight = theme.Space20 + theme.Space4 + theme.Space8
 	// sheetDismissDrag is how far a sheet is dragged down before letting go
 	// dismisses it: 96 DIPs, or 30% of a sheet too short to need that.
 	sheetDismissDrag = 96
@@ -446,15 +460,15 @@ func sheetDrag(c *ui.Context, panel ui.Element, travel float32, prevent, dismiss
 		// The close button asks for the same slide the handle swipe makes.
 		off.Y = travel
 	}
-	grab := ui.Box(c).Absolute().Top(0).Start(0).Height(sheetGrabHeight).
-		End(theme.Space16 + closeButtonSize + theme.Space8).
+	grab := ui.Box(c).Absolute().Top(0).Start(0).Height(sheetGrabHeight()).
+		End(theme.Space(4) + closeButtonSize() + theme.Space(2)).
 		Role(ui.RoleNone).KeepFocus()
 	bounds := ui.Rect{H: travel}
 	grab.Draggable(off, ui.DraggableOptions{
 		Axis:      ui.Vertical,
 		Bounds:    &bounds,
 		Rigid:     true,
-		Animation: sheetEnterAnimation,
+		Animation: sheetEnterAnimation(),
 		Snap: func(p ui.Point) ui.Point {
 			if !prevent && p.Y > sheetDismissAt(panel.Bounds().H) {
 				return ui.Point{Y: travel}
@@ -498,7 +512,7 @@ func layoutDrawer(back ui.Element, side DrawerSide, inset float32) {
 
 // layoutEdge keeps the bottom sheet's existing floating geometry.
 func layoutEdge(back ui.Element, side DrawerSide) {
-	layoutDrawer(back, side, theme.Space16)
+	layoutDrawer(back, side, theme.Space(4))
 }
 
 // drawerHandle paints a 48 by 4 DIP bar in the caller's gutter.
@@ -506,7 +520,7 @@ func drawerHandle(c *ui.Context, gapBelow float32) ui.Element {
 	t := theme.Colors(c)
 	gutter := ui.Box(c).FillWidth().Center().Padding(0, 0, gapBelow, 0).Shrink(0).PassThrough()
 	gutter.Children(func() {
-		ui.Box(c).Width(theme.Space48).Height(theme.Space4).
+		ui.Box(c).Width(theme.Space(12)).Height(theme.Space(1)).
 			Radius(theme.RadiusScale().XS).Background(t.Input).Shrink(0).PassThrough()
 	})
 	return gutter

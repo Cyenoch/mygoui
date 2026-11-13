@@ -74,6 +74,10 @@ func (s *JSONViewerState) ExpandAll() { s.pending = jsonExpandAll }
 // build.
 func (s *JSONViewerState) CollapseAll() { s.pending = jsonCollapseAll }
 
+// FocusSearch focuses the toolbar's search field, as Cmd+F (Ctrl+F) does
+// inside the viewer, for a Find command of the window.
+func (s *JSONViewerState) FocusSearch() { s.search.Focus() }
+
 type jsonKind uint8
 
 const (
@@ -364,8 +368,8 @@ func jsonViewerHeader(c *ui.Context, t theme.Palette, title string, st *JSONView
 	ts := theme.XS()
 	ts.Weight = theme.WeightMedium
 	ui.Row(c).FillWidth().MinWidth(0).MinHeight(theme.Scale(c, 40)).
-		AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space4)).
-		Padding(0, theme.Scale(c, 10), 0, theme.Scale(c, theme.Space16)).
+		AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space(1))).
+		Padding(0, theme.Scale(c, 10), 0, theme.Scale(c, theme.Space(4))).
 		BorderWidth(0, 0, theme.Hairline, 0).BorderColor(t.Border).
 		Children(func() {
 			style.Text(ui.Text(c, title), c, ts).Grow(1).MinWidth(0).SingleLine().Unselectable()
@@ -378,10 +382,10 @@ func jsonViewerHeader(c *ui.Context, t theme.Palette, title string, st *JSONView
 			}
 			// A button keeps its own alignment, so the row around them
 			// centers them in the header.
-			ui.Row(c).Shrink(0).Gap(theme.Scale(c, theme.Space4)).Children(func() {
+			ui.Row(c).Shrink(0).Gap(theme.Scale(c, theme.Space(1))).Children(func() {
 				action(m.ExpandAll, lucide.ChevronsUpDown(), st.ExpandAll)
 				action(m.CollapseAll, lucide.ChevronsDownUp(), st.CollapseAll)
-				CopyButton(c, CopyButtonOptions{Text: o.Source, Size: theme.ButtonSmall, OnError: o.OnError})
+				CopyButton(c, CopyButtonOptions{Text: o.Source, Label: copyLabel(title), Size: theme.ButtonSmall, OnError: o.OnError})
 			})
 		})
 }
@@ -390,7 +394,7 @@ func jsonViewerError(c *ui.Context, t theme.Palette, err error) {
 	ts := theme.Code()
 	ts.Size, ts.LineHeight = codeFontSize, codeLineHeight
 	style.Text(ui.Text(c, err.Error()), c, ts).TextColor(t.DestructiveForeground).
-		Padding(theme.Scale(c, theme.Space16)).Selectable()
+		Padding(theme.Scale(c, theme.Space(4))).Selectable().Role(ui.RoleAlert)
 }
 
 func jsonViewerTree(c *ui.Context, t theme.Palette, title string, st *JSONViewerState, o *JSONViewerOptions) {
@@ -413,7 +417,7 @@ func jsonViewerTree(c *ui.Context, t theme.Palette, title string, st *JSONViewer
 		// JSON reads left to right in a right-to-left interface too.
 		tree := ui.Outline(c, &st.outline, st.roots, doc.children, func(i int) {
 			rows.build(c, i)
-		}).FillWidth().MinWidth(0).Padding(theme.Scale(c, theme.Space8)).
+		}).FillWidth().MinWidth(0).Padding(theme.Scale(c, theme.Space(2))).
 			Direction(ui.LeftToRight).Label(title)
 		if o.Height > 0 {
 			tree.Height(o.Height)
@@ -458,7 +462,7 @@ func (r *jsonRows) build(c *ui.Context, i int) {
 	t, ts := r.t, r.ts
 	chosen, _ := st.chosen()
 	wrapped := chosen == i && n.kind == jsonString
-	row := ui.Row(c).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space8))
+	row := ui.Row(c).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space(2)))
 	if wrapped {
 		row.AlignItems(ui.Start)
 	}

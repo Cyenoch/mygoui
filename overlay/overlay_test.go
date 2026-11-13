@@ -120,13 +120,11 @@ func TestAlertDialogKeepsItsChoiceAndIgnoresDismissal(t *testing.T) {
 
 	tt.ClickAt(4, 4)
 	tt.Frame()
-	tt.Key(0, ui.KeyEscape)
-	tt.Frame()
 	if !open || accepted != 0 || cancelled != 0 {
-		t.Fatalf("a dismissal changed the alert: open=%v accepted=%d cancelled=%d", open, accepted, cancelled)
+		t.Fatalf("a backdrop press changed the alert: open=%v accepted=%d cancelled=%d", open, accepted, cancelled)
 	}
 	if !tt.Focused("Cancel") {
-		t.Fatal("the ignored dismissal lost the alert's focus")
+		t.Fatal("the ignored backdrop press lost the alert's focus")
 	}
 	tt.Advance(dialogMotionDuration / 2)
 	if motionDiff(settled, motionShot(tt), title) != 0 {

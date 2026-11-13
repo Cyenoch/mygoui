@@ -65,7 +65,7 @@ const (
 	CardTransparent
 )
 
-// CardOptions customizes a coss ui Card. OnClick makes the whole card a real
+// CardOptions customizes a Card. OnClick makes the whole card a real
 // native action without changing its visual variants.
 type CardOptions struct {
 	Variant CardVariant
@@ -107,14 +107,16 @@ func Card(c *ui.Context, o CardOptions, body func()) ui.Element {
 
 // CardHeader groups a title and description.
 func CardHeader(c *ui.Context, body func()) ui.Element {
-	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space6).Padding(theme.Space24).Children(body)
+	return ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(1.5)).Padding(theme.Space(6)).Children(body)
 }
 
-// CardTitle renders coss ui's 18 DIP semibold heading.
+// CardTitle renders coss ui's 18 DIP semibold heading, a level-3 heading;
+// set another with Level on the returned element.
 func CardTitle(c *ui.Context, text string) ui.Element {
 	ts := theme.LG()
 	ts.LineHeight, ts.Weight, ts.Heading = 20, theme.WeightSemibold, true
-	return style.Text(ui.Text(c, text), c, ts).TextColor(theme.Colors(c).Foreground)
+	return style.Text(ui.Text(c, text), c, ts).TextColor(theme.Colors(c).Foreground).
+		Role(ui.RoleHeading).Level(3)
 }
 
 // CardDescription renders coss ui's 14/20 muted card description.
@@ -127,14 +129,14 @@ func CardDescription(c *ui.Context, text string) ui.Element {
 // CardContent grows to fill the card, with horizontal padding and a 4 DIP gap.
 // Standalone content can set vertical padding on the returned element.
 func CardContent(c *ui.Context, body func()) ui.Element {
-	return ui.Column(c).FillWidth().MinWidth(0).Grow(1).Gap(theme.Space4).
-		Padding(0, theme.Space24).Children(body)
+	return ui.Column(c).FillWidth().MinWidth(0).Grow(1).Gap(theme.Space(1)).
+		Padding(0, theme.Space(6)).Children(body)
 }
 
 // CardFooter aligns actions in a wrapping row.
 func CardFooter(c *ui.Context, body func()) ui.Element {
 	return ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Wrap().
-		Gap(theme.Space8).Padding(theme.Space24).Children(body)
+		Gap(theme.Space(2)).Padding(theme.Space(6)).Children(body)
 }
 
 // CardFrameOptions configures a framed group of cards and supporting content.
@@ -154,10 +156,10 @@ func CardFrame(c *ui.Context, o CardFrameOptions, body func()) ui.Element {
 
 // CardFrameHeader groups frame metadata above its cards.
 func CardFrameHeader(c *ui.Context, body func()) ui.Element {
-	return ui.Column(c).FillWidth().MinWidth(0).Padding(theme.Space16, theme.Space24).Children(body)
+	return ui.Column(c).FillWidth().MinWidth(0).Padding(theme.Space(4), theme.Space(6)).Children(body)
 }
 
-// CardFrameTitle renders a compact semibold frame title.
+// CardFrameTitle renders a compact semibold frame title, as FrameTitle.
 func CardFrameTitle(c *ui.Context, title string) ui.Element {
 	return FrameTitle(c, title)
 }
@@ -169,6 +171,6 @@ func CardFrameDescription(c *ui.Context, text string) ui.Element {
 
 // CardFrameFooter hosts frame-level content below its cards.
 func CardFrameFooter(c *ui.Context, body func()) ui.Element {
-	return ui.Row(c).FillWidth().MinWidth(0).Wrap().Gap(theme.Space8).
-		Padding(theme.Space16, theme.Space24).Children(body)
+	return ui.Row(c).FillWidth().MinWidth(0).Wrap().Gap(theme.Space(2)).
+		Padding(theme.Space(4), theme.Space(6)).Children(body)
 }

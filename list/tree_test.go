@@ -176,7 +176,7 @@ func TestTreeLoadingFirstLoadShowsNoNodes(t *testing.T) {
 	o := list.TreeOptions{Label: "Files", State: &state, Loading: true}
 	tt := treeTester(&o)
 	tt.Advance(400 * time.Millisecond)
-	if !slices.Equal(tt.Texts(), []string{"Files"}) {
+	if !slices.Equal(tt.Texts(), []string{"Files", "Loading"}) {
 		t.Fatalf("loading tree shows text: %v", tt.Texts())
 	}
 }
@@ -275,12 +275,14 @@ func TestTreeTypeaheadMatchesAPrefixWithinTheWindow(t *testing.T) {
 	if state.SelectedKey != "group" {
 		t.Fatalf("typing gr chose %q, want group", state.SelectedKey)
 	}
+	// The window is the toolkit's one second, as a menu's.
+	tt.Advance(800 * time.Millisecond)
 	tt.Key(0, ui.KeyI)
 	tt.Key(0, ui.KeyEnter)
 	if state.SelectedKey != "grid" {
 		t.Fatalf("typing on to gri chose %q, want grid", state.SelectedKey)
 	}
-	tt.Advance(time.Second)
+	tt.Advance(1100 * time.Millisecond)
 	tt.Key(0, ui.KeyH)
 	tt.Key(0, ui.KeyEnter)
 	if state.SelectedKey != "hotel" {

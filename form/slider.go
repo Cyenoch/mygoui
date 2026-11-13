@@ -3,10 +3,8 @@ package form
 import (
 	"math"
 	"strconv"
-	"time"
 
 	"github.com/Cyenoch/mygoui/internal/formstyle"
-	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -96,7 +94,7 @@ func Slider(c *ui.Context, o SliderOptions) ui.Element {
 	t := theme.Colors(c)
 	rtl := c.Direction() == ui.RightToLeft
 
-	root := ui.Column(c).MinWidth(0).FillWidth().Gap(theme.Space4)
+	root := ui.Column(c).MinWidth(0).FillWidth().Gap(theme.Space(1))
 	if o.Description != "" {
 		root.Description(o.Description)
 	}
@@ -104,7 +102,7 @@ func Slider(c *ui.Context, o SliderOptions) ui.Element {
 		root.Error(errText)
 	}
 	if o.Vertical && !state.IsRange() {
-		root.Gap(theme.Space8)
+		root.Gap(theme.Space(2))
 	}
 
 	root.Children(func() {
@@ -113,7 +111,7 @@ func Slider(c *ui.Context, o SliderOptions) ui.Element {
 			return
 		}
 		if !o.HideOutput || o.Label != "" {
-			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(theme.Space8).Children(func() {
+			ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(theme.Space(2)).Children(func() {
 				if o.Label != "" {
 					style.Text(ui.Text(c, o.Label), c, theme.Label()).TextColor(t.Foreground)
 				}
@@ -294,7 +292,7 @@ func sliderVertical(c *ui.Context, o SliderOptions, state SliderState, min, max,
 // thumb at either end; marks use it so they line up with the thumbs.
 func sliderEdgePad(c *ui.Context, twoThumbs bool) float32 {
 	if twoThumbs {
-		return float32(theme.Space20) / 2
+		return float32(theme.Space(5)) / 2
 	}
 	return theme.Scale(c, 14)
 }
@@ -319,15 +317,17 @@ func sliderShown(el ui.Element, key string, f float32, held bool) float32 {
 	if held {
 		return el.Jump(key, f)
 	}
-	return el.AnimateTo(key, f, ui.Animation{Duration: motion.Reveal, Ease: ui.EaseOut})
+	m := theme.Motion()
+	return el.AnimateTo(key, f, ui.Animation{Duration: m.Reveal, Ease: m.Ease})
 }
 
 func sliderThumbScale(el ui.Element, pressed bool) float32 {
 	scale := float32(1)
 	if pressed {
-		scale = 1.2
+		scale = theme.Effects().ThumbPressScale
 	}
-	return el.Animate("slider-thumb-press", scale, 150*time.Millisecond)
+	m := theme.Motion()
+	return el.AnimateTo("slider-thumb-press", scale, ui.Animation{Duration: m.State, Ease: m.Ease})
 }
 
 func sliderPaintThumb(p *ui.Painter, t theme.Palette, thumb ui.Rect, innerW, innerH, innerRadius, scale float32, focused bool, radius float32) {
@@ -348,7 +348,7 @@ func sliderPaintThumb(p *ui.Painter, t theme.Palette, thumb ui.Rect, innerW, inn
 func sliderMarks(c *ui.Context, o SliderOptions, min, max float64, rtl bool, pad float32) {
 	t := theme.Colors(c)
 	tickH := theme.Scale(c, 4)
-	labelTop := tickH + theme.Scale(c, theme.Space4)
+	labelTop := tickH + theme.Scale(c, theme.Space(1))
 	height := labelTop + theme.Scale(c, 16)
 	fracs := make([]float32, len(o.Marks))
 	for i, mark := range o.Marks {

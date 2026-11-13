@@ -16,7 +16,7 @@ type alertCancelGeometry struct {
 }
 
 // AlertDialogOptions configures an explicit-choice alert dialog. Backdrop
-// presses and Escape do not dismiss it.
+// presses do not dismiss it; Escape is its cancel choice.
 type AlertDialogOptions struct {
 	Status mygoui.StatusColor
 	// ShowIcon displays the status icon. An explicit Icon also enables it.
@@ -48,7 +48,8 @@ type AlertDialogOptions struct {
 }
 
 // AlertDialog shows an alert dialog asking for an explicit choice. Backdrop
-// presses and Escape are ignored; Cancel receives the initial focus.
+// presses are ignored; Escape cancels, as Cancel does. Cancel receives the
+// initial focus.
 func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 	if open == nil {
 		return ui.Element{}
@@ -77,7 +78,7 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 	showAction := o.ActionLabel != "" && o.OnAction != nil
 	var cancelButton ui.Element
 	motionState := responsiveDialogState(c, open)
-	modalScrim(c, open, o.Backdrop, dialogMotionDuration, ui.EaseInOut)
+	modalScrim(c, open, o.Backdrop, theme.Motion().Dialog, theme.Motion().EaseTravel)
 	if *open {
 		c.Key(dialogKey{open})
 	}
@@ -112,6 +113,9 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 		}
 		panel = panelElevation(c, panel)
 		panel.Label(o.Title)
+		// Escape is the cancel choice; the panel takes it before the
+		// dialog's own dismissal, which leaves OnCancel unrun.
+		panel.OnShortcut(0, ui.KeyEscape, cancel)
 		if o.Description != "" {
 			panel.Description(o.Description)
 		}
@@ -134,8 +138,8 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 			centerHeader:     w < 640,
 			titleStyle:       theme.H4(),
 			descriptionStyle: theme.SM(),
-			padding:          theme.Space24,
-			headerGap:        theme.Space8,
+			padding:          theme.Space(6),
+			headerGap:        theme.Space(2),
 			maxHeight:        availH,
 			corners:          innerCorners([4]float32{radius, radius, radius, radius}),
 			footer: func() {
@@ -175,7 +179,7 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 	}
 	if wasOpen && !*open && p.Valid() && p.Dismissed() {
 		// Alert dialogs require an explicit choice: restore the caller's
-		// state instead of accepting a backdrop press or Escape.
+		// state instead of accepting a backdrop press.
 		*open = true
 	}
 	motionState.observe(*open, theme.ReduceMotion(c), c.Now())

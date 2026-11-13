@@ -132,6 +132,8 @@ func TestDesktopSidebarKeyboard(t *testing.T) {
 	// The sidebar belongs to component pages; the landing page has none.
 	s.Selected = "theming"
 	tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, 1180, 900)
+	// The sidebar folds over time; reduced motion settles it at once.
+	tt.SetPreferences(ui.Preferences{TextScale: 1, ReduceMotion: true})
 	tt.Frame()
 	if !navHas(tt, "Button") || !navHas(tt, "Typography") {
 		t.Fatal("navigation does not list every group's pages")
@@ -264,9 +266,9 @@ func TestNativeTitleBarInsetsClearControls(t *testing.T) {
 					if side, ok := tt.Find("Sidebar title bar"); ok && side.H != title.H {
 						t.Fatalf("sidebar and page title bars differ: %+v, %+v", side, title)
 					}
-					for _, label := range []string{"coss ui", "Toggle navigation", "GitHub", "Appearance"} {
+					for _, label := range []string{"MyGo UI", "Toggle navigation", "GitHub", "Appearance"} {
 						r, ok := tt.Find(label)
-						if !ok && label == "coss ui" {
+						if !ok && label == "MyGo UI" {
 							continue
 						}
 						if !ok || !within(r, float32(width), bar) {
@@ -279,7 +281,7 @@ func TestNativeTitleBarInsetsClearControls(t *testing.T) {
 						if r.Y >= band {
 							want = (band + title.H) / 2
 						}
-						if center := r.Y + r.H/2; label != "coss ui" && (center < want-1 || center > want+1) {
+						if center := r.Y + r.H/2; label != "MyGo UI" && (center < want-1 || center > want+1) {
 							t.Fatalf("%s is not centered in the title bar: %+v, %+v", label, r, title)
 						}
 					}
@@ -308,7 +310,7 @@ func TestNativeTitleBarInsetsClearControls(t *testing.T) {
 						if err := tt.Click("Toggle navigation"); err != nil {
 							t.Fatal(err)
 						}
-						for _, label := range []string{"coss ui", "Search components"} {
+						for _, label := range []string{"MyGo UI", "Search components"} {
 							r, ok := tt.Find(label)
 							if !ok || !within(r, float32(width), bar) {
 								t.Fatalf("%s in the navigation sheet overlaps window controls: %+v, insets %+v", label, r, bar)
@@ -326,9 +328,9 @@ func TestTitleBarUpdatesOnFullscreenAndResize(t *testing.T) {
 	tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, 1180, 900)
 	tt.SetPreferences(ui.Preferences{ReduceMotion: true})
 	tt.SetTitleBar(ui.TitleBar{Height: 52, Left: 80})
-	windowed, _ := tt.Find("coss ui")
+	windowed, _ := tt.Find("MyGo UI")
 	tt.SetTitleBar(ui.TitleBar{})
-	fullscreen, _ := tt.Find("coss ui")
+	fullscreen, _ := tt.Find("MyGo UI")
 	if windowed.W == 0 || fullscreen.X >= windowed.X {
 		t.Fatalf("fullscreen did not release the native inset: windowed=%+v fullscreen=%+v", windowed, fullscreen)
 	}

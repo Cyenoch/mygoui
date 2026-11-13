@@ -7,6 +7,7 @@ import (
 	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -71,7 +72,7 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 	t := theme.Colors(c)
 	radius := theme.RadiusScale().Field
 	slotHeight := theme.Scale(c, 32)
-	gap := float32(theme.Space8)
+	gap := float32(theme.Space(2))
 	reduceMotion := theme.ReduceMotion(c)
 
 	build := func() ui.Element {
@@ -164,7 +165,7 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 				Left(0).Top(0).Right(0).Bottom(0).Padding(0).Opacity(0)
 			name := inputAccessibleName(o.Label, o.AriaLabel, "")
 			if name == "" {
-				name = "Verification code"
+				name = locale.M().VerificationCode
 			}
 			editor.Label(name)
 			if o.ReadOnly {

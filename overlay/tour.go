@@ -135,7 +135,7 @@ func Tour(c *ui.Context, state *TourState, steps []TourStep, o TourOptions) ui.E
 	if width <= 0 {
 		width = 320
 	}
-	width = min(width, max(float32(0), w-2*theme.Space8))
+	width = min(width, max(float32(0), w-2*theme.Space(2)))
 	rtl := c.Direction() == ui.RightToLeft
 	last := len(steps) - 1
 
@@ -147,7 +147,8 @@ func Tour(c *ui.Context, state *TourState, steps []TourStep, o TourOptions) ui.E
 		// the panel's buttons.
 		scrim.KeepFocus().Clicked()
 		fade := ui.Motion{Opacity: 0}
-		scrim.Transition(ui.ElementTransition{Duration: motion.Reveal, Ease: ui.EaseOut, Enter: &fade, Exit: &fade})
+		m := theme.Motion()
+		scrim.Transition(ui.ElementTransition{Duration: m.Reveal, Ease: m.Ease, Enter: &fade, Exit: &fade})
 		view := ui.Local(scrim, tourViewKey{}, func() tourView { return tourView{prev: -1} })
 
 		skip := func() {
@@ -193,7 +194,7 @@ func Tour(c *ui.Context, state *TourState, steps []TourStep, o TourOptions) ui.E
 		}
 
 		panel = ui.Column(c.Key(tourPanelKey{})).Absolute().Width(width).
-			Padding(theme.Space16).Gap(theme.Space16).Role(ui.RoleDialog)
+			Padding(theme.Space(4)).Gap(theme.Space(4)).Role(ui.RoleDialog)
 		panel = anchored.Surface(c, panel, theme.RadiusScale().LG).KeepFocus()
 		step := steps[state.Step]
 		var bounds ui.Rect
@@ -209,8 +210,9 @@ func Tour(c *ui.Context, state *TourState, steps []TourStep, o TourOptions) ui.E
 			c.AnimationFrame()
 		}
 		target, side := tourPlace(step.Placement, bounds, width, basis.panel, w, h, rtl)
-		travel := ui.Animation{Duration: motion.Roll, Ease: ui.EaseInOut}
-		crossfade := ui.Animation{Duration: motion.Roll, Ease: ui.Linear, NonMotion: true}
+		travel := ui.Animation{Duration: m.Roll, Ease: m.EaseTravel}
+		// Linear, so the two steps' opacities always add up to one.
+		crossfade := ui.Animation{Duration: m.Roll, Ease: ui.Linear, NonMotion: true}
 		p := scrim.AnimateTo(tourFadeKey{}, 1, crossfade)
 		born := !view.started
 		changed := !born && view.step != state.Step
@@ -264,12 +266,12 @@ func Tour(c *ui.Context, state *TourState, steps []TourStep, o TourOptions) ui.E
 			})
 		}
 		panel.Children(func() {
-			ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Gap(theme.Space8).Children(func() {
+			ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Gap(theme.Space(2)).Children(func() {
 				tourContent(c, view, steps, state.Step, p, changed)
 				// Pull the button into the padding so its glyph lines up
 				// with the text edge.
 				mygoui.CloseButton(c, mygoui.CloseButtonOptions{Label: locale.M().Close, OnClick: skip}).
-					Margin(-theme.Space4, 0, 0, 0).MarginEnd(-theme.Space4)
+					Margin(-theme.Space(1), 0, 0, 0).MarginEnd(-theme.Space(1))
 			})
 			focus := view.focusNext && !born
 			if focus {
@@ -339,7 +341,7 @@ func tourContent(c *ui.Context, view *tourView, steps []TourStep, at int, p floa
 		// height shown until then.
 		want = shown
 	}
-	height := stack.AnimateTo(tourHeightKey{}, want, ui.Animation{Duration: motion.Reveal, Ease: ui.EaseInOut})
+	height := stack.AnimateTo(tourHeightKey{}, want, ui.Animation{Duration: theme.Motion().Reveal, Ease: theme.Motion().EaseTravel})
 	if height == want && layer.LayoutBounds().H > 0 {
 		view.sizing = false
 		return
@@ -350,7 +352,7 @@ func tourContent(c *ui.Context, view *tourView, steps []TourStep, at int, p floa
 // tourLayer builds one step's title and body; leaving, it overlays the
 // incoming layer and is hidden from assistive technology.
 func tourLayer(c *ui.Context, s TourStep, step int, leaving bool) ui.Element {
-	l := ui.Column(c.Key(tourLayerKey{step})).FillWidth().MinWidth(0).Gap(theme.Space4)
+	l := ui.Column(c.Key(tourLayerKey{step})).FillWidth().MinWidth(0).Gap(theme.Space(1))
 	if leaving {
 		l.Absolute().Left(0).Top(0).Right(0).AccessHidden(true)
 	}
@@ -371,7 +373,7 @@ func tourLayer(c *ui.Context, s TourStep, step int, leaving bool) ui.Element {
 // takes the focus as the tour starts and as Back leaves with the first step.
 func tourFooter(c *ui.Context, at, count int, back, next func(), focus bool) {
 	m := locale.M()
-	ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(theme.Space8).Children(func() {
+	ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(theme.Space(2)).Children(func() {
 		tourProgress(c, at, count).Grow(1).Basis(0).MinWidth(0)
 		if at > 0 {
 			mygoui.Button(c.Key(tourBackKey{}), mygoui.ButtonOptions{
@@ -401,7 +403,7 @@ func tourProgress(c *ui.Context, at, count int) ui.Element {
 		return style.Text(ui.Text(c, text), c, theme.XS()).TextColor(t.MutedForeground).
 			ContentTransition(ui.ContentTransition{}).Label(label)
 	}
-	row := ui.Row(c).AlignItems(ui.Center).Gap(theme.Space4).Role(ui.RoleImage).Label(label)
+	row := ui.Row(c).AlignItems(ui.Center).Gap(theme.Space(1)).Role(ui.RoleImage).Label(label)
 	row.Children(func() {
 		for i := range count {
 			dot := ui.Box(c.Key(tourDotKey{i})).Shrink(0).Height(6).Radius(3)
@@ -409,7 +411,7 @@ func tourProgress(c *ui.Context, at, count int) ui.Element {
 			if i == at {
 				width, color = 16, t.Primary
 			}
-			dot.Width(dot.AnimateTo(tourDotKey{}, width, ui.Animation{Duration: motion.Reveal, Ease: ui.EaseInOut})).
+			dot.Width(dot.AnimateTo(tourDotKey{}, width, ui.Animation{Duration: theme.Motion().Reveal, Ease: theme.Motion().EaseTravel})).
 				Background(motion.Color(dot, tourDotKey{}, color))
 		}
 	})
@@ -428,7 +430,7 @@ func tourPlace(placement mygoui.Placement, r ui.Rect, pw, ph, w, h float32, rtl 
 	if gap == 0 {
 		gap = arrowOffset
 	}
-	margin := float32(theme.Space8)
+	margin := float32(theme.Space(2))
 	room := map[mygoui.Side]float32{
 		mygoui.SideBottom: h - margin - (hole.Y + hole.H + gap) - ph,
 		mygoui.SideTop:    hole.Y - gap - margin - ph,

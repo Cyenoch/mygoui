@@ -43,7 +43,7 @@ type StatisticOptions struct {
 // tooltip. Assistive technology reads it as a group named by the label.
 func Statistic(c *ui.Context, o StatisticOptions) ui.Element {
 	t := theme.Colors(c)
-	root := ui.Column(c).MinWidth(0).Gap(theme.Space4).AlignItems(ui.Start).
+	root := ui.Column(c).MinWidth(0).Gap(theme.Space(1)).AlignItems(ui.Start).
 		Role(ui.RoleGroup).Label(o.Label).Busy(o.Loading)
 	return root.Children(func() {
 		if o.Label != "" {
@@ -53,7 +53,7 @@ func Statistic(c *ui.Context, o StatisticOptions) ui.Element {
 		if o.Loading {
 			align = ui.Center
 		}
-		ui.Row(c).MinWidth(0).Gap(theme.Space4).AlignItems(align).Children(func() {
+		ui.Row(c).MinWidth(0).Gap(theme.Space(1)).AlignItems(align).Children(func() {
 			statisticAffix(c, t, o.Prefix)
 			if o.Loading {
 				SkeletonGroup(c, SkeletonGroupOptions{}, func() { loadingBar(c, theme.H2(), 96) }).Width(theme.Scale(c, 96))
@@ -94,7 +94,7 @@ func statisticDelta(c *ui.Context, t *theme.Palette, o StatisticOptions) {
 	if o.DeltaStatus != ColorDefault {
 		ink = statusColors(t, o.DeltaStatus).Foreground
 	}
-	row := ui.Row(c).Gap(theme.Space4).AlignItems(ui.Center)
+	row := ui.Row(c).Gap(theme.Space(1)).AlignItems(ui.Center)
 	row.TextColor(motion.Color(row, statisticDeltaInkKey{}, ink)).Children(func() {
 		glyph := theme.Scale(c, theme.IconSM)
 		// The direction is named, so it does not rest on color alone.

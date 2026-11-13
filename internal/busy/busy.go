@@ -12,17 +12,18 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-const (
-	// fade is the crossfade between content and its indicator.
-	fade = 150 * time.Millisecond
-	// wait keeps a region's indicator back, so a load that ends sooner
-	// shows none.
-	wait = 150 * time.Millisecond
-	// dim is the opacity content keeps under a refresh.
-	dim = 0.55
-	// LineHeight is the height of the refresh line, before scaling.
-	LineHeight = 2
-)
+// LineHeight is the height of the refresh line, before scaling.
+const LineHeight = 2
+
+// frameRate caps the indicators' redraws per second.
+const frameRate = 60
+
+// fade is the crossfade between content and its indicator: a state change
+// in place.
+func fade() ui.Animation {
+	m := theme.Motion()
+	return ui.Animation{Duration: m.State, Ease: m.Ease, NonMotion: true}
+}
 
 type (
 	swapKey  struct{}
@@ -34,7 +35,7 @@ type (
 // Swap returns how far e has gone from its content (0) to its indicator
 // (1). A press is answered at once, so there is no wait.
 func Swap(e ui.Element, on bool) float32 {
-	return e.AnimateTo(swapKey{}, target(on), ui.Animation{Duration: fade, NonMotion: true})
+	return e.AnimateTo(swapKey{}, target(on), fade())
 }
 
 // Show returns the opacity of a region's indicator. It waits before fading
@@ -42,9 +43,9 @@ func Swap(e ui.Element, on bool) float32 {
 // built already loading waits too: an animation starts at its first target,
 // so the first build names the hidden one.
 func Show(e ui.Element, on bool) float32 {
-	a := ui.Animation{Duration: fade, NonMotion: true}
+	a := fade()
 	if on {
-		a.Delay = wait
+		a.Delay = theme.Effects().LoadingDelay
 	}
 	if built := ui.Local(e, builtKey{}, func() bool { return false }); !*built {
 		*built = true
@@ -67,24 +68,25 @@ func Dim(content ui.Element, on bool, shown float32) ui.Element {
 }
 
 // Dimmed is the opacity content takes under a refresh shown this far.
-func Dimmed(shown float32) float32 { return 1 - (1-dim)*shown }
+func Dimmed(shown float32) float32 { return 1 - (1-theme.Effects().RefreshOpacity)*shown }
 
 // Spinner is the arc indicator at size DIPs, before scaling, named Loading.
 func Spinner(c *ui.Context, size float32, ink ui.Color) ui.Element {
 	return loading.Arc(c, loading.Options{
-		Size: theme.Scale(c, size), Color: ink, Duration: time.Second,
+		Size: theme.Scale(c, size), Color: ink, Duration: theme.Effects().SpinnerPeriod,
 	}).Label(locale.M().Loading)
 }
 
 // PaintSpinner paints the arc indicator centered on (x, y) for a control
-// that cannot hold a child, such as a native editor. It turns once a second
-// and rests still under reduced motion.
+// that cannot hold a child, such as a native editor. It turns once a spinner
+// period and rests still under reduced motion.
 func PaintSpinner(p *ui.Painter, x, y, size float32, ink ui.Color, still bool) {
 	const steps = 12
 	turn := 0.0
 	if !still {
-		turn = float64(p.Now().UnixMilli()%1000) / 1000 * 2 * math.Pi
-		p.AnimationFrameRate(60)
+		period := theme.Effects().SpinnerPeriod.Milliseconds()
+		turn = float64(p.Now().UnixMilli()%period) / float64(period) * 2 * math.Pi
+		p.AnimationFrameRate(frameRate)
 	}
 	width := size * 2.5 / 24
 	radius := float64(size/2 - width/2)
@@ -94,6 +96,22 @@ func PaintSpinner(p *ui.Painter, x, y, size float32, ink ui.Color, still bool) {
 		points[i] = [2]float32{x + float32(radius*math.Cos(a)), y + float32(radius*math.Sin(a))}
 	}
 	p.StrokePolyline(points[:], width, ink)
+}
+
+// Sweep returns where the band of an indeterminate line from x, w wide,
+// starts after elapsed, and how wide it is: the theme's SweepBand of the
+// width, entering from wholly before the line and leaving wholly past it
+// over each SweepPeriod, easing in and out. A narrow band travels further,
+// so it leaves the far edge before the next pass. Reduced motion holds it at
+// the start.
+func Sweep(x, w float32, elapsed time.Duration, reduced bool) (from, band float32) {
+	fx := theme.Effects()
+	band = w * fx.SweepBand
+	if reduced {
+		return x, band
+	}
+	phase := float32(elapsed%fx.SweepPeriod) / float32(fx.SweepPeriod)
+	return x - band + ui.EaseInOut(phase)*max(band*4.5, w+band), band
 }
 
 // Line lays an indeterminate line over the top edge of the region being
@@ -113,20 +131,13 @@ func Line(c *ui.Context, shown, inset float32) {
 		if r.W <= 0 {
 			return
 		}
-		band := r.W * 0.4
-		if reduced {
-			p.Fill(ui.Rect{X: r.X, Y: r.Y, W: band, H: r.H}, ink, r.H/2)
-			return
-		}
-		const period = 1500 * time.Millisecond
-		phase := float32(p.Now().Sub(*start)%period) / float32(period)
-		// The band starts half inside the edge, so the line shows ink as
-		// soon as it fades in.
-		x := r.X - band/2 + ui.EaseInOut(phase)*(band*4)
+		x, band := Sweep(r.X, r.W, p.Now().Sub(*start), reduced)
 		left, right := max(x, r.X), min(x+band, r.X+r.W)
 		if right > left {
 			p.Fill(ui.Rect{X: left, Y: r.Y, W: right - left, H: r.H}, ink, r.H/2)
 		}
-		p.AnimationFrameRate(60)
+		if !reduced {
+			p.AnimationFrameRate(frameRate)
+		}
 	})
 }

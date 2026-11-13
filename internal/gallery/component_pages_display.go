@@ -54,11 +54,11 @@ func init() {
 
 	RegisterComponent(ComponentPage{
 		ID: "badge", Title: "Badge", Group: "Display", Order: 20,
-		Description: "A compact semantic label with eight Coss variants.",
+		Description: "A compact semantic label with eight variants.",
 		Examples: []ComponentExample{
 			{
 				Title:       "Variants",
-				Description: "Eight semantic Coss variants.",
+				Description: "Eight semantic variants.",
 				Demo:        func(c *ui.Context, s *State) { badgeVariantsBody(c) },
 			},
 			{

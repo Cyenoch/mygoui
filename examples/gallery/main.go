@@ -19,7 +19,7 @@ func main() {
 		log.Fatal(fontErr)
 	}
 	keepBrowserShortcuts()
-	mygo.App.SetName("Coss UI Gallery")
+	mygo.App.SetName("MyGo UI Gallery")
 	mygo.App.OnWindowAllClosed(func() { mygo.App.Quit() })
 	mygo.App.WhenReady(func() {
 		state := gallery.New()
@@ -44,7 +44,7 @@ func main() {
 
 func windowOptions(state *gallery.State) mygo.WindowOptions {
 	o := mygo.WindowOptions{
-		Title: "Coss UI Gallery", Width: 1180, Height: 860,
+		Title: "MyGo UI Gallery", Width: 1180, Height: 860,
 		TitleBarStyle:  mygo.TitleBarHiddenInset,
 		TitleBarHeight: gallery.TitleBarHeight,
 		Content:        ui.View(func(c *ui.Context) { gallery.View(c, state) }),

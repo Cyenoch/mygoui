@@ -33,7 +33,7 @@ func RadioGroup(c *ui.Context, o RadioGroupOptions, body func()) ui.Element {
 	errText := formstyle.ErrorText(o.Invalid, o.Error)
 	disabled := o.Disabled
 
-	root := ui.Column(c).MinWidth(0).Gap(theme.Space4)
+	root := ui.Column(c).MinWidth(0).Gap(theme.Space(1))
 	if o.FullWidth {
 		root.FillWidth()
 	}
@@ -54,9 +54,9 @@ func RadioGroup(c *ui.Context, o RadioGroupOptions, body func()) ui.Element {
 			group.Error(errText)
 		}
 		if o.Orientation == GroupHorizontal {
-			group.Row().Wrap().Gap(theme.Space12)
+			group.Row().Wrap().Gap(theme.Space(3))
 		} else {
-			group.Column().Gap(theme.Space12)
+			group.Column().Gap(theme.Space(3))
 		}
 		group.Disabled(disabled)
 		if errText != "" {

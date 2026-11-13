@@ -51,12 +51,12 @@ func InputGroup(c *ui.Context, value *string, o InputGroupOptions) ui.Element {
 			shell.MinWidth(theme.Scale(c, inputDefaultWidth))
 		}
 		shell.Children(func() {
-			paddingStart, paddingEnd := float32(theme.Space12), float32(theme.Space12)
+			paddingStart, paddingEnd := float32(theme.Space(3)), float32(theme.Space(3))
 			if o.Prefix != nil {
-				paddingStart = theme.Space8
+				paddingStart = theme.Space(2)
 			}
 			if o.Suffix != nil {
-				paddingEnd = theme.Space8
+				paddingEnd = theme.Space(2)
 			}
 			editor = ui.TextInputBase(c, value).MinWidth(0).ColumnStart(2).RowStart(row).JustifySelf(ui.Stretch).
 				PaddingStart(paddingStart).PaddingEnd(paddingEnd).PaddingY(theme.Scale(c, 5))
@@ -77,26 +77,26 @@ func InputGroup(c *ui.Context, value *string, o InputGroupOptions) ui.Element {
 				editor.OnSubmit(o.OnSubmit)
 			}
 			if o.Prefix != nil {
-				prefix := ui.Row(c).AlignItems(ui.Center).Gap(theme.Space8).Shrink(0).ColumnStart(1).RowStart(row).
-					PaddingStart(theme.Space12).MinHeight(theme.Scale(c, 32)).TextColor(t.MutedForeground).
+				prefix := ui.Row(c).AlignItems(ui.Center).Gap(theme.Space(2)).Shrink(0).ColumnStart(1).RowStart(row).
+					PaddingStart(theme.Space(3)).MinHeight(theme.Scale(c, 32)).TextColor(t.MutedForeground).
 					OnClick(focusEditor)
 				prefix.Children(o.Prefix)
 			}
 			if o.Suffix != nil {
-				suffix := ui.Row(c).AlignItems(ui.Center).Gap(theme.Space8).Shrink(0).ColumnStart(3).RowStart(row).
-					PaddingEnd(theme.Space12).MinHeight(theme.Scale(c, 32)).TextColor(t.MutedForeground).
+				suffix := ui.Row(c).AlignItems(ui.Center).Gap(theme.Space(2)).Shrink(0).ColumnStart(3).RowStart(row).
+					PaddingEnd(theme.Space(3)).MinHeight(theme.Scale(c, 32)).TextColor(t.MutedForeground).
 					OnClick(focusEditor)
 				suffix.Children(o.Suffix)
 			}
 			if o.BlockPrefix != nil {
 				ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Justify(ui.Start).
-					Gap(theme.Space8).ColumnStart(1).ColumnSpan(3).RowStart(1).
-					Padding(theme.Space8, theme.Space12, 0, theme.Space12).OnClick(focusEditor).Children(o.BlockPrefix)
+					Gap(theme.Space(2)).ColumnStart(1).ColumnSpan(3).RowStart(1).
+					Padding(theme.Space(2), theme.Space(3), 0, theme.Space(3)).OnClick(focusEditor).Children(o.BlockPrefix)
 			}
 			if o.BlockSuffix != nil {
 				ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Justify(ui.Start).
-					Gap(theme.Space8).ColumnStart(1).ColumnSpan(3).RowStart(row+1).
-					Padding(0, theme.Space12, theme.Space8, theme.Space12).OnClick(focusEditor).Children(o.BlockSuffix)
+					Gap(theme.Space(2)).ColumnStart(1).ColumnSpan(3).RowStart(row+1).
+					Padding(0, theme.Space(3), theme.Space(2), theme.Space(3)).OnClick(focusEditor).Children(o.BlockSuffix)
 			}
 		})
 		return formstyle.SurfaceFocused(shell, c, editor.Focused(), o.Invalid, o.Disabled)

@@ -13,11 +13,12 @@ context: |
   and widget state per window. Background results use Window.Update.
   Imports must not initialize apps, register app fonts/languages, perform I/O,
   use persistent storage or start background jobs.
-  PRODUCT.md owns product truth. Root DESIGN.md owns the recorded visual
-  system. docs/design.md owns native engineering contracts; docs/components.md
-  records supported subsets and gaps; docs/theme.md owns token provenance.
-  coss commit 3d8ca28e7d90123e9e0f44665944dc240b026ccb is the pinned visual
-  reference. Read docs/references.md for its MIT/AGPL boundary.
+  PRODUCT.md owns product truth. Root DESIGN.md is the visual and motion
+  authority; add a missing rule there through a change. docs/design.md owns
+  native engineering contracts; docs/components.md records supported subsets
+  and gaps; docs/theme.md owns token provenance. coss commit
+  3d8ca28e7d90123e9e0f44665944dc240b026ccb is where the design language came
+  from, not an authority. Read docs/references.md for its MIT/AGPL boundary.
   Use Impeccable for UI/UX work and mygo-maintenance for native correctness.
   This is adaptive native desktop UI, not a mobile or DOM implementation.
   Browser live/generate and HTML/CSS detectors do not validate Go controls.

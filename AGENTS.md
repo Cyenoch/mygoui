@@ -1,6 +1,6 @@
 # mygoui
 
-A generic native MyGo component library with a shadcn-inspired style. Read `docs/design.md` for ownership, `docs/components.md` for capabilities and `docs/mygo-0.9.md` before dependency work. Public APIs live at the module root and in coherent family packages. `internal/gallery` and `examples/` are consumers.
+A complete native UI solution for MyGo applications: theme tokens, a component library, a design and behavior reference, and agent skills. Read `docs/design.md` for ownership, `docs/components.md` for capabilities and `docs/mygo-0.9.md` before dependency work. Public APIs live at the module root and in coherent family packages. `internal/gallery` and `examples/` are consumers.
 
 ## Working Agreement
 
@@ -24,12 +24,13 @@ A generic native MyGo component library with a shadcn-inspired style. Read `docs
 
 - Use the project `.agents/skills/impeccable/SKILL.md`. Load its context once
   per session with `make design-context` (add `TARGET=path` when scoped).
-- `PRODUCT.md` records product truth; root `DESIGN.md` records visual decisions
-  extracted from the implementation. `docs/design.md` owns native engineering
+- `PRODUCT.md` records product truth; root `DESIGN.md` is the visual and motion
+  authority, extracted from the implementation. `docs/design.md` owns native engineering
   contracts. Surface briefs live under `.impeccable/surfaces/`.
-- This is an existing native desktop system. Preserve coss authority and use
-  Impeccable's Operate mode for the gallery. Desktop MyGo contracts override
-  phone-only examples in its adaptive platform references.
+- This is an existing native desktop system. Preserve the design language in
+  `DESIGN.md` (coss is provenance only) and use Impeccable's Operate mode for
+  the gallery. Desktop MyGo contracts override phone-only examples in its
+  adaptive platform references.
 - Route design work through the relevant Impeccable playbook: shape/critique,
   audit, focused refinements, then polish. Read its craft floor before UI edits.
   Record actionable findings and their verification in the active OpenSpec
@@ -40,7 +41,7 @@ A generic native MyGo component library with a shadcn-inspired style. Read `docs
 
 ## Engineering
 
-- Implement with typed Go options, explicit errors, caller-owned state and native MyGo controls. Visual references establish appearance; each layer uses its own idioms.
+- Implement with typed Go options, explicit errors, caller-owned state and native MyGo controls. Root `DESIGN.md` establishes appearance; each layer uses its own idioms.
 - Keep `ui.Element`, custom parts and `*ui.Context` build-scoped. Retain `ui.Handle` and widget state per window. Use native services and `Window.Update` for background results.
 - Reuse the standard library, MyGo and mygoicons before adding infrastructure. Preserve native focus, selection, editing and accessibility.
 - Update the corresponding design/capability documentation when public behavior changes. Tests assert consumer-visible behavior, boundaries and real regressions.
@@ -50,6 +51,8 @@ A generic native MyGo component library with a shadcn-inspired style. Read `docs
 ## Skills
 
 Read `.agents/skills/mygo-maintenance/SKILL.md` for UI changes and upgrades. Use the copied Go skills for code, errors, naming, tests, dependencies, lint and CI as relevant. Project rules and the user's authorized scope take precedence over generic skill examples.
+
+The published `mygoui-*` skills live in `skills/` and are linked into `.agents/skills`; edit them in `skills/`. A change to public behavior they describe updates them in the same change (`docs/agent-workflow.md`).
 
 All twelve OpenSpec workflows are installed as project skills, including
 verify, sync and bulk archive. Run the pinned CLI with

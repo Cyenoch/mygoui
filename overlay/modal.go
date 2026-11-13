@@ -71,15 +71,15 @@ func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
 	p := ui.DialogBase(c, open, func(back, panel ui.Element) {
 		w, h := c.Size()
 		full := o.Size == ModalFull
-		pad := float32(theme.Space40)
+		pad := float32(theme.Space(10))
 		if w < 640 {
-			pad = theme.Space16
+			pad = theme.Space(4)
 		}
 		if full {
 			pad = 0
 		}
 		back = paintBackdrop(c, back, o.Backdrop)
-		back = dialogMotion(c, back, dialogMotionDuration)
+		back = surfaceMotion(c, back, theme.Motion().Dialog, theme.Motion().EaseTravel)
 		back.Padding(pad).Row().Center()
 
 		t := theme.Colors(c)
@@ -118,8 +118,8 @@ func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
 			onClose:          close,
 			titleStyle:       theme.H4(),
 			descriptionStyle: theme.SM(),
-			padding:          theme.Space24,
-			headerGap:        theme.Space8,
+			padding:          theme.Space(6),
+			headerGap:        theme.Space(2),
 			maxHeight:        availH,
 			fillHeight:       full || o.Size == ModalCover,
 			corners:          innerCorners([4]float32{radius, radius, radius, radius}),

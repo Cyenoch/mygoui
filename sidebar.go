@@ -1,8 +1,6 @@
 package mygoui
 
 import (
-	"time"
-
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
@@ -34,13 +32,14 @@ type SidebarGroupOptions struct {
 // SidebarOptions configures a sidebar. Selected and Collapsed are required
 // caller-owned per-window state, and an empty Selected means no selection.
 // Width and CollapsedWidth scale with the text size; nonpositive values use
-// coss ui's 256 and 48 DIP defaults. Header and Footer build their own
+// the 256 and 48 DIP defaults. Header and Footer build their own
 // content in both states and can read Collapsed to adapt their layout. A
 // collapsed item without an icon retains its text so it remains usable.
 //
 // OnSelect runs for every enabled activation, including the current item,
-// before the item's OnClick. ToggleLabel can replace the English accessible
-// name of the toggle.
+// before the item's OnClick. The sidebar is a navigation landmark named by
+// Label, the selected item its current page; Label and ToggleLabel default
+// to the locale's Sidebar and ToggleSidebar.
 type SidebarOptions struct {
 	Selected         *string
 	Collapsed        *bool
@@ -86,15 +85,16 @@ func Sidebar(c *ui.Context, o SidebarOptions) ui.Element {
 	collapsed := *o.Collapsed
 	label := o.Label
 	if label == "" {
-		label = "Sidebar"
+		label = locale.M().Sidebar
 	}
 	t := theme.Colors(c)
 	root := ui.Column(c).FillHeight().Shrink(0).
 		MinWidth(0).Background(t.Sidebar).TextColor(t.SidebarForeground).
 		BorderEndWidth(theme.Hairline).BorderColor(t.SidebarBorder).
-		Role(ui.RoleGroup).Label(label)
-	// Collapsing moves between the widths over 200 ms, as coss does; a text
-	// scale change resizes at once. Labels shown on expand are clipped.
+		Role(ui.RoleNavigation).Label(label)
+	// Collapsing moves between the widths over the reveal duration, as a
+	// panel does; a text scale change resizes at once. Labels shown on
+	// expand are clipped.
 	var progress float32
 	if collapsed {
 		progress = 1
@@ -102,7 +102,7 @@ func Sidebar(c *ui.Context, o SidebarOptions) ui.Element {
 	// AnimateTo settles at once under reduced motion and keeps its value in
 	// step, so turning motion back on does not replay an old change.
 	progress = root.AnimateTo(sidebarCollapseKey{}, progress, ui.Animation{
-		Duration: 200 * time.Millisecond, Ease: ui.Linear,
+		Duration: theme.Motion().Reveal, Ease: theme.Motion().Ease,
 	})
 	full, narrow := theme.Scale(c, width), theme.Scale(c, collapsedWidth)
 	root.Width(full + (narrow-full)*progress)
@@ -110,7 +110,7 @@ func Sidebar(c *ui.Context, o SidebarOptions) ui.Element {
 		root.Clip()
 	}
 	root.Children(func() {
-		ui.Column(c.Key("sidebar-header")).Padding(theme.Space8).Gap(theme.Space8).Shrink(0).
+		ui.Column(c.Key("sidebar-header")).Padding(theme.Space(2)).Gap(theme.Space(2)).Shrink(0).
 			MinWidth(0).Children(func() {
 			sidebarToggle(c, o, t, collapsed)
 			if o.Header != nil {
@@ -119,7 +119,7 @@ func Sidebar(c *ui.Context, o SidebarOptions) ui.Element {
 		})
 		scroll := ui.Local(root, sidebarScrollKey{}, func() ui.ScrollState { return ui.ScrollState{} })
 		content := ui.Scroll(c.Key("sidebar-content")).Column().FillWidth().Grow(1).Basis(0).
-			MinWidth(0).MinHeight(0).Gap(theme.Space8).TrackScroll(scroll)
+			MinWidth(0).MinHeight(0).Gap(theme.Space(2)).TrackScroll(scroll)
 		content.Children(func() {
 			for i, group := range o.Groups {
 				key := sidebarGroupKey{index: i}
@@ -127,13 +127,13 @@ func Sidebar(c *ui.Context, o SidebarOptions) ui.Element {
 					key = sidebarGroupKey{name: group.Key}
 				}
 				section := ui.Column(c.Key(key)).FillWidth().MinWidth(0).Shrink(0).
-					Padding(theme.Space8).Gap(theme.Space4)
+					Padding(theme.Space(2)).Gap(theme.Space(1))
 				if group.Label != "" {
 					section.Role(ui.RoleGroup).Label(group.Label)
 				}
 				section.Children(func() {
 					if group.Label != "" && !collapsed {
-						ui.Row(c).Height(theme.Scale(c, 32)).PaddingX(theme.Space8).
+						ui.Row(c).Height(theme.Scale(c, 32)).PaddingX(theme.Space(2)).
 							AlignItems(ui.Center).Children(func() {
 							style.Text(ui.Text(c, group.Label), c, theme.XS()).
 								FontWeight(theme.WeightMedium).SingleLine()
@@ -149,7 +149,7 @@ func Sidebar(c *ui.Context, o SidebarOptions) ui.Element {
 			Mode: SurfaceFade, Edges: FadeTop | FadeBottom, Surface: t.Sidebar,
 		})
 		if o.Footer != nil {
-			ui.Column(c.Key("sidebar-footer")).Padding(theme.Space8).Gap(theme.Space8).
+			ui.Column(c.Key("sidebar-footer")).Padding(theme.Space(2)).Gap(theme.Space(2)).
 				MinWidth(0).Shrink(0).Children(o.Footer)
 		}
 	})
@@ -159,7 +159,7 @@ func Sidebar(c *ui.Context, o SidebarOptions) ui.Element {
 func sidebarToggle(c *ui.Context, o SidebarOptions, t theme.Palette, collapsed bool) {
 	label := o.ToggleLabel
 	if label == "" {
-		label = "Toggle Sidebar"
+		label = locale.M().ToggleSidebar
 	}
 	size := theme.Scale(c, 32)
 	iconSize := theme.Scale(c, theme.IconMD)
@@ -187,14 +187,14 @@ func sidebarItem(
 ) {
 	selected := *o.Selected == item.ID
 	e := ui.ButtonBase(c.Key(item.ID)).FillWidth().MinWidth(0).
-		MinHeight(theme.Scale(c, 32)).Padding(theme.Space8).Gap(theme.Space8).
+		MinHeight(theme.Scale(c, 32)).Padding(theme.Space(2)).Gap(theme.Space(2)).
 		AlignItems(ui.Center).Justify(ui.Start).Label(item.Label).
-		Role(ui.RoleButton).Checked(selected).Disabled(item.Disabled)
+		Role(ui.RoleButton).Disabled(item.Disabled)
 	if !item.Disabled {
 		e.Cursor(ui.CursorPointer)
 	}
 	if selected {
-		e.Description(locale.M().Selected)
+		e.Current(ui.CurrentPage)
 	}
 	// The ink fades with the selection; the pointer changes it at once.
 	ink := motion.Color(e, sidebarItemInkKey{}, selectedInk(t, selected))
@@ -212,11 +212,8 @@ func sidebarItem(
 			ui.Icon(c, item.Icon).Size(size, size).Shrink(0)
 		}
 		if !collapsed || item.Icon == nil {
-			text := style.Text(ui.Text(c, item.Label), c, theme.SM()).
+			style.Text(ui.Text(c, item.Label), c, theme.SM()).
 				MinWidth(0).Grow(1).SingleLine()
-			if selected {
-				text.FontWeight(theme.WeightMedium)
-			}
 		}
 	})
 	if !item.Disabled {

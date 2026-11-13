@@ -1,30 +1,523 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-10-29T02:38:20+00:00",
+  "generatedAt": "2026-11-13T16:50:26+00:00",
   "title": "Design System: mygoui",
   "extensions": {
-    "motion": [
+    "colorMeta": {
+      "light-background": {
+        "role": "neutral",
+        "displayName": "Paper (light)",
+        "canonical": "#ffffff"
+      },
+      "light-foreground": {
+        "role": "neutral",
+        "displayName": "Ink (light)",
+        "canonical": "oklch(26.9% 0 0)"
+      },
+      "light-primary": {
+        "role": "primary",
+        "displayName": "Ink (light)",
+        "canonical": "oklch(26.9% 0 0)"
+      },
+      "light-primary-foreground": {
+        "role": "neutral",
+        "displayName": "Primary Text (light)",
+        "canonical": "oklch(98.5% 0 0)"
+      },
+      "light-accent": {
+        "role": "neutral",
+        "displayName": "Accent Wash (light)",
+        "canonical": "rgb(0 0 0 / 4%)"
+      },
+      "light-border": {
+        "role": "neutral",
+        "displayName": "Hairline (light)",
+        "canonical": "rgb(0 0 0 / 8%)"
+      },
+      "light-input": {
+        "role": "neutral",
+        "displayName": "Field Line (light)",
+        "canonical": "rgb(0 0 0 / 10%)"
+      },
+      "light-ring": {
+        "role": "neutral",
+        "displayName": "Ring (light)",
+        "canonical": "oklch(70.8% 0 0)"
+      },
+      "light-sidebar": {
+        "role": "neutral",
+        "displayName": "Sidebar (light)",
+        "canonical": "oklch(98.5% 0 0)"
+      },
+      "light-sidebar-border": {
+        "role": "neutral",
+        "displayName": "Sidebar Line (light)",
+        "canonical": "rgb(0 0 0 / 6%)"
+      },
+      "light-destructive": {
+        "role": "status",
+        "displayName": "Destructive (light)",
+        "canonical": "oklch(63.7% 0.237 25.331)"
+      },
+      "light-destructive-foreground": {
+        "role": "status",
+        "displayName": "Destructive Text (light)",
+        "canonical": "oklch(50.5% 0.213 27.518)"
+      },
+      "light-info": {
+        "role": "status",
+        "displayName": "Info (light)",
+        "canonical": "oklch(62.3% 0.214 259.815)"
+      },
+      "light-info-foreground": {
+        "role": "status",
+        "displayName": "Info Text (light)",
+        "canonical": "oklch(48.8% 0.243 264.376)"
+      },
+      "light-success": {
+        "role": "status",
+        "displayName": "Success (light)",
+        "canonical": "oklch(69.6% 0.17 162.48)"
+      },
+      "light-success-foreground": {
+        "role": "status",
+        "displayName": "Success Text (light)",
+        "canonical": "oklch(50.8% 0.118 165.612)"
+      },
+      "light-warning": {
+        "role": "status",
+        "displayName": "Warning (light)",
+        "canonical": "oklch(76.9% 0.188 70.08)"
+      },
+      "light-warning-foreground": {
+        "role": "status",
+        "displayName": "Warning Text (light)",
+        "canonical": "oklch(55.5% 0.163 48.998)"
+      },
+      "light-chart-1": {
+        "role": "chart",
+        "displayName": "Chart 1 (light)",
+        "canonical": "oklch(64.6% 0.222 41.116)"
+      },
+      "light-chart-2": {
+        "role": "chart",
+        "displayName": "Chart 2 (light)",
+        "canonical": "oklch(60% 0.118 184.704)"
+      },
+      "light-chart-3": {
+        "role": "chart",
+        "displayName": "Chart 3 (light)",
+        "canonical": "oklch(39.8% 0.07 227.392)"
+      },
+      "light-chart-4": {
+        "role": "chart",
+        "displayName": "Chart 4 (light)",
+        "canonical": "oklch(82.8% 0.189 84.429)"
+      },
+      "light-chart-5": {
+        "role": "chart",
+        "displayName": "Chart 5 (light)",
+        "canonical": "oklch(76.9% 0.188 70.08)"
+      },
+      "dark-foreground": {
+        "role": "neutral",
+        "displayName": "Ink (dark)",
+        "canonical": "oklch(97% 0 0)"
+      },
+      "dark-primary": {
+        "role": "primary",
+        "displayName": "Ink (dark)",
+        "canonical": "oklch(97% 0 0)"
+      },
+      "dark-primary-foreground": {
+        "role": "neutral",
+        "displayName": "Primary Text (dark)",
+        "canonical": "oklch(26.9% 0 0)"
+      },
+      "dark-accent": {
+        "role": "neutral",
+        "displayName": "Accent Wash (dark)",
+        "canonical": "rgb(255 255 255 / 4%)"
+      },
+      "dark-border": {
+        "role": "neutral",
+        "displayName": "Hairline (dark)",
+        "canonical": "rgb(255 255 255 / 6%)"
+      },
+      "dark-input": {
+        "role": "neutral",
+        "displayName": "Field Line (dark)",
+        "canonical": "rgb(255 255 255 / 8%)"
+      },
+      "dark-ring": {
+        "role": "neutral",
+        "displayName": "Ring (dark)",
+        "canonical": "oklch(55.6% 0 0)"
+      },
+      "dark-sidebar-border": {
+        "role": "neutral",
+        "displayName": "Sidebar Line (dark)",
+        "canonical": "rgb(255 255 255 / 5%)"
+      },
+      "dark-destructive-foreground": {
+        "role": "status",
+        "displayName": "Destructive Text (dark)",
+        "canonical": "oklch(70.4% 0.191 22.216)"
+      },
+      "dark-info-foreground": {
+        "role": "status",
+        "displayName": "Info Text (dark)",
+        "canonical": "oklch(70.7% 0.165 254.624)"
+      },
+      "dark-success-foreground": {
+        "role": "status",
+        "displayName": "Success Text (dark)",
+        "canonical": "oklch(76.5% 0.177 163.223)"
+      },
+      "dark-warning-foreground": {
+        "role": "status",
+        "displayName": "Warning Text (dark)",
+        "canonical": "oklch(82.8% 0.189 84.429)"
+      },
+      "dark-chart-1": {
+        "role": "chart",
+        "displayName": "Chart 1 (dark)",
+        "canonical": "oklch(48.8% 0.243 264.376)"
+      },
+      "dark-chart-4": {
+        "role": "chart",
+        "displayName": "Chart 4 (dark)",
+        "canonical": "oklch(62.7% 0.265 303.9)"
+      },
+      "dark-chart-5": {
+        "role": "chart",
+        "displayName": "Chart 5 (dark)",
+        "canonical": "oklch(64.5% 0.246 16.439)"
+      }
+    },
+    "typographyMeta": {
+      "body": {
+        "displayName": "Body",
+        "purpose": "Base text, 16/24."
+      },
+      "body-sm": {
+        "displayName": "Control text",
+        "purpose": "SM: buttons, fields, menus and dense rows, 14/20."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Field labels and button text, medium weight."
+      },
+      "help": {
+        "displayName": "Help",
+        "purpose": "Help text, tooltips and captions, 12/16."
+      },
+      "heading": {
+        "displayName": "H1",
+        "purpose": "Page titles; semibold, tight tracking."
+      },
+      "heading-2": {
+        "displayName": "H2",
+        "purpose": "Section titles."
+      },
+      "heading-3": {
+        "displayName": "H3",
+        "purpose": "Subsection titles."
+      },
+      "heading-4": {
+        "displayName": "H4",
+        "purpose": "Dialog, sheet and drawer titles."
+      },
+      "code": {
+        "displayName": "Code",
+        "purpose": "Inline and block code, mono stack."
+      }
+    },
+    "shadows": [
       {
-        "name": "dialog",
-        "value": "200ms, ui.EaseInOut",
-        "purpose": "Dialog entry/exit and scrim in overlay/motion.go; reduced motion takes precedence."
+        "name": "surface-light",
+        "value": "0 1px 2px rgb(0 0 0 / 5%), inset 0 -1px rgb(0 0 0 / 4%)",
+        "purpose": "Cards and resting surfaces, light appearance (theme.SurfaceShadows); the edge lit from above sits along the bottom inside edge."
       },
       {
-        "name": "drawer",
-        "value": "450ms, ui.CubicBezier(0.32, 0.72, 0, 1)",
-        "purpose": "Drawer duration in overlay/motion.go and easing in overlay/drawer.go."
+        "name": "surface-dark",
+        "value": "inset 0 1px rgb(255 255 255 / 6%)",
+        "purpose": "Cards and resting surfaces, dark appearance; the edge sits along the top inside edge."
+      },
+      {
+        "name": "field-light",
+        "value": "0 1px 2px rgb(0 0 0 / 5%), inset 0 -1px rgb(0 0 0 / 6%)",
+        "purpose": "Outline buttons, light appearance (theme.FieldShadows); fields at rest carry only the drop layer."
+      },
+      {
+        "name": "field-dark",
+        "value": "inset 0 1px rgb(255 255 255 / 6%)",
+        "purpose": "Outline buttons, dark appearance."
+      },
+      {
+        "name": "overlay",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 5%), 0 4px 6px -4px rgb(0 0 0 / 5%) + 1px edge",
+        "purpose": "Popovers, menus, pickers and dialogs (theme.OverlayShadows); the edge, lit from above, is black 4% along the bottom inside edge in light and white 6% along the top inside edge in dark."
+      },
+      {
+        "name": "tooltip",
+        "value": "0 4px 6px -1px rgb(0 0 0 / 5%), 0 2px 4px -2px rgb(0 0 0 / 5%) + 1px edge",
+        "purpose": "Tooltips (theme.TooltipShadows)."
+      },
+      {
+        "name": "solid-button",
+        "value": "0 1px 2px <fill 24%>, inset 0 1px rgb(255 255 255 / 16%)",
+        "purpose": "Primary and destructive buttons; removed while pressed."
+      }
+    ],
+    "motion": [
+      {
+        "name": "state",
+        "value": "150ms, ease-out",
+        "purpose": "Motion.State: a control changing state in place (fill, border, ink, a mark drawing in, content swapping with a spinner, a calendar view swapping)."
+      },
+      {
+        "name": "thumb-press",
+        "value": "150ms, scale 1.2",
+        "purpose": "Effects.ThumbPressScale: a held slider, colour-area or switch thumb grows."
+      },
+      {
+        "name": "collapse",
+        "value": "200ms, ease-out",
+        "purpose": "A sidebar or resizable panel collapsing."
+      },
+      {
+        "name": "reveal",
+        "value": "200ms",
+        "purpose": "Motion.Reveal: content opening or a mark sliding; a layout pane folding (ease-out); the effect Reveal."
+      },
+      {
+        "name": "indicator",
+        "value": "200ms, ease-in-out",
+        "purpose": "An indicator sliding to another item (tabs, segmented control, tour dots)."
+      },
+      {
+        "name": "roll",
+        "value": "300ms; ease-out (NumberFlip digits), ease-in-out (Tour travel), linear (Tour crossfade)",
+        "purpose": "Motion.Roll: a changing number turning its digits."
+      },
+      {
+        "name": "shift",
+        "value": "150ms, ease-out",
+        "purpose": "Motion.Shift: rows and tabs moving aside for a dragged one."
+      },
+      {
+        "name": "page",
+        "value": "250ms, ease-out",
+        "purpose": "Motion.Page: carousel and navigation stack page slide."
       },
       {
         "name": "popup",
-        "value": "150ms, ui.EaseOut",
-        "purpose": "Popup motion in overlay/motion.go."
+        "value": "150ms, ease-out",
+        "purpose": "Motion.Popup: anchored popups fade from Effects.PopupScale (0.98); floating panel."
+      },
+      {
+        "name": "dialog",
+        "value": "200ms, ease-in-out",
+        "purpose": "Motion.Dialog on Motion.EaseTravel: dialogs, sheets, Modal and ImageViewer, with their scrim."
+      },
+      {
+        "name": "drawer",
+        "value": "450ms, cubic-bezier(0.32, 0.72, 0, 1)",
+        "purpose": "Motion.Drawer on Motion.EaseDrawer: drawers, bottom and floating sheets, with their scrim."
+      },
+      {
+        "name": "ease",
+        "value": "ease-out",
+        "purpose": "Motion.Ease."
+      },
+      {
+        "name": "ease-travel",
+        "value": "ease-in-out",
+        "purpose": "Motion.EaseTravel."
+      },
+      {
+        "name": "progress",
+        "value": "500ms, ease-out",
+        "purpose": "Progress and meter value changes (component constant)."
+      },
+      {
+        "name": "press",
+        "value": "250ms, ease-out; highlight at once",
+        "purpose": "PressableFeedback scales custom pressable surfaces to 98.5%."
+      },
+      {
+        "name": "toast",
+        "value": "spring, 320ms; content fade 200ms",
+        "purpose": "Toast deck position and size (toast constants)."
+      },
+      {
+        "name": "loading",
+        "value": "fade 150ms (Motion.State); wait 150ms (Effects.LoadingDelay); refresh opacity 55% (Effects.RefreshOpacity)",
+        "purpose": "Content and loading indicator crossfade."
+      },
+      {
+        "name": "spinner",
+        "value": "1s per turn",
+        "purpose": "Effects.SpinnerPeriod."
+      },
+      {
+        "name": "sweep",
+        "value": "1.5s, ease-in-out, 40% band",
+        "purpose": "Effects.SweepPeriod and SweepBand: one sweep shared by a progress bar and a region refresh line; the band enters wholly before the track and leaves wholly past it."
+      },
+      {
+        "name": "shimmer",
+        "value": "2s loop; peak white 64% light, 4% dark",
+        "purpose": "Effects.ShimmerPeriod, ShimmerPeak, ShimmerPeakDark: skeletons and the effect Shimmer; pulse lowers a skeleton to half alpha and back, the same alone and in SkeletonGroup."
+      },
+      {
+        "name": "status-dot",
+        "value": "pulse 2s, breathe 1.6s, 30fps",
+        "purpose": "StatusDot ambient motion."
       }
     ],
     "breakpoints": [
       {
-        "name": "gallery-compact",
-        "value": "760 native DIPs, scaled by theme.Scale"
+        "name": "dialog-compact",
+        "value": "640 native DIPs, unscaled window width"
+      },
+      {
+        "name": "layout-compact",
+        "value": "760 native DIPs, scaled with text",
+        "purpose": "layout panes leave the row and show as a flush sheet; the gallery shell uses this layout."
       }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary-light",
+      "description": "The main action of a surface; solid ink with a soft drop and inner highlight.",
+      "html": "<button class=\"ds-btn-primary\">Save changes</button>",
+      "css": ".ds-btn-primary { height: 32px; padding: 0 11px; border-radius: 10px; border: 0; background: oklch(26.9% 0 0); color: oklch(98.5% 0 0); font: 500 14px/20px -apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, sans-serif; box-shadow: 0 1px 2px oklch(26.9% 0 0 / 24%), inset 0 1px rgb(255 255 255 / 16%); } .ds-btn-primary:hover { background: oklch(26.9% 0 0 / 90%); } .ds-btn-primary:active { box-shadow: none; } .ds-btn-primary:focus-visible { outline: 2px solid oklch(70.8% 0 0); outline-offset: 1px; }"
+    },
+    {
+      "name": "Outline Button",
+      "kind": "button",
+      "description": "Secondary action; popover face, translucent border and the field shadow.",
+      "html": "<button class=\"ds-btn-outline\">Cancel</button>",
+      "css": ".ds-btn-outline { height: 32px; padding: 0 11px; border-radius: 10px; border: 1px solid rgb(0 0 0 / 10%); background: #fff; color: oklch(26.9% 0 0); font: 500 14px/20px -apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, sans-serif; box-shadow: 0 1px 2px rgb(0 0 0 / 5%), inset 0 -1px rgb(0 0 0 / 6%); } .ds-btn-outline:hover { background: rgb(0 0 0 / 2%); } .ds-btn-outline:focus-visible { outline: 2px solid oklch(70.8% 0 0); outline-offset: 1px; }"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost-light",
+      "description": "Toolbar and inline actions; transparent until hovered.",
+      "html": "<button class=\"ds-btn-ghost\">More</button>",
+      "css": ".ds-btn-ghost { height: 32px; padding: 0 11px; border-radius: 10px; border: 0; background: transparent; color: oklch(26.9% 0 0); font: 500 14px/20px -apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, sans-serif; } .ds-btn-ghost:hover { background: rgb(0 0 0 / 4%); } .ds-btn-ghost:focus-visible { outline: 2px solid oklch(70.8% 0 0); outline-offset: 1px; }"
+    },
+    {
+      "name": "Input",
+      "kind": "input",
+      "refersTo": "input-light",
+      "description": "Single-line field; the border turns to Ring with a 3px translucent ring on focus.",
+      "html": "<input class=\"ds-input\" placeholder=\"Name\">",
+      "css": ".ds-input { height: 32px; padding: 0 12px; border-radius: 8px; border: 1px solid rgb(0 0 0 / 10%); background: #fff; color: oklch(26.9% 0 0); font: 400 14px/20px -apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, sans-serif; box-shadow: 0 1px 2px rgb(0 0 0 / 5%); } .ds-input:focus-visible { outline: none; border-color: oklch(70.8% 0 0); box-shadow: 0 0 0 3px oklch(70.8% 0 0 / 24%); } .ds-input[aria-invalid=\"true\"] { border-color: oklch(63.7% 0.237 25.331 / 36%); }"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card-light",
+      "description": "Grouped content on the surface fill with a hairline border and the surface shadow.",
+      "html": "<div class=\"ds-card\"><div class=\"ds-card-title\">Usage</div><div class=\"ds-card-desc\">Last 30 days</div></div>",
+      "css": ".ds-card { padding: 24px; border-radius: 16px; border: 1px solid rgb(0 0 0 / 8%); background: #fff; color: oklch(26.9% 0 0); box-shadow: 0 1px 2px rgb(0 0 0 / 5%), inset 0 -1px rgb(0 0 0 / 4%); font-family: -apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, sans-serif; } .ds-card-title { font-size: 18px; line-height: 20px; font-weight: 600; } .ds-card-desc { margin-top: 6px; font-size: 14px; line-height: 20px; color: oklch(50% 0 0); }"
+    },
+    {
+      "name": "Tooltip",
+      "kind": "custom",
+      "refersTo": "tooltip-light",
+      "description": "Short hint on the popover fill, MD radius, tooltip shadow over a hairline.",
+      "html": "<div class=\"ds-tooltip\">Copy link</div>",
+      "css": ".ds-tooltip { display: inline-block; max-width: 320px; padding: 4px 8px; border-radius: 8px; border: 1px solid rgb(0 0 0 / 8%); background: #fff; color: oklch(26.9% 0 0); font: 400 12px/16px -apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, sans-serif; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 5%), 0 2px 4px -2px rgb(0 0 0 / 5%); }"
+    },
+    {
+      "name": "Badge",
+      "kind": "chip",
+      "description": "Soft status badge: the status fill at 8% with its foreground.",
+      "html": "<span class=\"ds-badge\">Active</span>",
+      "css": ".ds-badge { display: inline-flex; align-items: center; height: 18px; padding: 0 3px; border-radius: 6px; background: oklch(69.6% 0.17 162.48 / 8%); color: oklch(50.8% 0.118 165.612); font: 500 12px/16px -apple-system, BlinkMacSystemFont, \"Segoe UI\", system-ui, sans-serif; }"
+    }
+  ],
+  "narrative": {
+    "overview": "Compact neutral surfaces, clear text hierarchy and restrained state feedback for native MyGo desktop applications. This file is the authority for how mygoui looks and moves. A rule that is missing is added here through an OpenSpec change. It was extracted from the implementation; it does not establish a new identity.\n\nValues are written so a reader needs nothing else. They are executed in Go: colours, type, spacing, radii, sizes, shadows, motion and effect tokens in `theme/` (one `theme.Theme` value, `theme.Default()` being this record), and component geometry in each component's file. When Go and this record differ, this record wins: the mismatch is a defect, and a change settles it by correcting the code, or the record if the record was wrong.\n\nOne `px` in the frontmatter is one unscaled native DIP, not a physical pixel. Text scaling (`theme.Scale`) and host preferences still apply. `docs/design.md` owns engineering contracts, `docs/components.md` owns the supported subset of each component, and `docs/references.md` records where these rules came from and the licensing boundary.",
+    "keyCharacteristics": [
+      "Neutral ink on white or near-black; colour is reserved for state and data.",
+      "Hairline translucent borders and very soft shadows instead of heavy chrome.",
+      "Desktop density: 32 DIP controls, 14 DIP control text, a 4 DIP rhythm.",
+      "Short, ease-out state motion; nothing moves at rest."
+    ],
+    "rules": [
+      {
+        "name": "The State Colour Rule",
+        "body": "Hue appears for state and data only: destructive, info, success, warning and chart series. Navigation, selection and emphasis use ink and neutral fills, unless a host sets an accent for Primary.",
+        "section": "colors"
+      },
+      {
+        "name": "The Translucent Line Rule",
+        "body": "Borders, inputs and accent fills stay translucent so they read the same on every surface they sit on. Host overrides are set per appearance.",
+        "section": "colors"
+      },
+      {
+        "name": "The Steady Weight Rule",
+        "body": "A state never changes font weight. Selected, active, hover and current text keeps its weight, because heavier text is wider and shifts the layout. A state shows in fill, ink, an indicator or an icon.",
+        "section": "typography"
+      },
+      {
+        "name": "The Density Rule",
+        "body": "Default controls are 32 DIP tall with 14 DIP text. Larger sizes exist for emphasis, not for touch.",
+        "section": "layout"
+      },
+      {
+        "name": "The Still Overlay Rule",
+        "body": "Under reduced motion every overlay, popup, dialog, sheet, drawer, floating panel and scrim appears and disappears at once, fades included.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Quiet List Rule",
+        "body": "Menus, selects and combo boxes open, close and move their highlight at once: a list the user is scanning never animates.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Hairline Edge Rule",
+        "body": "Every floating surface carries a 1 DIP edge with its shadow, so it stays legible when the shadow is invisible on a dark or busy backdrop.",
+        "section": "elevation"
+      },
+      {
+        "name": "The Reduced Motion Rule",
+        "body": "Under `theme.ReduceMotion(c)` control state motion keeps its fades while sizes, positions, scales and loops settle at once. Overlays keep nothing: see the Still Overlay Rule.",
+        "section": "components"
+      },
+      {
+        "name": "The One Loading State Rule",
+        "body": "A component shows waiting one way for its kind (table above); it never stacks a spinner, a skeleton and a scrim.",
+        "section": "components"
+      }
+    ],
+    "dos": [
+      "Do read roles through `theme.Colors(c)` and sizes through `theme/`; keep this record and the Go values in step in the same change.",
+      "Do reuse theme roles and coherent public components before extracting more.",
+      "Do keep borders, inputs and accent fills translucent, and composite them on the real surface.",
+      "Do pair every floating surface's shadow with its 1 DIP edge.",
+      "Do show a state in fill, ink, an indicator or an icon, with the motion above.",
+      "Do inspect light and dark, compact and wide, and stateful native output.",
+      "Do keep UI copy concise and reveal secondary help only when needed.",
+      "Do add a missing rule to this file through a change instead of borrowing one from another system."
+    ],
+    "donts": [
+      "Don't change font weight with state.",
+      "Don't animate menus, list highlights, typing, drags or anything at rest.",
+      "Don't substitute CSS colour mixing or rounded hex values for derived colours.",
+      "Don't replace native editing or focus with pointer-only drawings.",
+      "Don't invent fonts, palettes, mobile targets or new product claims.",
+      "Don't treat HTML/CSS detector output as evidence about Go controls.",
+      "Don't claim GPU, OS gesture or screen-reader success from headless images."
     ]
   }
 }

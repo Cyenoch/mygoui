@@ -65,9 +65,9 @@ func (st *formsState) initState() {
 	st.password = "correct-horse-battery"
 	st.accountID = "acct_1042"
 	st.disabledSearch = "archived query"
-	st.bio = "Building native interfaces with MyGo and Coss."
+	st.bio = "Building native interfaces with MyGo."
 	st.price = "499.00"
-	st.website = "coss.com"
+	st.website = "example.com"
 	st.lastEdit = "Nothing changed yet"
 
 	st.otp.Value = "1234"

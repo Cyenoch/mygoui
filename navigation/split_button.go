@@ -45,7 +45,9 @@ type splitButtonState struct {
 // SplitButton builds an action joined to an arrow that opens a menu of
 // alternatives, as Save beside Save As. The two segments are buttons of one
 // joined group in the same variant and size; each takes the focus on its
-// own. Choosing an item, Escape or a press outside closes the menu.
+// own. Down on the arrow opens the menu at its first item, Up at its last.
+// Choosing an item, Escape or a press outside closes the menu; choosing or
+// Escape returns the focus to the arrow.
 func SplitButton(c *ui.Context, o SplitButtonOptions) ui.Element {
 	root := ui.Row(c).Shrink(0).MinWidth(0).AlignSelf(ui.Start).Role(ui.RoleGroup).Label(o.Label)
 	st := ui.Local(root, "split-button", func() splitButtonState { return splitButtonState{} })
@@ -86,10 +88,7 @@ func SplitButton(c *ui.Context, o SplitButtonOptions) ui.Element {
 			})
 		arrow := c.Resolve(st.arrow)
 		arrow.Role(ui.RoleMenuButton).Expanded(*open)
-		if !*open {
-			arrow.OnShortcut(0, ui.KeyDown, func() { *open = true })
-		}
-		menuPopover(c, arrow, open, menu, placement)
+		menuPopover(c, arrow, open, menu, placement, true)
 	})
 	return root
 }

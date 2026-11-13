@@ -96,7 +96,7 @@ func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.E
 	side := theme.Scale(c, height)
 	iconSize := theme.Scale(c, glyph)
 
-	e := ui.ButtonBase(c).MinHeight(side).Gap(theme.Space8).
+	e := ui.ButtonBase(c).MinHeight(side).Gap(theme.Space(2)).
 		PaddingX(paddingX).PaddingY(0).Center().Shrink(0).
 		FocusRing(true).Label(o.Label).
 		Role(ui.RoleToggleButton).Checked(selected).Busy(o.Loading)
@@ -137,7 +137,7 @@ func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.E
 		hover = normal
 	}
 	content := func() {
-		row := ui.Row(c).Center().Gap(theme.Space8).MinWidth(0)
+		row := ui.Row(c).Center().Gap(theme.Space(2)).MinWidth(0)
 		if swap > 0 {
 			row.Opacity(1 - swap)
 		}
@@ -159,7 +159,7 @@ func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.E
 		}
 	}
 	if adj.hasCorners {
-		e = style.CornerFill(c, e, theme.Space8, adj.corners, normal, hover, hover, content, overlay)
+		e = style.CornerFill(c, e, theme.Space(2), adj.corners, normal, hover, hover, content, overlay)
 	} else {
 		e = style.Background(e, radius, normal, hover, hover)
 		e.Children(func() {
@@ -211,9 +211,9 @@ func ToggleButtonGroup(c *ui.Context, o ToggleButtonGroupOptions, buttons ...Tog
 			break
 		}
 	}
-	gap := float32(theme.Space2)
+	gap := float32(theme.Space(0.5))
 	if o.Detached {
-		gap = theme.Space4
+		gap = theme.Space(1)
 	} else if joined {
 		gap = 0
 	}

@@ -275,7 +275,7 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 		}
 	}
 
-	root := ui.Column(c).MinWidth(0).Gap(theme.Space4)
+	root := ui.Column(c).MinWidth(0).Gap(theme.Space(1))
 	if o.FullWidth {
 		root.FillWidth()
 	}
@@ -285,13 +285,13 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 		}
 
 		field := ui.Row(c).MinHeight(theme.Scale(c, 32)).
-			Padding(0, theme.Space12, 0, theme.Space12).Gap(theme.Space8).
+			Padding(0, theme.Space(3), 0, theme.Space(3)).Gap(theme.Space(2)).
 			AlignItems(ui.Center).Shrink(0).FocusRing(false).Clip()
 		if o.FullWidth {
 			field.FillWidth()
 		}
 		if mode == list.SelectionMultiple {
-			field.Wrap().Gap(theme.Space4).PaddingY(theme.Space4)
+			field.Wrap().Gap(theme.Space(1)).PaddingY(theme.Space(1))
 		}
 		name := o.Label
 		if name == "" {
@@ -349,9 +349,16 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 				}
 				if chosen || s.Custom != "" || s.Text != "" {
 					selectClearButton(c, func() { comboClear(c, o, s) })
+					if !s.Open && !o.Disabled {
+						input.OnShortcut(0, ui.KeyEscape, func() { comboClear(c, o, s) })
+					}
 				} else {
 					ui.Box(c).Width(theme.Scale(c, 20)).Height(theme.Scale(c, 20)).Shrink(0)
 				}
+			}
+			// Escape closes the popup before a surrounding shortcut sees it.
+			if s.Open && !o.Disabled {
+				input.OnShortcut(0, ui.KeyEscape, func() { s.Open, s.escaped = false, true })
 			}
 			selectIndicator(c, shown)
 		})
@@ -416,11 +423,24 @@ func labelOf(items []list.ListBoxItem, sections []list.ListBoxSection, key strin
 
 // comboTextKey handles keys the native editor would otherwise consume.
 func comboTextKey(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, k ui.TextKey, mode list.SelectionMode) bool {
-	if o.Disabled || k.Mods != 0 {
+	if o.Disabled {
+		return false
+	}
+	// Alt+Down opens the popup and Alt+Up closes it, keeping the text.
+	if k.Mods == ui.Alt && (k.Key == ui.KeyDown || k.Key == ui.KeyUp) {
+		if k.Key == ui.KeyDown && !s.Open {
+			comboOpen(s)
+			s.escaped = false
+		} else if k.Key == ui.KeyUp && s.Open {
+			s.Open, s.escaped = false, true
+		}
+		return true
+	}
+	if k.Mods != 0 {
 		return false
 	}
 	switch k.Key {
-	case ui.KeyDown, ui.KeyUp, ui.KeyEnter, ui.KeyEscape:
+	case ui.KeyDown, ui.KeyUp, ui.KeyEnter:
 		if text := k.Text(); text != s.Text {
 			s.Text = text
 			s.dirty, s.Open, s.escaped = true, true, false
@@ -470,12 +490,6 @@ func comboTextKey(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, k ui.TextK
 			listNotify(o.Items, o.Sections, &s.List, o.OnChange)
 		}
 		return true
-	case ui.KeyEscape:
-		if s.Open {
-			s.Open = false
-			s.escaped = true
-			return true
-		}
 	}
 	return false
 }
@@ -574,7 +588,7 @@ func comboChip(c *ui.Context, label string, remove func()) {
 	t := theme.Colors(c)
 	radius := theme.RadiusScale().XL
 	chip := ui.Row(c).Shrink(0).Center().Height(theme.Scale(c, 20)).
-		Gap(theme.Space4).Padding(0, theme.Space6, 0, theme.Space6).
+		Gap(theme.Space(1)).Padding(0, theme.Space(1.5), 0, theme.Space(1.5)).
 		Radius(radius).Background(t.Accent)
 	chip.Children(func() {
 		style.Text(ui.Text(c, label), c, theme.XS()).
@@ -612,11 +626,12 @@ func comboPopup(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, field ui.Ele
 			Sections:          s.filtered.sections,
 			Selection:         mode,
 			State:             &s.List,
-			Padding:           theme.Space4,
+			Padding:           theme.Space(1),
 			MaxHeight:         maxHeight,
 			Empty:             empty,
 			NoFocusOnClick:    true,
 			KeyboardHighlight: s.Input.Focused(c),
+			Editor:            &s.Input,
 			IndicatorStart:    true,
 			OnAction: func(key string) {
 				comboCommit(c, o, s, key, mode, true)

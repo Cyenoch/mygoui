@@ -285,3 +285,69 @@ func TestEdgeSurfacesSlideAndRetainInertExits(t *testing.T) {
 		}
 	}
 }
+
+func TestFlushSheetHandsThePanelToItsBody(t *testing.T) {
+	open := true
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		Sheet(c, &open, SheetOptions{
+			Side: mygoui.SideLeft, Width: 240, Title: "Files", Flush: true,
+			Body: func() { ui.Column(c).Fill().Label("Pane body") },
+		})
+	}, 640, 480)
+	tt.SetPreferences(ui.Preferences{ReduceMotion: true, TextScale: 1})
+	tt.Frame()
+	body, ok := tt.Find("Pane body")
+	if !ok || body.X > theme.Hairline || body.Y > theme.Hairline || body.W < 240-2*theme.Hairline || body.H < 480-2*theme.Hairline {
+		t.Fatalf("flush body = %+v (found %v), want the 240 by 480 panel inside its hairline", body, ok)
+	}
+	if _, ok := tt.Find("Close"); ok {
+		t.Fatal("a flush sheet drew its own close button")
+	}
+	if a, ok := tt.AccessByRole(ui.RoleDialog, "Files"); !ok {
+		t.Fatalf("the flush sheet lost its name: %+v", a)
+	}
+	tt.Key(0, ui.KeyEscape)
+	if open {
+		t.Fatal("Escape did not dismiss the flush sheet")
+	}
+}
+
+func TestSideSheetSlidesFromItsEdgeInRightToLeft(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		side mygoui.Side
+		// from is the screen direction the sheet arrives from: 1 is the right.
+		from float32
+	}{
+		{"start", mygoui.SideLeft, 1},
+		{"end", mygoui.SideRight, -1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			var open bool
+			tt := ui.NewTester(func(c *ui.Context) {
+				theme.Apply(c)
+				ui.Button(c, "Open").OnClick(func() { open = true })
+				Sheet(c, &open, SheetOptions{Side: tc.side, Title: "Panel", Width: 240,
+					Body: func() { ui.Button(c, "Inside") }})
+			}, 640, 480)
+			tt.SetDirection(ui.RightToLeft)
+			if err := tt.Click("Open"); err != nil {
+				t.Fatal(err)
+			}
+			first, _ := tt.Find("Inside")
+			tt.Advance(2 * dialogMotionDuration)
+			tt.Frame()
+			settled, ok := tt.Find("Inside")
+			if !ok {
+				t.Fatal("sheet body is missing")
+			}
+			if onRight := settled.X > 320; onRight != (tc.from > 0) {
+				t.Fatalf("sheet rests at %+v, want it on the edge its side names in this direction", settled)
+			}
+			if d := (first.X - settled.X) * tc.from; d < 25 {
+				t.Fatalf("sheet entered from %v and rests at %v, want it to arrive from its own edge", first.X, settled.X)
+			}
+		})
+	}
+}

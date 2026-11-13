@@ -25,9 +25,6 @@ const (
 	ModalBackdropTransparent
 )
 
-// backdropBlur is COSS's backdrop-blur-sm, in DIPs of Gaussian sigma.
-const backdropBlur = 4
-
 // paintBackdrop applies a backdrop variant to back. The caller keeps
 // the layout (centering, padding, orientation) so Modal, Drawer, Dialog and
 // BottomSheet share one paint contract.
@@ -41,7 +38,7 @@ func paintBackdrop(c *ui.Context, back ui.Element, variant ModalBackdrop) ui.Ele
 	default:
 		// Material replaces the background, so the dim is painted over the
 		// blur with the element's paint callback.
-		back = back.Material(glass.Blur{Radius: backdropBlur})
+		back = back.Material(glass.Blur{Radius: theme.Effects().BackdropBlur})
 		return back.Draw(func(p *ui.Painter, r ui.Rect) {
 			p.Fill(r, t.Backdrop, 0)
 		})
@@ -89,6 +86,9 @@ type chrome struct {
 	headingLevel     int
 	maxHeight        float32
 	fillHeight       bool
+	// flush hands the whole panel to body: no padding, header, footer,
+	// close button or scrolling.
+	flush bool
 	// corners are the panel's radii inside its border: top left, top
 	// right, bottom right, bottom left.
 	corners [4]float32
@@ -104,18 +104,24 @@ type chromeGeometry struct {
 // Header and body exist only when they have content, so the CSS sibling
 // spacing applies without empty gaps.
 func fillPanel(c *ui.Context, e ui.Element, p chrome) {
+	if p.flush {
+		e.Column().MinWidth(0).Children(func() {
+			ui.Column(c).Fill().MinWidth(0).MinHeight(0).Children(p.body)
+		})
+		return
+	}
 	t := theme.Colors(c)
 	padding := p.padding
 	if padding == 0 {
-		padding = theme.Space24
+		padding = theme.Space(6)
 	}
 	headerGap := p.headerGap
 	if headerGap == 0 {
-		headerGap = theme.Space12
+		headerGap = theme.Space(3)
 	}
 	headerBody := p.headerBody
 	if headerBody == 0 {
-		headerBody = theme.Space8
+		headerBody = theme.Space(2)
 	}
 	bodyFooter := p.bodyFooter
 	if bodyFooter == 0 {
@@ -123,7 +129,7 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 	}
 	closeInset := p.closeInset
 	if closeInset == 0 {
-		closeInset = theme.Space8
+		closeInset = theme.Space(2)
 	}
 	level := p.headingLevel
 	if level == 0 {
@@ -159,13 +165,13 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 					} else if hasFooter {
 						gap := bodyFooter
 						if w, _ := c.Size(); w < 640 {
-							gap = theme.Space16
+							gap = theme.Space(4)
 						}
 						h.Margin(0, 0, gap, 0)
 					}
 					if hasClose {
 						// Reserve the part of the close button that reaches the header.
-						if overlap := closeInset + theme.Scale(c, closeButtonSize) - padding; overlap > 0 {
+						if overlap := closeInset + theme.Scale(c, closeButtonSize()) - padding; overlap > 0 {
 							h.PaddingEnd(overlap)
 						}
 					}
@@ -192,7 +198,7 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 					} else if hasFooter {
 						gap := bodyFooter
 						if w, _ := c.Size(); w < 640 {
-							gap = theme.Space16
+							gap = theme.Space(4)
 						}
 						fixed += gap
 					}
@@ -210,9 +216,9 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 					b.Children(p.body)
 				}
 				if hasFooter {
-					f := ui.Row(c).Justify(ui.End).AlignItems(ui.Center).Gap(theme.Space8).Shrink(0)
+					f := ui.Row(c).Justify(ui.End).AlignItems(ui.Center).Gap(theme.Space(2)).Shrink(0)
 					f.AlignSelf(ui.Stretch).Margin(ui.Auto, -padding, -padding, -padding).
-						Padding(theme.Space16, theme.Space24).
+						Padding(theme.Space(4), theme.Space(6)).
 						Radius(0, 0, p.corners[2], p.corners[3]).
 						Background(t.MutedBackground.Alpha(0.72)).
 						BorderWidth(theme.Hairline, 0, 0, 0).BorderColor(t.Border)
@@ -259,11 +265,11 @@ func dialogViewport(back, panel ui.Element, w, h float32) (float32, float32) {
 	back.Grid().JustifyItems(ui.Center).AlignItems(ui.Stretch)
 	panel.RowStart(2)
 	if w < 640 {
-		back.RowTracks(ui.Fr(1), ui.FitContent()).Padding(theme.Space48, 0, 0, 0)
-		return max(w, 0), max(h-theme.Space48, 0)
+		back.RowTracks(ui.Fr(1), ui.FitContent()).Padding(theme.Space(12), 0, 0, 0)
+		return max(w, 0), max(h-theme.Space(12), 0)
 	}
-	back.RowTracks(ui.Fr(1), ui.FitContent(), ui.Fr(3)).Padding(theme.Space16)
-	return max(w-2*theme.Space16, 0), max(h-2*theme.Space16, 0)
+	back.RowTracks(ui.Fr(1), ui.FitContent(), ui.Fr(3)).Padding(theme.Space(4))
+	return max(w-2*theme.Space(4), 0), max(h-2*theme.Space(4), 0)
 }
 
 // softPair returns a soft surface and its foreground for a status.
@@ -281,7 +287,7 @@ func statusIcon(c *ui.Context, status mygoui.StatusColor, glyph *ui.SVG) func() 
 	return func() {
 
 		bg, fg := softPair(c, status)
-		box := ui.Box(c).Size(theme.Space40, theme.Space40).Shrink(0).
+		box := ui.Box(c).Size(theme.Space(10), theme.Space(10)).Shrink(0).
 			Center().Radius(overlayRadius()).Background(bg).TextColor(fg)
 		box.Children(func() {
 			ui.Icon(c, glyph).Size(theme.Scale(c, theme.IconLG), theme.Scale(c, theme.IconLG)).Shrink(0)
@@ -304,13 +310,13 @@ const (
 	arrowWidth  = 12
 	arrowHeight = 6
 
-	// closeButtonSize is mygoui.CloseButton's box, which the header reserves
-	// room for.
-	closeButtonSize = theme.Space24
-
 	// bodyBleed keeps focus rings inside the scroll viewport.
 	bodyBleed = 3
 )
+
+// closeButtonSize is mygoui.CloseButton's box, which the header reserves
+// room for.
+func closeButtonSize() float32 { return theme.Space(6) }
 
 // paintArrow draws the arrow outside the panel's edge facing the
 // anchor, along the edge at along of its length, where arrowAlong puts the

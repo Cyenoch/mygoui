@@ -1,6 +1,7 @@
 package navigation
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -146,5 +147,32 @@ func TestMenubarAltWithAnotherModifierDoesNotFocusTheBar(t *testing.T) {
 	tt.HoldModifiers(0)
 	if tt.Focused("File") {
 		t.Fatal("Alt+Shift focused the bar")
+	}
+}
+
+// TestLongMenuTypeAheadReachesRowsNotYetBuilt protects type-ahead in a menu
+// long enough to build only the rows in view: typing reaches an item far
+// below, which scrolls into view with the focus.
+func TestLongMenuTypeAheadReachesRowsNotYetBuilt(t *testing.T) {
+	var items []MenuItemOptions
+	for i := range menuListRows + 8 {
+		items = append(items, MenuItemOptions{Label: fmt.Sprintf("Item %02d", i)})
+	}
+	items = append(items, MenuItemOptions{Label: "Zoom"})
+	open := true
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		Dropdown(c, DropdownOptions{Label: "Actions", Open: &open, Menu: MenuOptions{
+			Sections: []MenuSectionOptions{{Items: items}},
+		}})
+	}, 480, 480)
+	tt.Frame()
+	if tt.HasText("Zoom") {
+		t.Fatal("the fixture builds every row: the menu is not long")
+	}
+	tt.TypeKey(0, ui.KeyZ, "z")
+	tt.Frame()
+	if !tt.Focused("Zoom") {
+		t.Fatal("z did not reach Zoom below the rows built")
 	}
 }

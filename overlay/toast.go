@@ -3,6 +3,7 @@ package overlay
 import (
 	"fmt"
 	"math"
+	"slices"
 	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
@@ -153,14 +154,16 @@ func (s *ToastState) remove(id string) {
 
 // View installs the toast region once per view, before modal views
 // when a dialog should cover notifications. The newest three form a deck
-// that expands on hover or keyboard focus; MyGo owns their lifetime.
+// that expands on hover or keyboard focus; MyGo owns their lifetime. F6
+// moves the focus to the newest toast, and a toast that closes with the
+// focus inside hands it to the newest toast left.
 func (s *ToastState) View(c *ui.Context) ui.Element {
 	if s == nil {
 		return ui.Element{}
 	}
 	w, h := c.Size()
-	width := min(float32(360), max(float32(0), w-theme.Space32))
-	room := max(float32(1), h-theme.Space32)
+	width := min(float32(360), max(float32(0), w-theme.Space(8)))
+	room := max(float32(1), h-theme.Space(8))
 	quiet := theme.ReduceMotion(c)
 	place := s.placement
 	return ui.ToastViewportBase(c, func(viewport ui.Element, toasts []ui.Toast) {
@@ -168,7 +171,7 @@ func (s *ToastState) View(c *ui.Context) ui.Element {
 			return
 		}
 		deck := ui.Box(c.Key("toast-deck")).Absolute().Left((w - width) / 2).
-			Top(theme.Space16).Width(width).Height(room).PassThrough()
+			Top(theme.Space(4)).Width(width).Height(room).PassThrough()
 		geometry := ui.Local(deck, "geometry", func() toastDeckGeometry { return toastDeckGeometry{} })
 		expanded := viewport.Hovered() || viewport.FocusWithin()
 		var sizes [3]toastCardMetrics
@@ -187,8 +190,8 @@ func (s *ToastState) View(c *ui.Context) ui.Element {
 			}
 		}
 		if len(toasts) > 0 {
-			expandedHeight += float32(len(toasts)-1) * theme.Space12
-			collapsedHeight = sizes[len(toasts)-1].height + float32(len(toasts)-1)*theme.Space12
+			expandedHeight += float32(len(toasts)-1) * theme.Space(3)
+			collapsedHeight = sizes[len(toasts)-1].height + float32(len(toasts)-1)*theme.Space(3)
 		}
 		hull := collapsedHeight
 		if expanded {
@@ -201,6 +204,9 @@ func (s *ToastState) View(c *ui.Context) ui.Element {
 		if len(toasts) == 0 {
 			hull, geometry.hoverHeight = 0, 0
 		}
+		focus := ui.Local(deck, toastFocusKey{}, func() string { return "" })
+		var newest ui.Element
+		held := ""
 		deck.Children(func() {
 			envelope := ui.Box(c.Key("toast-envelope")).Absolute().Left(0).Width(width)
 			envelope.Hovered()
@@ -219,7 +225,7 @@ func (s *ToastState) View(c *ui.Context) ui.Element {
 			for i, t := range toasts {
 				offset -= sizes[i].height
 				depth := len(toasts) - 1 - i
-				distance := float32(depth) * theme.Space12
+				distance := float32(depth) * theme.Space(3)
 				height := sizes[len(toasts)-1].height
 				scale := 1 - float32(depth)*0.04
 				if expanded {
@@ -231,15 +237,29 @@ func (s *ToastState) View(c *ui.Context) ui.Element {
 					// bottom center keeps it.
 					top = room - distance - cardH
 				}
-				toastCard(c, t, toastCardLayout{
+				close, focused := toastCard(c, t, toastCardLayout{
 					full: width, width: cardW, height: cardH, top: top,
 					metrics: sizes[i], placement: place, quiet: quiet,
 				})
-				offset -= theme.Space12
+				newest = close
+				if focused {
+					held = t.ID
+				}
+				offset -= theme.Space(3)
 			}
 		})
+		// The toast holding the focus closed, or F6 asks for the region:
+		// the newest toast takes the focus. With none left, MyGo tells no
+		// element to give it back to.
+		gone := *focus != "" && !slices.ContainsFunc(toasts, func(t ui.Toast) bool { return t.ID == *focus })
+		if (c.Shortcut(0, ui.KeyF6) && !viewport.FocusWithin() || gone) && newest.Valid() {
+			newest.Focus()
+		}
+		*focus = held
 	})
 }
+
+type toastFocusKey struct{}
 
 // Only geometry survives builds; native transitions retain inert exit paint.
 type toastDeckGeometry struct{ hoverHeight float32 }
@@ -249,11 +269,15 @@ type toastDragGeometry struct {
 	dismissed bool
 }
 
+// toastSpring moves and resizes the deck. Only toasts use a spring, so it
+// is set here.
 var toastSpring = ui.Animation{Spring: ui.SpringOptions{Duration: 320 * time.Millisecond}}
 
-// toastContentFade fades a card's content as the deck
-// expands and collapses.
-var toastContentFade = ui.Animation{Duration: 200 * time.Millisecond}
+// toastContentFade fades a card's content as the deck expands and
+// collapses. Only the toast deck fades this way, so it is timed here.
+func toastContentFade() ui.Animation {
+	return ui.Animation{Duration: 200 * time.Millisecond, Ease: theme.Motion().Ease}
+}
 
 type toastCardMetrics struct {
 	height, bodyWidth, actionWidth, line float32
@@ -276,13 +300,13 @@ type toastCardLayout struct {
 func measureToast(c *ui.Context, t ui.Toast, width, line float32, withHeight bool) toastCardMetrics {
 	span := ui.Span{Font: theme.FontFamily(c), Size: theme.Scale(c, theme.SM().Size)}
 	m := toastCardMetrics{line: line}
-	m.bodyWidth = width - theme.Space32 - theme.Space24 - theme.Space6
-	row := float32(theme.Space24)
+	m.bodyWidth = width - theme.Space(8) - theme.Space(6) - theme.Space(1.5)
+	row := float32(theme.Space(6))
 	if t.Action != "" {
 		span.Text, span.Weight = t.Action, theme.WeightMedium
 		m.actionWidth, _ = c.MeasureText(0, span)
-		m.actionWidth += theme.Space32
-		m.bodyWidth -= m.actionWidth + theme.Space6
+		m.actionWidth += theme.Space(8)
+		m.bodyWidth -= m.actionWidth + theme.Space(1.5)
 		row = max(row, theme.Scale(c, 24))
 	}
 	m.bodyWidth = max(float32(1), m.bodyWidth)
@@ -300,7 +324,7 @@ func measureToast(c *ui.Context, t ui.Toast, width, line float32, withHeight boo
 			body += height
 		}
 	}
-	m.height = max(body, row) + theme.Space24
+	m.height = max(body, row) + theme.Space(6)
 	return m
 }
 
@@ -332,7 +356,9 @@ func variantOf(kind string) ToastVariant {
 	return ToastDefault
 }
 
-func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
+// toastCard builds one card and returns its close button, absent while a
+// swipe dismisses it, and whether the focus is in the card.
+func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) (ui.Element, bool) {
 	pal := theme.Colors(c)
 	variant := variantOf(t.Type)
 	titleInk, iconInk := toastInk(pal, variant)
@@ -355,9 +381,9 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 	// re-lays after transitions, and the exit is the transition's own
 	// translation, which the rasterizer folds: a scale here would put the
 	// card's shadow on the per-pixel transformed path every animated frame.
-	dir := height + theme.Space16
+	dir := height + theme.Space(4)
 	if layout.placement == ToastTop {
-		dir = -height - theme.Space16
+		dir = -height - theme.Space(4)
 	}
 	entry := ui.Local(root, "entry", func() bool { return false })
 	if !layout.quiet {
@@ -403,21 +429,22 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 	shown := root.DragOffset()
 	if !root.Dragging() && drag.dismissed && math.Abs(float64(shown.X-drag.offset.X)) < 0.5 {
 		c.CloseToast(t.ID)
-		return
+		return ui.Element{}, false
 	}
+	var close ui.Element
 	root.Children(func() {
 		row := ui.Row(c.Key("toast-content")).Fill().AlignItems(ui.Start).
-			Gap(theme.Space6).Padding(theme.Space12, theme.Space16).Clip()
+			Gap(theme.Space(1.5)).Padding(theme.Space(3), theme.Space(4)).Clip()
 		// A covered card's content fades out, leaving only the top
 		// sliver of its face; the deck's expansion reveals it again.
 		reveal := float32(1)
 		if layout.width < layout.full {
 			reveal = 0
 		}
-		row.Opacity(row.AnimateTo("reveal", reveal, toastContentFade)).Children(func() {
+		row.Opacity(row.AnimateTo("reveal", reveal, toastContentFade())).Children(func() {
 			// Indicator: 16 DIP glyph in a 4 DIP gutter (p-1).
-			box := ui.Box(c).Size(theme.Space24, theme.Space24).Shrink(0).
-				Center().Padding(theme.Space4).TextColor(iconInk)
+			box := ui.Box(c).Size(theme.Space(6), theme.Space(6)).Shrink(0).
+				Center().Padding(theme.Space(1)).TextColor(iconInk)
 			box.Children(func() {
 				ui.Icon(c, toastGlyph(variant)).
 					Size(theme.Scale(c, theme.IconMD), theme.Scale(c, theme.IconMD)).Shrink(0)
@@ -435,7 +462,7 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 			})
 			if t.Action != "" {
 				action := parts.ActionButton().Label(t.Action).Width(layout.metrics.actionWidth).
-					MinHeight(theme.Scale(c, 24)).PaddingX(theme.Space16).
+					MinHeight(theme.Scale(c, 24)).PaddingX(theme.Space(4)).
 					Center().Shrink(0).Radius(theme.RadiusScale().MD).FocusRing(true)
 				bg, hover, fg := toastActionColors(pal, variant)
 				action = style.Background(action, theme.RadiusScale().MD, bg, hover, hover).TextColor(fg)
@@ -448,10 +475,10 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 		})
 		// The close affordance floats outside the content row, without stealing
 		// width from the message or action. Keep the root unclipped for its ring.
-		size := theme.Scale(c, theme.Space20)
+		size := theme.Scale(c, theme.Space(5))
 		glyph := theme.Scale(c, theme.IconXS)
-		close := parts.CloseButton().Label(locale.M().Close).Absolute().
-			Top(-theme.Space4).Right(-theme.Space4).
+		close = parts.CloseButton().Label(locale.M().Close).Absolute().
+			Top(-theme.Space(1)).Right(-theme.Space(1)).
 			Size(size, size).Padding(0).Center().
 			Radius(theme.RadiusScale().XL).FocusRing(true).TextColor(pal.Muted)
 		close.Draggable(nil, ui.DraggableOptions{Axis: ui.Horizontal, Bounds: &ui.Rect{}, Rigid: true})
@@ -462,6 +489,7 @@ func toastCard(c *ui.Context, t ui.Toast, layout toastCardLayout) {
 			})
 		}
 	})
+	return close, root.FocusWithin()
 }
 
 func toastGlyph(v ToastVariant) *ui.SVG {
@@ -492,5 +520,5 @@ func toastInk(p theme.Palette, v ToastVariant) (title, icon ui.Color) {
 }
 
 func toastActionColors(p theme.Palette, _ ToastVariant) (bg, hover, fg ui.Color) {
-	return p.Primary, p.Primary.Alpha(0.9), p.PrimaryForeground
+	return p.Primary, p.Primary.Alpha(theme.Effects().HoverOpacity), p.PrimaryForeground
 }

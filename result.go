@@ -18,7 +18,8 @@ type ResultOptions struct {
 }
 
 // Result centers a status icon, title, description, actions and optional
-// detail. Text and actions are an EmptyState; the icon carries the status.
+// detail. Text and actions are an EmptyState; the icon carries the status,
+// which assistive technology reads as an image named by it.
 func Result(c *ui.Context, o ResultOptions) ui.Element {
 	t := theme.Colors(c)
 	status := statusColors(&t, o.Status)
@@ -26,15 +27,15 @@ func Result(c *ui.Context, o ResultOptions) ui.Element {
 	if icon == nil {
 		icon = StatusIcon(o.Status)
 	}
-	e := ui.Column(c).Gap(theme.Space24).Padding(theme.Space48, theme.Space24).
+	e := ui.Column(c).Gap(theme.Space(6)).Padding(theme.Space(12), theme.Space(6)).
 		MinWidth(0).FillWidth().AlignItems(ui.Center).Justify(ui.Center)
 	return e.Children(func() {
 		// EmptyState's icon tile, tinted with the status.
 		size, glyph := theme.Scale(c, 36), theme.Scale(c, 18)
-		ui.Box(c).Size(size, size).Shrink(0).Center().
+		statusMark(ui.Box(c), o.Status).Size(size, size).Shrink(0).Center().
 			Radius(theme.RadiusScale().MD).Border(theme.Hairline, t.Border).
 			Background(status.Soft.Over(t.Card)).Children(func() {
-			ui.Icon(c, icon).Size(glyph, glyph).TextColor(status.Foreground)
+			ui.Icon(c, icon).Size(glyph, glyph).TextColor(status.Foreground).Role(ui.RoleNone)
 		})
 		if o.Title != "" || o.Description != "" || o.Actions != nil {
 			EmptyState(c, EmptyStateOptions{

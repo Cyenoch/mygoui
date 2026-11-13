@@ -1,8 +1,6 @@
 package form
 
 import (
-	"time"
-
 	"github.com/Cyenoch/mygoui/internal/busy"
 	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
@@ -65,9 +63,9 @@ func Switch(c *ui.Context, o SwitchOptions) ui.Element {
 
 	indent := float32(0)
 	if o.LabelPosition == SwitchLabelAfter {
-		indent = switchMetrics(c, o.Size).w + theme.Space8
+		indent = switchMetrics(c, o.Size).w + theme.Space(2)
 	}
-	outer := ui.Column(c).MinWidth(0).Gap(theme.Space4)
+	outer := ui.Column(c).MinWidth(0).Gap(theme.Space(1))
 	outer.Children(func() {
 		// A pending switch flips a scratch copy, so the press changes nothing.
 		state := on
@@ -75,7 +73,7 @@ func Switch(c *ui.Context, o SwitchOptions) ui.Element {
 			held := *on
 			state = &held
 		}
-		row := ui.SwitchBase(c, state).Gap(theme.Space8).Shrink(0).
+		row := ui.SwitchBase(c, state).Gap(theme.Space(2)).Shrink(0).
 			FocusRing(false).TextColor(t.Foreground).Label(o.Label).Busy(o.Loading)
 		if o.Handle != nil {
 			row.Bind(o.Handle)
@@ -143,26 +141,26 @@ func switchIndicator(c *ui.Context, on *bool, size SwitchSize, disabled, loading
 	rtl := c.Direction() == ui.RightToLeft
 	track := ui.Box(c).Size(m.w, m.h).Shrink(0)
 	pos := choiceOnOff(*on)
+	motion := theme.Motion()
 	if !disabled && !theme.ReduceMotion(c) {
-		pos = track.Animate("switch-thumb", pos, 150*time.Millisecond)
+		pos = track.AnimateTo("switch-thumb", pos, ui.Animation{Duration: motion.State, Ease: motion.Ease})
 	}
 	focused, pressed := owner.FocusVisible(), owner.Pressed()
 	fill := t.Input
 	if *on {
 		fill = t.Primary
 	}
-	// A held thumb stretches 10% toward the centre after 100 ms, as coss does.
+	// A held thumb takes a slider thumb's press scale; filling the track's
+	// height, it grows in width alone, toward the centre.
 	var stretch float32
 	if pressed && !disabled && !loading {
-		stretch = 0.1
+		stretch = theme.Effects().ThumbPressScale - 1
 	}
 	if !theme.ReduceMotion(c) {
-		fill = track.AnimateColor("switch-track", fill, ui.Animation{Duration: 200 * time.Millisecond, Ease: ui.EaseOut})
+		fill = track.AnimateColor("switch-track", fill, ui.Animation{Duration: motion.State, Ease: motion.Ease})
 	}
 	// Settles at once under reduced motion, keeping the value in step.
-	stretch = track.AnimateTo("switch-press", stretch, ui.Animation{
-		Duration: 100 * time.Millisecond, Delay: 100 * time.Millisecond, Ease: ui.EaseOut,
-	})
+	stretch = track.AnimateTo("switch-press", stretch, ui.Animation{Duration: motion.State, Ease: motion.Ease})
 	track.Draw(func(p *ui.Painter, r ui.Rect) {
 		p.Fill(r, fill, m.radius)
 		off, end := m.inset, r.W-m.inset-m.thumbW

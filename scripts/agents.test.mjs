@@ -14,7 +14,7 @@ const repository = fileURLToPath(new URL("../", import.meta.url));
 function fixture(t) {
   const root = mkdtempSync(path.join(os.tmpdir(), "mygoui-agents-test-"));
   t.after(() => rmSync(root, { recursive: true, force: true }));
-  for (const directory of [".agents", ".claude", ".codex", "openspec", "scripts"]) {
+  for (const directory of [".agents", ".claude", ".codex", "openspec", "scripts", "skills"]) {
     cpSync(path.join(repository, directory), path.join(root, directory), {
       recursive: true,
       // Reproduce a checkout without ignored binaries or local consent.
@@ -45,6 +45,14 @@ function succeeded(result) {
   assert.equal(result.status, 0, result.error?.message ?? result.stderr ?? result.stdout);
 }
 
+// The published skills reach both harnesses through their links.
+function assertPublishedSkills(root) {
+  for (const topic of ["components", "theme", "design", "motion", "effects"]) {
+    const skill = path.join(root, ".claude/skills", `mygoui-${topic}`, "SKILL.md");
+    assert.ok(existsSync(skill), `${skill} does not resolve`);
+  }
+}
+
 test("npm OpenSpec refresh retains all workflows despite a global core profile", (t) => {
   const context = fixture(t);
   const globalConfig = path.join(context.root, "global/openspec/config.json");
@@ -66,6 +74,7 @@ test("npm OpenSpec refresh retains all workflows despite a global core profile",
   assert.doesNotMatch(shared, /\/opsx:/);
   assert.equal(realpathSync(path.join(context.root, ".claude/skills")), realpathSync(skills));
   assert.equal(readFileSync(globalConfig, "utf8"), original);
+  assertPublishedSkills(context.root);
 });
 
 test("both harnesses use the verified project engine ahead of a stale home engine", (t) => {
@@ -83,6 +92,7 @@ exit 99
 `);
   chmodSync(stale, 0o755);
   succeeded(nodeRun(context, ["scripts/setup-agents.mjs"]));
+  assertPublishedSkills(context.root);
   const version = readFileSync(
     path.join(context.root, ".agents/skills/impeccable/scripts/VERSION"), "utf8",
   ).trim();

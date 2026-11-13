@@ -411,37 +411,31 @@ func TestTagSelectionHonorsReducedMotion(t *testing.T) {
 		colors.AccentSoftHover.Over(colors.Background), "reduced-motion selected face")
 }
 
-// TestCloseButtonHoverSettles checks the close button's hover fade
-// schedules frames only until its face has settled.
-func TestCloseButtonHoverSettles(t *testing.T) {
+// TestCloseButtonShowsItsFaceAtOnce pins pointer feedback: hover paints the
+// face in the first frame, as every control's does, and a press neither
+// moves the button nor activates it before release.
+func TestCloseButtonShowsItsFaceAtOnce(t *testing.T) {
 	calls := 0
+	var colors theme.Palette
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.ApplyMode(c, false)
-		ui.Column(c).Padding(24).Children(func() {
+		colors = theme.Colors(c)
+		ui.Column(c).FillWidth().FillHeight().Padding(24).Background(colors.Background).Children(func() {
 			mygoui.CloseButton(c, mygoui.CloseButtonOptions{Label: "Dismiss", OnClick: func() { calls++ }})
 		})
 	}, 200, 120)
-	tt.Frame()
-	rect, ok := tt.Find("Dismiss")
-	if !ok {
-		t.Fatal("close button missing")
-	}
-	tt.Press(rect.X+rect.W/2, rect.Y+rect.H/2)
-	if !tt.FramePending() {
-		t.Fatal("a close-button press did not animate")
-	}
-	tt.Advance(400 * time.Millisecond)
+	rect := findRect(t, tt, "Dismiss")
+	x, y := rect.X+3, rect.Y+rect.H/2
+	tt.Move(x, y)
 	if tt.FramePending() {
-		t.Fatal("the close-button motion did not settle")
+		t.Fatal("the hover face animates")
 	}
+	wantPixelWith(t, tt.Image(), int(x), int(y), colors.Accent.Over(colors.Background), "hovered close button")
+	tt.Press(x, y)
 	if got := findRect(t, tt, "Dismiss"); got != rect || calls != 0 {
 		t.Fatalf("pressed close button bounds=%+v calls=%d, want %+v and 0", got, calls, rect)
 	}
-	tt.Release(rect.X+rect.W/2, rect.Y+rect.H/2)
-	tt.Advance(400 * time.Millisecond)
-	if tt.FramePending() {
-		t.Fatal("the close-button release did not settle")
-	}
+	tt.Release(x, y)
 	if calls != 1 {
 		t.Fatalf("close-button release activations = %d, want 1", calls)
 	}

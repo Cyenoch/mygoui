@@ -90,7 +90,7 @@ const (
 // settles in the next frame; meanwhile the row clips what does not fit
 // rather than painting past its bounds.
 func OverflowList(c *ui.Context, o OverflowListOptions) ui.Element {
-	gap := scale(c, theme.Space4)
+	gap := scale(c, theme.Space(1))
 	root := ui.Row(c).FillWidth().MinWidth(0).Shrink(0).AlignItems(ui.Center).Gap(gap).Clip().
 		Role(ui.RoleToolbar).FocusGroup(ui.Horizontal)
 	if o.Label != "" {
@@ -149,7 +149,7 @@ func OverflowList(c *ui.Context, o OverflowListOptions) ui.Element {
 		if st.open {
 			m = overflowMenu(o, modes)
 		}
-		menuPopover(c, more, &st.open, m, mygoui.Placement{Align: align})
+		menuPopover(c, more, &st.open, m, mygoui.Placement{Align: align}, true)
 	})
 	return root
 }
@@ -260,8 +260,8 @@ func buildOverflowItem(c *ui.Context, o OverflowListOptions, i int, key string, 
 	it := &o.Items[i]
 	c.Key(key)
 	if it.Separator {
-		return ui.Box(c).Width(hairline).Height(scale(c, theme.Space16)).Shrink(0).
-			Margin(0, scale(c, theme.Space4)).Background(theme.Colors(c).Border).Role(ui.RoleNone)
+		return ui.Box(c).Width(hairline).Height(scale(c, theme.Space(4))).Shrink(0).
+			Margin(0, scale(c, theme.Space(1))).Background(theme.Colors(c).Border).Role(ui.RoleNone)
 	}
 	if it.Checked != nil {
 		return mygoui.ToggleButton(c, mygoui.ToggleButtonOptions{

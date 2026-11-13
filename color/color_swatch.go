@@ -1,14 +1,20 @@
 package color
 
 import (
+	"slices"
 	"strings"
-	"time"
 
 	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
+
+// swatchHoverScale is a picker swatch's hover face. The swatch shows the
+// color itself, which a tint would change, so hover grows it instead, at once
+// as every hover shows.
+const swatchHoverScale = 1.1
 
 // ColorSwatchSize is the swatch scale.
 type ColorSwatchSize uint8
@@ -87,6 +93,10 @@ func ColorSwatch(c *ui.Context, o ColorSwatchOptions) ui.Element {
 	color := o.Color
 	e := ui.Box(c).Size(side, side).Shrink(0).Radius(radius).Clip().
 		Role(ui.RoleImage).Label(label)
+	// An image has no selected state, so the selection is its description.
+	if o.Selected {
+		e.Description(locale.M().Selected)
+	}
 	// The tick draws in as the swatch is marked and fades out when unmarked.
 	tick := motion.Progress(e, "selected", o.Selected)
 	e.Draw(func(p *ui.Painter, r ui.Rect) {
@@ -125,7 +135,7 @@ type ColorSwatchPickerOptions struct {
 	// empty names fall back to the color's hex value.
 	Names []string
 	// Value is the caller-owned selection. A click or the arrow keys choose a
-	// color into it. A nil Value leaves the palette with no current color.
+	// color into it. A nil Value keeps the choice inside the picker.
 	Value    *ui.Color
 	Size     ColorSwatchSize
 	Shape    ColorSwatchShape
@@ -141,15 +151,6 @@ type ColorSwatchPickerOptions struct {
 func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 	if c == nil {
 		return ui.Element{}
-	}
-	selected := -1
-	if o.Value != nil {
-		for i, col := range o.Colors {
-			if col == *o.Value {
-				selected = i
-				break
-			}
-		}
 	}
 	side := o.Size.side()
 	itemRadius := pickerRadii(o.Size, o.Shape)
@@ -171,16 +172,22 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 	// The border sits inside the item, so the swatch fills the content
 	// box and grows on hover without escaping its item.
 	content := side - 2*border
-	group := ui.RadioGroup(c, func() {
+	group := ui.RadioGroup(c, func() {})
+	// Without a caller's Value the picker keeps the chosen index itself.
+	selected := ui.Local(group, swatchChoiceKey{}, func() int { return -1 })
+	if o.Value != nil {
+		*selected = slices.Index(o.Colors, *o.Value)
+	}
+	group.Children(func() {
 		for i, col := range o.Colors {
 			i, col := i, col
 			name := pickerName(o, i, col)
-			chosen := i == selected
+			chosen := i == *selected
 			borderColor := ui.Transparent
 			if chosen {
 				borderColor = col
 			}
-			item := ui.RadioBase(c.Key(colorItemKey(i)), &selected, i).
+			item := ui.RadioBase(c.Key(colorItemKey(i)), selected, i).
 				Size(side, side).Center().Shrink(0).Radius(itemRadius).
 				FocusRing(true).
 				Cursor(cursor).Label(name).Tooltip(name)
@@ -191,12 +198,11 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 			hovered := item.Hovered() && !o.Disabled
 			itemColor := col
 			item.Children(func() {
-				swatchScale := float32(1)
-				switch {
-				case chosen:
-					swatchScale = 0.77
-				case hovered:
-					swatchScale = 1.1
+				// The chosen swatch shrinks over the state motion; hover
+				// grows it at once.
+				chosenScale := float32(1)
+				if chosen {
+					chosenScale = 0.77
 				}
 				innerRadius := itemRadius
 				if o.Shape == SwatchSquare && o.Size == SwatchSM && chosen {
@@ -205,14 +211,19 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 					innerRadius = 6
 				}
 				swatch := ui.Box(c).Size(content, content).Role(ui.RoleNone)
-				swatch.AnimatePose(ui.Pose{Scale: swatchScale},
-					ui.Animation{Duration: 100 * time.Millisecond, Ease: ui.EaseOut})
+				if hovered && !chosen {
+					swatch.Scale(swatchHoverScale, swatchHoverScale)
+				}
+				m := theme.Motion()
+				swatch.AnimatePose(ui.Pose{Scale: chosenScale},
+					ui.Animation{Duration: m.State, Ease: m.Ease})
 				swatch.Draw(func(p *ui.Painter, r ui.Rect) {
 					paintSwatch(p, r, itemColor, innerRadius)
 				})
 
-				// The tick is its own layer so its arrival (a 150 ms scale and
-				// fade) stays centered in the item rather than the swatch.
+				// The tick is its own layer so its arrival (a scale and fade over
+				// the state duration) stays centered in the item rather than the
+				// swatch.
 				ink := ui.RGB(255, 255, 255)
 				if luminance(itemColor) > 0.5 {
 					ink = ui.RGB(0, 0, 0)
@@ -224,16 +235,13 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 				check := ui.Box(c).Absolute().Role(ui.RoleNone).
 					Left(0).Top(0).Size(content, content)
 				check.AnimatePose(ui.Pose{Scale: checkScale, Fade: checkFade},
-					ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut})
+					ui.Animation{Duration: m.State, Ease: m.Ease})
 				check.Draw(func(p *ui.Painter, r ui.Rect) {
 					paintCheckmark(p, r, ink, 1)
 				})
 			})
 			item.OnChange(func() {
-				if o.Value == nil {
-					return
-				}
-				if *o.Value != col {
+				if o.Value != nil {
 					*o.Value = col
 				}
 				if o.OnChange != nil {
@@ -241,7 +249,7 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 				}
 			})
 		}
-	}).Label(label).Gap(theme.Space8).AlignItems(ui.Center).
+	}).Label(label).Gap(theme.Space(2)).AlignItems(ui.Center).
 		Disabled(o.Disabled)
 	if o.Layout == SwatchStack {
 		group = group.Column().Shrink(0)
@@ -253,6 +261,9 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 
 // colorItemKey identifies one swatch of a palette across builds.
 type colorItemKey int
+
+// swatchChoiceKey keeps a picker's chosen index.
+type swatchChoiceKey struct{}
 
 // pickerRadii returns the item radius of a picker; the inner swatch inherits
 // it, as the swatch does.

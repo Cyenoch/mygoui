@@ -1,7 +1,6 @@
 package mygoui
 
 import (
-	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -24,10 +23,10 @@ type BannerOptions struct {
 
 // Banner is a persistent message bar for the top of a window or a pane: one
 // square row from edge to edge, ruled along its bottom. An Alert is the
-// rounded callout within content. It exposes ui.RoleStatus. The text takes
+// rounded callout within content. Its role is an Alert's. The text takes
 // the width the icon and the close button leave, and the actions wrap below
 // it when there is no room beside it. When the caller stops building it
-// after OnDismiss, the bar fades out over motion.Reveal; what follows it
+// after OnDismiss, the bar fades out over the reveal duration; what follows it
 // moves up at once unless the caller gives it a Position transition.
 func Banner(c *ui.Context, o BannerOptions) ui.Element {
 	t := theme.Colors(c)
@@ -40,12 +39,13 @@ func Banner(c *ui.Context, o BannerOptions) ui.Element {
 	// close button, so that a message of several lines keeps its icon, its
 	// actions and its close button at the top.
 	line := theme.Scale(c, bannerLine)
-	e := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Gap(theme.Space8).
-		Padding(theme.Space6, theme.Space12).MinHeight(theme.Scale(c, theme.Space40)).
+	m := theme.Motion()
+	e := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Gap(theme.Space(2)).
+		Padding(theme.Space(1.5), theme.Space(3)).MinHeight(theme.Scale(c, theme.Space(10))).
 		Background(fill).BorderWidth(0, 0, theme.Hairline, 0).BorderColor(border).
-		TextColor(t.Foreground).Role(ui.RoleStatus).Label(o.Text).Transition(ui.ElementTransition{
-		Duration: motion.State, Ease: ui.EaseOut, Colors: true,
-		Enter: &ui.Motion{}, Exit: &ui.Motion{}, ExitDuration: motion.Reveal, ExitEase: ui.EaseInOut,
+		TextColor(t.Foreground).Role(messageRole(o.Status)).Label(o.Text).Transition(ui.ElementTransition{
+		Duration: m.State, Ease: m.Ease, Colors: true,
+		Enter: &ui.Motion{}, Exit: &ui.Motion{}, ExitDuration: m.Reveal, ExitEase: ui.EaseInOut,
 	})
 	return e.Children(func() {
 		icon := o.Icon
@@ -61,12 +61,12 @@ func Banner(c *ui.Context, o BannerOptions) ui.Element {
 		// The text and the actions share rows that wrap: the text asks for
 		// a readable measure, and the actions go under it when they do not
 		// fit beside it.
-		ui.Row(c).Grow(1).Basis(0).MinWidth(0).Wrap().GapX(theme.Space8).AlignItems(ui.Start).Children(func() {
+		ui.Row(c).Grow(1).Basis(0).MinWidth(0).Wrap().GapX(theme.Space(2)).AlignItems(ui.Start).Children(func() {
 			pad := (line - theme.SM().LineHeight*theme.TextScale(c)) / 2
 			style.Text(ui.Text(c, o.Text), c, theme.SM()).Grow(1).Basis(theme.Scale(c, 160)).MinWidth(0).
 				Padding(pad, 0)
 			if o.Action != nil {
-				ui.Row(c).Shrink(0).MinHeight(line).AlignItems(ui.Center).Gap(theme.Space8).Children(o.Action)
+				ui.Row(c).Shrink(0).MinHeight(line).AlignItems(ui.Center).Gap(theme.Space(2)).Children(o.Action)
 			}
 		})
 		if o.OnDismiss != nil {

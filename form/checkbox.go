@@ -53,8 +53,8 @@ func Checkbox(c *ui.Context, o CheckboxOptions) ui.Element {
 	disabled := o.Disabled
 	errText := formstyle.ErrorText(o.Invalid, o.Error)
 
-	return choiceField(c, o.Description, errText, disabled, theme.Space24, func() {
-		row := ui.CheckboxBase(c, checked).Gap(theme.Space8).Shrink(0).
+	return choiceField(c, o.Description, errText, disabled, theme.Space(6), func() {
+		row := ui.CheckboxBase(c, checked).Gap(theme.Space(2)).Shrink(0).
 			FocusRing(false).TextColor(t.Foreground).Label(o.Label)
 		if o.Handle != nil {
 			row.Bind(o.Handle)
@@ -170,7 +170,7 @@ func choiceExpand(r ui.Rect, by float32) ui.Rect {
 // choiceField lays out a choice row built by body with field-level
 // description and error, indented under the label.
 func choiceField(c *ui.Context, description, errText string, disabled bool, indent float32, body func()) ui.Element {
-	outer := ui.Column(c).MinWidth(0).Gap(theme.Space4).Children(func() {
+	outer := ui.Column(c).MinWidth(0).Gap(theme.Space(1)).Children(func() {
 		body()
 		if description != "" {
 			Description(c, description).PaddingStart(indent)

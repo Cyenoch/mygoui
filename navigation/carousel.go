@@ -7,7 +7,6 @@ import (
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
-	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -56,6 +55,10 @@ type (
 type carouselState struct {
 	index int
 	dir   float32
+	// slides takes the focus from an arrow that disables holding it, and
+	// stepped asks the build to announce the page a step reached.
+	slides  ui.Handle
+	stepped bool
 
 	dragging     bool
 	vertical     bool
@@ -68,7 +71,6 @@ type carouselState struct {
 
 const (
 	pipsDefaultVisible = 7
-	carouselMotion     = 250 * time.Millisecond
 
 	// A drag turns a page once it carries the slides a quarter of the way,
 	// or flings them faster than carouselFling DIPs a second; one that moves
@@ -133,22 +135,23 @@ func pipsWindow(index, count, visible int) (first, end int) {
 
 func buildPip(c *ui.Context, i, count int, active, more bool) ui.Element {
 	t := theme.Colors(c)
-	side := scale(c, theme.Space16)
+	side := scale(c, theme.Space(4))
 	pip := ui.ButtonBase(c).Size(side, side).Center().Shrink(0).Radius(side/2).FocusRing(true).
 		Label(locale.M().Page+" "+strconv.Itoa(i+1)).PositionInSet(i+1, count)
-	dot := scale(c, theme.Space6)
+	dot := scale(c, theme.Space(1.5))
 	switch {
 	case active:
-		dot = scale(c, theme.Space8)
+		dot = scale(c, theme.Space(2))
 		pip.Current(ui.CurrentPage)
 	case more:
-		dot = scale(c, theme.Space4)
+		dot = scale(c, theme.Space(1))
 	}
 	// The pip that becomes current grows and darkens as the one that was
 	// current shrinks and fades; hover shows at once.
 	ink := selectionInk(pip, "pip-ink", active, pip.Hovered(),
 		t.MutedForeground.Alpha(0.4), t.Foreground, t.MutedForeground)
-	dot = pip.AnimateTo("pip-size", dot, ui.Animation{Duration: motion.State, Ease: ui.EaseOut})
+	m := theme.Motion()
+	dot = pip.AnimateTo("pip-size", dot, ui.Animation{Duration: m.State, Ease: m.Ease})
 	pip.Children(func() {
 		ui.Box(c).Size(dot, dot).Radius(dot / 2).Background(ink)
 	})
@@ -164,7 +167,7 @@ func buildPip(c *ui.Context, i, count int, active, more bool) ui.Element {
 // come and go, and change at once under reduced motion. It never advances
 // on its own.
 func Carousel(c *ui.Context, o CarouselOptions) ui.Element {
-	root := ui.Column(c).FillWidth().MinWidth(0).Gap(scale(c, theme.Space8))
+	root := ui.Column(c).FillWidth().MinWidth(0).Gap(scale(c, theme.Space(2)))
 	index := o.Index
 	if index == nil {
 		index = ui.Local(root, carouselIndexKey{}, func() int { return 0 })
@@ -206,6 +209,7 @@ func Carousel(c *ui.Context, o CarouselOptions) ui.Element {
 			dir = -1
 		}
 		*index, st.index, st.dir, current = to, to, dir, to
+		st.stepped = true
 		if o.OnChange != nil {
 			o.OnChange(to)
 		}
@@ -228,7 +232,7 @@ func Carousel(c *ui.Context, o CarouselOptions) ui.Element {
 	root.Children(func() {
 		// The arrows step from the buttons and the slides; in the pips they
 		// move the focus from pip to pip.
-		row := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(scale(c, theme.Space8))
+		row := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(scale(c, theme.Space(2)))
 		row.OnShortcut(0, ui.KeyLeft, func() { step(-forward) })
 		row.OnShortcut(0, ui.KeyRight, func() { step(forward) })
 		row.OnShortcut(0, ui.KeyHome, func() {
@@ -242,12 +246,12 @@ func Carousel(c *ui.Context, o CarouselOptions) ui.Element {
 			}
 		})
 		row.Children(func() {
-			carouselArrow(c, locale.M().Previous, -forward, o.Loop || current > 0, func() { step(-1) })
+			carouselArrow(c, st, locale.M().Previous, -forward, o.Loop || current > 0, func() { step(-1) })
 			swiped = carouselSlides(c, o, st, current, perView, forward, target)
-			carouselArrow(c, locale.M().Next, forward, o.Loop || current < last, func() { step(1) })
+			carouselArrow(c, st, locale.M().Next, forward, o.Loop || current < last, func() { step(1) })
 		})
 		if last > 0 {
-			pager := ui.Row(c).AlignSelf(ui.Center).AlignItems(ui.Center).Gap(scale(c, theme.Space8))
+			pager := ui.Row(c).AlignSelf(ui.Center).AlignItems(ui.Center).Gap(scale(c, theme.Space(2)))
 			pager.Children(func() {
 				PipsPager(c, PipsPagerOptions{Index: index, Count: last + 1, OnChange: o.OnChange})
 				// Pips are a window over the pages once there are more than
@@ -263,20 +267,30 @@ func Carousel(c *ui.Context, o CarouselOptions) ui.Element {
 		step(swiped)
 		c.Invalidate()
 	}
+	if st.stepped {
+		// The page a step reaches is news the focus does not bring: it
+		// stays on the arrow or the slides.
+		st.stepped = false
+		c.Announce(locale.M().Page + " " + strconv.Itoa(current+1))
+	}
 	return root
 }
 
 // carouselArrow builds a step button whose chevron points toward side: -1
-// left, 1 right.
-func carouselArrow(c *ui.Context, label string, side int, enabled bool, onClick func()) {
+// left, 1 right. One that disables holding the focus hands it to the
+// slides, whose arrows step on.
+func carouselArrow(c *ui.Context, st *carouselState, label string, side int, enabled bool, onClick func()) {
 	icon := lucide.ChevronRight()
 	if side < 0 {
 		icon = lucide.ChevronLeft()
 	}
-	mygoui.Button(c, mygoui.ButtonOptions{
+	btn := mygoui.Button(c, mygoui.ButtonOptions{
 		Label: label, Icon: icon, IconOnly: true, Variant: mygoui.ButtonOutline,
 		Size: theme.ButtonSmall, Disabled: !enabled, OnClick: onClick,
 	}).AlignSelf(ui.Center)
+	if !enabled && btn.Focused() {
+		st.slides.Focus(c)
+	}
 }
 
 // carouselSlides builds the slides in view and reads the drag on them. It
@@ -286,7 +300,7 @@ func carouselArrow(c *ui.Context, label string, side int, enabled bool, onClick 
 func carouselSlides(c *ui.Context, o CarouselOptions, st *carouselState, index, perView, forward int, target func(by int) (int, bool)) (by int) {
 	viewport := ui.Row(c).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Stretch).
 		Clip().Focusable().FocusRing(true).
-		Radius(theme.RadiusScale().LG).Role(ui.RoleGroup)
+		Radius(theme.RadiusScale().LG).Role(ui.RoleGroup).RoleDescription(locale.M().Carousel).Bind(&st.slides)
 	if o.Label != "" {
 		viewport.Label(o.Label)
 	}
@@ -297,19 +311,20 @@ func carouselSlides(c *ui.Context, o CarouselOptions, st *carouselState, index, 
 	viewport.Children(func() {
 		// The slides move together, so that a drag moves them as one and the
 		// slides of a step come on from where the drag left them.
-		track := ui.Row(c).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Stretch).Gap(scale(c, theme.Space8))
+		track := ui.Row(c).Grow(1).Basis(0).MinWidth(0).AlignItems(ui.Stretch).Gap(scale(c, theme.Space(2)))
+		m := theme.Motion()
 		switch pulled := carouselPulled(st, forward, target); {
 		case st.dragging:
 			track.Translate(track.Jump(carouselPullKey{}, pulled), 0)
 		case animated:
-			track.Translate(track.AnimateTo(carouselPullKey{}, 0, ui.Animation{Duration: motion.Reveal, Ease: ui.EaseOut}), 0)
+			track.Translate(track.AnimateTo(carouselPullKey{}, 0, ui.Animation{Duration: m.Reveal, Ease: m.Ease}), 0)
 		default:
 			track.Translate(track.Jump(carouselPullKey{}, 0), 0)
 		}
 		// Slides only translate, so their motion needs no bitmap of the slide:
 		// the GPU moves what they paint.
 		shift := st.dir * float32(forward)
-		enter := ui.Motion{XPercent: 100 * shift, X: scale(c, theme.Space8) * shift}
+		enter := ui.Motion{XPercent: 100 * shift, X: scale(c, theme.Space(2)) * shift}
 		exit := ui.Motion{XPercent: -100 * shift}
 		if animated {
 			// A slide leaves the way this step goes, not the way the step that
@@ -319,10 +334,10 @@ func carouselSlides(c *ui.Context, o CarouselOptions, st *carouselState, index, 
 		track.Children(func() {
 			for i := index; i < min(index+perView, o.Count); i++ {
 				slide := ui.Column(c.Key(i)).Grow(1).Basis(0).MinWidth(0).
-					Role(ui.RoleGroup).PositionInSet(i+1, o.Count)
+					Role(ui.RoleGroup).RoleDescription(locale.M().Slide).PositionInSet(i+1, o.Count)
 				if animated {
 					slide.Transition(ui.ElementTransition{
-						Position: true, Duration: carouselMotion, Ease: ui.EaseOut,
+						Position: true, Duration: m.Page, Ease: m.Ease,
 						Enter: &enter, Exit: &exit,
 					})
 				}
@@ -426,7 +441,7 @@ func carouselNeighbour(c *ui.Context, o CarouselOptions, st *carouselState, widt
 	if !ok {
 		return
 	}
-	gap := scale(c, theme.Space8)
+	gap := scale(c, theme.Space(2))
 	slide := ui.Column(c.Key(carouselNeighbourKey{})).Absolute().Top(0).Width(width).Left(side*(width+gap)).
 		Role(ui.RoleGroup).PositionInSet(to+1, o.Count).AccessHidden(true)
 	slide.Children(func() { o.Slide(to) })

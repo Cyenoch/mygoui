@@ -50,7 +50,7 @@ type ComponentPage struct {
 
 // codeImportQualifier matches a package qualifier in a usage snippet, so the
 // bar can name the packages the snippet actually uses.
-var codeImportQualifier = regexp.MustCompile(`\b(mygoui|form|list|navigation|overlay|date|color|data|chart|content|theme|lucide)\.`)
+var codeImportQualifier = regexp.MustCompile(`\b(mygoui|form|list|navigation|overlay|date|color|data|chart|content|theme|layout|effect|lucide)\.`)
 
 // qualifierImports maps a snippet qualifier to its module path.
 var qualifierImports = map[string]string{
@@ -65,6 +65,8 @@ var qualifierImports = map[string]string{
 	"chart":      mygouiImportPath + "/chart",
 	"content":    mygouiImportPath + "/content",
 	"theme":      mygouiImportPath + "/theme",
+	"layout":     mygouiImportPath + "/layout",
+	"effect":     mygouiImportPath + "/effect",
 	"lucide":     "github.com/Cyenoch/mygoicons/lucide",
 }
 
@@ -124,7 +126,7 @@ const mygouiImportPath = "github.com/Cyenoch/mygoui"
 // RegisterComponent registers p as a gallery page. The page ID is the
 // component ID, so the sidebar, search and tests address it directly.
 func RegisterComponent(p ComponentPage) {
-	p.Tokens = cossTokens(p)
+	p.Tokens = append(cossTokens(p), pageLanguageTokens[p.ID]...)
 	componentMu.Lock()
 	componentByID[p.ID] = p
 	componentMu.Unlock()
@@ -1084,6 +1086,10 @@ func tokenCard(c *ui.Context, t, lightPalette, darkPalette *theme.Palette, token
 					ts.Mono = true
 					style.Text(ui.Text(c, color.FormatHex(current)), c, ts).
 						TextColor(t.Muted).Selectable()
+				} else if value, ok := languageValue(token); ok {
+					ts := theme.XS()
+					ts.Mono = true
+					style.Text(ui.Text(c, value), c, ts).TextColor(t.Muted).Selectable()
 				} else {
 					mygoui.Typography(c, "custom token", mygoui.TypographyOptions{
 						Type: theme.TypeBodyXS, Muted: true,

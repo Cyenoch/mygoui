@@ -52,7 +52,7 @@ func Highlighter(c *ui.Context, o HighlighterOptions) ui.Element {
 	code := strings.TrimRight(strings.TrimLeft(o.Code, "\r\n"), " \t\r\n")
 	root := ui.Column(c).AlignSelf(ui.Stretch).MinWidth(0).Clip().Radius(theme.RadiusScale().XL).
 		Background(t.Code).TextColor(t.CodeForeground).
-		BorderWidth(theme.Hairline).BorderColor(t.Border).Role(ui.RoleGroup)
+		BorderWidth(theme.Hairline).BorderColor(t.Border)
 	hl := ui.Local(root, highlightStateKey{}, func() highlighted { return highlighted{} })
 	key := highlightKey{code: code, language: o.Language, colors: syntaxColorsOf(t)}
 	if hl.spans == nil || hl.key != key {
@@ -69,10 +69,10 @@ func Highlighter(c *ui.Context, o HighlighterOptions) ui.Element {
 		title = o.Language
 	}
 	if title != "" {
-		root.Label(title)
+		root.Role(ui.RoleGroup).Label(title)
 	}
 	copyButton := func() ui.Element {
-		return CopyButton(c, CopyButtonOptions{Text: code, Size: theme.ButtonSmall})
+		return CopyButton(c, CopyButtonOptions{Text: code, Label: copyLabel(o.Title), Size: theme.ButtonSmall})
 	}
 	return root.Children(func() {
 		if title != "" {
@@ -82,7 +82,7 @@ func Highlighter(c *ui.Context, o HighlighterOptions) ui.Element {
 		highlighterBody(c, hl.spans, o.Wrap, floats)
 		if floats {
 			// Code is laid out left to right, so its free corner is the right.
-			inset := theme.Scale(c, theme.Space8)
+			inset := theme.Scale(c, theme.Space(2))
 			copyButton().Absolute().Top(inset).Right(inset)
 		}
 	})
@@ -92,8 +92,8 @@ func highlighterHeader(c *ui.Context, t theme.Palette, title string, copies bool
 	ts := theme.XS()
 	ts.Weight = theme.WeightMedium
 	ui.Row(c).FillWidth().MinWidth(0).MinHeight(theme.Scale(c, 40)).
-		AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(theme.Scale(c, theme.Space8)).
-		Padding(0, theme.Scale(c, 10), 0, theme.Scale(c, theme.Space16)).
+		AlignItems(ui.Center).Justify(ui.SpaceBetween).Gap(theme.Scale(c, theme.Space(2))).
+		Padding(0, theme.Scale(c, 10), 0, theme.Scale(c, theme.Space(4))).
 		BorderWidth(0, 0, theme.Hairline, 0).BorderColor(t.Border).
 		Children(func() {
 			style.Text(ui.Text(c, title), c, ts).MinWidth(0).SingleLine().Unselectable()
@@ -114,7 +114,7 @@ func highlighterBody(c *ui.Context, spans []ui.Span, wrap, reserve bool) {
 	}
 	// Code reads left to right in a right-to-left interface too.
 	outer.FillWidth().MinWidth(0).Direction(ui.LeftToRight).Children(func() {
-		pad := theme.Scale(c, theme.Space16)
+		pad := theme.Scale(c, theme.Space(4))
 		right := pad
 		if reserve {
 			right += theme.Scale(c, theme.ButtonHeight(theme.ButtonSmall))

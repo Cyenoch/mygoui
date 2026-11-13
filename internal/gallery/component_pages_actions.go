@@ -14,7 +14,7 @@ func buttonsStateOf(s *State) *buttonsState {
 func init() {
 	RegisterComponent(ComponentPage{
 		ID: "button", Title: "Button", Group: "Actions", Order: 10,
-		Description: "Native actions with Coss variants, sizes and states.",
+		Description: "Native actions with variants, sizes and states.",
 		Examples: []ComponentExample{
 			{
 				Title:       "Variants",

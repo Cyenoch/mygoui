@@ -54,7 +54,7 @@ func PasswordField(c *ui.Context, value *string, o PasswordFieldOptions) ui.Elem
 		if o.Strength == nil {
 			return passwordShell(c, value, o)
 		}
-		column := ui.Column(c).Gap(theme.Space6)
+		column := ui.Column(c).Gap(theme.Space(1.5))
 		if o.FullWidth {
 			column.FillWidth()
 		}
@@ -93,7 +93,7 @@ func passwordFace(c *ui.Context, value *string, o PasswordFieldOptions) ui.Eleme
 	var editor ui.Element
 	shell.Children(func() {
 		editor = ui.TextInputBase(c, value).MinWidth(0).JustifySelf(ui.Stretch).
-			PaddingStart(theme.Space12).PaddingEnd(theme.Space4).PaddingY(theme.Scale(c, 5))
+			PaddingStart(theme.Space(3)).PaddingEnd(theme.Space(1)).PaddingY(theme.Scale(c, 5))
 		editor = fieldText(editor, c)
 		if !*revealed {
 			editor.Password()
@@ -132,7 +132,7 @@ func passwordStrength(c *ui.Context, value string, o PasswordFieldOptions) {
 	case level == 2:
 		ink = t.Warning
 	}
-	ui.Column(c).Gap(theme.Space4).FillWidth().Children(func() {
+	ui.Column(c).Gap(theme.Space(1)).FillWidth().Children(func() {
 		bar := ui.Box(c).FillWidth().Height(theme.Scale(c, 4)).Shrink(0)
 		fills := make([]ui.Color, PasswordStrengthLevels)
 		for i := range fills {
@@ -142,7 +142,7 @@ func passwordStrength(c *ui.Context, value string, o PasswordFieldOptions) {
 			}
 			fills[i] = motion.Color(bar, i, target)
 		}
-		gap := theme.Scale(c, theme.Space4)
+		gap := theme.Scale(c, theme.Space(1))
 		rtl := c.Direction() == ui.RightToLeft
 		bar.Draw(func(p *ui.Painter, r ui.Rect) {
 			w := (r.W - gap*(PasswordStrengthLevels-1)) / PasswordStrengthLevels

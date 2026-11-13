@@ -9,7 +9,8 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// TimelineItem is one event. Status colors its marker; Icon replaces the
+// TimelineItem is one event. Status colors its marker, which assistive
+// technology reads by the status's name; Icon replaces the
 // dot with a glyph on a tinted disc. Time is shown as given, after the
 // title. Content builds caller content under the description, as a diff
 // summary or an attachment. OnClick makes the text a button, as for opening
@@ -97,9 +98,9 @@ func timelineEarlier(c *ui.Context, t *theme.Palette, parts ui.CollapsibleParts,
 	if label == "" {
 		label = locale.M().ShowMore
 	}
-	side := theme.Scale(c, theme.Space20)
+	side := theme.Scale(c, theme.Space(5))
 	trigger := parts.Trigger.MinWidth(0).MinHeight(side).AlignItems(ui.Center).Justify(ui.Start).
-		Gap(theme.Space12).Cursor(ui.CursorPointer).Label(label)
+		Gap(theme.Space(3)).Cursor(ui.CursorPointer).Label(label)
 	trigger = style.Background(trigger, theme.RadiusScale().MD, ui.Transparent, t.SurfaceHover, t.SurfaceHover)
 	progress := parts.Progress()
 	trigger.Children(func() {
@@ -131,19 +132,19 @@ type timelinePlace struct {
 }
 
 func timelineItem(c *ui.Context, t *theme.Palette, it TimelineItem, at timelinePlace, key int) {
-	side := theme.Scale(c, theme.Space20)
-	item := ui.Row(c.Key(key)).MinWidth(0).Gap(theme.Space12).AlignItems(ui.Stretch).
+	side := theme.Scale(c, theme.Space(5))
+	item := ui.Row(c.Key(key)).MinWidth(0).Gap(theme.Space(3)).AlignItems(ui.Stretch).
 		Role(ui.RoleListItem).Label(it.Title).Busy(at.pending)
 	if it.Description != "" {
 		item.Description(it.Description)
 	}
 	item.Children(func() {
-		ui.Column(c).Shrink(0).Width(side).AlignItems(ui.Center).Gap(theme.Space4).Children(func() {
+		ui.Column(c).Shrink(0).Width(side).AlignItems(ui.Center).Gap(theme.Space(1)).Children(func() {
 			ui.Box(c).Size(side, side).Shrink(0).Center().Children(func() {
 				timelineMarker(c, t, it, at.pending, side)
 			})
 			if !at.last {
-				line := ui.Box(c).Width(0).Grow(1).MinHeight(theme.Space16).
+				line := ui.Box(c).Width(0).Grow(1).MinHeight(theme.Space(4)).
 					BorderStartWidth(theme.Hairline).BorderColor(t.Border)
 				if at.dashed {
 					line.BorderStyle(ui.BorderDashed)
@@ -152,17 +153,17 @@ func timelineItem(c *ui.Context, t *theme.Palette, it TimelineItem, at timelineP
 		})
 		outer := ui.Column(c).Grow(1).Basis(0).MinWidth(0)
 		if !at.last {
-			outer.Padding(0, 0, theme.Space20, 0)
+			outer.Padding(0, 0, theme.Space(5), 0)
 		}
 		outer.Children(func() {
 			if it.OnClick == nil {
-				ui.Column(c).MinWidth(0).Gap(theme.Space2).Children(func() { timelineText(c, t, it) })
+				ui.Column(c).MinWidth(0).Gap(theme.Space(0.5)).Children(func() { timelineText(c, t, it) })
 				return
 			}
 			// The face reaches past the text, so the text keeps its place.
-			pad, padX := theme.Scale(c, theme.Space4), theme.Scale(c, theme.Space8)
+			pad, padX := theme.Scale(c, theme.Space(1)), theme.Scale(c, theme.Space(2))
 			button := ui.ButtonBase(c).Column().AlignItems(ui.Stretch).Justify(ui.Start).MinWidth(0).
-				Gap(theme.Space2).Padding(pad, padX).Margin(-pad, -padX).Cursor(ui.CursorPointer).
+				Gap(theme.Space(0.5)).Padding(pad, padX).Margin(-pad, -padX).Cursor(ui.CursorPointer).
 				OnClick(it.OnClick)
 			style.Background(button, theme.RadiusScale().MD, ui.Transparent, t.SurfaceHover, t.SurfaceHover).
 				Children(func() { timelineText(c, t, it) })
@@ -175,14 +176,14 @@ func timelineMarker(c *ui.Context, t *theme.Palette, it TimelineItem, pending bo
 	// done crossfades.
 	switch {
 	case pending:
-		ui.Box(c.Key(timelinePending)).Size(side, side).Center().Transition(fadeTransition).Children(func() {
+		ui.Box(c.Key(timelinePending)).Size(side, side).Center().Transition(fadeTransition()).Children(func() {
 			Spinner(c, SpinnerOptions{Size: SpinnerSmall, Color: it.Status})
 		})
 	case it.Icon != nil:
 		status := statusColors(t, it.Status)
 		glyph := theme.Scale(c, theme.IconXS)
-		disc := ui.Box(c.Key(timelineGlyph)).Size(side, side).Radius(side / 2).Center().
-			Transition(fadeTransition)
+		disc := statusMark(ui.Box(c.Key(timelineGlyph)), it.Status).Size(side, side).Radius(side / 2).Center().
+			Transition(fadeTransition())
 		disc.Background(motion.Color(disc, timelineFillKey{}, status.Soft.Over(t.Background))).
 			TextColor(motion.Color(disc, timelineInkKey{}, status.Foreground)).Children(func() {
 			ui.Icon(c, it.Icon).Size(glyph, glyph).Role(ui.RoleNone)
@@ -192,9 +193,9 @@ func timelineMarker(c *ui.Context, t *theme.Palette, it TimelineItem, pending bo
 		if it.Status != ColorDefault {
 			ink = statusForeground(*t, it.Status)
 		}
-		dot := theme.Scale(c, theme.Space8)
-		mark := ui.Box(c.Key(timelineDot)).Size(dot, dot).Radius(dot / 2).Role(ui.RoleNone).
-			Transition(fadeTransition)
+		dot := theme.Scale(c, theme.Space(2))
+		mark := statusMark(ui.Box(c.Key(timelineDot)), it.Status).Size(dot, dot).Radius(dot / 2).
+			Transition(fadeTransition())
 		mark.Background(motion.Color(mark, timelineFillKey{}, ink))
 	}
 }
@@ -202,7 +203,7 @@ func timelineMarker(c *ui.Context, t *theme.Palette, it TimelineItem, pending bo
 func timelineText(c *ui.Context, t *theme.Palette, it TimelineItem) {
 	if it.Title != "" || it.Time != "" {
 		// The time follows the title, wrapping under it where it does not fit.
-		ui.Row(c).MinWidth(0).Wrap().GapX(theme.Space8).AlignItems(ui.Baseline).Children(func() {
+		ui.Row(c).MinWidth(0).Wrap().GapX(theme.Space(2)).AlignItems(ui.Baseline).Children(func() {
 			if it.Title != "" {
 				style.Text(ui.Text(c, it.Title), c, theme.SM()).FontWeight(theme.WeightMedium).
 					TextColor(t.Foreground).MinWidth(0)

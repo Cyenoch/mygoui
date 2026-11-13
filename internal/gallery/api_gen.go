@@ -353,6 +353,7 @@ var apiTypes = map[string]apiType{
 			{Name: "HideSwatches", Type: "bool", Doc: "HideArea, HideHue, HideAlpha, HideField and HideSwatches omit parts of the panel."},
 			{Name: "Disabled", Type: "bool", Doc: ""},
 			{Name: "OnChange", Type: "func()", Doc: "OnChange reports that the user picked another color."},
+			{Name: "OnOpenChange", Type: "func(bool)", Doc: "OnOpenChange reports the panel opening or closing through the trigger, Escape or a click outside."},
 		},
 	},
 	"color.ColorSliderOptions": {
@@ -391,7 +392,7 @@ var apiTypes = map[string]apiType{
 			{Name: "Label", Type: "string", Doc: "Label names the group for assistive technology."},
 			{Name: "Colors", Type: "[]ui.Color", Doc: ""},
 			{Name: "Names", Type: "[]string", Doc: "Names optionally names each color in turn, such as \"Ocean\". Missing or empty names fall back to the color's hex value."},
-			{Name: "Value", Type: "*ui.Color", Doc: "Value is the caller-owned selection. A click or the arrow keys choose a color into it. A nil Value leaves the palette with no current color."},
+			{Name: "Value", Type: "*ui.Color", Doc: "Value is the caller-owned selection. A click or the arrow keys choose a color into it. A nil Value keeps the choice inside the picker."},
 			{Name: "Size", Type: "color.ColorSwatchSize", Doc: ""},
 			{Name: "Shape", Type: "color.ColorSwatchShape", Doc: ""},
 			{Name: "Layout", Type: "color.ColorSwatchPickerLayout", Doc: ""},
@@ -412,7 +413,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"content.DiffViewerOptions": {
-		Doc: "DiffViewerOptions configures a read-only diff of Old against New. Title adds a header naming the file, with the counts of added and deleted lines, a toggle between the two layouts (Layout is where it starts, and follows the option when that changes), a way to step through the changes while Height makes the viewer scroll (also F7 and Shift+F7) and a button copying New. ContextLines is how many unchanged lines stay around each change: 3 when zero, none when negative; the rest collapse into separators the user expands, unless ExpandUnchanged shows them all. Height makes the viewer scroll within that many DIPs; zero makes it as high as its lines. Identical texts show \"No changes\" in place of the lines. OnError receives a clipboard failure of the copy.",
+		Doc: "DiffViewerOptions configures a read-only diff of Old against New. Its header names the file by Title, which also names the viewer, and shows the counts of added and deleted lines, a toggle between the two layouts (Layout is where it starts, and follows the option when that changes), a way to step through the changes while Height makes the viewer scroll (also F7 and Shift+F7) and a button copying New. ContextLines is how many unchanged lines stay around each change: 3 when zero, none when negative; the rest collapse into separators the user expands, unless ExpandUnchanged shows them all. Height makes the viewer scroll within that many DIPs; zero makes it as high as its lines. Identical texts show \"No changes\" in place of the lines. OnError receives a clipboard failure of the copy.",
 		Fields: []apiField{
 			{Name: "Old", Type: "string", Doc: ""},
 			{Name: "New", Type: "string", Doc: ""},
@@ -471,7 +472,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"content.LogViewerState": {
-		Doc: "LogViewerState holds a log's scroll position and its filter. List scrolls it from the application: ScrollToEnd, ScrollTo, Visible and AtEnd. Query lists the lines holding it, whatever their case, and marks it in them; Levels lists the lines of its levels, every line while it is the zero set. Line numbers stay those of the log. The listing is kept until the query, the levels or Revision change, or the log shrinks, and a log that grew is scanned from its old end only: raise Revision when lines change in place or the log is replaced by one of the same length. NoWrap shows each line on one row, cut where it ends, rather than wrapped.",
+		Doc: "LogViewerState holds a log's scroll position and its filter. List scrolls it from the application: ScrollToEnd, ScrollTo, Visible and AtEnd. The viewer names its rows (List.Label) and, unless List.Selected is set, keeps the line the keys choose. Query lists the lines holding it, whatever their case, and marks it in them; Levels lists the lines of its levels, every line while it is the zero set. Line numbers stay those of the log. The listing is kept until the query, the levels or Revision change, or the log shrinks, and a log that grew is scanned from its old end only: raise Revision when lines change in place or the log is replaced by one of the same length. NoWrap shows each line on one row, cut where it ends, rather than wrapped.",
 		Fields: []apiField{
 			{Name: "List", Type: "ui.ListState", Doc: ""},
 			{Name: "Query", Type: "string", Doc: ""},
@@ -571,6 +572,7 @@ var apiTypes = map[string]apiType{
 			{Name: "Empty", Type: "func(c *ui.Context) ui.Element", Doc: "Empty builds the empty state shown when Rows is 0 or every column is hidden. Without it, the table shows the localized empty message."},
 			{Name: "Loading", Type: "bool", Doc: "Loading marks the rows as on their way. With no rows the table shows LoadingRows placeholder rows under the real header; with rows it dims them, ignores input and draws a progress line along the top edge."},
 			{Name: "LoadingRows", Type: "int", Doc: "LoadingRows is the number of placeholder rows; 0 shows 5."},
+			{Name: "Disabled", Type: "bool", Doc: "Disabled dims the table, takes it out of the Tab order and stops every key and click; the rows keep their state."},
 			{Name: "Footer", Type: "func(c *ui.Context) ui.Element", Doc: "Footer builds the row under the body with vertical centering. Use it for a result summary and pagination; FillWidth or Grow its element to span the row."},
 		},
 	},
@@ -694,7 +696,7 @@ var apiTypes = map[string]apiType{
 			{Name: "State", Type: "*date.CalendarState", Doc: "State holds the calendar's visible month, cursor and year picker. The picker keeps its Value in step with Value."},
 			{Name: "Open", Type: "*bool", Doc: "Open is the popup state. Nil keeps it in the component."},
 			{Name: "OpenLabel", Type: "string", Doc: "OpenLabel names the calendar trigger. Empty uses \"Open calendar\"."},
-			{Name: "Placement", Type: "mygoui.Placement", Doc: "Placement places the popup. The zero value uses bottom-center, as COSS does."},
+			{Name: "Placement", Type: "mygoui.Placement", Doc: "Placement places the popup. The zero value uses bottom-center."},
 			{Name: "Flyout", Type: "*mygoui.FlyoutHost", Doc: "Flyout opens the calendar as a native flyout of the host's window."},
 			{Name: "Handle", Type: "*ui.Handle", Doc: ""},
 			{Name: "OnChange", Type: "func(time.Time)", Doc: ""},
@@ -790,6 +792,9 @@ var apiTypes = map[string]apiType{
 			{Name: "Width", Type: "float32", Doc: "Width overrides the 104 DIP default. FullWidth wins over Width."},
 			{Name: "Hour12", Type: "bool", Doc: ""},
 			{Name: "Placeholder", Type: "string", Doc: "Placeholder shows while the field is empty. Empty uses \"HH:MM\", or \"hh:mm AM\" with Hour12."},
+			{Name: "Min", Type: "time.Duration", Doc: "Min and Max bound the time as offsets from midnight, inclusive; zero leaves that end open. Step is the interval a time must fall on, counted from Min (or midnight); zero accepts any minute. A time outside them is invalid and is not committed."},
+			{Name: "Max", Type: "time.Duration", Doc: "Min and Max bound the time as offsets from midnight, inclusive; zero leaves that end open. Step is the interval a time must fall on, counted from Min (or midnight); zero accepts any minute. A time outside them is invalid and is not committed."},
+			{Name: "Step", Type: "time.Duration", Doc: "Min and Max bound the time as offsets from midnight, inclusive; zero leaves that end open. Step is the interval a time must fall on, counted from Min (or midnight); zero accepts any minute. A time outside them is invalid and is not committed."},
 			{Name: "Handle", Type: "*ui.Handle", Doc: ""},
 			{Name: "OnChange", Type: "func(time.Time)", Doc: ""},
 		},
@@ -798,6 +803,29 @@ var apiTypes = map[string]apiType{
 		Doc: "TimeFieldState is the caller-owned time of day shown by a TimeField. Only the clock fields matter; the date part is preserved so the value can be stored back into a full timestamp, and is otherwise ignored.",
 		Fields: []apiField{
 			{Name: "Value", Type: "time.Time", Doc: ""},
+		},
+	},
+	"effect.MaskOptions": {
+		Doc: "MaskOptions configures Mask. The zero value fades every edge over the theme's fade depth.",
+		Fields: []apiField{
+			{Name: "Edges", Type: "effect.Edges", Doc: "Edges are the edges that fade; zero fades all four."},
+			{Name: "Size", Type: "float32", Doc: "Size is the fade depth in DIPs; zero or less takes theme.Effects().FadeEdge. A fade reaches at most half of the element."},
+			{Name: "Surface", Type: "ui.Color", Doc: "Surface is the opaque color behind the element. The fallback blends the edges into it; the zero color shades them with a shadow instead."},
+			{Name: "Radius", Type: "float32", Doc: "Radius is the element's corner radius, which the fallback follows."},
+			{Name: "Fallback", Type: "bool", Doc: "Fallback draws the fallback where the shader could run."},
+		},
+	},
+	"effect.RevealOptions": {
+		Doc: "RevealOptions configures Reveal. The zero value wipes downwards. The duration, the curve and the depth of the fading front are the theme's (Motion.Reveal, Motion.Ease and Effects.FadeEdge).",
+		Fields: []apiField{
+			{Name: "Direction", Type: "effect.RevealDirection", Doc: ""},
+			{Name: "Fallback", Type: "bool", Doc: "Fallback draws the fallback where the shader could run."},
+		},
+	},
+	"effect.ShimmerOptions": {
+		Doc: "ShimmerOptions configures Shimmer. The zero value sweeps a highlight band. The loop and the band's strength are the theme's (Effects.ShimmerPeriod, ShimmerPeak and ShimmerPeakDark).",
+		Fields: []apiField{
+			{Name: "Pulse", Type: "bool", Doc: "Pulse fades the content to half and back instead of sweeping a band."},
 		},
 	},
 	"form.AutocompleteOptions": {
@@ -1518,6 +1546,66 @@ var apiTypes = map[string]apiType{
 			{Name: "OnRemove", Type: "func(index int)", Doc: ""},
 		},
 	},
+	"layout.PaneOptions": {
+		Doc: "PaneOptions configures a side pane. Label names the pane and its divider for assistive technology. Body builds its content in a column that fills the pane. Width, Min and Max are DIPs before the text scale; nonpositive values use 256 and 160, and no maximum. Size is the caller-owned width: zero shows Width. A nil Size is kept by the view under its own identity: key the view (Context.Key) or pass Size when elements before it come and go. Fixed keeps the pane at Width behind a hairline, with no divider. Collapsed hides the docked pane while set; nil makes it permanent. Open shows the pane over the content while the view is compact; with a nil Open a compact view has no way to show it. The view clears Open whenever it is not compact.",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Body", Type: "func()", Doc: ""},
+			{Name: "Size", Type: "*float32", Doc: ""},
+			{Name: "Width", Type: "float32", Doc: ""},
+			{Name: "Min", Type: "float32", Doc: ""},
+			{Name: "Max", Type: "float32", Doc: ""},
+			{Name: "Fixed", Type: "bool", Doc: ""},
+			{Name: "Collapsed", Type: "*bool", Doc: ""},
+			{Name: "Open", Type: "*bool", Doc: ""},
+		},
+	},
+	"layout.PaneToggleOptions": {
+		Doc: "PaneToggleOptions configures the button that shows and hides a pane. Collapsed, Open and Compact are the pane's and its view's; End selects the end pane's icon and default name. Label names the button and defaults to the locale's ToggleSidebar or ToggleInspector.",
+		Fields: []apiField{
+			{Name: "Collapsed", Type: "*bool", Doc: ""},
+			{Name: "Open", Type: "*bool", Doc: ""},
+			{Name: "End", Type: "bool", Doc: ""},
+			{Name: "Compact", Type: "layout.CompactMode", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+		},
+	},
+	"layout.ScaffoldOptions": {
+		Doc: "ScaffoldOptions configures a window's shell. TitleBar is the bar over the content. Start is a full-height pane on the start edge, such as a sidebar; StartBar is its share of the title band, where an application name goes. End is a pane beside the content under the title bar, such as an inspector. StatusBar builds a strip under everything, such as a navigation.StatusBar. ContentMin and Compact are a SplitView's. The scaffold sets the Span of both bars and gives them one height; StartBar is borderless.",
+		Fields: []apiField{
+			{Name: "TitleBar", Type: "layout.TitleBarOptions", Doc: ""},
+			{Name: "Start", Type: "*layout.PaneOptions", Doc: ""},
+			{Name: "StartBar", Type: "layout.TitleBarOptions", Doc: ""},
+			{Name: "End", Type: "*layout.PaneOptions", Doc: ""},
+			{Name: "Content", Type: "func()", Doc: ""},
+			{Name: "StatusBar", Type: "func()", Doc: ""},
+			{Name: "ContentMin", Type: "float32", Doc: ""},
+			{Name: "Compact", Type: "layout.CompactMode", Doc: ""},
+		},
+	},
+	"layout.SplitViewOptions": {
+		Doc: "SplitViewOptions configures a split view. Start and End are the side panes in layout direction, either of which may be nil; Content is what they sit beside. ContentMin is the width, in DIPs before the text scale, the content keeps while a divider moves; nonpositive uses 240.",
+		Fields: []apiField{
+			{Name: "Start", Type: "*layout.PaneOptions", Doc: ""},
+			{Name: "End", Type: "*layout.PaneOptions", Doc: ""},
+			{Name: "Content", Type: "func()", Doc: ""},
+			{Name: "ContentMin", Type: "float32", Doc: ""},
+			{Name: "Compact", Type: "layout.CompactMode", Doc: ""},
+		},
+	},
+	"layout.TitleBarOptions": {
+		Doc: "TitleBarOptions configures a window's title bar. Leading and Trailing build controls that keep their width; Center fills the room between them and aligns its own content. Title is shown there when Center is nil, and truncates. The bar is the window's banner landmark, named by Label, else Title, else the locale's TitleBar. MinHeight is the native band the window was created with (mygo.WindowOptions.TitleBarHeight), in window DIPs: the bar covers at least it and the band the window reports. Borderless drops the hairline under the bar.",
+		Fields: []apiField{
+			{Name: "Leading", Type: "func()", Doc: ""},
+			{Name: "Center", Type: "func()", Doc: ""},
+			{Name: "Trailing", Type: "func()", Doc: ""},
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Span", Type: "layout.TitleBarSpan", Doc: ""},
+			{Name: "MinHeight", Type: "float32", Doc: ""},
+			{Name: "Borderless", Type: "bool", Doc: ""},
+		},
+	},
 	"list.ListBoxItem": {
 		Doc: "ListBoxItem is one row of a ListBox. Key is the stable identity used by the selection; it falls back to Label, and must be unique in the list. Start and End build leading and trailing content. They run for every built row and must not perform I/O.",
 		Fields: []apiField{
@@ -1556,7 +1644,8 @@ var apiTypes = map[string]apiType{
 			{Name: "LoadingRows", Type: "int", Doc: "LoadingRows is the number of placeholder rows; 0 shows 5."},
 			{Name: "NoFocusOnClick", Type: "bool", Doc: "NoFocusOnClick leaves the keyboard focus where it is, as a text input's popup needs."},
 			{Name: "KeyboardHighlight", Type: "bool", Doc: "KeyboardHighlight paints the highlighted row while a separate editor drives navigation. Pointer movement updates the same highlight."},
-			{Name: "IndicatorStart", Type: "bool", Doc: "IndicatorStart places selection checks before the label, as in Coss select and combobox menus. The default keeps checks at the end."},
+			{Name: "Editor", Type: "*ui.Handle", Doc: "Editor is bound to the element that keeps the focus while it drives the list, as a combo box's text input, built before the list. The highlighted row becomes its active descendant too, so assistive technology follows the arrows."},
+			{Name: "IndicatorStart", Type: "bool", Doc: "IndicatorStart places selection checks before the label, as in select and combobox menus. The default keeps checks at the end."},
 			{Name: "OnAction", Type: "func(key string)", Doc: "OnAction reports a row activated by a click, Enter or Space."},
 			{Name: "OnSelectionChange", Type: "func(keys []string)", Doc: "OnSelectionChange reports the chosen keys after a user change."},
 		},
@@ -1628,6 +1717,7 @@ var apiTypes = map[string]apiType{
 			{Name: "MaxHeight", Type: "float32", Doc: ""},
 			{Name: "Loading", Type: "bool", Doc: "Loading marks the nodes as on their way. With no rows the tree shows LoadingRows placeholder rows at a few depths; with rows it dims them, ignores input and draws a progress line along the top edge."},
 			{Name: "LoadingRows", Type: "int", Doc: "LoadingRows is the number of placeholder rows; 0 shows 5."},
+			{Name: "Disabled", Type: "bool", Doc: "Disabled dims the tree, takes it out of the Tab order and stops every key and click."},
 			{Name: "OnAction", Type: "func(key string)", Doc: "OnAction reports a row activated by a click or Enter, not by Space."},
 			{Name: "OnSelectionChange", Type: "func(keys []string)", Doc: "OnSelectionChange reports the chosen keys after a user change."},
 			{Name: "OnCheckedChange", Type: "func(keys []string)", Doc: "OnCheckedChange reports the checked leaf keys after a user change."},
@@ -1645,7 +1735,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"mygoui.AlertOptions": {
-		Doc: "AlertOptions configures a coss ui status callout.",
+		Doc: "AlertOptions configures a status callout.",
 		Fields: []apiField{
 			{Name: "Title", Type: "string", Doc: ""},
 			{Name: "Description", Type: "string", Doc: ""},
@@ -1687,7 +1777,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"mygoui.BadgeOptions": {
-		Doc: "BadgeOptions configures a coss ui badge.",
+		Doc: "BadgeOptions configures a badge.",
 		Fields: []apiField{
 			{Name: "Label", Type: "string", Doc: ""},
 			{Name: "Variant", Type: "mygoui.BadgeVariant", Doc: ""},
@@ -1707,7 +1797,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"mygoui.ButtonGroupOptions": {
-		Doc: "ButtonGroupOptions controls a joined set of coss ui buttons.",
+		Doc: "ButtonGroupOptions controls a joined set of buttons.",
 		Fields: []apiField{
 			{Name: "Orientation", Type: "mygoui.ButtonGroupOrientation", Doc: ""},
 			{Name: "FullWidth", Type: "bool", Doc: ""},
@@ -1731,7 +1821,7 @@ var apiTypes = map[string]apiType{
 			{Name: "Tooltip", Type: "string", Doc: ""},
 			{Name: "Content", Type: "func()", Doc: ""},
 			{Name: "Align", Type: "mygoui.ButtonAlign", Doc: "Align overrides the centered label placement, for navigation rows and other left-aligned actions."},
-			{Name: "Corners", Type: "*[4]float32", Doc: "Corners overrides the uniform coss ui radius. Nil keeps the default; a zero array makes square corners."},
+			{Name: "Corners", Type: "*[4]float32", Doc: "Corners overrides the uniform radius. Nil keeps the default; a zero array makes square corners."},
 		},
 	},
 	"mygoui.CardFrameOptions": {
@@ -1741,7 +1831,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"mygoui.CardOptions": {
-		Doc: "CardOptions customizes a coss ui Card. OnClick makes the whole card a real native action without changing its visual variants.",
+		Doc: "CardOptions customizes a Card. OnClick makes the whole card a real native action without changing its visual variants.",
 		Fields: []apiField{
 			{Name: "Variant", Type: "mygoui.CardVariant", Doc: ""},
 			{Name: "Label", Type: "string", Doc: ""},
@@ -1972,7 +2062,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"mygoui.ProgressOptions": {
-		Doc: "ProgressOptions configures a coss ui bar indicator.",
+		Doc: "ProgressOptions configures a bar indicator.",
 		Fields: []apiField{
 			{Name: "Label", Type: "string", Doc: ""},
 			{Name: "Value", Type: "float64", Doc: ""},
@@ -1986,7 +2076,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"mygoui.ResizablePanelOptions": {
-		Doc: "ResizablePanelOptions configures a panel resized from one edge. Size, Min and Max are DIPs along the resized axis before the text scale; Size is always shown within [Min, Max], and a nonpositive Max sets no upper bound. A nil Size is kept by the panel. A non-nil Collapsed makes the panel collapsible. Label names the handle and defaults to the locale's Resize.",
+		Doc: "ResizablePanelOptions configures a panel resized from one edge. Size, Min and Max are DIPs along the resized axis before the text scale; Size is always shown within [Min, Max], and a nonpositive Max sets no upper bound. A nil Size is kept by the panel. A non-nil Collapsed makes the panel collapsible. Label names the handle and defaults to the locale's Resize. Shown, when set, receives the size the panel has in this build, in DIPs after the text scale: it runs behind Size while the panel collapses or expands, for layout beside the panel that follows the motion.",
 		Fields: []apiField{
 			{Name: "Label", Type: "string", Doc: ""},
 			{Name: "Side", Type: "mygoui.PanelSide", Doc: ""},
@@ -1996,6 +2086,8 @@ var apiTypes = map[string]apiType{
 			{Name: "Collapsed", Type: "*bool", Doc: ""},
 			{Name: "OnResize", Type: "func(size float32)", Doc: ""},
 			{Name: "OnCollapseChange", Type: "func(collapsed bool)", Doc: ""},
+			{Name: "Shown", Type: "*float32", Doc: ""},
+			{Name: "Border", Type: "ui.Color", Doc: "Border colours the hairline on the edge at rest; zero uses the theme's Border."},
 		},
 	},
 	"mygoui.ResultOptions": {
@@ -2010,7 +2102,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"mygoui.ScrollAreaOptions": {
-		Doc: "ScrollAreaOptions configures coss's scroll viewport with native scrollbars.",
+		Doc: "ScrollAreaOptions configures a scroll viewport with native scrollbars.",
 		Fields: []apiField{
 			{Name: "Axis", Type: "mygoui.ScrollAxis", Doc: ""},
 			{Name: "Height", Type: "float32", Doc: ""},
@@ -2090,7 +2182,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"mygoui.SidebarOptions": {
-		Doc: "SidebarOptions configures a sidebar. Selected and Collapsed are required caller-owned per-window state, and an empty Selected means no selection. Width and CollapsedWidth scale with the text size; nonpositive values use coss ui's 256 and 48 DIP defaults. Header and Footer build their own content in both states and can read Collapsed to adapt their layout. A collapsed item without an icon retains its text so it remains usable. OnSelect runs for every enabled activation, including the current item, before the item's OnClick. ToggleLabel can replace the English accessible name of the toggle.",
+		Doc: "SidebarOptions configures a sidebar. Selected and Collapsed are required caller-owned per-window state, and an empty Selected means no selection. Width and CollapsedWidth scale with the text size; nonpositive values use the 256 and 48 DIP defaults. Header and Footer build their own content in both states and can read Collapsed to adapt their layout. A collapsed item without an icon retains its text so it remains usable. OnSelect runs for every enabled activation, including the current item, before the item's OnClick. The sidebar is a navigation landmark named by Label, the selected item its current page; Label and ToggleLabel default to the locale's Sidebar and ToggleSidebar.",
 		Fields: []apiField{
 			{Name: "Selected", Type: "*string", Doc: ""},
 			{Name: "Collapsed", Type: "*bool", Doc: ""},
@@ -2162,7 +2254,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"mygoui.StatusPalette": {
-		Doc: "StatusPalette is the resolved color set for one coss ui status. Components and applications use it to paint custom status surfaces consistently.",
+		Doc: "StatusPalette is the resolved color set for one status. Components and applications use it to paint custom status surfaces consistently.",
 		Fields: []apiField{
 			{Name: "Solid", Type: "ui.Color", Doc: ""},
 			{Name: "SolidForeground", Type: "ui.Color", Doc: ""},
@@ -2215,7 +2307,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"mygoui.TimelineItem": {
-		Doc: "TimelineItem is one event. Status colors its marker; Icon replaces the dot with a glyph on a tinted disc. Time is shown as given, after the title. Content builds caller content under the description, as a diff summary or an attachment. OnClick makes the text a button, as for opening the event's details.",
+		Doc: "TimelineItem is one event. Status colors its marker, which assistive technology reads by the status's name; Icon replaces the dot with a glyph on a tinted disc. Time is shown as given, after the title. Content builds caller content under the description, as a diff summary or an attachment. OnClick makes the text a button, as for opening the event's details.",
 		Fields: []apiField{
 			{Name: "Title", Type: "string", Doc: ""},
 			{Name: "Description", Type: "string", Doc: ""},
@@ -2701,7 +2793,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"overlay.AlertDialogOptions": {
-		Doc: "AlertDialogOptions configures an explicit-choice alert dialog. Backdrop presses and Escape do not dismiss it.",
+		Doc: "AlertDialogOptions configures an explicit-choice alert dialog. Backdrop presses do not dismiss it; Escape is its cancel choice.",
 		Fields: []apiField{
 			{Name: "Status", Type: "mygoui.StatusColor", Doc: ""},
 			{Name: "ShowIcon", Type: "bool", Doc: "ShowIcon displays the status icon. An explicit Icon also enables it."},
@@ -2789,6 +2881,7 @@ var apiTypes = map[string]apiType{
 			{Name: "Width", Type: "float32", Doc: ""},
 			{Name: "HideClose", Type: "bool", Doc: ""},
 			{Name: "OnDismiss", Type: "func()", Doc: ""},
+			{Name: "ReturnFocus", Type: "*ui.Handle", Doc: "ReturnFocus takes the focus when the panel closes with the focus inside it; without it the focus returns to the element that held it as the panel opened, if any."},
 		},
 	},
 	"overlay.FloatingSheetOptions": {
@@ -2802,6 +2895,7 @@ var apiTypes = map[string]apiType{
 			{Name: "HideHandle", Type: "bool", Doc: ""},
 			{Name: "HideClose", Type: "bool", Doc: ""},
 			{Name: "OnDismiss", Type: "func()", Doc: ""},
+			{Name: "ReturnFocus", Type: "*ui.Handle", Doc: "ReturnFocus takes the focus when the sheet closes with the focus inside it: the sheet is part of its container, so nothing else gives that focus back."},
 		},
 	},
 	"overlay.FlyoutOptions": {
@@ -2821,7 +2915,7 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"overlay.FlyoutSurfaceOptions": {
-		Doc: "FlyoutSurfaceOptions describes the coss popover content of a flyout. Header replaces the default title and description when provided.",
+		Doc: "FlyoutSurfaceOptions describes the popover content of a flyout. Header replaces the default title and description when provided.",
 		Fields: []apiField{
 			{Name: "Title", Type: "string", Doc: ""},
 			{Name: "Description", Type: "string", Doc: ""},
@@ -2922,6 +3016,7 @@ var apiTypes = map[string]apiType{
 			{Name: "Footer", Type: "func()", Doc: ""},
 			{Name: "BodyLabel", Type: "string", Doc: ""},
 			{Name: "HideClose", Type: "bool", Doc: ""},
+			{Name: "Flush", Type: "bool", Doc: "Flush hands the whole panel to Body, edge to edge and at the panel's height: no padding, header, footer, close button or scrolling of the sheet's own. Title and Description still name the panel. It is for a left or right sheet without Inset: a top or bottom sheet has no height for Body to fill, and an inset panel's corners do not clip Body."},
 			{Name: "PreventDismiss", Type: "bool", Doc: ""},
 			{Name: "OnDismiss", Type: "func()", Doc: ""},
 		},
@@ -3029,8 +3124,49 @@ var apiTypes = map[string]apiType{
 			{Name: "Placement", Type: "mygoui.Placement", Doc: "Placement is the side of the target the panel prefers, its alignment along it and its gap; SideAuto prefers below. The panel takes another side where it does not fit, and stays inside the window."},
 		},
 	},
+	"theme.EffectTokens": {
+		Doc: "EffectTokens are the parameters of effects several components share.",
+		Fields: []apiField{
+			{Name: "HoverOpacity", Type: "float32", Doc: "HoverOpacity is the share of its alpha a solid fill keeps under the pointer, wherever a component derives the hover from the fill as it draws: buttons, status solids, the toast action, native controls, and the palette roles a preference moves. The hover roles a theme's palettes carry (DefaultHover, AccentHover and the status hovers) are colors of that palette and are used as written."},
+			{Name: "PopupScale", Type: "float32", Doc: "PopupScale is the scale a popup or wide dialog enters from."},
+			{Name: "BackdropBlur", Type: "float32", Doc: "BackdropBlur is the blur of a modal backdrop in DIPs."},
+			{Name: "FadeEdge", Type: "float32", Doc: "FadeEdge is the depth in DIPs over which clipped content fades."},
+			{Name: "SpinnerPeriod", Type: "time.Duration", Doc: "SpinnerPeriod is one turn of a spinner. Use rejects a period under a millisecond."},
+			{Name: "SweepPeriod", Type: "time.Duration", Doc: "SweepPeriod is one pass of an indeterminate band, SweepBand its share of the track, between 0 and 1. Use rejects a period under a millisecond."},
+			{Name: "SweepBand", Type: "float32", Doc: ""},
+			{Name: "LoadingDelay", Type: "time.Duration", Doc: "LoadingDelay keeps a region's loading indicator back, so a load that ends sooner shows none. Zero shows it at once; Use rejects a negative delay."},
+			{Name: "RefreshOpacity", Type: "float32", Doc: "RefreshOpacity is the opacity content keeps while it refreshes."},
+			{Name: "ShimmerPeriod", Type: "time.Duration", Doc: "ShimmerPeriod is one loop of a loading placeholder's shimmer or pulse; zero or less keeps placeholders still."},
+			{Name: "ShimmerPeak", Type: "float32", Doc: "ShimmerPeak is how far the shimmer's band mixes a placeholder towards white in light appearance, ShimmerPeakDark in dark."},
+			{Name: "ShimmerPeakDark", Type: "float32", Doc: "ShimmerPeak is how far the shimmer's band mixes a placeholder towards white in light appearance, ShimmerPeakDark in dark."},
+			{Name: "ThumbPressScale", Type: "float32", Doc: "ThumbPressScale is the size a thumb grows to while the pointer holds it, as a slider's or a colour area's, relative to its rest size."},
+		},
+	},
+	"theme.Elevation": {
+		Doc: "Elevation holds the shadow layers of each appearance.",
+		Fields: []apiField{
+			{Name: "Light", Type: "theme.Shadows", Doc: ""},
+			{Name: "Dark", Type: "theme.Shadows", Doc: ""},
+		},
+	},
+	"theme.MotionTokens": {
+		Doc: "MotionTokens are the durations and easings components share. A change without a token here is timed by its component. A zero duration shows its change at once; Use rejects a negative one. Motion reports a zero duration as one nanosecond, the shortest MyGo animates, so every reader lands on the frame after the change; Current returns the value as written.",
+		Fields: []apiField{
+			{Name: "State", Type: "time.Duration", Doc: "State is a control changing state in place: a fill, border or ink fading, a mark drawing in, a thumb moving, content swapping with a spinner."},
+			{Name: "Reveal", Type: "time.Duration", Doc: "Reveal is content opening or closing, a panel folding and an indicator moving to another item."},
+			{Name: "Roll", Type: "time.Duration", Doc: "Roll is a changing number turning its digits."},
+			{Name: "Shift", Type: "time.Duration", Doc: "Shift is rows and tabs moving aside for a dragged one."},
+			{Name: "Page", Type: "time.Duration", Doc: "Page is one page sliding to the next."},
+			{Name: "Popup", Type: "time.Duration", Doc: "Popup is an anchored popup or floating panel appearing and leaving."},
+			{Name: "Dialog", Type: "time.Duration", Doc: "Dialog is a dialog, modal or edge sheet and its scrim."},
+			{Name: "Drawer", Type: "time.Duration", Doc: "Drawer is a drawer or bottom sheet sliding from its edge."},
+			{Name: "Ease", Type: "ui.Easing", Doc: "Ease is the curve of a change that has no other: it decelerates into the new state."},
+			{Name: "EaseTravel", Type: "ui.Easing", Doc: "EaseTravel is the curve of something moving between two resting places: an indicator, a dialog, a highlight."},
+			{Name: "EaseDrawer", Type: "ui.Easing", Doc: "EaseDrawer is the curve of the drawer family."},
+		},
+	},
 	"theme.Palette": {
-		Doc: "Palette contains coss semantic colors. Translucent tokens stay translucent: borders and subtle fills composite against the actual surface beneath them. MutedBackground is CSS --muted; MutedForeground is CSS --muted-foreground.",
+		Doc: "Palette contains the semantic colors. Translucent tokens stay translucent: borders and subtle fills composite against the actual surface beneath them. MutedBackground is CSS --muted; MutedForeground is CSS --muted-foreground.",
 		Fields: []apiField{
 			{Name: "Background", Type: "ui.Color", Doc: ""},
 			{Name: "Foreground", Type: "ui.Color", Doc: ""},
@@ -3199,19 +3335,19 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"theme.Preferences": {
-		Doc: "Preferences is the process-wide coss ui customization surface. Zero fields select native defaults: the system font, 16 DIP base text, a 10 DIP radius base and the neutral primary action color. Semantic colors resolve by precedence, highest first: Preferences.Palette, Preferences.Accent, coss ui's published palette. Apply installs the theme composed from that resolution, so an injected palette survives a view-root Apply and reaches native widgets (selections, scrollbars, text cursors) too. Library paint reads Colors, never the context theme, so a host that styles native widgets through its own scoped theme either installs that theme after Apply or skips Apply.",
+		Doc: "Preferences is the process-wide customization surface. Zero fields inherit the published theme: by default the system font, 16 DIP base text, a 10 DIP radius base and the neutral primary action color. Semantic colors resolve by precedence, highest first: Preferences.Palette, Preferences.Accent, the published palette. Apply installs the theme composed from that resolution, so an injected palette survives a view-root Apply and reaches native widgets (selections, scrollbars, text cursors) too. Library paint reads Colors, never the context theme, so a host that styles native widgets through its own scoped theme either installs that theme after Apply or skips Apply.",
 		Fields: []apiField{
 			{Name: "FontFamily", Type: "string", Doc: ""},
 			{Name: "HeadingFontFamily", Type: "string", Doc: ""},
 			{Name: "MonoFontFamily", Type: "string", Doc: ""},
 			{Name: "FontSize", Type: "float32", Doc: ""},
-			{Name: "Radius", Type: "float32", Doc: "Radius is the base radius; the coss ui scale is derived from it."},
+			{Name: "Radius", Type: "float32", Doc: "Radius is the base radius; the radius scale is derived from it."},
 			{Name: "Accent", Type: "ui.Color", Doc: "Accent replaces the primary action color when opaque."},
-			{Name: "Palette", Type: "theme.PaletteOverrides", Doc: "Palette overrides individual semantic tokens per appearance. The zero value keeps the coss ui defaults. Configure replaces the published preferences as a whole, so a later call that changes only typography must publish the same Palette again; UpdatePreferences edits in place."},
+			{Name: "Palette", Type: "theme.PaletteOverrides", Doc: "Palette overrides individual semantic tokens per appearance. The zero value keeps the default palette. Configure replaces the published preferences as a whole, so a later call that changes only typography must publish the same Palette again; UpdatePreferences edits in place."},
 		},
 	},
 	"theme.Radii": {
-		Doc: "Radii is coss ui's radius scale derived from the configured base.",
+		Doc: "Radii is the radius scale derived from the configured base.",
 		Fields: []apiField{
 			{Name: "XS", Type: "float32", Doc: ""},
 			{Name: "SM", Type: "float32", Doc: ""},
@@ -3235,8 +3371,23 @@ var apiTypes = map[string]apiType{
 			{Name: "Inset", Type: "bool", Doc: ""},
 		},
 	},
+	"theme.Shadows": {
+		Doc: "Shadows are the shadow layers of one appearance, lowest first.",
+		Fields: []apiField{
+			{Name: "Surface", Type: "[]theme.Shadow", Doc: "Surface is a card or resting surface, Field an outlined control, Overlay a popup or dialog and Tooltip a tooltip."},
+			{Name: "Field", Type: "[]theme.Shadow", Doc: "Surface is a card or resting surface, Field an outlined control, Overlay a popup or dialog and Tooltip a tooltip."},
+			{Name: "Overlay", Type: "[]theme.Shadow", Doc: "Surface is a card or resting surface, Field an outlined control, Overlay a popup or dialog and Tooltip a tooltip."},
+			{Name: "Tooltip", Type: "[]theme.Shadow", Doc: "Surface is a card or resting surface, Field an outlined control, Overlay a popup or dialog and Tooltip a tooltip."},
+		},
+	},
+	"theme.Spacing": {
+		Doc: "Spacing is the spacing scale: Space(n) is n units.",
+		Fields: []apiField{
+			{Name: "Unit", Type: "float32", Doc: ""},
+		},
+	},
 	"theme.TextStyle": {
-		Doc: "TextStyle describes an unscaled coss ui type role. Tracking is letter spacing as a fraction of the font size: zero keeps the font's own spacing, TrackingTight tightens headings.",
+		Doc: "TextStyle describes an unscaled type role. Tracking is letter spacing as a fraction of the font size: zero keeps the font's own spacing, TrackingTight tightens headings.",
 		Fields: []apiField{
 			{Name: "Size", Type: "float32", Doc: ""},
 			{Name: "LineHeight", Type: "float32", Doc: ""},
@@ -3244,6 +3395,42 @@ var apiTypes = map[string]apiType{
 			{Name: "Tracking", Type: "float32", Doc: ""},
 			{Name: "Mono", Type: "bool", Doc: ""},
 			{Name: "Heading", Type: "bool", Doc: ""},
+		},
+	},
+	"theme.Theme": {
+		Doc: "Theme is a complete design language as one value: both palettes, the radius base, type, spacing, elevation, motion and effects. Default returns the built-in one; change what differs and publish it with Use. Preferences resolve over the published theme: a preference the host sets replaces the theme's value, an unset one inherits it.",
+		Fields: []apiField{
+			{Name: "Light", Type: "theme.Palette", Doc: "Light and Dark are the complete palettes, derived roles included."},
+			{Name: "Dark", Type: "theme.Palette", Doc: "Light and Dark are the complete palettes, derived roles included."},
+			{Name: "Radius", Type: "float32", Doc: "Radius is the base radius; the radius scale is derived from it."},
+			{Name: "Typography", Type: "theme.Typography", Doc: ""},
+			{Name: "Spacing", Type: "theme.Spacing", Doc: ""},
+			{Name: "Elevation", Type: "theme.Elevation", Doc: ""},
+			{Name: "Motion", Type: "theme.MotionTokens", Doc: ""},
+			{Name: "Effects", Type: "theme.EffectTokens", Doc: ""},
+		},
+	},
+	"theme.Typography": {
+		Doc: "Typography is the type of a theme: families, the base size and the roles. An empty family selects the native stack. Role sizes are unscaled DIPs.",
+		Fields: []apiField{
+			{Name: "Family", Type: "string", Doc: ""},
+			{Name: "HeadingFamily", Type: "string", Doc: ""},
+			{Name: "MonoFamily", Type: "string", Doc: ""},
+			{Name: "Size", Type: "float32", Doc: "Size is the base text size the roles are scaled against 16 DIPs."},
+			{Name: "XS", Type: "theme.TextStyle", Doc: ""},
+			{Name: "SM", Type: "theme.TextStyle", Doc: ""},
+			{Name: "Base", Type: "theme.TextStyle", Doc: ""},
+			{Name: "LG", Type: "theme.TextStyle", Doc: ""},
+			{Name: "XL", Type: "theme.TextStyle", Doc: ""},
+			{Name: "H1", Type: "theme.TextStyle", Doc: ""},
+			{Name: "H2", Type: "theme.TextStyle", Doc: ""},
+			{Name: "H3", Type: "theme.TextStyle", Doc: ""},
+			{Name: "H4", Type: "theme.TextStyle", Doc: ""},
+			{Name: "H5", Type: "theme.TextStyle", Doc: ""},
+			{Name: "H6", Type: "theme.TextStyle", Doc: ""},
+			{Name: "Code", Type: "theme.TextStyle", Doc: ""},
+			{Name: "Label", Type: "theme.TextStyle", Doc: ""},
+			{Name: "HelpText", Type: "theme.TextStyle", Doc: ""},
 		},
 	},
 }

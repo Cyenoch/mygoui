@@ -62,7 +62,8 @@ type CommandOptions struct {
 }
 
 // Command filters caller-supplied actions and activates a highlighted action
-// by Enter or a pointer click. The query and highlight survive rebuilds.
+// by Enter or a pointer click. The query and highlight survive rebuilds. The
+// input is the one Tab stop and controls the list; Escape clears the query.
 func Command(c *ui.Context, o CommandOptions) ui.Element {
 	if o.State == nil {
 		panic("navigation: Command requires a caller-owned State")
@@ -118,8 +119,8 @@ func Command(c *ui.Context, o CommandOptions) ui.Element {
 		Border(theme.Hairline, t.Border).Clip().Busy(o.Loading)
 	root.Children(func() {
 		var input ui.Element
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Padding(theme.Space6, theme.Space12).
-			Gap(theme.Space8).Children(func() {
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Padding(theme.Space(1.5), theme.Space(3)).
+			Gap(theme.Space(2)).Children(func() {
 			ui.Icon(c, lucide.Search()).Size(16, 16).TextColor(t.MutedForeground)
 			input = ui.TextInputBase(c, &s.Query).FillWidth().Grow(1).MinWidth(0).
 				Label(label).Placeholder(o.Placeholder).Bind(&s.Input)
@@ -130,6 +131,14 @@ func Command(c *ui.Context, o CommandOptions) ui.Element {
 				}
 				switch k.Key {
 				case ui.KeyDown, ui.KeyUp, ui.KeyEnter:
+				case ui.KeyEscape:
+					// A query clears first; Escape on none goes on, as
+					// to the dialog holding the command.
+					if k.Text() == "" {
+						return false
+					}
+					k.SetText("")
+					return true
 				default:
 					return false
 				}
@@ -151,11 +160,13 @@ func Command(c *ui.Context, o CommandOptions) ui.Element {
 		*r.shortcut = func(shortcut string) {
 			style.Text(ui.Text(c, shortcut), c, theme.XS()).TextColor(t.MutedForeground)
 		}
-		list.ListBox(c, list.ListBoxOptions{
-			Label: label, Items: r.rows, Sections: r.sections, State: &s.List, Padding: theme.Space8,
+		// The input drives the list: the list is no second Tab stop.
+		results := list.ListBox(c, list.ListBoxOptions{
+			Label: label, Items: r.rows, Sections: r.sections, State: &s.List, Padding: theme.Space(2),
 			MaxHeight: height, Empty: empty, NoFocusOnClick: true,
-			KeyboardHighlight: s.Input.Focused(c), Loading: o.Loading, OnAction: activate,
-		})
+			KeyboardHighlight: s.Input.Focused(c), Editor: &s.Input, Loading: o.Loading, OnAction: activate,
+		}).TabStop(false)
+		input.Controls(results)
 		if input.Changed() {
 			if s.keyPending && s.keyQuery == s.Query && s.keyHighlight != "" {
 				s.List.SetHighlight(s.keyHighlight)

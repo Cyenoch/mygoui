@@ -28,7 +28,7 @@ type ScrollShadowOptions struct {
 // fades both edges in proportion to the remaining scroll distance.
 func ScrollShadow(c *ui.Context, s *ui.ScrollState, o ScrollShadowOptions, body func()) ui.Element {
 	if s == nil {
-		return ui.Element{}
+		panic("mygoui.ScrollShadow: nil scroll state")
 	}
 	surface := o.Surface
 	if surface.A == 0 {
@@ -36,7 +36,7 @@ func ScrollShadow(c *ui.Context, s *ui.ScrollState, o ScrollShadowOptions, body 
 	}
 	depth := o.Size
 	if depth <= 0 {
-		depth = theme.Space40
+		depth = theme.Effects().FadeEdge
 	}
 	var e ui.Element
 	if o.Orientation == ScrollShadowHorizontal {

@@ -24,7 +24,8 @@ func TestResultShowsOutcomeAndActions(t *testing.T) {
 		}
 		mygoui.Result(c, o).Label("Outcome")
 	}, 480, 400)
-	if got := tt.Texts(); len(got) != 1 {
+	// A bare status names the result and its status, nothing more.
+	if got := tt.Texts(); len(got) != 2 {
 		t.Fatalf("a bare status shows %v", got)
 	}
 	detailed = true

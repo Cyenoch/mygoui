@@ -1,5 +1,6 @@
 {
-  "name": "Coss UI Gallery",
+  "name": "MyGo UI Gallery",
+  "slug": "mygoui-gallery",
   "identifier": "com.cyenoch.mygoui.gallery",
   "version": "0.1.0",
   "main": "./examples/gallery",

@@ -89,7 +89,7 @@ const (
 func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 	t := theme.Colors(c)
 	vertical := o.Orientation == mygoui.Vertical
-	root := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Gap(scale(c, theme.Space8))
+	root := ui.Column(c).FillWidth().MinWidth(0).Shrink(0).Gap(scale(c, theme.Space(2)))
 	if vertical {
 		root.Row().AlignItems(ui.Start)
 	}
@@ -126,6 +126,8 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 	}
 	face := segmentBackground(c, t)
 	var parts ui.TabsParts
+	// chosenTab is the selected tab, which controls the panel shown.
+	var chosenTab ui.Element
 	root.Children(func() {
 		enabled := make([]int, 0, len(o.Items))
 		chosen := -1
@@ -195,9 +197,9 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 			listBox := list.LayoutBounds()
 			var paintedList ui.Rect
 			if vertical {
-				list.Column().Gap(scale(c, theme.Space4)).AlignItems(ui.Stretch)
+				list.Column().Gap(scale(c, theme.Space(1))).AlignItems(ui.Stretch)
 			} else {
-				list.FillWidth().Gap(scale(c, 2))
+				list.FillWidth().Gap(scale(c, theme.Space(0.5)))
 				if minWidth > 0 {
 					list.MinWidth(minWidth)
 				}
@@ -213,6 +215,9 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 						nextEnabled++
 					}
 					el := buildTab(c, tab, i, o.Items[i], selected, o.Variant, o.Orientation, o.Align, known)
+					if i == *selected {
+						chosenTab = el
+					}
 					// LayoutBounds is in the coordinates a Draw callback
 					// paints in, which is where the indicator is painted.
 					switch b := el.LayoutBounds(); {
@@ -275,7 +280,7 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 				animated := indicator.sel != placed || indicator.box == target
 				follow := func(key any, to float32) float32 {
 					if animated {
-						return list.AnimateTo(key, to, slideMotion(tabsIndicatorMotion))
+						return list.AnimateTo(key, to, slideMotion())
 					}
 					return list.Jump(key, to)
 				}
@@ -353,14 +358,17 @@ func Tabs(c *ui.Context, o TabsOptions) ui.Element {
 				continue
 			}
 			panel := ui.Column(c.Key(tabsPanelKey(i))).Hidden(i != *selected).FillWidth().MinWidth(0).Shrink(0).
-				Padding(scale(c, theme.Space8)).Role(ui.RoleGroup)
+				Padding(scale(c, theme.Space(2))).Role(ui.RoleTabPanel)
 			if item.Label != "" {
 				panel.Label(item.Label)
 			}
+			if i == *selected && chosenTab.Valid() {
+				chosenTab.Controls(panel)
+			}
 			if vertical {
-				panel.MarginStart(scale(c, theme.Space16))
+				panel.MarginStart(scale(c, theme.Space(4)))
 			} else {
-				panel.Margin(scale(c, theme.Space16), 0, 0, 0)
+				panel.Margin(scale(c, theme.Space(4)), 0, 0, 0)
 			}
 			panel.Children(item.Content)
 		}
@@ -382,8 +390,8 @@ func buildTab(c *ui.Context, tab ui.Element, index int, o TabOptions, chosen *in
 	if variant == TabsSecondary {
 		radius = 0
 	}
-	el := tab.Row().AlignItems(ui.Center).Gap(scale(c, theme.Space6)).
-		Height(height).PaddingX(scale(c, 10)).MinWidth(0).Shrink(0).
+	el := tab.Row().AlignItems(ui.Center).Gap(scale(c, theme.Space(1.5))).
+		Height(height).PaddingX(scale(c, theme.Space(2.5))).MinWidth(0).Shrink(0).
 		Radius(radius).FocusRing(true).Label(o.Label).Cursor(ui.CursorPointer)
 	if vertical {
 		el.MinWidth(scale(c, theme.Space(20))).Justify(ui.Center)

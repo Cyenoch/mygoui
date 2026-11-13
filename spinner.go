@@ -1,8 +1,6 @@
 package mygoui
 
 import (
-	"time"
-
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/plugins/loading"
@@ -45,8 +43,7 @@ func Spinner(c *ui.Context, o SpinnerOptions) ui.Element {
 	}
 	return loading.Arc(c, loading.Options{
 		Size: theme.Scale(c, size), Color: statusForeground(theme.Colors(c), o.Color),
-		// COSS's standard spin completes one turn each second.
-		Duration: time.Second,
+		Duration: theme.Effects().SpinnerPeriod,
 	}).Label(label)
 }
 

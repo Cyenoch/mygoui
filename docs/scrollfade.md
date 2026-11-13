@@ -68,23 +68,24 @@ fade; an opaque background on that layer fades with the children.
 | --- | --- |
 | `ShadowFade` | Default. Paints shadow gradients; `Color` customizes the ink. Zero-alpha color selects the theme-derived default. |
 | `SurfaceFade` | Paints gradients into `Surface`, which must be opaque. Images and mixed backgrounds cannot be reconstructed by one surface color. |
-| `MaskFade` | Fades the viewport and its native descendants to transparency with a `ui/shader` ColorEffect. Needs neither Surface nor Color. |
+| `MaskFade` | Fades the viewport and its native descendants to transparency with a `ui/shader` shader (its `ColorEffect` entry function does the fade). Needs neither Surface nor Color. |
 | `Edges` | Physical `FadeTop`, `FadeRight`, `FadeBottom`, `FadeLeft` flags. Zero enables all four. |
-| `Size` | Fade depth in DIP. Non-positive selects 24. Painted shadow/surface depth clamps to half the viewport; mask depth follows the selected edge's remaining distance up to Size. |
+| `Size` | Fade depth in DIP. Non-positive selects `theme.Effects().FadeEdge` (24). Painted shadow/surface depth clamps to half the viewport; mask depth follows the selected edge's remaining distance up to Size. |
 
 Fades reflect remaining scroll distance independently at each edge and
 disappear where that edge has no overflow. They add paint, not hit targets
 or a background timer. Nil state, an unsupported mode/axis and a translucent
 `SurfaceFade.Surface` fail explicitly.
 
-`MaskFade` is a true alpha treatment, unlike shadow or surface overpainting. The shader runs only while an edge has more to scroll, and only on a GPU: without one MyGo would interpret it per pixel on the CPU, so the content shows unmasked under the `ShadowFade` overlay instead.
+`MaskFade` is a true alpha treatment, unlike shadow or surface overpainting. The shader runs only while an edge has more to scroll, and only on a GPU: without one MyGo would interpret it per pixel on the CPU, so the content shows unmasked under the `ShadowFade` overlay instead. The shader is the one `effect.Mask` uses ([effects.md](effects.md)).
 It uses `ui.Element.Effect` and `ui/shader`, which execute on GPU renderers
 and have a CPU fallback. The effect changes paint, preserving native hit
 testing, focus and accessibility. The viewport has one effect slot:
 `MaskFade` replaces an existing effect installed on that same element.
 
 The pinned toolkit caps each effect-layer side at **8192 pixels**, including
-device scale and margins. Oversized layers paint without the effect.
+device scale and margins. MyGo paints an oversized layer without the effect;
+`MaskFade` then shows the `ShadowFade` overlay, as it does without a GPU.
 Embedded webviews do not appear through an effect layer. Rendering a native
 subtree into a layer also adds render work; this documentation does not claim
 measured GPU cost or completed platform verification.

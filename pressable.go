@@ -1,8 +1,6 @@
 package mygoui
 
 import (
-	"time"
-
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -16,11 +14,8 @@ type PressableFeedbackOptions struct {
 	OnClick   func()
 }
 
-// pressableHighlightDuration is the press-highlight fade.
-const pressableHighlightDuration = 200 * time.Millisecond
-
-// PressableFeedback animates a 0.985 press scale and fades its hover and
-// pressed surfaces. It does not draw a ripple.
+// PressableFeedback animates a 0.985 press scale and shows its hover and
+// pressed surfaces at once. It does not draw a ripple.
 func PressableFeedback(c *ui.Context, o PressableFeedbackOptions, body func()) ui.Element {
 	t := theme.Colors(c)
 	radius := theme.RadiusScale().XL
@@ -42,15 +37,6 @@ func PressableFeedback(c *ui.Context, o PressableFeedbackOptions, body func()) u
 		fill = t.Default.Alpha(0.6)
 	}
 	e.Background(fill)
-	// Keep the transition declared in every build: omitting it reads as
-	// the element leaving and paints a fading copy over the live one.
-	// Reduced motion settles this frame's colors at once.
-	if theme.ReduceMotion(c) {
-		c.DisableAnimations()
-	}
-	e = e.Transition(ui.ElementTransition{
-		Duration: pressableHighlightDuration, Ease: ui.EaseOut, Colors: true,
-	})
 	if !o.Disabled {
 		e = pressedPose(c, e, e.Pressed(), 0.985)
 	}

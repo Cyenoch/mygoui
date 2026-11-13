@@ -258,7 +258,7 @@ func maskGhost(c *ui.Context, e ui.Element, mask, raw []rune, o MaskInputOptions
 	fieldText(ui.RichText(c,
 		ui.Span{Text: string(text), Color: ui.Transparent},
 		ui.Span{Text: string(ghost), Color: ink},
-	), c).SingleLine().Absolute().Start(theme.Space12).Top(theme.Scale(c, 5)).
+	), c).SingleLine().Absolute().Start(theme.Space(3)).Top(theme.Scale(c, 5)).
 		IgnoreInput(true).AccessHidden(true)
 }
 

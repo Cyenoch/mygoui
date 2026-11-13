@@ -31,10 +31,11 @@ type DialogOptions struct {
 // Dialog shows a modal panel with heading, body, footer and close control.
 // It keeps and restores focus through the native modal dialog base.
 func Dialog(c *ui.Context, open *bool, o DialogOptions) ui.Element {
-	return dialog(c, open, o, false)
+	return dialog(c, open, o, sheetMode{})
 }
 
-func dialog(c *ui.Context, open *bool, o DialogOptions, slide bool) ui.Element {
+func dialog(c *ui.Context, open *bool, o DialogOptions, mode sheetMode) ui.Element {
+	slide := mode.slide
 	if open == nil {
 		return ui.Element{}
 	}
@@ -56,33 +57,33 @@ func dialog(c *ui.Context, open *bool, o DialogOptions, slide bool) ui.Element {
 		if o.Width <= 0 {
 			width = 448
 		}
-		width = min(width, max(float32(0), w-theme.Space48))
+		width = min(width, max(float32(0), w-theme.Space(12)))
 	}
 	inset := float32(0)
 	if o.Inset && w >= 640 && side != mygoui.SideAuto {
-		inset = theme.Space16
+		inset = theme.Space(4)
 	}
 	var motionState *dialogState
 	if !slide && side == mygoui.SideAuto {
 		motionState = responsiveDialogState(c, open)
 	}
 	if slide || side == mygoui.SideAuto {
-		modalScrim(c, open, o.Backdrop, dialogMotionDuration, ui.EaseInOut)
+		modalScrim(c, open, o.Backdrop, theme.Motion().Dialog, theme.Motion().EaseTravel)
 	}
 	if *open {
 		c.Key(dialogKey{open})
 	}
 	p := ui.DialogBase(c, open, func(back, panel ui.Element) {
 		if slide {
-			back = edgeExit(c, back, side, theme.Space32, dialogMotionDuration, ui.EaseInOut)
+			back = edgeExit(c, back, side, theme.Space(8), theme.Motion().Dialog, theme.Motion().EaseTravel)
 		} else if side != mygoui.SideAuto {
 			back = paintBackdrop(c, back, o.Backdrop)
-			back = dialogMotion(c, back, dialogMotionDuration)
+			back = surfaceMotion(c, back, theme.Motion().Dialog, theme.Motion().EaseTravel)
 		}
 		t := theme.Colors(c)
 		radius := overlayRadius()
 		var corners [4]float32
-		contentHeight := max(float32(0), h-theme.Space48)
+		contentHeight := max(float32(0), h-theme.Space(12))
 		panel.Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border).MinHeight(0)
 		switch side {
 		case mygoui.SideLeft:
@@ -95,10 +96,10 @@ func dialog(c *ui.Context, open *bool, o DialogOptions, slide bool) ui.Element {
 			panel.Width(min(width, max(float32(0), w-2*inset))).Height(max(float32(0), h-2*inset))
 		case mygoui.SideTop:
 			back.Column().Justify(ui.Start).AlignItems(ui.Stretch).Padding(inset)
-			panel.FillWidth().MaxHeight(max(float32(0), h-theme.Space48)).Radius(0)
+			panel.FillWidth().MaxHeight(max(float32(0), h-theme.Space(12))).Radius(0)
 		case mygoui.SideBottom:
 			back.Column().Justify(ui.End).AlignItems(ui.Stretch).Padding(inset)
-			panel.FillWidth().MaxHeight(max(float32(0), h-theme.Space48)).Radius(0)
+			panel.FillWidth().MaxHeight(max(float32(0), h-theme.Space(12))).Radius(0)
 		default:
 			availW, availH := dialogViewport(back, panel, w, h)
 			contentHeight = availH
@@ -119,7 +120,7 @@ func dialog(c *ui.Context, open *bool, o DialogOptions, slide bool) ui.Element {
 			corners = innerCorners([4]float32{radius, radius, radius, radius})
 		}
 		if slide {
-			edgeEnter(c, panel, side, theme.Space32, dialogMotionDuration, ui.EaseInOut)
+			edgeEnter(c, panel, side, theme.Space(8), theme.Motion().Dialog, theme.Motion().EaseTravel)
 		}
 		panel = panelElevation(c, panel)
 		panel.Label(o.Title)
@@ -137,10 +138,11 @@ func dialog(c *ui.Context, open *bool, o DialogOptions, slide bool) ui.Element {
 			onClose:          close,
 			titleStyle:       theme.H4(),
 			descriptionStyle: theme.SM(),
-			padding:          theme.Space24,
-			headerGap:        theme.Space8,
+			padding:          theme.Space(6),
+			headerGap:        theme.Space(2),
 			maxHeight:        contentHeight,
 			fillHeight:       side == mygoui.SideLeft || side == mygoui.SideRight,
+			flush:            mode.flush,
 			corners:          corners,
 		})
 		if !slide && side == mygoui.SideAuto {

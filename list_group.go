@@ -13,7 +13,8 @@ type ListGroupOptions struct {
 	Label   string
 }
 
-// ListGroup is a rounded surface containing related rows.
+// ListGroup is a rounded surface containing related rows: a list named by
+// Label, whose ListGroupItems are its items.
 func ListGroup(c *ui.Context, o ListGroupOptions, body func()) ui.Element {
 	t := theme.Colors(c)
 	background, ink, shadowed := t.Surface, t.SurfaceForeground, true
@@ -25,9 +26,9 @@ func ListGroup(c *ui.Context, o ListGroupOptions, body func()) ui.Element {
 	case SurfaceTransparent:
 		background, ink, shadowed = ui.Transparent, t.Foreground, false
 	}
-	radius := min(theme.Space32, theme.RadiusScale().XXXL)
+	radius := min(theme.Space(8), theme.RadiusScale().XXXL)
 	e := ui.Column(c).FillWidth().MinWidth(0).Padding(0).Radius(radius).Clip().
-		Background(background).TextColor(ink).Label(o.Label)
+		Background(background).TextColor(ink).Role(ui.RoleList).Label(o.Label)
 	if shadowed {
 		e = style.Shadow(e, c, theme.SurfaceShadows(c.Theme().Dark))
 	}
@@ -43,18 +44,21 @@ type ListGroupItemOptions struct {
 	OnClick            func()
 }
 
-// ListGroupItem renders a 16 DIP padded row with an optional chevron and real
-// native activation. Prefix and suffix callbacks own their layout.
+// ListGroupItem renders a 16 DIP padded list item with an optional chevron,
+// which points along the reading direction. With OnClick the row is a native
+// button inside the item. Prefix and suffix callbacks own their layout.
 func ListGroupItem(c *ui.Context, o ListGroupItemOptions) ui.Element {
-	t := theme.Colors(c)
-	var e ui.Element
-	if o.OnClick != nil && !o.Disabled {
-		e = ui.ButtonBase(c).Justify(ui.Start)
-	} else {
-		e = ui.Row(c)
+	if o.OnClick == nil || o.Disabled {
+		return listGroupRow(c, ui.Row(c).Role(ui.RoleListItem), o)
 	}
-	e.FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(theme.Space12).
-		Padding(theme.Space16).Label(o.Title).Description(o.Description)
+	item := ui.Column(c).FillWidth().MinWidth(0).Role(ui.RoleListItem).Label(o.Title)
+	return item.Children(func() { listGroupRow(c, ui.ButtonBase(c).Justify(ui.Start), o) })
+}
+
+func listGroupRow(c *ui.Context, e ui.Element, o ListGroupItemOptions) ui.Element {
+	t := theme.Colors(c)
+	e.FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(theme.Space(3)).
+		Padding(theme.Space(4)).Label(o.Title).Description(o.Description)
 	if o.OnClick != nil && !o.Disabled {
 		e.OnClick(o.OnClick).FocusRing(true).Cursor(ui.CursorPointer)
 		e = style.Background(e, 0, ui.Transparent, t.SurfaceHover, t.SurfaceHover)
@@ -78,7 +82,11 @@ func ListGroupItem(c *ui.Context, o ListGroupItemOptions) ui.Element {
 			o.Suffix()
 		}
 		if o.Chevron {
-			ui.Icon(c, lucide.ChevronRight()).Size(theme.Scale(c, theme.IconMD),
+			chevron := lucide.ChevronRight()
+			if c.Direction() == ui.RightToLeft {
+				chevron = lucide.ChevronLeft()
+			}
+			ui.Icon(c, chevron).Size(theme.Scale(c, theme.IconMD),
 				theme.Scale(c, theme.IconMD)).TextColor(t.Muted)
 		}
 	})

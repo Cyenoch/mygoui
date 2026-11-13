@@ -1,10 +1,11 @@
 # Contributing
 
-The `coss` branch reconstructs coss ui with native Go/MyGo controls. Read
+mygoui is a native Go/MyGo component library whose design language is
+recorded in [DESIGN.md](DESIGN.md); it originated in coss ui. Read
 [design](docs/design.md), the [component matrix](docs/components.md),
 [references](docs/references.md) and [MyGo 0.9 guidance](docs/mygo-0.9.md)
-before changing public behavior. The current coss contract supersedes the
-older visual-reference wording in the MyGo migration notes.
+before changing public behavior. `DESIGN.md` supersedes the older
+visual-reference wording in the MyGo migration notes.
 
 ## Agent workflow
 

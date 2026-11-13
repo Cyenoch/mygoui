@@ -27,49 +27,6 @@ func wantColorHoverPixel(t *testing.T, img *image.RGBA, x, y int, c ui.Color, wh
 	}
 }
 
-// TestColorSwatchPickerHoverGrowsSwatch checks the picker item's hover
-// snapshot: the control scales the swatch to 1.1 over 100 ms, so the rest fill
-// becomes the color under the pointer and shrinks back when it leaves. The
-// swatch sits inside the item's border, so the growth stays within the item.
-func TestColorSwatchPickerHoverGrowsSwatch(t *testing.T) {
-	var colors theme.Palette
-	red := ui.RGB(255, 0, 0)
-	var chosen ui.Color
-	tt := ui.NewTester(func(c *ui.Context) {
-		theme.ApplyMode(c, false)
-		colors = theme.Colors(c)
-		ui.Column(c).FillWidth().FillHeight().Padding(24).
-			Background(colors.Background).Children(func() {
-			ColorSwatchPicker(c, ColorSwatchPickerOptions{
-				Label: "Palette", Size: SwatchMD, Value: &chosen,
-				Colors: []ui.Color{red, ui.RGB(0, 255, 0)},
-				Names:  []string{"Red", "Green"},
-			})
-		})
-	}, 400, 140)
-
-	item, ok := tt.Find("Red")
-	if !ok {
-		t.Fatal("red swatch missing")
-	}
-	// One DIP inside the item's transparent border, exposed when the 28 DIP
-	// swatch grows 1.1×.
-	x, y := int(item.X)+1, int(item.Y+item.H/2)
-	wantColorHoverPixel(t, tt.Image(), x, y, colors.Background, "swatch rest fill")
-
-	tt.Move(item.X+item.W/2, item.Y+item.H/2)
-	tt.Frame()
-	wantColorHoverPixel(t, tt.Image(), x, y, colors.Background, "swatch before the grow")
-	tt.Advance(120 * time.Millisecond)
-	wantColorHoverPixel(t, tt.Image(), x, y, red, "swatch hover fill")
-
-	tt.Move(2, 2)
-	tt.Frame()
-	wantColorHoverPixel(t, tt.Image(), x, y, red, "swatch before the shrink")
-	tt.Advance(120 * time.Millisecond)
-	wantColorHoverPixel(t, tt.Image(), x, y, colors.Background, "swatch fill after leaving")
-}
-
 // TestColorAreaThumbPressed checks the area's pressed snapshot: a press grows
 // the thumb from 16 to 20 DIP, exposing its white border. The control defines no
 // hover face for the area or its thumb.

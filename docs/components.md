@@ -2,12 +2,14 @@
 
 The additional [chart matrix](charts.md) maps all 19 Bklit chart subjects and
 the utility/axis catalog to native APIs. Bklit supplies chart capabilities;
-the visual system remains coss. The matrix states missing variants explicitly,
-not React feature parity.
+root [DESIGN.md](../DESIGN.md) records the visual system. The matrix states
+missing variants explicitly, not React feature parity.
 
-This maps the coss ui catalog to the native Go APIs observed in this checkout.
-The reference is commit `3d8ca28e7d90123e9e0f44665944dc240b026ccb`;
-see [sources and licensing](references.md).
+This maps the coss ui catalog, where the components originated, to the native
+Go APIs observed in this checkout. The catalog is taken from commit
+`3d8ca28e7d90123e9e0f44665944dc240b026ccb`; see
+[sources and licensing](references.md). Upstream links in the rows show
+provenance; appearance and motion follow `DESIGN.md`.
 
 The downloaded site links and component metadata list 56 component pages.
 `llms.txt` lists 55: it adds Sidebar and omits Composer and Segmented Control.
@@ -29,6 +31,9 @@ actual docs sidebar and that registry source instead. See the per-component
 [visual review](visual-review.md) for inspected appearances and limitations.
 
 ## Components
+
+How each component answers keys, focus, dismissal and assistive technology is
+recorded in the [behavior reference](behavior/README.md).
 
 | coss reference | Go mapping and source | Native capability and limits |
 | --- | --- | --- |
@@ -64,7 +69,7 @@ actual docs sidebar and that registry source instead. See the per-component
 | [Label](https://coss.com/ui/docs/components/label) | `form.Label` - `form/field.go` | Standalone label can focus a ui.Handle target. Prefer Field for native control/help/error association. |
 | [Menu](https://coss.com/ui/docs/components/menu) | `navigation.Menu / Dropdown / SubMenu` - `navigation/menu.go` | Typed sections and item actions, checked single/multiple selection, disabled items, nested submenus and keyboard traversal. Dropdown supplies the trigger; context-menu chrome is separately platform-owned. Dropdown and submenu panels of 32 or more rows build only the rows near the viewport and keep the panel's maximum width. |
 | [Meter](https://coss.com/ui/docs/components/meter) | `mygoui.Meter` - `progress.go` | Determinate quantity with explicit range, label/output and indicator color. Not a form value or task lifecycle manager. |
-| [Number Field](https://coss.com/ui/docs/components/number-field) | `form.NumberField / NumberFieldState` - `form/number_field.go` | Native numeric editor and steppers with bounds/step and display formatting. Parsing uses strconv.ParseFloat, independent of locale; no upstream scrub-area interaction. |
+| [Number Field](https://coss.com/ui/docs/components/number-field) | `form.NumberField / NumberFieldState` - `form/number_field.go` | Native numeric editor and steppers with bounds/step and display formatting. Typing reports a number within the bounds and keeps the text; Enter and blur clamp, round and format, or restore the last value for unparsable text. PageUp/PageDown step ten steps; the steppers are no Tab stops and repeat while held. Parsing uses strconv.ParseFloat, independent of locale; no upstream scrub-area interaction. |
 | [OTP Field](https://coss.com/ui/docs/components/otp-field) | `form.InputOTP / OTPState` - `form/input_otp.go` | One native editor with painted slots, filtering, completion and selection. Length defaults to 6 and is capped at 12; sanitizing input may move the caret. No platform OTP delivery/autofill guarantee. |
 | [Pagination](https://coss.com/ui/docs/components/pagination) | `navigation.Pagination` - `navigation/pagination.go` | One-based page control, previous/next, boundaries, siblings and ellipsis. Siblings zero means no adjacent pages, not a default of one. Application owns fetching and result/page state. |
 | [Popover](https://coss.com/ui/docs/components/popover) | `overlay.Popover` - `overlay/popover.go` | Same-build anchor plus caller-owned open flag, placement, optional arrow, body and native dismissal. No DOM portal or detached React handle API. |
@@ -75,13 +80,13 @@ actual docs sidebar and that registry source instead. See the per-component
 | [Select](https://coss.com/ui/docs/components/select) | `form.Select / SelectState` - `form/select.go` | Single/multiple keyed selection with sections, disabled items and clear. Native popup/list semantics and placement replace browser select/form integration. |
 | [Segmented Control](https://coss.com/ui/docs/components/segmented-control) | `navigation.SegmentedControl` - `navigation/segmented_control.go` | Independent native SegmentedBase radio group with Selected, []TabOptions and OnChange. Disabled choices and arrow selection use native semantics; the selected surface moves/resizes over 200 ms and settles for reduced motion. Item Content is ignored; panels belong to Tabs. |
 | [Separator](https://coss.com/ui/docs/components/separator) | `mygoui.Separator` - `separator.go` | Horizontal/vertical native rule, with additional library emphasis levels. |
-| [Sheet](https://coss.com/ui/docs/components/sheet) | `overlay.Sheet` - `overlay/sheet.go` | Edge modal, right by default or left/top/bottom, with 200 ms native slide and separate scrim fade. Backdrop and optional wider-window Inset join header/body/footer, focus restoration and explicit dismissal policy. |
+| [Sheet](https://coss.com/ui/docs/components/sheet) | `overlay.Sheet` - `overlay/sheet.go` | Edge modal, right by default or left/top/bottom, with 200 ms native slide and separate scrim fade. Backdrop and optional wider-window Inset join header/body/footer, focus restoration and explicit dismissal policy. `Flush` gives the whole panel to `Body`: no header, close button, padding or scrolling; `Title` still names the dialog. For a left or right sheet without `Inset`. |
 | [Sidebar](https://coss.com/ui/docs/components/sidebar) | `mygoui.Sidebar / SidebarOptions` - `sidebar.go` | Required caller-owned Selected and Collapsed, typed keyed groups/items, native collapse toggle, scrolling content and header/footer. Default expanded/collapsed widths are 256/48 DIP; collapsing moves between them over 200 ms. No automatic mobile sheet, resize rail, nested menu parts or persisted collapse policy. |
-| [Skeleton](https://coss.com/ui/docs/components/skeleton) | `mygoui.Skeleton / SkeletonGroup` - `skeleton.go` | Native shimmer/pulse/static placeholders with reduced-motion handling; a `SkeletonGroup` rests static where there is no GPU; composed dimensions replace CSS utilities. |
+| [Skeleton](https://coss.com/ui/docs/components/skeleton) | `mygoui.Skeleton / SkeletonGroup` - `skeleton.go` | Native shimmer/pulse/static placeholders with reduced-motion handling; a `SkeletonGroup` (a column under `effect.Shimmer`) rests static where there is no GPU; composed dimensions replace CSS utilities. |
 | [Slider](https://coss.com/ui/docs/components/slider) | `form.Slider / SliderState` - `form/slider.go` | Single-thumb or horizontal two-thumb range, bounds, steps, ticks/output and keyboard input. Vertical is single-thumb only; no arbitrary multi-thumb set. |
 | [Spinner](https://coss.com/ui/docs/components/spinner) | `mygoui.Spinner` - `spinner.go` | MyGo loading plugin animation with native size/status options. Geometry is a native adaptation, not the same web SVG animation asset. |
 | [Switch](https://coss.com/ui/docs/components/switch) | `form.Switch` - `form/switch.go` | Native binary switch with explicit value, label, disabled/invalid and change callback. A held thumb stretches 10% after 100 ms, as in coss. |
-| [Table](https://coss.com/ui/docs/components/table) | `data.Table / TableState` - `data/table.go` | Native virtualized data table with sort/selection/actions, column resize/hide and Footer callback. Upstream Table is a composable HTML table; native header metrics, row tinting and resize grips differ. No colspan/rowspan or expandable rows. |
+| [Table](https://coss.com/ui/docs/components/table) | `data.Table / TableState` - `data/table.go` | Native virtualized data table with sort/selection/actions, column resize/hide and Footer callback; `Disabled` takes the table out of input. Upstream Table is a composable HTML table; native header metrics, row tinting and resize grips differ. No colspan/rowspan or expandable rows. |
 | [Tabs](https://coss.com/ui/docs/components/tabs) | `navigation.Tabs` - `navigation/tabs.go` | Typed items and selected index, panels, disabled entries, horizontal/vertical layout, roving focus and selected-indicator motion. KeepMounted optionally preserves inactive native state using Hidden. No arbitrary React tab part tree. |
 | [Textarea](https://coss.com/ui/docs/components/textarea) | `form.TextArea` - `form/textarea.go` | Native multiline editor with line bounds, selection, read-only/disabled/invalid and field metadata. |
 | [Toast](https://coss.com/ui/docs/components/toast) | `overlay.Toast / ToastState.View` - `overlay/toast.go` | Window-owned notification identities, action, timeout, updates, native queue and animated deck. Call Toast from an action, install View in the build. MyGo caps visible cards at three; no promise helper or arbitrary browser portal. |
@@ -117,12 +122,30 @@ viewport. `MaskFade` uses a native shader effect to fade the subtree to
 transparency; `ShadowFade` paints shadow ink and `SurfaceFade` blends into the
 supplied opaque surface. Flags select physical edges and fades follow actual
 remaining scroll distance. Native mask effect layers cap each side at 8192 pixels
-and omit embedded webviews. Shadow/surface paint stays inside the viewport
+(a larger viewport shows the shadow instead) and omit embedded webviews. Shadow/surface paint stays inside the viewport
 clip and does not cover its border. Scoped Metal rounded-viewport evidence
 is recorded in `VALIDATION.md`; arbitrary nested clips remain a toolkit limit.
 See [scrollfade.md](scrollfade.md) for signatures, errors and examples.
 
-Use [theme.md](theme.md) for canonical coss roles, per-appearance palette
+## Effects
+
+Package `effect` applies three shader effects to an application's own
+elements; each returns the element it was given.
+
+| Effect | API | Capability |
+| --- | --- | --- |
+| Mask | `effect.Mask / MaskOptions` - `effect/mask.go` | Fades the selected physical edges of an element and its children to transparency, so the real background shows through. Static. Fallback: content whole, edges shaded or blended into `Surface`. |
+| Shimmer | `effect.Shimmer / ShimmerOptions` - `effect/shimmer.go` | One band (or `Pulse`) across every placeholder in the element while it is applied; rests under reduced motion and high contrast. `SkeletonGroup` is built on it. Fallback: the content at rest. |
+| Reveal | `effect.Reveal / RevealOptions` - `effect/reveal.go` | A soft-edged wipe from one of four directions, once, when the element is first built. Fallback and reduced motion: a uniform fade. |
+
+Parameters default to `theme.Effects()` and `theme.Motion()`. The shader
+runs only on a GPU and below the 8192-pixel layer limit; `Fallback: true`
+draws the fallback everywhere. An element holds one effect, and web views
+do not show through one. Blur, glow and gradient borders are MyGo's own
+(`Element.Material`, shadows, `Element.BorderConicGradient`), not effects.
+See [effects.md](effects.md) for options, limits and examples.
+
+Use [theme.md](theme.md) for canonical roles, per-appearance palette
 patches, radius offsets and type metrics. Body/heading/mono families are
 independent, but native system fonts are the default. The optional `fonts`
 package embeds independently sourced Cal Sans and registers it only when
@@ -140,10 +163,11 @@ mapping; their presence is not an upstream fidelity guarantee:
 | Root actions and feedback | `ButtonGroup`, `CloseButton`, `PressableFeedback`, `Chip`, `BadgeAnchor`, `AvatarGroup`, `ProgressCircle`, `ScrollShadow`, `StatusColors`, `StatusIcon` |
 | Root collections | `ListGroup`/`ListGroupItem`, `Tag`/`TagGroup`, `SkeletonGroup` |
 | Form helpers | `TextField`, `SearchField`, `ControlField`, `SwitchGroup`, `FieldGroup`, `FieldActions`, `ErrorMessage` |
-| List | `list.ListBox` with typed `ListBoxItem`/`ListBoxSection` and caller-owned `ListBoxState` |
+| List | `list.ListBox` with typed `ListBoxItem`/`ListBoxSection` and caller-owned `ListBoxState`; `Editor`, a handle bound to the text input that drives it, makes that input point assistive technology at the highlighted row |
 | Overlays | `overlay.Modal`, `overlay.BottomSheet`; the latter has handle-only swipe dismissal, without coss Drawer snap points |
-| Dates | `date.DateField`, `date.TimeField`, `DateRange` and calendar view state |
-| Color | `ColorArea`, `ColorSlider`, `ColorField`, `ColorSwatch`, `ColorSwatchPicker`, `ColorPicker`, `ColorState`, hex parse/format helpers |
+| Layout | `layout.TitleBar`, `layout.SplitView`, `layout.PaneToggle`, `layout.Scaffold`; see [Window layout](#window-layout) |
+| Dates | `date.DateField`, `date.TimeField` (`Min`, `Max` and `Step`), `DateRange` and calendar view state |
+| Color | `ColorArea`, `ColorSlider`, `ColorField`, `ColorSwatch`, `ColorSwatchPicker`, `ColorPicker` (`OnOpenChange` reports its panel opening and closing), `ColorState`, hex parse/format helpers |
 
 ## Components absorbed from Lobe MyGo
 
@@ -165,13 +189,13 @@ coss counterpart. State is caller-owned and the library starts no I/O.
 | Image select | `form.ImageSelect` | Image tiles as a radio group (`Value`) or checkboxes (`Values`). |
 | Steps | `navigation.Steps` | Horizontal or vertical; completed, current, upcoming and error states; pressable with `OnSelect`. |
 | Sortable list | `list.SortableList` | Reorders by grip drag or Alt+Up/Down and reports `OnMove(from, to)`; it never mutates caller data. |
-| Floating panel | `overlay.FloatingPanel` | Non-modal panel dragged by its title bar inside the window; Escape closes only with focus inside. No keyboard move or resize. |
-| Floating sheet | `overlay.FloatingSheet` | Non-modal bottom sheet in its parent with a height handle (drag or Up/Down). Build it last in the container it covers. |
+| Floating panel | `overlay.FloatingPanel` | Non-modal panel dragged by its title bar inside the window; Alt and an arrow move it 24 DIP within the window; Escape closes only with focus inside. No keyboard resize. Closing with the focus inside hands it to `ReturnFocus`, else to the element that had it as the panel opened. |
+| Floating sheet | `overlay.FloatingSheet` | Non-modal bottom sheet in its parent with a height handle (drag, Up/Down, Home/End). Build it last in the container it covers. Closing with the focus inside hands it to `ReturnFocus`. |
 | Image viewer | `overlay.ImageViewer` | Modal preview with 1–8× zoom, pan and previous/next. No rotate. |
 | Image | `mygoui.Image` | Caller-provided source with caller-owned ready, loading and failed states; optional press. |
 | Result | `mygoui.Result` | Status icon tile over the EmptyState layout with actions and content. |
 | Guide card | `mygoui.GuideCard` | Card with optional cover, actions and a close control calling `OnDismiss`. |
-| Resizable panel | `mygoui.ResizablePanel` | Edge handle with pointer and keyboard resizing clamped to `Min`/`Max`, optional collapse; splitter semantics. |
+| Resizable panel | `mygoui.ResizablePanel` | Edge handle with pointer and keyboard resizing clamped to `Min`/`Max`, optional collapse; splitter semantics. `Border` colours the edge's hairline at rest (the theme's Border by default). `Shown` reports the size of each build for layout that follows the collapse. |
 
 ## Components absorbed from other libraries
 
@@ -200,7 +224,7 @@ library starts no I/O.
 | Path field | `form.PathField` | Native editor for a path with a trailing browse button that only calls `OnBrowse` (nil disables it); opens no dialog (see `PickFiles`). A dropped file or folder sets the path. Long paths show start and end around an ellipsis, whole in a tooltip, until focused. |
 | Key-value editor | `form.KeyValueEditor` | Rows of key and value editors for headers or environment variables. Pairs are never modified: `OnChange`, `OnAdd` and `OnRemove` report edits (a nil `OnChange` makes it read-only); pasted `KEY=VALUE` lines go to `OnPaste` as rows. Enter moves key to value and adds a row from the last value. Rows are keyed by position and not virtualized; suits tens of rows. `MarkDuplicateKeys` flags repeats; `ShowHeaders` titles columns. |
 | Mask input | `form.MaskInput`, `form.MaskFormat` | Editor fitted to a `Mask` (`9` digit, `A` letter, `*` either, other runes literal; no escape). The value holds only slot characters. Typed or pasted text is fitted to the slots (a long paste keeps its tail); empty slots show as underscores while focused; undo and redo step through raw values. |
-| Tree | `list.Tree` | Expandable hierarchy with none, single or multiple selection (Cmd/Ctrl toggle, Shift range, Cmd/Ctrl+A), optional checks that roll up to branches, `Guides`, and keyboard with 700 ms typeahead; double click toggles a branch. `Lazy` and `Loading` nodes make a branch before its children exist; `OnContextMenu` fills a row menu (selecting the row first). Needs caller-owned `TreeState`; builds only rows in view; `Loading` shows skeleton or dimmed rows. |
+| Tree | `list.Tree` | Expandable hierarchy with none, single or multiple selection (Cmd/Ctrl toggle, Shift range, Cmd/Ctrl+A), optional checks that roll up to branches, `Guides`, and keyboard with 1 s typeahead; double click toggles a branch. `Lazy` and `Loading` nodes make a branch before its children exist; `OnContextMenu` fills a row menu (selecting the row first). Needs caller-owned `TreeState`; builds only rows in view; `Disabled` takes the tree out of input; `Loading` shows skeleton or dimmed rows. |
 | Menubar | `navigation.Menubar` | Horizontal menu titles, one Tab stop; arrows move among titles and switch menus while one is open, hovering another title switches. Item `Accelerator` chords work in the window whether or not the menu shows. On Windows and Linux F10 or a tap of Alt focuses the bar and Alt+mnemonic opens a menu. Menus type ahead. `Open` is the caller-owned key of the showing menu. |
 | Split button | `navigation.SplitButton` | Action joined to an arrow opening a `Menu`; one joined group with separate focus. `Loading` (menu stays usable), `ActionDisabled`, `Disabled`; caller-owned `Selected` key is marked in the menu and written on choice, for the caller to make the action. |
 | Overflow list | `navigation.OverflowList` | Actions that fit the width, icon items first dropping labels, the rest in a trailing (or, with `OverflowCollapseStart`, leading) more menu; `Pinned` items stay, `Priority` orders the rest, `Checked` makes toggles, `Separator`; `OnSelect` receives the key. Measures from the previous frame, so a resize settles one frame later and clips meanwhile. |
@@ -215,12 +239,24 @@ library starts no I/O.
 | Action bar | `overlay.ActionBar` | Floating toolbar at the bottom centre of its container while `open`, one Tab stop; build it last in that container. `Count` rolls and is announced; `Actions` (`navigation.OverflowItem`) fold into a menu when narrow while count and close stay; Escape in the bar calls `OnClose`; it rises in and out over 200 ms. `ReturnFocus` receives focus when it closes with focus inside. |
 | About dialog | `overlay.AboutDialog` | Dialog with icon, name, version (with a copy button for `CopyInfo`) and description fixed above scrolling `Links` and `Sections`; `Collapsible` sections fold a long licence into a scrolling monospace body; every part optional. |
 | Diff viewer | `content.DiffViewer` | Read-only diff of `Old` and `New`, unified or side by side, with word marks, `ContextLines` (3 by default) and expandable gaps (`ExpandUnchanged` shows all). `Title` adds a header with added/deleted counts, a layout toggle (`Layout` is the start), previous/next change (also F7, Shift+F7, while `Height` scrolls) and a copy of `New`; `NoLineNumbers`, `Wrap`, `OnError`. Native viewer lays out only lines in view. |
-| JSON viewer | `content.JSONViewer` | Collapsible tree of one JSON document, building only rows in view, with caller-owned `JSONViewerState`. `ExpandDepth` sets the open levels (2 by default); `Toolbar` adds search with match count and stepping (`State.Query`); the header expands, collapses and copies all; a row's menu copies its value or path, Cmd/Ctrl+C copies the chosen value, double click toggles. Invalid source returns the parse error and shows it in place of the tree. |
-| Log viewer | `content.LogViewer` | Monospace lines from `Lines` or `Line` and `Count`, optional levels, numbers, `Follow` (with a jump-to-end button) and `Height`; builds only lines in view. `Toolbar` adds search, level toggles, a match count and a wrap toggle, backed by `LogViewerState` (`Query`, `Levels`, `NoWrap`; raise `Revision` after in-place edits); a line's menu copies it or the whole log. A selection does not span lines. |
+| JSON viewer | `content.JSONViewer` | Collapsible tree of one JSON document, building only rows in view, with caller-owned `JSONViewerState`. `ExpandDepth` sets the open levels (2 by default); `Toolbar` adds search with match count and stepping (`State.Query`); the header expands, collapses and copies all; a row's menu copies its value or path, Cmd/Ctrl+C copies the chosen value, double click toggles. Invalid source returns the parse error and shows it in place of the tree. `JSONViewerState.FocusSearch` lets an application's Find reach the search field. |
+| Log viewer | `content.LogViewer` | Monospace lines from `Lines` or `Line` and `Count`, optional levels, numbers, `Follow` (with a jump-to-end button) and `Height`; builds only lines in view. `Toolbar` adds search, level toggles, a match count and a wrap toggle, backed by `LogViewerState` (`Query`, `Levels`, `NoWrap`; raise `Revision` after in-place edits); a line's menu copies it or the whole log; `LogViewerState.FocusSearch` lets an application's Find reach the search field. A selection does not span lines. |
+
+## Window layout
+
+Package `layout` holds the shell of a native window. Behavior:
+[behavior/layout.md](behavior/layout.md).
+
+| Component | API | Capability and limits |
+| --- | --- | --- |
+| Title bar | `layout.TitleBar` | Draggable band for a window created with a hidden title bar. `Leading`, `Center` (or `Title`) and `Trailing`; reserves the window-control insets `c.TitleBar()` reports on the edges `Span` reaches (`SpanWindow`, `SpanStart`, `SpanEnd`), mirrored right to left and released in full screen. At least `MinHeight` and the reported band; controls move below the band when they do not fit between the window controls. Draws no window buttons; moving and maximizing are the toolkit's. |
+| Split view | `layout.SplitView` | `Start` and `End` panes beside `Content`. A pane has a caller-owned `Size` (default `Width` 256), `Min` 160 and `Max`, and the content keeps `ContentMin` 240 while the view has the room. Dividers are `ResizablePanel` splitters; `Collapsed` hides a docked pane; `Fixed` keeps `Width` behind a hairline and folds over 200 ms. Below `layout.CompactWidth` (760 DIPs, scaled with text) the content shows alone and a pane with `Open` shows as a flush modal Sheet from its edge; `Compact` forces either mode and `layout.Compact` answers the same question for content. Two side panes at most; no nested or vertical splits, no persistence. |
+| Pane toggle | `layout.PaneToggle` | Icon toggle button for a title bar: flips `Collapsed` while panes dock and `Open` while compact. |
+| Scaffold | `layout.Scaffold` | Window shell: `TitleBar` over the content, a full-height `Start` pane on the sidebar surface whose `StartBar` shares the title band, an `End` pane under the bar and a `StatusBar` strip. It sets both bars' `Span` and height; the title bar's controls follow the start pane's edge while it folds, clear of the window controls, and the start divider leaves the content its minimum beside the end pane. |
 
 ## Loading and state motion
 
-Root `DESIGN.md` ("State changes move", "Loading is one state") holds the
+Root `DESIGN.md` ("State motion", "Loading") holds the
 rule; `internal/busy` holds the treatment. A `Loading` flag is caller-owned
 and starts no work. It is taken by Button, ToggleButton,
 navigation.SplitButton, form.Switch, Input, TextField, SearchField, Select,
@@ -243,16 +279,16 @@ movement at once while fades still run.
 - **Toolkit/platform:** OS context-menu chrome, tooltip timing, scrollbars,
   clipboard, IME and actual accessibility integration remain native. The
   presence of accessible metadata in a Tester is not screen-reader evidence.
-- **Paint:** disabled nodes use native 50% opacity instead of the coss button's
-  64%. Focus rings and joined-group clipping follow native paint order;
+- **Paint:** disabled nodes use native 50% opacity (the coss button source
+  uses 64%). Focus rings and joined-group clipping follow native paint order;
   CSS z-index and descendant selectors have no direct equivalent.
 - **Dates/color:** Gregorian/ISO date behavior and sRGB color editing are the
   current contracts. Locale labels can be supplied; arbitrary calendar systems,
   locale date parsing and wide-gamut round-tripping are not supplied.
 - **Motion/gestures:** reduced-motion preferences must be respected. Drawer
   snap points, nested gesture arbitration and unrestricted body swipe are
-  absent. Existing slide/fade/zoom/spring transitions do not certify every coss
-  interaction curve.
+  absent. `DESIGN.md` records the motion each component uses; it does not
+  claim parity with the upstream interaction curves.
 - **API shape:** HTML form submission, DOM refs, React providers/render props,
   arbitrary Tailwind classes and browser portals do not become native APIs.
   Native options, handles, services and composition carry the supported intent.

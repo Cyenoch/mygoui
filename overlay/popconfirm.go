@@ -100,14 +100,14 @@ func Popconfirm(c *ui.Context, anchor ui.Element, open *bool, o PopconfirmOption
 
 func popconfirmHeader(c *ui.Context, o PopconfirmOptions) {
 	t := theme.Colors(c)
-	ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Gap(theme.Space8).Children(func() {
+	ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Gap(theme.Space(2)).Children(func() {
 		if o.Destructive {
 			// The glyph sits on the title's first line: half a line of 20 DIPs
 			// less the icon's own half.
 			ui.Icon(c, lucide.TriangleAlert()).Size(theme.Scale(c, theme.IconMD), theme.Scale(c, theme.IconMD)).
-				Shrink(0).TextColor(t.Destructive).Margin(theme.Space2, 0, 0, 0)
+				Shrink(0).TextColor(t.Destructive).Margin(theme.Space(0.5), 0, 0, 0)
 		}
-		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(theme.Space4).Children(func() {
+		ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(theme.Space(1)).Children(func() {
 			if o.Title != "" {
 				style.Text(ui.Text(c, o.Title), c, theme.SM()).FontWeight(theme.WeightSemibold).
 					Role(ui.RoleHeading).Level(3)

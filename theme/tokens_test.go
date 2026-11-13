@@ -168,3 +168,34 @@ func TestCossElevationKeepsCrispEdges(t *testing.T) {
 		}
 	}
 }
+
+// TestElevationEdgeTakesTheLightFromAbove pins the 1 DIP edge of a raised
+// surface: a dark lower edge in light appearance, a light upper edge in dark,
+// as the coss edge it was taken from draws them.
+func TestElevationEdgeTakesTheLightFromAbove(t *testing.T) {
+	grey := ui.RGB(128, 128, 128)
+	for _, dark := range []bool{false, true} {
+		for name, layers := range map[string][]theme.Shadow{
+			"surface": theme.SurfaceShadows(dark), "field": theme.FieldShadows(dark), "overlay": theme.OverlayShadows(dark),
+		} {
+			edge := layers[len(layers)-1]
+			tt := ui.NewTester(func(c *ui.Context) {
+				ui.Box(c).Size(200, 100).Padding(20).Background(ui.RGB(255, 255, 255)).Children(func() {
+					ui.Box(c).Size(100, 40).Background(grey).
+						InsetShadow(edge.X, edge.Y, edge.Blur, edge.Spread, edge.Color)
+				})
+			}, 200, 100)
+			img := tt.Image()
+			top, bottom, middle := img.RGBAAt(70, 20), img.RGBAAt(70, 59), img.RGBAAt(70, 40)
+			lit, unlit := bottom.R < middle.R, top.R == middle.R
+			want := "a darker bottom row only"
+			if dark {
+				lit, unlit = top.R > middle.R, bottom.R == middle.R
+				want = "a lighter top row only"
+			}
+			if !lit || !unlit {
+				t.Errorf("%s dark=%v: top %d, bottom %d, middle %d; want %s", name, dark, top.R, bottom.R, middle.R, want)
+			}
+		}
+	}
+}

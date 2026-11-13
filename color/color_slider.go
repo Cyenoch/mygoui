@@ -27,11 +27,16 @@ type ColorSliderOptions struct {
 	Format func(value float64) string
 	// OnChange reports that the user moved the slider.
 	OnChange func()
+
+	// autofocus focuses the track as it appears, when the picker's panel
+	// opens.
+	autofocus bool
 }
 
 // ColorSlider is a single-channel color slider. It paints a gradient
 // of the channel's range with a draggable thumb; arrows move by one unit (ten
-// with Shift), and Home and End go to the ends.
+// with Shift), Up raising the value in either orientation, and Home and End
+// go to the ends.
 func ColorSlider(c *ui.Context, o ColorSliderOptions) ui.Element {
 	if c == nil || o.State == nil {
 		return ui.Element{}
@@ -67,9 +72,9 @@ func ColorSlider(c *ui.Context, o ColorSliderOptions) ui.Element {
 
 	slider := ui.Column(c).MinWidth(0)
 	if o.Vertical {
-		slider.Shrink(0).AlignItems(ui.Center).Gap(theme.Space8)
+		slider.Shrink(0).AlignItems(ui.Center).Gap(theme.Space(2))
 	} else {
-		slider.FillWidth().Gap(theme.Space4)
+		slider.FillWidth().Gap(theme.Space(1))
 	}
 	slider.Children(func() {
 		if o.Vertical {
@@ -108,6 +113,9 @@ func colorSliderTrack(c *ui.Context, o ColorSliderOptions, label string,
 	track := ui.Box(c).Focusable().FocusRing(false).Role(ui.RoleSlider).
 		Label(label).Range(lo, hi, value).Step(1).Cursor(ui.CursorGrab).
 		Disabled(o.Disabled).Bind(&handle)
+	if o.autofocus {
+		track.AutoFocus()
+	}
 	var radius float32
 	if o.Vertical {
 		height := o.Height
@@ -152,26 +160,16 @@ func colorSliderTrack(c *ui.Context, o ColorSliderOptions, label string,
 				step = 10
 			}
 			cur, _, _ := s.ChannelValue(ch)
-			if o.Vertical {
-				switch ev.Key {
-				case ui.KeyLeft:
-					set(cur - step)
-					return true
-				case ui.KeyRight:
-					set(cur + step)
-					return true
-				}
-			}
+			// Up raises any slider; Left and Right follow the reading
+			// direction of a horizontal one.
 			back, forth := ui.KeyLeft, ui.KeyRight
-			if o.Vertical {
-				back, forth = ui.KeyDown, ui.KeyUp
-			} else if rtl {
+			if !o.Vertical && rtl {
 				back, forth = forth, back
 			}
 			switch ev.Key {
-			case back:
+			case back, ui.KeyDown:
 				set(cur - step)
-			case forth:
+			case forth, ui.KeyUp:
 				set(cur + step)
 			case ui.KeyPageDown:
 				set(cur - 10)
@@ -205,7 +203,7 @@ func colorSliderTrack(c *ui.Context, o ColorSliderOptions, label string,
 		// The control insets the gradient by 10 DIP at each end and draws the
 		// channel's extreme colors as caps, so the thumb travels between the
 		// cap centers rather than to the bare edges.
-		inset := thumb/2 + theme.Space2
+		inset := thumb/2 + theme.Space(0.5)
 		inner := r
 		var lowCap, highCap ui.Rect
 		var lowRadii, highRadii [4]float32

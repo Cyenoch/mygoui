@@ -91,7 +91,7 @@ func init() {
 		id := subject.id
 		RegisterComponent(ComponentPage{
 			ID: id, Title: subject.title, Group: "Charts", Order: 1100 + i*10,
-			Description: "Native data visualization with coss chart tokens and caller-owned inspection.",
+			Description: "Native data visualization with chart tokens and caller-owned inspection.",
 			Examples:    []ComponentExample{{Title: "Sample data", Demo: func(c *ui.Context, s *State) { chartDemo(c, s, id) }}},
 			Code:        chartSnippet(id), Import: "github.com/Cyenoch/mygoui/chart",
 			Params: chartParams(id),

@@ -40,7 +40,7 @@ func Separator(c *ui.Context, o SeparatorOptions) ui.Element {
 	}
 	e := ui.Box(c).Shrink(0).Background(color).Role(ui.RoleNone)
 	if o.Orientation == Vertical {
-		e.Width(theme.Hairline).MinHeight(theme.Space8).AlignSelf(ui.Stretch)
+		e.Width(theme.Hairline).MinHeight(theme.Space(2)).AlignSelf(ui.Stretch)
 	} else {
 		e.Height(theme.Hairline).FillWidth()
 	}

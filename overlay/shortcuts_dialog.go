@@ -96,8 +96,8 @@ func shortcutsHeader(c *ui.Context, state *ShortcutsDialogState, title string) {
 	}
 	// The header keeps clear of the close button beside the title; the
 	// field sits below the button and takes that room back.
-	overlap := theme.Space8 + theme.Scale(c, closeButtonSize) - theme.Space24
-	ui.Box(c).FillWidth().MinWidth(0).Margin(theme.Space8, 0, 0, 0).MarginEnd(-max(overlap, 0)).Children(func() {
+	overlap := theme.Space(2) + theme.Scale(c, closeButtonSize()) - theme.Space(6)
+	ui.Box(c).FillWidth().MinWidth(0).Margin(theme.Space(2), 0, 0, 0).MarginEnd(-max(overlap, 0)).Children(func() {
 		form.SearchField(c, &state.Query, form.SearchFieldOptions{
 			Placeholder: locale.M().Search, FullWidth: true,
 		})
@@ -130,7 +130,7 @@ func shortcutsBody(c *ui.Context, groups []ShortcutGroup, words []string, column
 		}
 	}
 	list := ui.Column(c).FillWidth().MinWidth(0).MinHeight(theme.Scale(c, shortcutsBodyHeight)).
-		Padding(theme.Space8, 0, 0, 0)
+		Padding(theme.Space(2), 0, 0, 0)
 	list.Children(func() {
 		if len(hits) == 0 {
 			mygoui.EmptyState(c, mygoui.EmptyStateOptions{Description: locale.M().NoResults})
@@ -151,7 +151,7 @@ func shortcutsBody(c *ui.Context, groups []ShortcutGroup, words []string, column
 			split[side] = append(split[side], h)
 			weight[side] += h.weight()
 		}
-		ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Gap(theme.Space32).Children(func() {
+		ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Gap(theme.Space(8)).Children(func() {
 			for i := range split {
 				ui.Column(c.Key(i)).Grow(1).Basis(0).MinWidth(0).Children(func() {
 					shortcutColumn(c, groups, split[i], words)
@@ -163,7 +163,7 @@ func shortcutsBody(c *ui.Context, groups []ShortcutGroup, words []string, column
 
 func shortcutColumn(c *ui.Context, groups []ShortcutGroup, hits []shortcutHits, words []string) {
 	t := theme.Colors(c)
-	ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space16).Children(func() {
+	ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(4)).Children(func() {
 		for _, h := range hits {
 			group := groups[h.group]
 			section := ui.Column(c.Key(h.group)).FillWidth().MinWidth(0).Role(ui.RoleList).Label(group.Title)
@@ -172,7 +172,7 @@ func shortcutColumn(c *ui.Context, groups []ShortcutGroup, hits []shortcutHits, 
 					ts := theme.XS()
 					ts.Weight = theme.WeightMedium
 					style.Text(ui.Text(c, group.Title), c, ts).TextColor(t.MutedForeground).
-						Margin(0, 0, theme.Space4, 0)
+						Margin(0, 0, theme.Space(1), 0)
 				}
 				for _, j := range h.items {
 					shortcutRow(c.Key(j), group.Items[j], words)
@@ -183,8 +183,8 @@ func shortcutColumn(c *ui.Context, groups []ShortcutGroup, hits []shortcutHits, 
 }
 
 func shortcutRow(c *ui.Context, item Shortcut, words []string) {
-	row := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(theme.Space16).
-		MinHeight(theme.Scale(c, theme.Space32)).Role(ui.RoleListItem)
+	row := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Center).Gap(theme.Space(4)).
+		MinHeight(theme.Scale(c, theme.Space(8))).Role(ui.RoleListItem)
 	row.Children(func() {
 		mygoui.Highlight(c, mygoui.HighlightOptions{Text: item.Label, Queries: words, IgnoreCase: true}).
 			Grow(1).Basis(0).MinWidth(0)

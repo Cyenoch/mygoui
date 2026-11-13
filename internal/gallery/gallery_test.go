@@ -31,7 +31,7 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 		"Overview": {"overview"},
 		"Foundations": {
 			"theming", "typography", "surface", "separator", "kbd", "card", "frame", "link",
-			"linkbutton", "listgroup", "emptystate", "scrollshadow", "scrollarea", "scrollfade", "header",
+			"linkbutton", "listgroup", "emptystate", "scrollshadow", "scrollarea", "scrollfade", "mask", "shimmer", "reveal", "header",
 			"resizablepanel",
 		},
 		"Actions": {
@@ -80,6 +80,7 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 		"Patterns": {
 			"command", "composer", "sidebar", "result", "guidecard", "upload", "keyvalueeditor",
 			"menubar", "documenttabs", "navigationstack", "statusbar",
+			"titlebar", "splitview", "scaffold",
 			"tour", "shortcutsdialog", "actionbar", "aboutdialog", "settingsgroup",
 		},
 		"Charts":          {"areachart", "barchart", "candlestickchart", "choroplethchart", "composedchart", "funnelchart", "gaugechart", "heatmapchart", "linechart", "profitlossline", "livelinechart", "piechart", "radarchart", "radialchart", "ringchart", "scatterchart", "sankeychart", "sparkline", "sunburstchart"},
@@ -168,7 +169,7 @@ func TestEveryPageRendersAtDesktopAndCompactWidths(t *testing.T) {
 // view's hero.
 func pageHeading(page Page) string {
 	if page.ID == "overview" {
-		return "coss ui, native in Go"
+		return "MyGo UI, native in Go"
 	}
 	return page.Title
 }

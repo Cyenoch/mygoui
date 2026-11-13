@@ -5,6 +5,7 @@ import (
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -45,13 +46,13 @@ func Composer(c *ui.Context, draft *string, o ComposerOptions) ui.Element {
 		return !o.Disabled && !o.ReadOnly && !o.SubmitDisabled && o.OnSubmit != nil &&
 			(o.AllowEmpty || strings.TrimSpace(text) != "")
 	}
-	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space4).
-		Padding(theme.Space8).Radius(theme.RadiusScale().XL)
+	root := ui.Column(c).FillWidth().MinWidth(0).Gap(theme.Space(1)).
+		Padding(theme.Space(2)).Radius(theme.RadiusScale().XL)
 	root = fieldSurface(root, c, ControlPrimary, false, o.Disabled)
 	root.Radius(theme.RadiusScale().XL)
 	root.Children(func() {
 		editor := ui.TextAreaBase(c, draft).FillWidth().MinWidth(0).
-			Lines(minLines, maxLines).Padding(theme.Space4).Label(label).
+			Lines(minLines, maxLines).Padding(theme.Space(1)).Label(label).
 			Placeholder(o.Placeholder).ReadOnly(o.ReadOnly)
 		fieldText(editor, c)
 		if o.OnChange != nil {
@@ -73,14 +74,14 @@ func Composer(c *ui.Context, draft *string, o ComposerOptions) ui.Element {
 				return true
 			})
 		}
-		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(theme.Space8).Children(func() {
+		ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(theme.Space(2)).Children(func() {
 			if o.Actions != nil {
 				o.Actions()
 			}
 			ui.Spacer(c)
 			submitLabel := o.SubmitLabel
 			if submitLabel == "" {
-				submitLabel = "Submit"
+				submitLabel = locale.M().Submit
 			}
 			mygoui.Button(c, mygoui.ButtonOptions{
 				Label: submitLabel, Icon: lucide.ArrowUp(), IconOnly: true,

@@ -1,6 +1,7 @@
 package content
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
@@ -30,6 +31,15 @@ type CopyButtonOptions struct {
 	Size     theme.ButtonSize
 	Disabled bool
 	OnError  func(error)
+}
+
+// copyLabel names a copy button after what it copies, or leaves the default
+// name when that has no name.
+func copyLabel(name string) string {
+	if name == "" {
+		return ""
+	}
+	return fmt.Sprintf(locale.M().CopyNamed, name)
 }
 
 // copiedFeedback is how long a copy button shows its copied state.

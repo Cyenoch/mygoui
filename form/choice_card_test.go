@@ -94,3 +94,20 @@ func TestChoiceCardContentShowsAndKeepsTheCardOneControl(t *testing.T) {
 		t.Fatalf("the card without an indicator reads as %+v (found %v)", info, ok)
 	}
 }
+
+func TestChoiceCardsExposeInvalid(t *testing.T) {
+	on := false
+	state := &RadioGroupState[string]{Selected: new(string)}
+	tt := formTextTester(t, func(c *ui.Context) {
+		CheckboxCard(c, CheckboxCardOptions{Checked: &on, Title: "Terms", Invalid: true})
+		RadioGroup(c, RadioGroupOptions{Label: "Plan"}, func() {
+			RadioCard(c, RadioCardOptions[string]{State: state, Value: "pro", Title: "Pro", Invalid: true})
+		})
+	})
+	if info, ok := tt.AccessByRole(ui.RoleCheckBox, "Terms"); !ok || !info.Invalid {
+		t.Fatalf("check box card: found %v, invalid %v", ok, info.Invalid)
+	}
+	if info, ok := tt.AccessByRole(ui.RoleRadio, "Pro"); !ok || !info.Invalid {
+		t.Fatalf("radio card: found %v, invalid %v", ok, info.Invalid)
+	}
+}

@@ -4,7 +4,6 @@ import (
 	"math"
 	"strconv"
 
-	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -29,8 +28,8 @@ const (
 )
 
 // Rate is a star rating of *value out of Count. The pointer previews and a
-// click sets the rating; the arrows step it, and Home and End take it to
-// none and all.
+// click sets the rating; the arrows step it, Page Up and Page Down move it a
+// whole star, and Home and End take it to none and all.
 func Rate(c *ui.Context, value *float64, o RateOptions) ui.Element {
 	t := theme.Colors(c)
 	count := o.Count
@@ -99,6 +98,7 @@ func Rate(c *ui.Context, value *float64, o RateOptions) ui.Element {
 		}{
 			{forward, at + step}, {ui.KeyUp, at + step},
 			{back, at - step}, {ui.KeyDown, at - step},
+			{ui.KeyPageUp, at + 1}, {ui.KeyPageDown, at - 1},
 			{ui.KeyHome, 0}, {ui.KeyEnd, float64(count)},
 		} {
 			root.OnShortcut(0, k.key, func() { set(k.to) })
@@ -113,22 +113,23 @@ func Rate(c *ui.Context, value *float64, o RateOptions) ui.Element {
 
 	focused := root.FocusVisible()
 	// Stars fill as the rating is set; the pointer's preview follows it at once.
-	fills := make([]float32, count)
-	for i := range fills {
+	stars := ui.Local(root, rateStarsKey{}, func() rateStars { return rateStars{} })
+	fills := stars.fills[:0]
+	for i := range count {
 		fill := float32(math.Min(math.Max(shown-float64(i), 0), 1))
 		if previewing {
-			fills[i] = root.Jump(rateStarKey(i), fill)
+			fill = root.Jump(rateStarKey(i), fill)
 		} else {
-			fills[i] = root.AnimateTo(rateStarKey(i), fill, ui.Animation{Duration: motion.State, Ease: ui.EaseOut})
+			fill = root.AnimateTo(rateStarKey(i), fill, ui.Animation{Duration: theme.Motion().State, Ease: theme.Motion().Ease})
 		}
+		fills = append(fills, fill)
 	}
+	stars.fills = fills
 	root.Draw(func(p *ui.Painter, r ui.Rect) {
+		paths := stars.at(r, count, size, gap, rtl)
 		for i := range count {
-			box := ui.Rect{X: r.X + float32(i)*(size+gap), Y: r.Y, W: size, H: size}
-			if rtl {
-				box.X = r.X + r.W - size - float32(i)*(size+gap)
-			}
-			star := rateStarPath(box)
+			box := paths[i].box
+			star := paths[i].path
 			fill := fills[i]
 			if fill < 1 {
 				rateFillStar(p, star, t.Input)
@@ -151,6 +152,39 @@ func Rate(c *ui.Context, value *float64, o RateOptions) ui.Element {
 
 // rateStarKey names the animated fill of one star.
 type rateStarKey int
+
+// rateStarsKey keeps a rating's star fills and paths across frames, which
+// paint the same stars until the rating moves or resizes.
+type rateStarsKey struct{}
+
+type rateStars struct {
+	fills []float32
+	r     ui.Rect
+	rtl   bool
+	paths []rateStar
+}
+
+type rateStar struct {
+	box  ui.Rect
+	path *ui.Path
+}
+
+// at returns the stars laid out in r, building them again only when the
+// layout changed.
+func (s *rateStars) at(r ui.Rect, count int, size, gap float32, rtl bool) []rateStar {
+	if r == s.r && rtl == s.rtl && len(s.paths) == count {
+		return s.paths
+	}
+	s.r, s.rtl, s.paths = r, rtl, s.paths[:0]
+	for i := range count {
+		box := ui.Rect{X: r.X + float32(i)*(size+gap), Y: r.Y, W: size, H: size}
+		if rtl {
+			box.X = r.X + r.W - size - float32(i)*(size+gap)
+		}
+		s.paths = append(s.paths, rateStar{box, rateStarPath(box)})
+	}
+	return s.paths
+}
 
 // rateAt maps a pointer offset from the first star's leading edge to the
 // rating it points at.
