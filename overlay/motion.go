@@ -115,11 +115,6 @@ func edgeEnter(c *ui.Context, panel ui.Element, side mygoui.Side, distance float
 	offset := panel.AnimateTo(edgeOffsetKey{}, from, ui.Animation{Duration: duration, Ease: ease})
 	x, y := edgeOffset(side, offset)
 	panel.Translate(x, y)
-	if offset != 0 {
-		// As in responsiveDialogMotion: a rounded clip moved by a
-		// fractional offset is rasterized on the CPU every frame.
-		panel.Cache()
-	}
 }
 
 func edgeExit(c *ui.Context, back ui.Element, side mygoui.Side, distance float32, duration time.Duration, ease ui.Easing) ui.Element {
@@ -171,9 +166,10 @@ func responsiveDialogMotion(c *ui.Context, back, panel ui.Element, state *dialog
 		scale := 1 - 0.02*progress
 		panel.Scale(scale, scale)
 		if scale != 1 {
-			// MyGo rasterizes a scaled rounded clip on the CPU every frame,
-			// which outlasts the whole motion in a browser; scale one
-			// bitmap of the panel instead.
+			// A scaled panel's content takes a CPU-rasterized clip mask per
+			// frame wherever a clip inside it meets the transform, which
+			// outlasts the whole motion in a browser; scale one bitmap of
+			// the panel instead.
 			panel.Cache()
 		}
 		exit.Scale = 0.98 / scale

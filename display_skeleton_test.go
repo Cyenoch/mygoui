@@ -50,7 +50,8 @@ func TestLoadingPaintFramesDoNotRebuildStillContent(t *testing.T) {
 			if kind != "group" && stillPaints != paints {
 				t.Fatalf("paint-only animation repainted still content %d times", stillPaints-paints)
 			}
-			if !moved {
+			// A group's sheen is a shader: without a GPU it rests.
+			if !moved && kind != "group" {
 				t.Fatal("paint-only animation stopped moving")
 			}
 		})
@@ -60,7 +61,8 @@ func TestLoadingPaintFramesDoNotRebuildStillContent(t *testing.T) {
 // TestSkeletonMotionIsOptIn pins the frame scheduling of each placeholder
 // mode, standalone and grouped: only a chosen animation keeps asking for
 // paint frames, and a group drives all of its placeholders from one
-// animation.
+// animation. The tester has no GPU, where a group's shader sheen would run
+// per pixel on the CPU, so a group rests like SkeletonNone.
 func TestSkeletonMotionIsOptIn(t *testing.T) {
 	cases := []struct {
 		name      string
@@ -72,8 +74,8 @@ func TestSkeletonMotionIsOptIn(t *testing.T) {
 		{"single shimmer", false, mygoui.SkeletonShimmer, true},
 		{"single pulse", false, mygoui.SkeletonPulse, true},
 		{"group none", true, mygoui.SkeletonNone, false},
-		{"group shimmer", true, mygoui.SkeletonShimmer, true},
-		{"group pulse", true, mygoui.SkeletonPulse, true},
+		{"group shimmer", true, mygoui.SkeletonShimmer, false},
+		{"group pulse", true, mygoui.SkeletonPulse, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

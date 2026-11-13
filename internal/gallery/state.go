@@ -95,6 +95,7 @@ type State struct {
 	Content        ui.ScrollState
 	pages          map[string]any
 	sidebarGroups  groupCache
+	nav            navMetrics
 	overviewGroups groupCache
 }
 

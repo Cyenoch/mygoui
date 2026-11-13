@@ -81,28 +81,28 @@ func dialog(c *ui.Context, open *bool, o DialogOptions, slide bool) ui.Element {
 		}
 		t := theme.Colors(c)
 		radius := overlayRadius()
-		footerCorners := [2]float32{}
+		var corners [4]float32
 		contentHeight := max(float32(0), h-theme.Space48)
 		panel.Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border).MinHeight(0)
 		switch side {
 		case mygoui.SideLeft:
 			contentHeight = max(0, h-2*inset)
 			back.Row().Justify(ui.Start).AlignItems(ui.Stretch).Padding(inset)
-			panel.Clip().Width(min(width, max(float32(0), w-2*inset))).Height(max(float32(0), h-2*inset))
+			panel.Width(min(width, max(float32(0), w-2*inset))).Height(max(float32(0), h-2*inset))
 		case mygoui.SideRight:
 			contentHeight = max(0, h-2*inset)
 			back.Row().Justify(ui.End).AlignItems(ui.Stretch).Padding(inset)
-			panel.Clip().Width(min(width, max(float32(0), w-2*inset))).Height(max(float32(0), h-2*inset))
+			panel.Width(min(width, max(float32(0), w-2*inset))).Height(max(float32(0), h-2*inset))
 		case mygoui.SideTop:
 			back.Column().Justify(ui.Start).AlignItems(ui.Stretch).Padding(inset)
-			panel.Clip().FillWidth().MaxHeight(max(float32(0), h-theme.Space48)).Radius(0)
+			panel.FillWidth().MaxHeight(max(float32(0), h-theme.Space48)).Radius(0)
 		case mygoui.SideBottom:
 			back.Column().Justify(ui.End).AlignItems(ui.Stretch).Padding(inset)
-			panel.Clip().FillWidth().MaxHeight(max(float32(0), h-theme.Space48)).Radius(0)
+			panel.FillWidth().MaxHeight(max(float32(0), h-theme.Space48)).Radius(0)
 		default:
 			availW, availH := dialogViewport(back, panel, w, h)
 			contentHeight = availH
-			panel.Clip().Radius(radius).
+			panel.Radius(radius).
 				Width(min(width, availW)).MaxWidth(availW).
 				MaxHeight(availH).MinHeight(0)
 			if w < 640 {
@@ -116,7 +116,7 @@ func dialog(c *ui.Context, open *bool, o DialogOptions, slide bool) ui.Element {
 			panel.Radius(radius)
 		}
 		if inset > 0 || side == mygoui.SideAuto && w >= 640 {
-			footerCorners = [2]float32{radius - theme.Hairline, radius - theme.Hairline}
+			corners = innerCorners([4]float32{radius, radius, radius, radius})
 		}
 		if slide {
 			edgeEnter(c, panel, side, theme.Space32, dialogMotionDuration, ui.EaseInOut)
@@ -141,7 +141,7 @@ func dialog(c *ui.Context, open *bool, o DialogOptions, slide bool) ui.Element {
 			headerGap:        theme.Space8,
 			maxHeight:        contentHeight,
 			fillHeight:       side == mygoui.SideLeft || side == mygoui.SideRight,
-			footerCorners:    footerCorners,
+			corners:          corners,
 		})
 		if !slide && side == mygoui.SideAuto {
 			responsiveDialogMotion(c, back, panel, motionState, w, h)

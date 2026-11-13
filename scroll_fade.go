@@ -58,57 +58,79 @@ func ScrollFade(c *ui.Context, viewport ui.Element, state *ui.ScrollState, o Scr
 	if edges == 0 {
 		edges = FadeTop | FadeRight | FadeBottom | FadeLeft
 	}
-	if o.Mode == MaskFade {
-		fx := ui.Local(viewport, scrollMaskKey{}, newScrollMask)
-		fx.state, fx.depth, fx.edges = state, depth, edges
-		fx.rtl = c.Direction() == ui.RightToLeft
-		return viewport.Effect(fx)
-	}
 	ink := o.Color
 	if o.Mode == SurfaceFade {
 		if o.Surface.A != 255 {
 			panic("mygoui.ScrollFade: SurfaceFade requires an opaque surface")
 		}
 		ink = o.Surface
-	} else if ink.A == 0 {
+	} else if ink.A == 0 || o.Mode == MaskFade {
 		ink = theme.Colors(c).Foreground.Alpha(0.18)
 	}
 	rtl := c.Direction() == ui.RightToLeft
-	// Absolute children stay fixed in a scroll viewport and paint inside its
-	// rounded content clip, before its border and native scrollbars.
-	viewport.Clip().Children(func() {
-		ui.Box(c.Key(scrollFadeLayerKey{})).Absolute().Left(0).Top(0).Right(0).Bottom(0).
-			PassThrough().Role(ui.RoleNone).Draw(func(p *ui.Painter, r ui.Rect) {
-			if r.W <= 0 || r.H <= 0 {
-				return
+	if o.Mode == MaskFade {
+		fx := ui.Local(viewport, scrollMaskKey{}, newScrollMask)
+		fx.state, fx.depth, fx.edges, fx.rtl = state, depth, edges, rtl
+		// Without a GPU the mask does not run; the shadow stands in for it.
+		scrollEdgeLayer(c, viewport, func(p *ui.Painter, r ui.Rect) {
+			if !p.Accelerated() {
+				paintScrollEdges(p, r, state, depth, edges, rtl, ink)
 			}
-			x, y := max(0, min(state.X, state.MaxX)), max(0, min(state.Y, state.MaxY))
-			if rtl {
-				x = state.MaxX - x
-			}
-			paint := func(edge ScrollFadeEdges, remaining float32, box ui.Rect, angle float32, reverse bool) {
-				if edges&edge == 0 || remaining <= 0 {
-					return
-				}
-				length := box.H
-				if edge == FadeLeft || edge == FadeRight {
-					length = box.W
-				}
-				strength := min(float32(1), remaining/length)
-				from, to := ink.Alpha(strength), ink.Alpha(0)
-				if reverse {
-					from, to = to, from
-				}
-				p.FillGradient(box, ui.LinearGradient{From: from, To: to, Angle: angle}, 0)
-			}
-			w, h := min(depth, r.W/2), min(depth, r.H/2)
-			paint(FadeTop, y, ui.Rect{X: r.X, Y: r.Y, W: r.W, H: h}, 180, false)
-			paint(FadeBottom, state.MaxY-y, ui.Rect{X: r.X, Y: r.Y + r.H - h, W: r.W, H: h}, 180, true)
-			paint(FadeLeft, x, ui.Rect{X: r.X, Y: r.Y, W: w, H: r.H}, 90, false)
-			paint(FadeRight, state.MaxX-x, ui.Rect{X: r.X + r.W - w, Y: r.Y, W: w, H: r.H}, 90, true)
 		})
+		return viewport.Effect(fx)
+	}
+	scrollEdgeLayer(c, viewport.Clip(), func(p *ui.Painter, r ui.Rect) {
+		paintScrollEdges(p, r, state, depth, edges, rtl, ink)
 	})
 	return viewport
+}
+
+// scrollEdgeLayer draws over the viewport's content. Absolute children stay
+// fixed in a scroll viewport and paint inside its content clip, before its
+// border and native scrollbars.
+func scrollEdgeLayer(c *ui.Context, viewport ui.Element, draw func(*ui.Painter, ui.Rect)) {
+	viewport.Children(func() {
+		ui.Box(c.Key(scrollFadeLayerKey{})).Absolute().Left(0).Top(0).Right(0).Bottom(0).
+			PassThrough().Role(ui.RoleNone).Draw(draw)
+	})
+}
+
+// paintScrollEdges overlays an ink gradient on each selected edge that still
+// has content scrolled beyond it.
+func paintScrollEdges(p *ui.Painter, r ui.Rect, state *ui.ScrollState, depth float32, edges ScrollFadeEdges, rtl bool, ink ui.Color) {
+	if r.W <= 0 || r.H <= 0 {
+		return
+	}
+	x, y := scrollOffsets(state, rtl)
+	paint := func(edge ScrollFadeEdges, remaining float32, box ui.Rect, angle float32, reverse bool) {
+		if edges&edge == 0 || remaining <= 0 {
+			return
+		}
+		length := box.H
+		if edge == FadeLeft || edge == FadeRight {
+			length = box.W
+		}
+		strength := min(float32(1), remaining/length)
+		from, to := ink.Alpha(strength), ink.Alpha(0)
+		if reverse {
+			from, to = to, from
+		}
+		p.FillGradient(box, ui.LinearGradient{From: from, To: to, Angle: angle}, 0)
+	}
+	w, h := min(depth, r.W/2), min(depth, r.H/2)
+	paint(FadeTop, y, ui.Rect{X: r.X, Y: r.Y, W: r.W, H: h}, 180, false)
+	paint(FadeBottom, state.MaxY-y, ui.Rect{X: r.X, Y: r.Y + r.H - h, W: r.W, H: h}, 180, true)
+	paint(FadeLeft, x, ui.Rect{X: r.X, Y: r.Y, W: w, H: r.H}, 90, false)
+	paint(FadeRight, state.MaxX-x, ui.Rect{X: r.X + r.W - w, Y: r.Y, W: w, H: r.H}, 90, true)
+}
+
+// scrollOffsets returns the clamped physical offsets from the left and top.
+func scrollOffsets(state *ui.ScrollState, rtl bool) (x, y float32) {
+	x, y = max(0, min(state.X, state.MaxX)), max(0, min(state.Y, state.MaxY))
+	if rtl {
+		x = state.MaxX - x
+	}
+	return x, y
 }
 
 type scrollFadeLayerKey struct{}
@@ -161,21 +183,29 @@ func newScrollMask() scrollMask {
 
 func (fx *scrollMask) EffectMargin() ui.Point { return ui.Point{} }
 
+// PaintEffect runs the shader only where it can change something and is cheap
+// enough: without a GPU MyGo interprets it per pixel, so the content, which
+// then holds ScrollFade's shadow layer, is drawn as is.
 func (fx *scrollMask) PaintEffect(p *ui.Painter, box ui.Rect, content *ui.Bitmap, inset ui.Point) {
-	x := max(0, min(fx.state.X, fx.state.MaxX))
-	y := max(0, min(fx.state.Y, fx.state.MaxY))
-	if fx.rtl {
-		x = fx.state.MaxX - x
-	}
+	x, y := scrollOffsets(fx.state, fx.rtl)
 	length := func(edge ScrollFadeEdges, remaining float32) float32 {
 		if fx.edges&edge == 0 {
 			return 0
 		}
 		return max(0, min(fx.depth, remaining))
 	}
-	fx.values.Vec4(fx.uniform,
-		length(FadeTop, y), length(FadeRight, fx.state.MaxX-x),
-		length(FadeBottom, fx.state.MaxY-y), length(FadeLeft, x))
+	top, right := length(FadeTop, y), length(FadeRight, fx.state.MaxX-x)
+	bottom, left := length(FadeBottom, fx.state.MaxY-y), length(FadeLeft, x)
+	faded := top > 0 || right > 0 || bottom > 0 || left > 0
+	if faded && p.Accelerated() {
+		fx.paintMask(p, box, content, inset, top, right, bottom, left)
+		return
+	}
+	paintEffectContent(p, box, content, inset)
+}
+
+func (fx *scrollMask) paintMask(p *ui.Painter, box ui.Rect, content *ui.Bitmap, inset ui.Point, top, right, bottom, left float32) {
+	fx.values.Vec4(fx.uniform, top, right, bottom, left)
 	fx.effect.PaintEffect(p, box, content, inset)
 }
 

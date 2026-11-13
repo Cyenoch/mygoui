@@ -48,6 +48,15 @@ func paintBackdrop(c *ui.Context, back ui.Element, variant ModalBackdrop) ui.Ele
 	}
 }
 
+// innerCorners returns the radii inside a hairline border of a panel
+// rounded by outer.
+func innerCorners(outer [4]float32) [4]float32 {
+	for i, r := range outer {
+		outer[i] = max(0, r-theme.Hairline)
+	}
+	return outer
+}
+
 // overlayRadius is the COSS dialog radius.
 func overlayRadius() float32 {
 	return theme.RadiusScale().XXL
@@ -80,7 +89,9 @@ type chrome struct {
 	headingLevel     int
 	maxHeight        float32
 	fillHeight       bool
-	footerCorners    [2]float32
+	// corners are the panel's radii inside its border: top left, top
+	// right, bottom right, bottom left.
+	corners [4]float32
 }
 
 type chromeViewportKey struct{}
@@ -125,7 +136,13 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 
 	e.Column().MinWidth(0)
 	e.Children(func() {
-		viewport := ui.Scroll(c.Key(chromeViewportKey{})).FillWidth().Grow(1).MinHeight(0)
+		// The viewport, not the panel, clips to the rounded corners. A
+		// square clip inside a rounded one is cut with a mask that MyGo's
+		// GPU renderers rasterize on the CPU in every frame the panel
+		// moves, as in each frame of an exit copy.
+		k := p.corners
+		viewport := ui.Scroll(c.Key(chromeViewportKey{})).FillWidth().Grow(1).MinHeight(0).
+			Radius(k[0], k[1], k[2], k[3]).ScrollbarInsets(max(k[0], k[1]), 0, max(k[2], k[3]))
 		geometry := ui.Local(viewport, chromeViewportKey{}, func() chromeGeometry { return chromeGeometry{} })
 		height := max(0, p.maxHeight-2*theme.Hairline)
 		var fixed float32
@@ -196,7 +213,7 @@ func fillPanel(c *ui.Context, e ui.Element, p chrome) {
 					f := ui.Row(c).Justify(ui.End).AlignItems(ui.Center).Gap(theme.Space8).Shrink(0)
 					f.AlignSelf(ui.Stretch).Margin(ui.Auto, -padding, -padding, -padding).
 						Padding(theme.Space16, theme.Space24).
-						Radius(0, 0, p.footerCorners[0], p.footerCorners[1]).
+						Radius(0, 0, p.corners[2], p.corners[3]).
 						Background(t.MutedBackground.Alpha(0.72)).
 						BorderWidth(theme.Hairline, 0, 0, 0).BorderColor(t.Border)
 					if w, _ := c.Size(); w < 640 {

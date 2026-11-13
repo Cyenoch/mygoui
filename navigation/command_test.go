@@ -1,6 +1,7 @@
 package navigation
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/Cyenoch/mygoui/theme"
@@ -227,5 +228,70 @@ func TestCommandSelectionCanClearQuery(t *testing.T) {
 	}
 	if !tt.HasText("Duplicate") || !tt.Focused("Commands") {
 		t.Fatalf("clearing query lost the command list or input focus: %v", tt.Texts())
+	}
+}
+
+func TestCommandFollowsQueryNewItemsAndRevision(t *testing.T) {
+	var state CommandState
+	items := []CommandItem{{Key: "archive", Label: "Archive"}, {Key: "duplicate", Label: "Duplicate"}}
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		Command(c, CommandOptions{State: &state, Label: "Commands", Items: items})
+	}, 400, 240)
+	tt.Frame()
+	state.Query = "dup"
+	tt.Frame()
+	if tt.HasText("Archive") || !tt.HasText("Duplicate") {
+		t.Fatalf("query: %q", tt.Texts())
+	}
+	state.Query = ""
+	tt.Frame()
+	items = []CommandItem{{Key: "rename", Label: "Rename"}, {Key: "duplicate", Label: "Duplicate"}}
+	tt.Frame()
+	if !tt.HasText("Rename") || tt.HasText("Archive") {
+		t.Fatalf("new slice: %q", tt.Texts())
+	}
+	items[0].Label = "Move"
+	state.Revision++
+	tt.Frame()
+	if !tt.HasText("Move") || tt.HasText("Rename") {
+		t.Fatalf("in-place edit after Revision: %q", tt.Texts())
+	}
+}
+
+func TestCommandStateCanMoveBetweenFrames(t *testing.T) {
+	var saved CommandState
+	items := []CommandItem{{Key: "copy", Label: "Copy", Shortcut: "⌘C"}}
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		state := saved
+		Command(c, CommandOptions{State: &state, Label: "Commands", Items: items})
+		saved = state
+	}, 400, 200)
+	tt.Frame()
+	tt.Frame()
+	if !tt.HasText("⌘C") {
+		t.Fatalf("shortcut after the state moved: %q", tt.Texts())
+	}
+}
+
+// A list whose viewport grows builds the rows it lacks during layout, after
+// Command returned; their shortcuts must still draw.
+func TestCommandDrawsShortcutsOfRowsBuiltDuringLayout(t *testing.T) {
+	var state CommandState
+	items := make([]CommandItem, 200)
+	for i := range items {
+		items[i] = CommandItem{Key: fmt.Sprint("k", i), Label: fmt.Sprint("Item ", i), Shortcut: fmt.Sprint("S", i)}
+	}
+	height := float32(200)
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		Command(c, CommandOptions{State: &state, Label: "Commands", Items: items, MaxHeight: height})
+	}, 400, 900)
+	tt.Frame()
+	height = 800
+	tt.Frame()
+	if !tt.HasText("S15") {
+		t.Fatalf("no shortcut in a row the taller list added: %q", tt.Texts())
 	}
 }

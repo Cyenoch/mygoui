@@ -25,11 +25,22 @@ type CommandGroup struct {
 	Items      []CommandItem
 }
 
-// CommandState holds the query, list highlight and focus for one command.
+// CommandState holds the query, list highlight and focus for one command,
+// and a revision for item changes a frame cannot see.
+//
+// Revision must change when an item or a group is edited in place. Items or
+// groups appearing or disappearing through a new slice or a different length
+// are noticed without it.
 type CommandState struct {
 	Query string
 	Input ui.Handle
 	List  list.ListBoxState
+	// Revision tells the command that items changed in place. Increment it
+	// when an item's key, label, keywords, shortcut or disabled flag changes
+	// without the slice or its length changing.
+	Revision uint64
+
+	results commandResults
 
 	keyQuery     string
 	keyHighlight string
@@ -54,25 +65,6 @@ func Command(c *ui.Context, o CommandOptions) ui.Element {
 	}
 	s := o.State
 	t := theme.Colors(c)
-	filter := func(source []CommandItem, query string) []list.ListBoxItem {
-		items := make([]list.ListBoxItem, 0, len(source))
-		for _, item := range source {
-			if query != "" && !strings.Contains(strings.ToLower(item.Label+" "+item.Keywords), query) {
-				continue
-			}
-			key := item.Key
-			if key == "" {
-				key = item.Label
-			}
-			shortcut := item.Shortcut
-			var end func()
-			if shortcut != "" {
-				end = func() { style.Text(ui.Text(c, shortcut), c, theme.XS()).TextColor(t.MutedForeground) }
-			}
-			items = append(items, list.ListBoxItem{Key: key, Label: item.Label, Disabled: item.Disabled, End: end})
-		}
-		return items
-	}
 	activate := func(key string) {
 		run := func(items []CommandItem) bool {
 			for _, item := range items {
@@ -147,17 +139,12 @@ func Command(c *ui.Context, o CommandOptions) ui.Element {
 				return true
 			})
 		})
-		query := strings.ToLower(strings.TrimSpace(s.Query))
-		items := filter(o.Items, query)
-		groups := make([]list.ListBoxSection, 0, len(o.Groups))
-		for _, group := range o.Groups {
-			matches := filter(group.Items, query)
-			if len(matches) != 0 {
-				groups = append(groups, list.ListBoxSection{Key: group.Key, Label: group.Label, Items: matches})
-			}
+		r := s.results.update(o, s.Revision, s.Query)
+		*r.shortcut = func(shortcut string) {
+			style.Text(ui.Text(c, shortcut), c, theme.XS()).TextColor(t.MutedForeground)
 		}
 		list.ListBox(c, list.ListBoxOptions{
-			Label: label, Items: items, Sections: groups, State: &s.List, Padding: theme.Space8,
+			Label: label, Items: r.rows, Sections: r.sections, State: &s.List, Padding: theme.Space8,
 			MaxHeight: height, Empty: empty, NoFocusOnClick: true,
 			KeyboardHighlight: s.Input.Focused(c), OnAction: activate,
 		})
@@ -176,7 +163,7 @@ func Command(c *ui.Context, o CommandOptions) ui.Element {
 // commandKeySelection uses the editor's current text, which can be ahead of
 // Query when several native input events arrive before the next frame.
 func commandKeySelection(o CommandOptions, s *CommandState, text string, key ui.Key) string {
-	keys := commandKeys(o, text)
+	keys := s.results.update(o, s.Revision, text).keys
 	highlight := ""
 	if s.keyPending && s.keyQuery == text {
 		highlight = s.keyHighlight
@@ -209,25 +196,92 @@ func commandKeySelection(o CommandOptions, s *CommandState, text string, key ui.
 	return highlight
 }
 
-func commandKeys(o CommandOptions, text string) []string {
+// commandResults is a command's filtered rows and the enabled keys among
+// them in order, rebuilt only when the query, the items or groups, or the
+// revision change. The rows' End closures stay valid across frames; they
+// draw through shortcut, which Command sets on every build and a long list
+// calls later, as its rows come into view during layout.
+// It is shared rather than reached through the state, which the caller may
+// move.
+type commandResults struct {
+	items      []CommandItem
+	groups     []CommandGroup
+	groupItems [][]CommandItem
+	revision   uint64
+	query      string
+	valid      bool
+
+	rows     []list.ListBoxItem
+	sections []list.ListBoxSection
+	keys     []string
+	shortcut *func(string)
+}
+
+// update refilters for text when it or the source changed, and returns r.
+func (r *commandResults) update(o CommandOptions, revision uint64, text string) *commandResults {
 	query := strings.ToLower(strings.TrimSpace(text))
-	var keys []string
-	add := func(items []CommandItem) {
-		for _, item := range items {
-			if item.Disabled || (query != "" &&
-				!strings.Contains(strings.ToLower(item.Label+" "+item.Keywords), query)) {
-				continue
-			}
-			key := item.Key
-			if key == "" {
-				key = item.Label
-			}
-			keys = append(keys, key)
+	if r.valid && query == r.query && r.same(o, revision) {
+		return r
+	}
+	r.items, r.groups, r.revision, r.query, r.valid = o.Items, o.Groups, revision, query, true
+	r.groupItems = r.groupItems[:0]
+	r.keys = nil
+	if r.shortcut == nil {
+		r.shortcut = new(func(string))
+	}
+	// Fresh slices: a ListBox built from the previous result may still
+	// hold them.
+	r.rows = r.filter(o.Items, query)
+	r.sections = nil
+	for _, group := range o.Groups {
+		r.groupItems = append(r.groupItems, group.Items)
+		if matches := r.filter(group.Items, query); len(matches) != 0 {
+			r.sections = append(r.sections, list.ListBoxSection{Key: group.Key, Label: group.Label, Items: matches})
 		}
 	}
-	add(o.Items)
-	for _, group := range o.Groups {
-		add(group.Items)
+	return r
+}
+
+// same reports whether o's items and groups are the slices, of the same
+// lengths, that the result was filtered from, at the same revision. It keeps
+// the slices themselves, so the collector cannot give a new slice the
+// address of a remembered one.
+func (r *commandResults) same(o CommandOptions, revision uint64) bool {
+	if revision != r.revision || !sameSlice(o.Items, r.items) || !sameSlice(o.Groups, r.groups) {
+		return false
 	}
-	return keys
+	for i := range o.Groups {
+		if !sameSlice(o.Groups[i].Items, r.groupItems[i]) {
+			return false
+		}
+	}
+	return true
+}
+
+func (r *commandResults) filter(source []CommandItem, query string) []list.ListBoxItem {
+	var items []list.ListBoxItem
+	for _, item := range source {
+		if query != "" && !strings.Contains(strings.ToLower(item.Label+" "+item.Keywords), query) {
+			continue
+		}
+		key := item.Key
+		if key == "" {
+			key = item.Label
+		}
+		if !item.Disabled {
+			r.keys = append(r.keys, key)
+		}
+		var end func()
+		if shortcut := item.Shortcut; shortcut != "" {
+			draw := r.shortcut
+			end = func() { (*draw)(shortcut) }
+		}
+		items = append(items, list.ListBoxItem{Key: key, Label: item.Label, Disabled: item.Disabled, End: end})
+	}
+	return items
+}
+
+// sameSlice reports whether a and b are the same elements of the same array.
+func sameSlice[T any](a, b []T) bool {
+	return len(a) == len(b) && (len(a) == 0 || &a[0] == &b[0])
 }

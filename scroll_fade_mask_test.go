@@ -2,6 +2,7 @@ package mygoui_test
 
 import (
 	"image"
+	"image/color"
 	"testing"
 
 	"github.com/Cyenoch/mygoui"
@@ -12,39 +13,37 @@ import (
 
 var (
 	maskBackgroundA = ui.RGB(230, 40, 70)
-	maskBackgroundB = ui.RGB(20, 200, 80)
 	maskContent     = ui.RGB(30, 70, 230)
 )
 
-func maskPixel(t *testing.T, img *image.RGBA, x, y int, background ui.Color, alpha float32) {
+// maskContentAt asserts the viewport content shows at full strength.
+func maskContentAt(t *testing.T, img *image.RGBA, x, y int) {
 	t.Helper()
-	want := maskContent.Alpha(alpha).Over(background)
-	got := img.RGBAAt(x, y)
-	difference := func(a, b uint8) int {
-		return max(int(a)-int(b), int(b)-int(a))
-	}
-	if difference(got.R, want.R) > 9 || difference(got.G, want.G) > 9 || difference(got.B, want.B) > 9 {
-		t.Errorf("pixel (%d,%d) = %v, want %v at alpha %.2f", x, y, got, want, alpha)
+	if got := img.RGBAAt(x, y); got != (color.RGBA{R: maskContent.R, G: maskContent.G, B: maskContent.B, A: 255}) {
+		t.Errorf("pixel (%d,%d) = %v, want the unfaded content", x, y, got)
 	}
 }
 
-func TestScrollMaskFadeTracksOverflowAndBackground(t *testing.T) {
+// maskShadedAt asserts an edge is dimmed but the content stays readable.
+func maskShadedAt(t *testing.T, img *image.RGBA, x, y int) {
+	t.Helper()
+	got := img.RGBAAt(x, y)
+	if got.R == maskContent.R && got.G == maskContent.G && got.B == maskContent.B {
+		t.Errorf("pixel (%d,%d) = %v, want a visible edge fade", x, y, got)
+	}
+	if got.A != 255 || got.B < maskContent.B/2 {
+		t.Errorf("pixel (%d,%d) = %v, want the content still readable", x, y, got)
+	}
+}
+
+// Without a GPU the tester's shader would run per pixel on the CPU: the mask
+// falls back to the content under a shadow, kept only where a side has more
+// to scroll.
+func TestScrollMaskFadeWithoutGPUShadesOnlyScrollableEdges(t *testing.T) {
 	var state ui.ScrollState
 	tt := ui.NewTester(func(c *ui.Context) {
 		theme.ApplyMode(c, false)
-		ui.Box(c).Fill().Children(func() {
-			ui.Box(c).Absolute().Left(0).Right(0).Top(0).Bottom(0).
-				Draw(func(p *ui.Painter, r ui.Rect) {
-					for y := range 2 {
-						for x := range 4 {
-							color := maskBackgroundA
-							if (x+y)%2 != 0 {
-								color = maskBackgroundB
-							}
-							p.Fill(ui.Rect{X: r.X + float32(x*30), Y: r.Y + float32(y*50), W: 30, H: 50}, color, 0)
-						}
-					}
-				})
+		ui.Box(c).Fill().Background(maskBackgroundA).Children(func() {
 			viewport := ui.ScrollBoth(c).Absolute().Left(0).Top(0).Size(120, 100).TrackScroll(&state)
 			viewport.Children(func() {
 				ui.Box(c).Size(320, 300).Shrink(0).Background(maskContent)
@@ -57,29 +56,25 @@ func TestScrollMaskFadeTracksOverflowAndBackground(t *testing.T) {
 		t.Fatalf("missing two-axis overflow: %+v", state)
 	}
 	img := tt.Image()
-	maskPixel(t, img, 0, 40, maskBackgroundA, 1)
-	maskPixel(t, img, 40, 0, maskBackgroundB, 1)
-	maskPixel(t, img, 119, 40, maskBackgroundB, 0.5/24)
-	maskPixel(t, img, 40, 99, maskBackgroundA, 0.5/24)
+	maskContentAt(t, img, 0, 40)
+	maskContentAt(t, img, 40, 0)
+	maskShadedAt(t, img, 119, 40)
+	maskShadedAt(t, img, 40, 99)
 
 	state.X, state.Y = 6, 8
 	tt.Frame()
 	img = tt.Image()
-	maskPixel(t, img, 0, 40, maskBackgroundA, 0.5/6)
-	maskPixel(t, img, 5, 40, maskBackgroundA, 5.5/6)
-	maskPixel(t, img, 10, 40, maskBackgroundA, 1)
-	maskPixel(t, img, 40, 0, maskBackgroundB, 0.5/8)
-	maskPixel(t, img, 40, 7, maskBackgroundB, 7.5/8)
-	maskPixel(t, img, 40, 12, maskBackgroundB, 1)
-	maskPixel(t, img, 3, 3, maskBackgroundA, (3.5/6)*(3.5/8))
+	maskShadedAt(t, img, 0, 40)
+	maskShadedAt(t, img, 40, 0)
+	maskContentAt(t, img, 60, 50)
 
 	state.X, state.Y = state.MaxX, state.MaxY
 	tt.Frame()
 	img = tt.Image()
-	maskPixel(t, img, 119, 40, maskBackgroundB, 1)
-	maskPixel(t, img, 40, 99, maskBackgroundA, 1)
-	maskPixel(t, img, 0, 40, maskBackgroundA, 0.5/24)
-	maskPixel(t, img, 40, 0, maskBackgroundB, 0.5/24)
+	maskContentAt(t, img, 119, 40)
+	maskContentAt(t, img, 40, 99)
+	maskShadedAt(t, img, 0, 40)
+	maskShadedAt(t, img, 40, 0)
 	if tt.FramePending() {
 		t.Fatal("stationary mask requested another frame")
 	}
@@ -88,6 +83,7 @@ func TestScrollMaskFadeTracksOverflowAndBackground(t *testing.T) {
 func TestScrollMaskFadeUsesPhysicalEdgesInRTL(t *testing.T) {
 	var state ui.ScrollState
 	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
 		ui.Box(c).Fill().Background(maskBackgroundA).Children(func() {
 			viewport := ui.ScrollHorizontal(c).Absolute().Left(0).Top(0).Size(120, 100).TrackScroll(&state)
 			viewport.Children(func() {
@@ -102,13 +98,13 @@ func TestScrollMaskFadeUsesPhysicalEdgesInRTL(t *testing.T) {
 		t.Fatalf("missing horizontal overflow: %+v", state)
 	}
 	img := tt.Image()
-	maskPixel(t, img, 0, 40, maskBackgroundA, 0.5/24)
-	maskPixel(t, img, 119, 40, maskBackgroundA, 1)
+	maskShadedAt(t, img, 0, 40)
+	maskContentAt(t, img, 119, 40)
 	state.X = state.MaxX
 	tt.Frame()
 	img = tt.Image()
-	maskPixel(t, img, 0, 40, maskBackgroundA, 1)
-	maskPixel(t, img, 119, 40, maskBackgroundA, 0.5/24)
+	maskContentAt(t, img, 0, 40)
+	maskShadedAt(t, img, 119, 40)
 }
 
 func TestScrollMaskFadeWithoutOverflowAndWithSelectedEdges(t *testing.T) {
@@ -116,6 +112,7 @@ func TestScrollMaskFadeWithoutOverflowAndWithSelectedEdges(t *testing.T) {
 		t.Run(map[bool]string{false: "no overflow", true: "selected edge"}[overflow], func(t *testing.T) {
 			var state ui.ScrollState
 			tt := ui.NewTester(func(c *ui.Context) {
+				theme.ApplyMode(c, false)
 				ui.Box(c).Fill().Background(maskBackgroundA).Children(func() {
 					viewport := ui.ScrollBoth(c).Absolute().Left(0).Top(0).Size(120, 100).TrackScroll(&state)
 					viewport.Children(func() {
@@ -135,9 +132,13 @@ func TestScrollMaskFadeWithoutOverflowAndWithSelectedEdges(t *testing.T) {
 				tt.Frame()
 			}
 			img := tt.Image()
-			maskPixel(t, img, 0, 40, maskBackgroundA, 1)
-			maskPixel(t, img, 40, 0, maskBackgroundA, 1)
-			maskPixel(t, img, 40, 99, maskBackgroundA, map[bool]float32{false: 1, true: 0.5 / 24}[overflow])
+			maskContentAt(t, img, 0, 40)
+			maskContentAt(t, img, 40, 0)
+			if overflow {
+				maskShadedAt(t, img, 40, 99)
+			} else {
+				maskContentAt(t, img, 40, 99)
+			}
 			if tt.FramePending() {
 				t.Fatal("stationary mask requested another frame")
 			}

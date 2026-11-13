@@ -90,28 +90,8 @@ func eachSelectItem(items []list.ListBoxItem, sections []list.ListBoxSection, fn
 	}
 }
 
-// selectChosen returns the chosen keys and labels in item order.
-func selectChosen(items []list.ListBoxItem, sections []list.ListBoxSection, s *SelectState) (keys, labels []string) {
-	// Keys are unique, so without multiple choices one row at most matches.
-	single := s.List.Selected.Len() == 0
-	eachSelectItem(items, sections, func(it *list.ListBoxItem) bool {
-		key := itemKey(it)
-		if s.List.IsSelected(key) {
-			keys = append(keys, key)
-			labels = append(labels, it.Label)
-			return !single
-		}
-		return true
-	})
-	return keys, labels
-}
-
 func selectNotify(o SelectOptions, s *SelectState) {
-	if o.OnChange == nil {
-		return
-	}
-	keys, _ := selectChosen(o.Items, o.Sections, s)
-	o.OnChange(keys)
+	listNotify(o.Items, o.Sections, &s.List, o.OnChange)
 }
 
 // sectionItemCount counts rows for the filtered list's scratch storage.
@@ -293,7 +273,7 @@ func Select(c *ui.Context, o SelectOptions) ui.Element {
 			fieldLabel(c, o.Label, o.Required, invalid, o.Disabled, &s.Trigger)
 		}
 
-		keys, labels := selectChosen(o.Items, o.Sections, s)
+		keys, labels := listChosen(o.Items, o.Sections, &s.List)
 		value := strings.Join(labels, ", ")
 		placeholder := value == ""
 
@@ -333,9 +313,10 @@ func Select(c *ui.Context, o SelectOptions) ui.Element {
 			trigger.OnShortcut(0, ui.KeyDelete, func() { selectClear(c, o, s) })
 		}
 		if mode == list.SelectionSingle && !o.Disabled {
-			for i := range selectTypeKeys {
-				r := selectTypeRunes[i]
-				trigger.OnShortcut(0, selectTypeKeys[i], func() { selectTypeahead(o, s, r) })
+			typeahead := *ui.Local(trigger, "typeahead", newTypeaheadHandlers)
+			typeahead.options = o
+			for i, fn := range typeahead.handlers {
+				trigger.OnShortcut(0, selectTypeKeys[i], fn)
 			}
 		}
 
@@ -419,6 +400,22 @@ func selectClear(c *ui.Context, o SelectOptions, s *SelectState) {
 	s.List.ClearSelection()
 	s.Trigger.Focus(c)
 	selectNotify(o, s)
+}
+
+// typeaheadHandlers are one Select's letter shortcuts, made once so frames
+// do not allocate them; each build gives them its options.
+type typeaheadHandlers struct {
+	options  SelectOptions
+	handlers [len(selectTypeKeys)]func()
+}
+
+func newTypeaheadHandlers() *typeaheadHandlers {
+	t := &typeaheadHandlers{}
+	for i := range t.handlers {
+		r := selectTypeRunes[i]
+		t.handlers[i] = func() { selectTypeahead(t.options, t.options.State, r) }
+	}
+	return t
 }
 
 // selectTypeahead chooses the next item whose label starts with r.

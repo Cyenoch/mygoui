@@ -87,7 +87,7 @@ func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
 		if full {
 			radius = 0
 		}
-		panel.Radius(radius).Clip().Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border)
+		panel.Radius(radius).Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border)
 		if !full {
 			panel = panelElevation(c, panel)
 		}
@@ -122,7 +122,7 @@ func Modal(c *ui.Context, open *bool, o ModalOptions) ui.Element {
 			headerGap:        theme.Space8,
 			maxHeight:        availH,
 			fillHeight:       full || o.Size == ModalCover,
-			footerCorners:    [2]float32{max(0, radius-theme.Hairline), max(0, radius-theme.Hairline)},
+			corners:          innerCorners([4]float32{radius, radius, radius, radius}),
 		})
 	})
 	if wasOpen && !*open && p.Valid() && p.Dismissed() {

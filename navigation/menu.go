@@ -69,6 +69,11 @@ type menuScope struct {
 	onSelect   func(string)
 	close      *bool
 	focusFirst *bool
+	// list is the long menu whose rows are being built, which moves the
+	// focus itself; nil for a menu building every row. keyed is set while
+	// the focus it moved draws its own ring, in its submenus too.
+	list  *menuList
+	keyed *bool
 }
 
 // menuExtra carries wiring that only a root (Dropdown or SubMenu) has.
@@ -91,37 +96,9 @@ func buildMenu(c *ui.Context, o MenuOptions, extra menuExtra, parent *menuScope)
 	if o.Label != "" {
 		root.Label(o.Label)
 	}
-	selection := o.Selection
-	selected := o.Selected
-	onSelect := o.OnSelect
-	closeTo := extra.close
-	focusFirst := extra.focusFirst
-	if parent != nil {
-		if selection == MenuSelectNone {
-			selection = parent.selection
-		}
-		if selected == nil {
-			selected = parent.selected
-		}
-		if onSelect == nil {
-			onSelect = parent.onSelect
-		}
-		if closeTo == nil {
-			closeTo = parent.close
-		}
-		if focusFirst == nil {
-			focusFirst = parent.focusFirst
-		}
-	}
-	if selection != MenuSelectNone && selected == nil {
-		selected = ui.Local(root, "menu-selected", func() []string { return nil })
-	}
-	sc := &menuScope{
-		selection:  selection,
-		selected:   selected,
-		onSelect:   onSelect,
-		close:      closeTo,
-		focusFirst: focusFirst,
+	sc := newMenuScope(o, extra, parent)
+	if sc.selection != MenuSelectNone && sc.selected == nil {
+		sc.selected = ui.Local(root, "menu-selected", func() []string { return nil })
 	}
 	root.Children(func() {
 		for i := range o.Sections {
@@ -131,9 +108,40 @@ func buildMenu(c *ui.Context, o MenuOptions, extra menuExtra, parent *menuScope)
 	return root
 }
 
+// newMenuScope resolves a menu's selection and closing wiring, inheriting
+// what a submenu leaves unset from its parent. A selection kept internally
+// is left nil for the caller to place.
+func newMenuScope(o MenuOptions, extra menuExtra, parent *menuScope) *menuScope {
+	sc := &menuScope{
+		selection:  o.Selection,
+		selected:   o.Selected,
+		onSelect:   o.OnSelect,
+		close:      extra.close,
+		focusFirst: extra.focusFirst,
+	}
+	if parent != nil {
+		if sc.selection == MenuSelectNone {
+			sc.selection = parent.selection
+		}
+		if sc.selected == nil {
+			sc.selected = parent.selected
+		}
+		if sc.onSelect == nil {
+			sc.onSelect = parent.onSelect
+		}
+		if sc.close == nil {
+			sc.close = parent.close
+		}
+		if sc.focusFirst == nil {
+			sc.focusFirst = parent.focusFirst
+		}
+		sc.keyed = parent.keyed
+	}
+	return sc
+}
+
 // buildMenuSection builds a titled group of menu items.
 func buildMenuSection(c *ui.Context, o MenuSectionOptions, sc *menuScope) ui.Element {
-	t := theme.Colors(c)
 	if o.Key != "" {
 		c.Key(o.Key)
 	}
@@ -143,19 +151,25 @@ func buildMenuSection(c *ui.Context, o MenuSectionOptions, sc *menuScope) ui.Ele
 	}
 	section.Children(func() {
 		if o.Title != "" {
-			heading := ui.Row(c).FillWidth().AlignItems(ui.Center).Shrink(0).
-				Padding(scale(c, theme.Space6), scale(c, theme.Space8), scale(c, theme.Space4), scale(c, theme.Space8)).
-				Role(ui.RoleText)
-			heading.Children(func() {
-				style.Text(ui.Text(c, o.Title), c, theme.XS()).TextColor(t.Muted).
-					FontWeight(theme.WeightMedium).SingleLine()
-			})
+			buildMenuHeading(c, o.Title)
 		}
 		for i := range o.Items {
 			buildMenuItem(c, o.Items[i], sc)
 		}
 	})
 	return section
+}
+
+// buildMenuHeading builds a section's title row.
+func buildMenuHeading(c *ui.Context, title string) ui.Element {
+	heading := ui.Row(c).FillWidth().AlignItems(ui.Center).Shrink(0).
+		Padding(scale(c, theme.Space6), scale(c, theme.Space8), scale(c, theme.Space4), scale(c, theme.Space8)).
+		Role(ui.RoleText)
+	heading.Children(func() {
+		style.Text(ui.Text(c, title), c, theme.XS()).TextColor(theme.Colors(c).Muted).
+			FontWeight(theme.WeightMedium).SingleLine()
+	})
+	return heading
 }
 
 // buildMenuItem builds one focusable row. The menu scope is explicit, so no
@@ -228,20 +242,30 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 	} else {
 		el.OnClick(func() { activateMenuItem(sc, inMenu, key, o) })
 	}
+	if inMenu && sc.focusFirst != nil && *sc.focusFirst && !o.Disabled {
+		el.Focus()
+		*sc.focusFirst = false
+	}
+	if sc.list != nil && !o.Disabled {
+		sc.list.focus(el)
+	}
+	ring := sc.keyed != nil && keyedRing(el, sc.keyed)
 	// Checkbox and radio menu items share the same Coss check indicator.
-	if hasIndicator {
-		target := float32(0)
-		if on {
-			target = 1
+	if hasIndicator || ring {
+		var shown float32
+		if hasIndicator && on {
+			shown = 1
 		}
-		shown := target
-		if !theme.ReduceMotion(c) {
-			shown = el.AnimateTo("menu-indicator", target, ui.Animation{Duration: menuCheckMotion, Ease: ui.EaseOut})
+		if hasIndicator && !theme.ReduceMotion(c) {
+			shown = el.AnimateTo("menu-indicator", shown, ui.Animation{Duration: menuCheckMotion, Ease: ui.EaseOut})
 		}
 		glyph := &ui.Path{}
 		iconSize := scale(c, theme.IconMD)
 		el.DrawOver(func(p *ui.Painter, r ui.Rect) {
-			if shown <= 0.001 {
+			if ring {
+				defer p.FocusRing(r, [4]float32{radius, radius, radius, radius})
+			}
+			if !hasIndicator || shown <= 0.001 {
 				return
 			}
 			start := r.X + scale(c, theme.Space8)
@@ -284,10 +308,6 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 			})
 		}
 	})
-	if inMenu && sc.focusFirst != nil && *sc.focusFirst && !o.Disabled {
-		el.Focus()
-		*sc.focusFirst = false
-	}
 	el = style.Disabled(el, o.Disabled)
 	if hasSubmenu {
 		SubMenu(c, el, SubMenuOptions{Open: subOpen, Items: o.Submenu, Label: o.Label, parent: sc})
@@ -344,11 +364,10 @@ func SubMenu(c *ui.Context, anchor ui.Element, o SubMenuOptions) ui.Element {
 		p.MaxWidth(scale(c, 360)).MinWidth(scale(c, 128)).Padding(0)
 		anchored.Surface(c, p.Clip(), radius)
 		focus := ui.Local(p, "submenu-focus", func() bool { return true })
-		scroll := ui.Scroll(c).MaxHeight(scale(c, 360)).MinWidth(0).Shrink(0)
-		scroll.Children(func() {
-			buildMenu(c, MenuOptions{Label: o.Label, Sections: []MenuSectionOptions{{Items: o.Items}}},
-				menuExtra{focusFirst: focus}, o.parent)
-		})
+		ml := *ui.Local(p, "submenu-list", newMenuList)
+		buildMenuPanel(c, MenuOptions{Label: o.Label, Sections: []MenuSectionOptions{{Items: o.Items}}},
+			menuExtra{focusFirst: focus}, o.parent, ml, scale(c, 360)).
+			MaxHeight(scale(c, 360)).MinWidth(0).Shrink(0)
 		if p.Shortcut(0, ui.KeyLeft) {
 			*o.Open = false
 		}
@@ -420,13 +439,16 @@ func Dropdown(c *ui.Context, o DropdownOptions) ui.Element {
 	if enter && host != nil {
 		*focus = true
 	}
+	ml := ui.Local(trigger, "dropdown-list", newMenuList)
+	if enter {
+		*ml = newMenuList() // each opening starts at the top
+	}
 	if anchored.Flyout(c, host, trigger, open, anchored.FlyoutSpec{
 		Placement: o.Placement, Fallback: mygoui.SideBottom, Label: o.Menu.Label,
 		MinWidth: scale(c, 128), MaxWidth: scale(c, 320), MaxHeight: scale(c, 420),
 		Body: func(c *ui.Context) {
-			ui.Scroll(c).FillWidth().MinWidth(0).MinHeight(0).Children(func() {
-				buildMenu(c, o.Menu, menuExtra{close: open, focusFirst: focus}, nil)
-			})
+			buildMenuPanel(c, o.Menu, menuExtra{close: open, focusFirst: focus}, nil, *ml, scale(c, 320)).
+				FillWidth().MinWidth(0).MinHeight(0)
 		},
 	}) {
 		return trigger
@@ -436,10 +458,8 @@ func Dropdown(c *ui.Context, o DropdownOptions) ui.Element {
 		p.MinWidth(scale(c, 128)).MaxWidth(scale(c, 320)).Padding(0)
 		anchored.Surface(c, p.Clip(), radius)
 		focus := enter
-		scroll := ui.Scroll(c).MaxHeight(scale(c, 420)).MinWidth(0).Shrink(0)
-		scroll.Children(func() {
-			buildMenu(c, o.Menu, menuExtra{close: open, focusFirst: &focus}, nil)
-		})
+		buildMenuPanel(c, o.Menu, menuExtra{close: open, focusFirst: &focus}, nil, *ml, scale(c, 320)).
+			MaxHeight(scale(c, 420)).MinWidth(0).Shrink(0)
 	})
 	if panel.Valid() {
 		anchored.Apply(panel, trigger, o.Placement, mygoui.SideBottom)

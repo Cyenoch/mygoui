@@ -161,7 +161,13 @@ func newSkeletonGroupEffect() skeletonGroupEffect {
 
 func (fx *skeletonGroupEffect) EffectMargin() ui.Point { return ui.Point{} }
 
+// PaintEffect shows the resting placeholders, as SkeletonNone does, where
+// there is no GPU: MyGo would interpret the shader per pixel every frame.
 func (fx *skeletonGroupEffect) PaintEffect(p *ui.Painter, box ui.Rect, content *ui.Bitmap, inset ui.Point) {
+	if !p.Accelerated() {
+		paintEffectContent(p, box, content, inset)
+		return
+	}
 	mode := float32(0)
 	if fx.pulse {
 		mode = 1
@@ -170,4 +176,10 @@ func (fx *skeletonGroupEffect) PaintEffect(p *ui.Painter, box ui.Rect, content *
 	fx.values.Vec3(fx.motion, skeletonPhase(p.Now()), fx.peak, mode)
 	fx.effect.PaintEffect(p, box, content, inset)
 	p.AnimationFrameRate(60)
+}
+
+// paintEffectContent draws an effect's content unchanged.
+func paintEffectContent(p *ui.Painter, box ui.Rect, content *ui.Bitmap, inset ui.Point) {
+	s := p.Scale()
+	p.ImageRegion(content, ui.Rect{X: inset.X, Y: inset.Y, W: box.W * s, H: box.H * s}, box, ui.ImageOptions{})
 }

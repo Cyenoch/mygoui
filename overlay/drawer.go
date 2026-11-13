@@ -105,10 +105,11 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 		back = edgeExit(c, back, motionSide, distance, drawerMotionDuration, drawerEase)
 		layoutDrawer(back, side, inset)
 		t := theme.Colors(c)
-		panel.Column().Clip().Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border).
+		panel.Column().Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border).
 			MinHeight(0)
 		panel = panelElevation(c, panel)
 		radius := theme.RadiusScale().XXL
+		var corners [4]float32
 		switch side {
 		case DrawerLeft, DrawerRight:
 			width := o.Width
@@ -117,24 +118,27 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 			}
 			panel.Width(min(width, capW)).MaxWidth(capW).Height(availH)
 			if side == DrawerLeft {
-				panel.Radius(0, radius, radius, 0)
+				corners = [4]float32{0, radius, radius, 0}
 			} else {
-				panel.Radius(radius, 0, 0, radius)
+				corners = [4]float32{radius, 0, 0, radius}
 			}
 		case DrawerTop:
-			panel.FillWidth().MaxHeight(capH).Radius(0, 0, radius, radius)
+			panel.FillWidth().MaxHeight(capH)
+			corners = [4]float32{0, 0, radius, radius}
 			if o.Height > 0 {
 				panel.Height(min(o.Height, capH))
 			}
 		default:
-			panel.FillWidth().MaxHeight(capH).Radius(radius, radius, 0, 0)
+			panel.FillWidth().MaxHeight(capH)
+			corners = [4]float32{radius, radius, 0, 0}
 			if o.Height > 0 {
 				panel.Height(min(o.Height, capH))
 			}
 		}
 		if inset > 0 {
-			panel.Radius(radius)
+			corners = [4]float32{radius, radius, radius, radius}
 		}
+		panel.Radius(corners[0], corners[1], corners[2], corners[3])
 		edgeEnter(c, panel, motionSide, distance, drawerMotionDuration, drawerEase)
 		panel.Label(o.Title)
 		if o.Description != "" {
@@ -154,14 +158,6 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 			drawerHandle(c, theme.Space8).Margin(theme.Space24, 0, 0, 0)
 		}
 		contentHeight := capH
-		footerCorners := [2]float32{}
-		if inset > 0 || side == DrawerTop {
-			footerCorners = [2]float32{radius - theme.Hairline, radius - theme.Hairline}
-		} else if side == DrawerLeft {
-			footerCorners[0] = radius - theme.Hairline
-		} else if side == DrawerRight {
-			footerCorners[1] = radius - theme.Hairline
-		}
 		if side == DrawerLeft || side == DrawerRight {
 			contentHeight = availH
 		} else if o.Height > 0 {
@@ -185,7 +181,7 @@ func Drawer(c *ui.Context, open *bool, o DrawerOptions) ui.Element {
 			headerGap:        theme.Space8,
 			maxHeight:        contentHeight,
 			fillHeight:       side == DrawerLeft || side == DrawerRight || o.Height > 0,
-			footerCorners:    footerCorners,
+			corners:          innerCorners(corners),
 		})
 		if o.Handle && side == DrawerTop {
 			// Keep the handle near the edge, below the content.
@@ -332,7 +328,7 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 		back = dialogMotion(c, back, drawerMotionDuration)
 		layoutEdge(back, DrawerBottom)
 		t := theme.Colors(c)
-		panel.Column().FillWidth().MaxWidth(availW).MaxHeight(capH).MinHeight(0).Clip().
+		panel.Column().FillWidth().MaxWidth(availW).MaxHeight(capH).MinHeight(0).
 			Radius(overlayRadius()).
 			Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border)
 		if o.Height > 0 {
@@ -376,7 +372,7 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 			headerGap:        theme.Space8,
 			maxHeight:        contentHeight,
 			fillHeight:       o.Height > 0,
-			footerCorners:    [2]float32{overlayRadius() - theme.Hairline, overlayRadius() - theme.Hairline},
+			corners:          innerCorners([4]float32{overlayRadius(), overlayRadius(), overlayRadius(), overlayRadius()}),
 		})
 		// The sheet arrives from below the window: its first frame shows it
 		// there and the next sends it to its place. Both are translations,
@@ -401,10 +397,6 @@ func BottomSheet(c *ui.Context, open *bool, o BottomSheetOptions) ui.Element {
 		}
 		enter := panel.AnimateTo(sheetEnterKey{}, enterY, sheetEnterAnimation)
 		panel.Translate(0, enter+drop)
-		if enter != 0 {
-			// Move one bitmap of the rounded panel, as edgeEnter does.
-			panel.Cache()
-		}
 	})
 	if swipedOut {
 		close()

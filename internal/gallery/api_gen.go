@@ -762,19 +762,20 @@ var apiTypes = map[string]apiType{
 			{Name: "State", Type: "*form.AutocompleteState", Doc: ""},
 			{Name: "MaxHeight", Type: "float32", Doc: ""},
 			{Name: "Placement", Type: "mygoui.Placement", Doc: ""},
-			{Name: "Filter", Type: "func(query string, item *list.ListBoxItem) bool", Doc: "Filter overrides the default case-insensitive substring match on Label. Options are scanned on popup builds; Filter must not perform side effects."},
+			{Name: "Filter", Type: "func(query string, item *list.ListBoxItem) bool", Doc: "Filter overrides the default case-insensitive substring match on Label. It must not perform side effects. It runs again when the query or the options change; bump State.Revision when its results change for the same query."},
 			{Name: "OnChange", Type: "func(keys []string)", Doc: "OnChange reports the chosen keys in item order."},
 			{Name: "OnQueryChange", Type: "func(query string)", Doc: "OnQueryChange reports user edits and text changes made by choosing or clearing an option, including resets after multiple selection."},
 		},
 	},
 	"form.AutocompleteState": {
-		Doc: "AutocompleteState is the caller-owned open flag, query, selection and focus handles of one Autocomplete.",
+		Doc: "AutocompleteState is the caller-owned open flag, query, selection and focus handles of one Autocomplete, and a revision for option changes a frame cannot see. Revision must change when an option or a section is edited in place, or when Filter's results change for the same query. Options appearing or disappearing through a new slice or a different length are noticed without it.",
 		Fields: []apiField{
 			{Name: "List", Type: "list.ListBoxState", Doc: "List keeps the popup list's place, highlight and selection."},
 			{Name: "Open", Type: "bool", Doc: "Open reports whether the popup shows."},
 			{Name: "Query", Type: "string", Doc: "Query is the editor text. In single mode a choice replaces it with the chosen label; in multiple mode it is the current filter text."},
 			{Name: "Trigger", Type: "ui.Handle", Doc: "Trigger identifies the editable input."},
 			{Name: "Search", Type: "ui.Handle", Doc: "Search identifies the same input."},
+			{Name: "Revision", Type: "uint64", Doc: "Revision tells the autocomplete that options changed in place. Increment it when an option's key, label or other field, or a Filter result, changes without the slice or its length changing."},
 		},
 	},
 	"form.CheckboxGroupOptions": {
@@ -834,20 +835,21 @@ var apiTypes = map[string]apiType{
 			{Name: "MaxHeight", Type: "float32", Doc: ""},
 			{Name: "Placement", Type: "mygoui.Placement", Doc: ""},
 			{Name: "AllowsCustomValue", Type: "bool", Doc: "AllowsCustomValue keeps text that matches no option."},
-			{Name: "Filter", Type: "func(query string, item *list.ListBoxItem) bool", Doc: "Filter overrides the default case-insensitive substring match on Label. Options are scanned on popup builds; Filter must not perform side effects."},
+			{Name: "Filter", Type: "func(query string, item *list.ListBoxItem) bool", Doc: "Filter overrides the default case-insensitive substring match on Label. It must not perform side effects. It runs again when the query or the options change; bump State.Revision when its results change for the same query."},
 			{Name: "Empty", Type: "string", Doc: "Empty is shown when nothing matches; zero uses the localized message."},
 			{Name: "OnChange", Type: "func(keys []string)", Doc: "OnChange reports the chosen keys in item order."},
 			{Name: "OnQueryChange", Type: "func(query string)", Doc: "OnQueryChange reports each text change for caller-owned async work."},
 		},
 	},
 	"form.ComboBoxState": {
-		Doc: "ComboBoxState is the caller-owned open flag, text, selection and focus handles of one ComboBox.",
+		Doc: "ComboBoxState is the caller-owned open flag, text, selection and focus handles of one ComboBox, and a revision for option changes a frame cannot see. Revision must change when an option or a section is edited in place, or when Filter's results change for the same query. Options appearing or disappearing through a new slice or a different length are noticed without it.",
 		Fields: []apiField{
 			{Name: "List", Type: "list.ListBoxState", Doc: "List keeps the popup list's place, highlight and selection."},
 			{Name: "Open", Type: "bool", Doc: "Open reports whether the popup shows."},
 			{Name: "Text", Type: "string", Doc: "Text is the input's text: the value in single mode, a filter query in multiple mode."},
 			{Name: "Custom", Type: "string", Doc: "Custom is the text kept by AllowsCustomValue, when it matched no item."},
 			{Name: "Input", Type: "ui.Handle", Doc: "Input is the text input."},
+			{Name: "Revision", Type: "uint64", Doc: "Revision tells the combo box that options changed in place. Increment it when an option's key, label or other field, or a Filter result, changes without the slice or its length changing."},
 		},
 	},
 	"form.ComposerOptions": {
@@ -1948,11 +1950,12 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"navigation.CommandState": {
-		Doc: "CommandState holds the query, list highlight and focus for one command.",
+		Doc: "CommandState holds the query, list highlight and focus for one command, and a revision for item changes a frame cannot see. Revision must change when an item or a group is edited in place. Items or groups appearing or disappearing through a new slice or a different length are noticed without it.",
 		Fields: []apiField{
 			{Name: "Query", Type: "string", Doc: ""},
 			{Name: "Input", Type: "ui.Handle", Doc: ""},
 			{Name: "List", Type: "list.ListBoxState", Doc: ""},
+			{Name: "Revision", Type: "uint64", Doc: "Revision tells the command that items changed in place. Increment it when an item's key, label, keywords, shortcut or disabled flag changes without the slice or its length changing."},
 		},
 	},
 	"navigation.DisclosureGroupOptions": {

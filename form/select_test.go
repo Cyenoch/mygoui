@@ -66,3 +66,19 @@ func TestSelectMultipleKeepsPopupOpen(t *testing.T) {
 		t.Fatal("multiple select closed after one choice")
 	}
 }
+
+func TestSelectRowWithoutKeyIsNeverChosen(t *testing.T) {
+	state := &form.SelectState{}
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		form.Select(c, form.SelectOptions{
+			Label: "Fruit", Placeholder: "Choose a fruit", Clearable: true,
+			Items: []list.ListBoxItem{{Description: "Unnamed"}, {Key: "a", Label: "Alpha"}},
+			State: state,
+		})
+	}, 360, 520)
+	tt.Frame()
+	if _, ok := tt.Find("Clear"); ok {
+		t.Fatal("a row without a key counts as chosen")
+	}
+}

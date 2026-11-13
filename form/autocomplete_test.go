@@ -206,7 +206,7 @@ func TestAutocompleteDisabledWhileOpenStopsSelection(t *testing.T) {
 	}
 }
 
-func TestAutocompleteRefreshesChangedItemAndFilter(t *testing.T) {
+func TestAutocompleteRevisionRefreshesInPlaceEdits(t *testing.T) {
 	var state form.AutocompleteState
 	items := []list.ListBoxItem{{Key: "a", Label: "Alpha"}}
 	accept := true
@@ -227,11 +227,13 @@ func TestAutocompleteRefreshesChangedItemAndFilter(t *testing.T) {
 		t.Fatalf("initial option missing: %q", tt.Texts())
 	}
 	items[0].Label = "Almond"
+	state.Revision++
 	tt.Frame()
 	if !tt.HasText("Almond") || tt.HasText("Alpha") {
 		t.Fatalf("updated option not shown: %q", tt.Texts())
 	}
 	accept = false
+	state.Revision++
 	tt.Frame()
 	if tt.HasText("Almond") {
 		t.Fatalf("updated filter still shows option: %q", tt.Texts())

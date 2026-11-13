@@ -211,3 +211,68 @@ func TestComboboxesOutsideClickClosesAndStaysClosed(t *testing.T) {
 		})
 	}
 }
+
+func TestComboBoxListFollowsQueryAndNewOptions(t *testing.T) {
+	var state form.ComboBoxState
+	items := comboItems()
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		ui.Column(c).Fill().Padding(16).Children(func() {
+			form.ComboBox(c, form.ComboBoxOptions{Label: "Letters", Items: items, State: &state})
+		})
+	}, 360, 480)
+	if err := tt.Click("Letters"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("Al")
+	if !tt.HasText("Alpha") || tt.HasText("Beta") {
+		t.Fatalf("query Al shows %q", tt.Texts())
+	}
+	tt.Key(0, ui.KeyBackspace)
+	tt.Key(0, ui.KeyBackspace)
+	tt.Type("Be")
+	if !tt.HasText("Beta") || tt.HasText("Alpha") {
+		t.Fatalf("query Be shows %q", tt.Texts())
+	}
+	// A new slice is noticed without a revision, at the same length too.
+	items = []list.ListBoxItem{{Key: "a", Label: "Alpha"}, {Key: "b", Label: "Bet"}}
+	tt.Frame()
+	if !tt.HasText("Bet") || tt.HasText("Beta") {
+		t.Fatalf("same-length replacement shows %q", tt.Texts())
+	}
+	items = append(items, list.ListBoxItem{Key: "c", Label: "Better"})
+	tt.Frame()
+	if !tt.HasText("Better") {
+		t.Fatalf("appended option missing: %q", tt.Texts())
+	}
+}
+
+func TestComboBoxFilterRunsOnlyWhenInputsChange(t *testing.T) {
+	var state form.ComboBoxState
+	items := comboItems()
+	calls := 0
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		ui.Column(c).Fill().Padding(16).Children(func() {
+			form.ComboBox(c, form.ComboBoxOptions{
+				Label: "Letters", Items: items, State: &state,
+				Filter: func(string, *list.ListBoxItem) bool { calls++; return true },
+			})
+		})
+	}, 360, 480)
+	if err := tt.Click("Letters"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("a")
+	before := calls
+	tt.Frame()
+	tt.Frame()
+	if calls != before {
+		t.Fatalf("unchanged frames ran Filter %d more times", calls-before)
+	}
+	state.Revision++
+	tt.Frame()
+	if calls == before {
+		t.Fatal("a new revision did not run Filter")
+	}
+}

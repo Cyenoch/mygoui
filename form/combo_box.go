@@ -41,7 +41,9 @@ type ComboBoxOptions struct {
 	// AllowsCustomValue keeps text that matches no option.
 	AllowsCustomValue bool
 	// Filter overrides the default case-insensitive substring match on Label.
-	// Options are scanned on popup builds; Filter must not perform side effects.
+	// It must not perform side effects. It runs again when the query or the
+	// options change; bump State.Revision when its results change for the
+	// same query.
 	Filter func(query string, item *list.ListBoxItem) bool
 	// Empty is shown when nothing matches; zero uses the localized message.
 	Empty string
@@ -52,7 +54,13 @@ type ComboBoxOptions struct {
 }
 
 // ComboBoxState is the caller-owned open flag, text, selection and focus
-// handles of one ComboBox.
+// handles of one ComboBox, and a revision for option changes a frame cannot
+// see.
+//
+// Revision must change when an option or a section is edited in place, or
+// when Filter's results change for the same query. Options appearing or
+// disappearing through a new slice or a different length are noticed
+// without it.
 type ComboBoxState struct {
 	// List keeps the popup list's place, highlight and selection.
 	List list.ListBoxState
@@ -65,15 +73,17 @@ type ComboBoxState struct {
 	Custom string
 	// Input is the text input.
 	Input ui.Handle
+	// Revision tells the combo box that options changed in place. Increment
+	// it when an option's key, label or other field, or a Filter result,
+	// changes without the slice or its length changing.
+	Revision uint64
 
-	dirty        bool
-	escaped      bool
-	wasActive    bool
-	placeCaret   bool
-	pending      pendingFilter
-	items        []list.ListBoxItem
-	sectionItems []list.ListBoxItem
-	sections     []list.ListBoxSection
+	dirty      bool
+	escaped    bool
+	wasActive  bool
+	placeCaret bool
+	pending    pendingFilter
+	filtered   filteredOptions
 }
 
 // SelectedKeys returns the chosen keys, single choice first.
@@ -93,13 +103,20 @@ func (s *ComboBoxState) Clear() {
 	s.dirty = false
 }
 
-// listChosen returns chosen keys and labels in item order.
+// listChosen returns chosen keys and labels in item order. A row with an
+// empty key is never chosen, so without a choice there is nothing to walk.
 func listChosen(items []list.ListBoxItem, sections []list.ListBoxSection, ls *list.ListBoxState) (keys, labels []string) {
+	if ls.SelectedKey == "" && ls.Selected.Len() == 0 {
+		return nil, nil
+	}
+	// Keys are unique, so without multiple choices one row at most matches.
+	single := ls.Selected.Len() == 0
 	eachSelectItem(items, sections, func(it *list.ListBoxItem) bool {
 		key := itemKey(it)
-		if ls.IsSelected(key) {
+		if key != "" && ls.IsSelected(key) {
 			keys = append(keys, key)
 			labels = append(labels, it.Label)
+			return !single
 		}
 		return true
 	})
@@ -122,43 +139,104 @@ func comboMode(m list.SelectionMode) list.SelectionMode {
 	return m
 }
 
-// applyFilter rebuilds filtered options in caller-owned scratch capacity.
-func (s *ComboBoxState) applyFilter(o ComboBoxOptions, query string) {
-	totalSections := sectionItemCount(o.Sections)
-	if cap(s.items) < len(o.Items) {
-		s.items = make([]list.ListBoxItem, 0, len(o.Items))
+// optionSource identifies the options a result was derived from: the Items
+// and each section's rows by address and length, and the caller's Revision.
+// It keeps the slices themselves, not only their addresses, so the collector
+// cannot give a new slice the address of one a cached result describes.
+type optionSource struct {
+	items        []list.ListBoxItem
+	sections     []list.ListBoxSection
+	sectionItems [][]list.ListBoxItem
+	revision     uint64
+}
+
+// same reports whether items, sections and revision are the remembered ones.
+func (src *optionSource) same(items []list.ListBoxItem, sections []list.ListBoxSection, revision uint64) bool {
+	if revision != src.revision || !sameSlice(items, src.items) ||
+		!sameSlice(sections, src.sections) {
+		return false
 	}
-	s.items = s.items[:0]
-	if cap(s.sectionItems) < totalSections {
-		s.sectionItems = make([]list.ListBoxItem, 0, totalSections)
-	}
-	s.sectionItems = s.sectionItems[:0]
-	if cap(s.sections) < len(o.Sections) {
-		s.sections = make([]list.ListBoxSection, 0, len(o.Sections))
-	}
-	s.sections = s.sections[:0]
-	match := filterMatch(query, o.Filter)
-	for i := range o.Items {
-		if match(&o.Items[i]) {
-			s.items = append(s.items, o.Items[i])
+	for i := range sections {
+		if !sameSlice(sections[i].Items, src.sectionItems[i]) {
+			return false
 		}
 	}
-	for si := range o.Sections {
-		sec := &o.Sections[si]
-		start := len(s.sectionItems)
+	return true
+}
+
+func (src *optionSource) set(items []list.ListBoxItem, sections []list.ListBoxSection, revision uint64) {
+	src.items, src.sections, src.revision = items, sections, revision
+	src.sectionItems = src.sectionItems[:0]
+	for i := range sections {
+		src.sectionItems = append(src.sectionItems, sections[i].Items)
+	}
+}
+
+// sameSlice reports whether a and b are the same rows of the same array.
+func sameSlice[T any](a, b []T) bool {
+	return len(a) == len(b) && (len(a) == 0 || &a[0] == &b[0])
+}
+
+// filteredOptions is a popup's filtered rows, rebuilt only when the query,
+// the options, whether a custom filter is set, or the revision changes.
+type filteredOptions struct {
+	items        []list.ListBoxItem
+	sectionItems []list.ListBoxItem
+	sections     []list.ListBoxSection
+
+	source optionSource
+	query  string
+	custom bool
+	valid  bool
+}
+
+// update refilters when its inputs changed. A non-nil indicator replaces
+// every row's Options.Indicator.
+func (f *filteredOptions) update(items []list.ListBoxItem, sections []list.ListBoxSection,
+	query string, filter func(string, *list.ListBoxItem) bool, revision uint64, indicator *bool) {
+	if f.valid && query == f.query && (filter != nil) == f.custom &&
+		f.source.same(items, sections, revision) {
+		return
+	}
+	f.valid, f.query, f.custom = true, query, filter != nil
+	f.source.set(items, sections, revision)
+	f.filter(items, sections, filterMatch(query, filter), indicator)
+}
+
+// filter rebuilds the rows in fresh slices: a copy of the state, or a list
+// built from the previous result, may still hold the old ones.
+func (f *filteredOptions) filter(items []list.ListBoxItem, sections []list.ListBoxSection,
+	match func(*list.ListBoxItem) bool, indicator *bool) {
+	f.items = make([]list.ListBoxItem, 0, len(items))
+	f.sectionItems = make([]list.ListBoxItem, 0, sectionItemCount(sections))
+	f.sections = make([]list.ListBoxSection, 0, len(sections))
+	keep := func(dst []list.ListBoxItem, it *list.ListBoxItem) []list.ListBoxItem {
+		if !match(it) {
+			return dst
+		}
+		row := *it
+		if indicator != nil {
+			row.Options.Indicator = indicator
+		}
+		return append(dst, row)
+	}
+	for i := range items {
+		f.items = keep(f.items, &items[i])
+	}
+	for si := range sections {
+		sec := &sections[si]
+		start := len(f.sectionItems)
 		for ii := range sec.Items {
-			if match(&sec.Items[ii]) {
-				s.sectionItems = append(s.sectionItems, sec.Items[ii])
-			}
+			f.sectionItems = keep(f.sectionItems, &sec.Items[ii])
 		}
-		if len(s.sectionItems) == start {
+		if len(f.sectionItems) == start {
 			continue
 		}
-		s.sections = append(s.sections, list.ListBoxSection{
+		f.sections = append(f.sections, list.ListBoxSection{
 			Key:     sec.Key,
 			Label:   sec.Label,
 			Options: sec.Options,
-			Items:   s.sectionItems[start:],
+			Items:   f.sectionItems[start:],
 		})
 	}
 }
@@ -294,8 +372,8 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 			if s.dirty {
 				query = s.Text
 			}
-			s.applyFilter(o, query)
-			s.pending.apply(&s.List, s.items, s.sections)
+			s.filtered.update(o.Items, o.Sections, query, o.Filter, s.Revision, nil)
+			s.pending.apply(&s.List, s.filtered.items, s.filtered.sections)
 		} else {
 			s.pending.active = false
 		}
@@ -524,8 +602,8 @@ func comboPopup(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, field ui.Ele
 		anchored.Apply(panel, anchor, o.Placement, mygoui.SideBottom)
 		list.ListBox(c, list.ListBoxOptions{
 			Label:             o.Label,
-			Items:             s.items,
-			Sections:          s.sections,
+			Items:             s.filtered.items,
+			Sections:          s.filtered.sections,
 			Selection:         mode,
 			State:             &s.List,
 			Padding:           theme.Space4,

@@ -104,7 +104,7 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 		panel.Role(ui.RoleAlertDialog).
 			Width(width).MaxWidth(availW).
 			MaxHeight(availH).MinHeight(0).
-			Radius(radius).Clip().
+			Radius(radius).
 			Background(t.Popover).TextColor(t.PopoverForeground).Border(theme.Hairline, t.Border)
 		if w < 640 {
 			radius = 0
@@ -137,7 +137,7 @@ func AlertDialog(c *ui.Context, open *bool, o AlertDialogOptions) ui.Element {
 			padding:          theme.Space24,
 			headerGap:        theme.Space8,
 			maxHeight:        availH,
-			footerCorners:    [2]float32{max(0, radius-theme.Hairline), max(0, radius-theme.Hairline)},
+			corners:          innerCorners([4]float32{radius, radius, radius, radius}),
 			footer: func() {
 				cancelButton = mygoui.Button(c, mygoui.ButtonOptions{
 					Label:     cancelLabel,

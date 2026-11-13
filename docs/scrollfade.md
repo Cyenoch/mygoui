@@ -77,7 +77,7 @@ disappear where that edge has no overflow. They add paint, not hit targets
 or a background timer. Nil state, an unsupported mode/axis and a translucent
 `SurfaceFade.Surface` fail explicitly.
 
-`MaskFade` is a true alpha treatment, unlike shadow or surface overpainting.
+`MaskFade` is a true alpha treatment, unlike shadow or surface overpainting. The shader runs only while an edge has more to scroll, and only on a GPU: without one MyGo would interpret it per pixel on the CPU, so the content shows unmasked under the `ShadowFade` overlay instead.
 It uses `ui.Element.Effect` and `ui/shader`, which execute on GPU renderers
 and have a CPU fallback. The effect changes paint, preserving native hit
 testing, focus and accessibility. The viewport has one effect slot:

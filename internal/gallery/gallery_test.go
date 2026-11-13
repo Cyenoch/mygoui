@@ -272,33 +272,20 @@ func navHas(tt *ui.Tester, name string) bool {
 }
 
 // revealSidebarEntry scrolls the sidebar until name is fully visible and
-// returns the on-screen rect. Labels outside the viewport are still found,
-// with the document Y they would occupy at scroll 0.
+// returns the on-screen rect. The sidebar builds only the rows near its
+// viewport, so a row is found by scrolling to it, half a viewport at a time.
 func revealSidebarEntry(t *testing.T, tt *ui.Tester, state *State, name string, width, height float32) ui.Rect {
 	t.Helper()
-	state.Sidebar.Y = 0
-	tt.Frame()
-	r, ok := tt.Find(name)
-	if !ok || r.X >= 270 {
-		t.Fatalf("%q is missing from the sidebar", name)
+	for y := float32(0); ; y += height / 2 {
+		state.Sidebar.Y = y
+		tt.Frame()
+		if r, ok := tt.Find(name); ok && r.X < 270 && contentVisible(r, width, height) {
+			return r
+		}
+		if y >= state.Sidebar.MaxY {
+			t.Fatalf("%q is unreachable in the sidebar (scroll %v/%v)", name, state.Sidebar.Y, state.Sidebar.MaxY)
+		}
 	}
-	if contentVisible(r, width, height) {
-		return r
-	}
-	target := r.Y - 200
-	if target < 0 {
-		target = 0
-	}
-	if target > state.Sidebar.MaxY {
-		target = state.Sidebar.MaxY
-	}
-	state.Sidebar.Y = target
-	tt.Frame()
-	r, ok = tt.Find(name)
-	if !ok || !contentVisible(r, width, height) {
-		t.Fatalf("%q is unreachable in the sidebar (rect %+v, scroll %v/%v)", name, r, state.Sidebar.Y, state.Sidebar.MaxY)
-	}
-	return r
 }
 
 func TestSidebarShowsEveryComponentPage(t *testing.T) {
@@ -642,5 +629,28 @@ func skipInShort(t *testing.T) {
 	t.Helper()
 	if testing.Short() {
 		t.Skip("rendering test; skipped with -short")
+	}
+}
+
+// The sidebar builds only the rows near its viewport, but a row holding the
+// keyboard focus stays built when it scrolls away.
+func TestSidebarKeepsFocusedRowScrolledOutOfView(t *testing.T) {
+	const width, height = 1180, 860
+	state := New()
+	state.Selected = "theming"
+	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, width, height)
+	tt.Frame()
+	title := pageGroups(filterPagesInOrder(Pages()))[1].pages[0].Title
+	r := revealSidebarEntry(t, tt, state, title, width, height)
+	tt.ClickAt(r.X+r.W/2, r.Y+r.H/2)
+	tt.Frame()
+	if !tt.Focused(title) {
+		t.Fatalf("clicking %q did not focus it", title)
+	}
+	state.Sidebar.Y = state.Sidebar.MaxY
+	tt.Frame()
+	tt.Frame()
+	if !tt.Focused(title) {
+		t.Fatalf("%q lost the focus when it scrolled out of view", title)
 	}
 }

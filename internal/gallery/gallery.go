@@ -2,7 +2,9 @@ package gallery
 
 import (
 	"fmt"
+	"math"
 	"runtime"
+	"slices"
 	"sort"
 
 	"github.com/Cyenoch/mygoicons/lucide"
@@ -122,7 +124,7 @@ func sidebar(c *ui.Context, s *State) {
 			},
 		}, func() {
 			ui.Column(c).FillWidth().Padding(theme.Space4, pad, theme.Space16, pad).Children(func() {
-				pageList(c, s, func(page Page) { selectPage(s, page) })
+				pageList(c, s, &s.Sidebar, func(page Page) { selectPage(s, page) })
 			})
 		}).Grow(1).Basis(0).MinHeight(0)
 	})
@@ -185,6 +187,11 @@ type pageGroup struct {
 	pages []Page
 }
 
+// has reports whether the group lists the page id.
+func (g pageGroup) has(id string) bool {
+	return id != "" && slices.ContainsFunc(g.pages, func(p Page) bool { return p.ID == id })
+}
+
 // groupRank orders the functional groups in the navigation. Pages inside a
 // group keep the order they registered with.
 var groupRank = map[string]int{
@@ -218,10 +225,20 @@ func pageGroups(list []Page) []pageGroup {
 // pageList renders every matching page under its group heading, shared by
 // the sidebar and the compact navigation sheet. Groups never collapse, so
 // the list does not change height while browsing.
-func pageList(c *ui.Context, s *State, choose func(Page)) {
+//
+// With view set, only the rows near the viewport are built; spacers of the
+// heights the rows last painted at stand in for the rest, so the content
+// keeps its height and scroll range. The sheet passes nil: its scroll state
+// belongs to the sheet, and it is on screen only while open.
+func pageList(c *ui.Context, s *State, view *ui.ScrollState, choose func(Page)) {
 	groups := s.sidebarGroups.of(s.Search, func() []pageGroup {
 		return pageGroups(filterPagesInOrder(s.filterPages()))
 	})
+	band := navBandOf(c, s, view)
+	// A row holding the focus is built wherever it has scrolled to: culling
+	// it would drop the focus.
+	focused := s.nav.focused
+	s.nav.focused = ""
 	ui.Column(c).FillWidth().Gap(theme.Space16).Children(func() {
 		if len(groups) == 0 {
 			ui.Row(c).Padding(theme.Space8).Children(func() {
@@ -230,17 +247,100 @@ func pageList(c *ui.Context, s *State, choose func(Page)) {
 				})
 			})
 		}
+		top := float32(0)
+		var rowMeasured, headingMeasured bool
 		for _, group := range groups {
+			height := s.nav.groupHeight(group)
+			if !band.overlaps(top, top+height) && !group.has(focused) {
+				ui.Box(c.Key(group.name)).FillWidth().Height(height)
+				top += height + theme.Space16
+				continue
+			}
 			ui.Column(c.Key(group.name)).FillWidth().Gap(theme.Space2).Children(func() {
+				at, culled := top, float32(0)
+				// item places one child of the group at the current offset,
+				// folding the run of children above the band into a spacer.
+				item := func(height float32, keep bool, build func()) {
+					visible := keep || band.overlaps(at, at+height)
+					if visible && culled > 0 {
+						ui.Box(c).FillWidth().Height(culled - theme.Space2)
+						culled = 0
+					}
+					if visible {
+						build()
+					} else {
+						culled += height + theme.Space2
+					}
+					at += height + theme.Space2
+				}
 				if group.name != "Overview" {
-					groupHeading(c, group.name)
+					item(s.nav.heading, false, func() {
+						groupHeading(c, group.name, measureOnce(&headingMeasured, &s.nav.heading))
+					})
 				}
 				for _, page := range group.pages {
-					navRow(c.Key(page.ID), page.Title, page.ID == s.Selected, func() { choose(page) })
+					item(s.nav.row, page.ID == focused, func() {
+						if navRow(c.Key(page.ID), page.Title, page.ID == s.Selected,
+							measureOnce(&rowMeasured, &s.nav.row), func() { choose(page) }) {
+							s.nav.focused = page.ID
+						}
+					})
+				}
+				if culled > 0 {
+					ui.Box(c).FillWidth().Height(culled - theme.Space2)
 				}
 			})
+			top += height + theme.Space16
 		}
 	})
+}
+
+// navMetrics are the heights the sidebar's rows last painted at, before
+// scaling and the font are known, estimated until the first paint, and the
+// page whose row held the focus in the last build.
+type navMetrics struct {
+	row, heading float32
+	focused      string
+}
+
+// groupHeight is the height of a group's column: its heading, rows and gaps.
+func (m navMetrics) groupHeight(g pageGroup) float32 {
+	h := float32(len(g.pages))*m.row + float32(len(g.pages)-1)*theme.Space2
+	if g.name != "Overview" {
+		h += m.heading + theme.Space2
+	}
+	return h
+}
+
+// navBand is the span of list offsets worth building.
+type navBand struct{ from, to float32 }
+
+// navBandOf spans the scrolled viewport, bounded by the window height,
+// plus rows of overscan so Tab always finds a neighbor to move to. A nil
+// view spans everything.
+func navBandOf(c *ui.Context, s *State, view *ui.ScrollState) navBand {
+	if s.nav.row == 0 {
+		s.nav.row, s.nav.heading = theme.Scale(c, theme.HeightButtonSM), theme.Scale(c, theme.Space24)
+	}
+	if view == nil {
+		return navBand{from: -math.MaxFloat32, to: math.MaxFloat32}
+	}
+	_, window := c.Size()
+	overscan := 3 * s.nav.row
+	y := min(view.Y, view.MaxY)
+	return navBand{from: y - overscan, to: y + window + overscan}
+}
+
+func (b navBand) overlaps(from, to float32) bool { return to >= b.from && from <= b.to }
+
+// measureOnce returns where the first element built in a pass records its
+// painted height, nil for the rest.
+func measureOnce(done *bool, into *float32) *float32 {
+	if *done {
+		return nil
+	}
+	*done = true
+	return into
 }
 
 // filterPagesInOrder keeps the navigation order of a filtered page list.
@@ -250,17 +350,21 @@ func filterPagesInOrder(list []Page) []Page {
 }
 
 // groupHeading is the small muted section label above a nav group.
-func groupHeading(c *ui.Context, text string) {
+func groupHeading(c *ui.Context, text string, measure *float32) {
 	ts := theme.XS()
 	ts.Weight = theme.WeightMedium
-	style.Text(ui.Text(c, text), c, ts).TextColor(theme.Colors(c).Muted).
+	e := style.Text(ui.Text(c, text), c, ts).TextColor(theme.Colors(c).Muted).
 		Padding(theme.Space4, theme.Space8, theme.Space4, theme.Space8).FillWidth().SingleLine().
 		Role(ui.RoleHeading)
+	if measure != nil {
+		e.DrawOver(func(_ *ui.Painter, r ui.Rect) { *measure = r.H })
+	}
 }
 
 // navRow is one nav link: a 32 DIP rounded row that fills with the sidebar
 // accent while its page is the selected one.
-func navRow(c *ui.Context, title string, selected bool, onClick func()) {
+// navRow reports whether it holds the focus.
+func navRow(c *ui.Context, title string, selected bool, measure *float32, onClick func()) bool {
 	t := theme.Colors(c)
 	fill, hover, ink := ui.Transparent, t.SidebarAccent, t.SidebarForeground
 	if selected {
@@ -279,13 +383,21 @@ func navRow(c *ui.Context, title string, selected bool, onClick func()) {
 		e.Description(locale.M().Selected)
 	}
 	e = style.Background(e, radius, fill, hover, hover)
-	if e.FocusVisible() {
-		e.DrawOver(func(p *ui.Painter, r ui.Rect) { p.Stroke(r, t.SidebarRing, radius, 2) })
+	if focus := e.FocusVisible(); focus || measure != nil {
+		e.DrawOver(func(p *ui.Painter, r ui.Rect) {
+			if measure != nil {
+				*measure = r.H
+			}
+			if focus {
+				p.Stroke(r, t.SidebarRing, radius, 2)
+			}
+		})
 	}
 	e.Children(func() {
 		style.Text(ui.Text(c, title), c, ts).SingleLine()
 	})
 	e.OnClick(onClick)
+	return e.Focused()
 }
 
 // search filters the navigation. Its shortcut hint gives way to typing, so
@@ -479,7 +591,7 @@ func navigationSheet(c *ui.Context, s *State) {
 				search(c, s)
 			})
 		},
-		Body: func() { pageList(c, s, func(page Page) { selectPage(s, page) }) },
+		Body: func() { pageList(c, s, nil, func(page Page) { selectPage(s, page) }) },
 	})
 }
 

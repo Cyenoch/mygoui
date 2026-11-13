@@ -43,7 +43,9 @@ type AutocompleteOptions struct {
 	Placement         mygoui.Placement
 
 	// Filter overrides the default case-insensitive substring match on Label.
-	// Options are scanned on popup builds; Filter must not perform side effects.
+	// It must not perform side effects. It runs again when the query or the
+	// options change; bump State.Revision when its results change for the
+	// same query.
 	Filter func(query string, item *list.ListBoxItem) bool
 	// OnChange reports the chosen keys in item order.
 	OnChange func(keys []string)
@@ -53,7 +55,13 @@ type AutocompleteOptions struct {
 }
 
 // AutocompleteState is the caller-owned open flag, query, selection and focus
-// handles of one Autocomplete.
+// handles of one Autocomplete, and a revision for option changes a frame
+// cannot see.
+//
+// Revision must change when an option or a section is edited in place, or
+// when Filter's results change for the same query. Options appearing or
+// disappearing through a new slice or a different length are noticed
+// without it.
 type AutocompleteState struct {
 	// List keeps the popup list's place, highlight and selection.
 	List list.ListBoxState
@@ -66,17 +74,20 @@ type AutocompleteState struct {
 	Trigger ui.Handle
 	// Search identifies the same input.
 	Search ui.Handle
+	// Revision tells the autocomplete that options changed in place.
+	// Increment it when an option's key, label or other field, or a Filter
+	// result, changes without the slice or its length changing.
+	Revision uint64
 
-	dirty        bool
-	escaped      bool
-	wasActive    bool
-	placeCaret   bool
-	displayedKey string
-	displayed    string
-	pending      pendingFilter
-	items        []list.ListBoxItem
-	sectionItems []list.ListBoxItem
-	sections     []list.ListBoxSection
+	dirty           bool
+	escaped         bool
+	wasActive       bool
+	placeCaret      bool
+	displayedKey    string
+	displayed       string
+	displayedSource optionSource
+	pending         pendingFilter
+	filtered        filteredOptions
 }
 
 // SelectedKeys returns the chosen keys, single choice first.
@@ -93,51 +104,6 @@ func (s *AutocompleteState) Clear() {
 	s.List.ClearSelection()
 	s.Query = ""
 	s.dirty = false
-}
-
-// applyFilter rebuilds filtered options in caller-owned scratch capacity.
-func (s *AutocompleteState) applyFilter(o AutocompleteOptions, query string) {
-	totalSections := sectionItemCount(o.Sections)
-	if cap(s.items) < len(o.Items) {
-		s.items = make([]list.ListBoxItem, 0, len(o.Items))
-	}
-	s.items = s.items[:0]
-	if cap(s.sectionItems) < totalSections {
-		s.sectionItems = make([]list.ListBoxItem, 0, totalSections)
-	}
-	s.sectionItems = s.sectionItems[:0]
-	if cap(s.sections) < len(o.Sections) {
-		s.sections = make([]list.ListBoxSection, 0, len(o.Sections))
-	}
-	s.sections = s.sections[:0]
-	match := filterMatch(query, o.Filter)
-	for i := range o.Items {
-		if match(&o.Items[i]) {
-			item := o.Items[i]
-			item.Options.Indicator = &autoNoIndicator
-			s.items = append(s.items, item)
-		}
-	}
-	for si := range o.Sections {
-		sec := &o.Sections[si]
-		start := len(s.sectionItems)
-		for ii := range sec.Items {
-			if match(&sec.Items[ii]) {
-				item := sec.Items[ii]
-				item.Options.Indicator = &autoNoIndicator
-				s.sectionItems = append(s.sectionItems, item)
-			}
-		}
-		if len(s.sectionItems) == start {
-			continue
-		}
-		s.sections = append(s.sections, list.ListBoxSection{
-			Key:     sec.Key,
-			Label:   sec.Label,
-			Options: sec.Options,
-			Items:   s.sectionItems[start:],
-		})
-	}
 }
 
 // Autocomplete renders a native editable input with an anchored list of
@@ -170,9 +136,13 @@ func Autocomplete(c *ui.Context, o AutocompleteOptions) ui.Element {
 	}
 	if mode == list.SelectionSingle {
 		key := s.List.SelectedKey
-		label := ""
-		if key != "" {
-			label = labelOf(o.Items, o.Sections, key)
+		label := s.displayed
+		if key != s.displayedKey || !s.displayedSource.same(o.Items, o.Sections, s.Revision) {
+			label = ""
+			if key != "" {
+				label = labelOf(o.Items, o.Sections, key)
+			}
+			s.displayedSource.set(o.Items, o.Sections, s.Revision)
 		}
 		if (key != s.displayedKey || label != s.displayed) && !s.dirty && s.Query == s.displayed {
 			s.Query = label
@@ -274,8 +244,8 @@ func Autocomplete(c *ui.Context, o AutocompleteOptions) ui.Element {
 			if mode == list.SelectionSingle && !s.dirty && s.List.SelectedKey != "" {
 				query = ""
 			}
-			s.applyFilter(o, query)
-			s.pending.apply(&s.List, s.items, s.sections)
+			s.filtered.update(o.Items, o.Sections, query, o.Filter, s.Revision, &autoNoIndicator)
+			s.pending.apply(&s.List, s.filtered.items, s.filtered.sections)
 		} else {
 			s.pending.active = false
 		}
@@ -381,8 +351,8 @@ func autoPopup(c *ui.Context, o AutocompleteOptions, s *AutocompleteState, field
 			}
 			list.ListBox(c, list.ListBoxOptions{
 				Label:             o.Label,
-				Items:             s.items,
-				Sections:          s.sections,
+				Items:             s.filtered.items,
+				Sections:          s.filtered.sections,
 				Selection:         mode,
 				State:             &s.List,
 				Padding:           theme.Space4,

@@ -1,14 +1,33 @@
 # Changelog
 
-## Unreleased
+## 0.1.0 - 2026-11-13
 
-The `coss` reconstruction replaces the previous unreleased appearance
-and token contract with coss ui references and native Go APIs. Existing extra
-families remain library extensions; the catalog is a capability mapping,
-not a claim of pixel-perfect completion. No release is asserted by this log.
+First tagged release. The `coss` reconstruction replaces the previous
+unreleased appearance and token contract with coss ui references and native
+Go APIs. Existing extra families remain library extensions; the catalog is a
+capability mapping, not a claim of pixel-perfect completion.
 
 ### Changed
 
+- ComboBox, Autocomplete and Command keep their filtered rows between
+  frames instead of refiltering every option each frame. They refilter when
+  the query, the option slices or the new `ComboBoxState.Revision`,
+  `AutocompleteState.Revision` and `CommandState.Revision` change: bump
+  Revision after editing options in place, as with `data.TableState`.
+- Select no longer walks its options each frame while nothing is chosen and
+  builds its typeahead handlers once. A row without a key is never the
+  chosen row.
+- Menus with 32 or more rows build only the rows in view, at a fixed width
+  (320 DIP, submenus 360), with the same keyboard movement and positions for
+  assistive technology.
+- Dialog, AlertDialog, Drawer, Sheet and Modal round their scroll viewport
+  instead of clipping the panel, so a sliding or fading panel no longer
+  rasterizes a clip mask on the CPU. In a browser a Drawer and an
+  AlertDialog enter and exit with no frame over 16 ms.
+- Without a GPU, SkeletonGroup rests static and a mask ScrollFade shows the
+  shadow treatment instead of interpreting its shader per pixel.
+- The gallery sidebar builds the rows near its viewport: a quarter of the
+  memory and half the allocations per frame.
 - Frame cost, from a review of every component. Drawer, BottomSheet, inset
   Sheet and PressableFeedback move one cached bitmap while they slide or
   scale instead of rasterizing their rounded clip on the CPU each frame.
