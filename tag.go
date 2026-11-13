@@ -1,8 +1,6 @@
 package mygoui
 
 import (
-	"time"
-
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
@@ -153,7 +151,7 @@ type tagInkKey struct{}
 
 // tagMotionDuration is the background-color transition for a tag. It
 // doubles as the fade of a removed tag's exit copy.
-const tagMotionDuration = 100 * time.Millisecond
+const tagMotionDuration = motion.State
 
 // Tag renders one tag. Most callers use TagGroup; Tag is available for
 // a standalone label.
@@ -162,7 +160,7 @@ func Tag(c *ui.Context, o TagOptions) ui.Element {
 }
 
 // tagView is the actual builder used by TagGroup and standalone Tag. Selection
-// and hover faces fade over 100 ms, and a tag that leaves the build
+// and hover faces fade over 150 ms, and a tag that leaves the build
 // fades and shrinks as an inert exit copy. A key keeps that exit attached to
 // the tag the caller removed.
 func tagView(c *ui.Context, o TagOptions, r tagResolved) ui.Element {

@@ -176,7 +176,8 @@ func TestAccordionPanelFadesWithItsHeight(t *testing.T) {
 	x := int(title.X) + 4
 	// The first row of the body that shows, scanning down from the header.
 	topmost := func() (c [4]uint8) {
-		for y := int(title.Y); y < 230; y++ {
+		// Start under the title: subpixel text has coloured fringes.
+		for y := int(title.Y + title.H); y < 230; y++ {
 			if p := tt.Image().RGBAAt(x, y); int(p.R)-int(p.G) > 10 {
 				return [4]uint8{p.R, p.G, p.B, p.A}
 			}

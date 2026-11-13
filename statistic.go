@@ -57,6 +57,9 @@ func Statistic(c *ui.Context, o StatisticOptions) ui.Element {
 			statisticAffix(c, t, o.Prefix)
 			if o.Loading {
 				SkeletonGroup(c, SkeletonGroupOptions{}, func() { loadingBar(c, theme.H2(), 96) }).Width(theme.Scale(c, 96))
+				// A hidden digit gives the row the height the platform's
+				// font gives the value, which a token cannot know.
+				style.Text(ui.Text(c, "0"), c, theme.H2()).SingleLine().Width(0).Opacity(0).AccessHidden(true)
 			} else {
 				NumberFlip(c, NumberFlipOptions{Value: o.Value, Style: theme.H2(), Color: t.Foreground}).
 					Shrink(1).MinWidth(0).Tooltip(o.Value)
