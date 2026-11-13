@@ -1,5 +1,35 @@
 # Validation
 
+## Lobe component absorption and chart performance
+
+2026-11-13, uncommitted change `absorb-lobe-components` on 7855b5b, macOS
+arm64, Go 1.27.3, MyGo 0.9.0.
+
+- `make check`, `golangci-lint run ./...` (zero issues), `make wasm` and
+  `make spec-check` pass. `make race`: pass, no reported race
+  (Gallery 267.659 s, overlay 376.909 s).
+- The full shuffled suite passes in the Linux CI image (Docker, 16 packages)
+  and on a Windows 11 VM (16 packages).
+- Independent review found six defects, all fixed: a resizable panel that
+  started a drag from an out-of-range size, a sortable list that kept
+  dragging after its item changed or the list was disabled, image-viewer
+  side buttons placed by physical edge, a rating that took the resting
+  pointer's star on keyboard activation (test failed first: gave 1, want 4),
+  QR defaults that inverted in dark mode, and Snippet end padding without a
+  copy button.
+- Chart frame cost, 3 series of 5000 points (scratch benchmark, one frame):
+  line 0.89 ms / 4.4 MB to 0.49 ms / 0.9 MB; area 1.6 ms / 10.4 MB to
+  0.84 ms / 2.35 MB; bar allocations 3.8 MB to 0.31 MB with time unchanged
+  (paint-bound); 100 by 100 heatmap 1.5 ms to 1.0 ms. A brush keeps the
+  points on its bounds (`TestBrushKeepsPointsWithinItsBounds`).
+- Measured and left alone: Command filtering takes 0.17 to 0.5 ms at 2000
+  items. A choropleth change measured neutral and was reverted.
+
+Not verified: any of the sixteen components in a real window (drag reorder,
+panel and sheet drag, file drop, `PickFiles`, hotkey recording, clipboard),
+RTL, GPU, screen readers, and the
+cost of a flyout and its parent invalidating each other.
+
 ## Component motion and cross-platform test fixes
 
 2026-11-12, uncommitted change `component-motion` on d8f83f7, macOS arm64,

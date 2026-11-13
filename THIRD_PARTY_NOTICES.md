@@ -33,6 +33,13 @@ registry paths and the published/runtime token discrepancy.
 capability reference, MIT, copyright 2026 LobeHub. It is not a module
 dependency. The complete [license](licenses/lobe-mygo-NOTICE.md) is retained.
 
+## QR encoding
+
+`content.QRCode` depends on [`rsc.io/qr`](https://pkg.go.dev/rsc.io/qr)
+v0.2.0, BSD-3-Clause, copyright The Go Authors. The complete
+[license](licenses/rsc-qr-NOTICE.md) is retained. Only importers of the
+`content` package link it.
+
 ## Fonts
 
 The theme's native system defaults require no bundled coss font assets.

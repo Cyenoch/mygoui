@@ -51,7 +51,7 @@ type ComponentPage struct {
 
 // codeImportQualifier matches a package qualifier in a usage snippet, so the
 // bar can name the packages the snippet actually uses.
-var codeImportQualifier = regexp.MustCompile(`\b(mygoui|form|list|navigation|overlay|date|color|data|chart|theme|lucide)\.`)
+var codeImportQualifier = regexp.MustCompile(`\b(mygoui|form|list|navigation|overlay|date|color|data|chart|content|theme|lucide)\.`)
 
 // qualifierImports maps a snippet qualifier to its module path.
 var qualifierImports = map[string]string{
@@ -64,6 +64,7 @@ var qualifierImports = map[string]string{
 	"color":      mygouiImportPath + "/color",
 	"data":       mygouiImportPath + "/data",
 	"chart":      mygouiImportPath + "/chart",
+	"content":    mygouiImportPath + "/content",
 	"theme":      mygouiImportPath + "/theme",
 	"lucide":     "github.com/Cyenoch/mygoicons/lucide",
 }

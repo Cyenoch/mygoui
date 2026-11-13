@@ -5,6 +5,7 @@ import (
 	"image/color"
 	"math"
 	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
@@ -417,6 +418,36 @@ func TestLongFlowHasForwardRibbons(t *testing.T) {
 	for _, r := range ribbons {
 		if r.x2 <= r.x1 {
 			t.Fatalf("backward ribbon: %+v", r)
+		}
+	}
+}
+
+// A brush shows the points inside its range, bounds included.
+func TestBrushKeepsPointsWithinItsBounds(t *testing.T) {
+	points := []Point{{X: 0, Y: 1}, {X: 1, Y: 2}, {X: 2, Y: 3}, {X: 3, Y: 4}, {X: 4, Y: 5}}
+	for _, tc := range []struct {
+		from, to float64
+		want     []float64
+	}{
+		{1, 3, []float64{1, 2, 3}},
+		{0.5, 3.5, []float64{1, 2, 3}},
+		{-2, 0, []float64{0}},
+		{5, 9, nil},
+		{2.2, 2.8, nil},
+	} {
+		series, err := prepareSeries(CartesianOptions{
+			Series: []Series{{ID: "a", Points: points}},
+			Brush:  &BrushState{From: tc.from, To: tc.to},
+		}, LineSeries, true)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var got []float64
+		for _, pt := range series[0].Points {
+			got = append(got, pt.X)
+		}
+		if !slices.Equal(got, tc.want) {
+			t.Fatalf("brush %v..%v shows X %v, want %v", tc.from, tc.to, got, tc.want)
 		}
 	}
 }

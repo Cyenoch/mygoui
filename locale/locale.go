@@ -10,6 +10,8 @@ type Messages struct {
 	Loading       string
 	Close         string
 	Clear         string
+	Copy          string
+	Copied        string
 	Search        string
 	ShowPassword  string
 	HidePassword  string
@@ -26,6 +28,11 @@ type Messages struct {
 	Today         string
 	Selected      string
 	Empty         string
+	Resize        string
+	Reorder       string
+	ZoomIn        string
+	ZoomOut       string
+	ResetZoom     string
 }
 
 var current atomic.Pointer[Messages]
@@ -36,11 +43,14 @@ func init() { Set(Messages{}) }
 func Set(m Messages) {
 	d := Messages{
 		Loading: "Loading", Close: "Close", Clear: "Clear", Search: "Search",
+		Copy: "Copy", Copied: "Copied",
 		ShowPassword: "Show characters", HidePassword: "Conceal characters",
 		Increase: "Increase", Decrease: "Decrease", Previous: "Previous", Next: "Next",
 		MorePages: "More pages", Remove: "Remove", Notifications: "Notifications",
 		Required: "Required", Invalid: "Invalid value", NoResults: "No results",
 		Today: "Today", Selected: "Selected", Empty: "Nothing here",
+		Resize: "Resize", Reorder: "Reorder",
+		ZoomIn: "Zoom in", ZoomOut: "Zoom out", ResetZoom: "Reset zoom",
 	}
 	override := func(dst *string, src string) {
 		if src != "" {
@@ -50,6 +60,8 @@ func Set(m Messages) {
 	override(&d.Loading, m.Loading)
 	override(&d.Close, m.Close)
 	override(&d.Clear, m.Clear)
+	override(&d.Copy, m.Copy)
+	override(&d.Copied, m.Copied)
 	override(&d.Search, m.Search)
 	override(&d.ShowPassword, m.ShowPassword)
 	override(&d.HidePassword, m.HidePassword)
@@ -66,6 +78,11 @@ func Set(m Messages) {
 	override(&d.Today, m.Today)
 	override(&d.Selected, m.Selected)
 	override(&d.Empty, m.Empty)
+	override(&d.Resize, m.Resize)
+	override(&d.Reorder, m.Reorder)
+	override(&d.ZoomIn, m.ZoomIn)
+	override(&d.ZoomOut, m.ZoomOut)
+	override(&d.ResetZoom, m.ResetZoom)
 	current.Store(&d)
 }
 

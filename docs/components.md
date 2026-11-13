@@ -145,6 +145,34 @@ mapping; their presence is not an upstream fidelity guarantee:
 | Dates | `date.DateField`, `date.TimeField`, `DateRange` and calendar view state |
 | Color | `ColorArea`, `ColorSlider`, `ColorField`, `ColorSwatch`, `ColorSwatchPicker`, `ColorPicker`, `ColorState`, hex parse/format helpers |
 
+## Components absorbed from Lobe MyGo
+
+[Lobe MyGo](references.md) supplies the capability and behavior of these
+components; their anatomy, tokens and options are this library's. None has a
+coss counterpart. State is caller-owned and the library starts no I/O.
+
+| Component | API | Scope |
+| --- | --- | --- |
+| Copy button | `content.CopyButton` | Writes `Text` or `TextFunc()` to the clipboard, shows a check for 1.5 s and announces it; a failed write reaches `OnError`. |
+| Snippet | `content.Snippet` | One selectable monospace line that truncates; the muted `Prefix` is not copied. |
+| Highlighter | `content.Highlighter` | Read-only code block with header, copy and optional wrap. A small tokenizer colours Go, JS/TS, JSON, shell, Python, YAML, HTML/XML and CSS; other languages render plain. No line numbers or grammar engine. |
+| Markdown | `content.Markdown` | MyGo's native renderer with this theme; fenced code uses Highlighter; `OnLink` receives link presses. No streaming animation or image loading. |
+| QR code | `content.QRCode` | Returns the encoding error instead of a partial code. Dark modules on a light ground in both appearances unless colours are given. Depends on `rsc.io/qr`. |
+| Editable text | `form.EditableText` | Click, Enter, Space or F2 edits in place; Enter or blur commits, Escape cancels. |
+| Hotkey input | `form.HotkeyInput` | Records the next key pressed with a modifier into a caller-owned `form.Hotkey`; optional clear. No conflict detection. |
+| Upload | `form.Upload`, `form.PickFiles` | Drop zone reporting dropped paths filtered by `Accept`, optional caller-owned file list. The choose button calls `OnChoose`; `PickFiles` wraps the blocking native dialog for the application to call off the UI thread. It reads no files; the web has no picker. |
+| Rate | `form.Rate` | Stars with half steps, clear, read-only and RTL-aware arrow keys; slider semantics. |
+| Image select | `form.ImageSelect` | Image tiles as a radio group (`Value`) or checkboxes (`Values`). |
+| Steps | `navigation.Steps` | Horizontal or vertical; completed, current, upcoming and error states; pressable with `OnSelect`. |
+| Sortable list | `list.SortableList` | Reorders by grip drag or Alt+Up/Down and reports `OnMove(from, to)`; it never mutates caller data. |
+| Floating panel | `overlay.FloatingPanel` | Non-modal panel dragged by its title bar inside the window; Escape closes only with focus inside. No keyboard move or resize. |
+| Floating sheet | `overlay.FloatingSheet` | Non-modal bottom sheet in its parent with a height handle (drag or Up/Down). Build it last in the container it covers. |
+| Image viewer | `overlay.ImageViewer` | Modal preview with 1–8× zoom, pan and previous/next. No rotate. |
+| Image | `mygoui.Image` | Caller-provided source with caller-owned ready, loading and failed states; optional press. |
+| Result | `mygoui.Result` | Status icon tile over the EmptyState layout with actions and content. |
+| Guide card | `mygoui.GuideCard` | Card with optional cover, actions and a close control calling `OnDismiss`. |
+| Resizable panel | `mygoui.ResizablePanel` | Edge handle with pointer and keyboard resizing clamped to `Min`/`Max`, optional collapse; splitter semantics. |
+
 ## Shared limits
 
 - **Toolkit/platform:** OS context-menu chrome, tooltip timing, scrollbars,

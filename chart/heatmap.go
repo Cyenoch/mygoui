@@ -28,15 +28,14 @@ func Heatmap(c *ui.Context, o HeatmapOptions) (ui.Element, error) {
 	if err := checkOptions(o.Options); err != nil {
 		return ui.Element{}, err
 	}
-	seen := map[[2]int]bool{}
+	seen := make([]bool, len(o.Columns)*len(o.Rows))
 	hi := 0.0
 	for i, v := range o.Cells {
-		key := [2]int{v.Column, v.Row}
 		inside := v.Column >= 0 && v.Column < len(o.Columns) && v.Row >= 0 && v.Row < len(o.Rows)
-		if !inside || seen[key] || !finite(v.Value) || v.Value < 0 {
+		if !inside || seen[v.Row*len(o.Columns)+v.Column] || !finite(v.Value) || v.Value < 0 {
 			return ui.Element{}, fmt.Errorf("heatmap: invalid, duplicate or out-of-range cell %d", i)
 		}
-		seen[key] = true
+		seen[v.Row*len(o.Columns)+v.Column] = true
 		hi = max(hi, v.Value)
 	}
 	thresholds := o.Thresholds

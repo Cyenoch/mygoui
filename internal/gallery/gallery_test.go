@@ -32,6 +32,7 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 		"Foundations": {
 			"theming", "typography", "surface", "separator", "kbd", "card", "frame", "link",
 			"linkbutton", "listgroup", "emptystate", "scrollshadow", "scrollarea", "scrollfade", "header",
+			"resizablepanel",
 		},
 		"Actions": {
 			"button", "buttongroup", "group", "closebutton", "togglebutton",
@@ -40,23 +41,25 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 		"Display": {
 			"chip", "badge", "avatar", "avatargroup", "tag", "taggroup", "alert",
 			"spinner", "skeleton", "skeletongroup", "progressbar",
-			"progresscircle", "meter",
+			"progresscircle", "meter", "image", "result", "guidecard",
+			"copybutton", "snippet", "highlighter", "markdown", "qrcode",
 		},
 		"Forms": {
 			"form", "field", "composer", "fieldset", "label", "description", "fielderror", "errormessage",
 			"input", "textarea", "textfield", "inputgroup", "inputotp", "searchfield",
 			"numberfield", "checkbox", "checkboxgroup", "radio", "radiogroup",
 			"switch", "switchgroup", "controlfield", "slider", "select", "combobox",
-			"autocomplete",
+			"autocomplete", "editabletext", "hotkeyinput", "rate", "imageselect", "upload",
 		},
-		"Collections": {"listbox"},
+		"Collections": {"listbox", "sortablelist"},
 		"Navigation": {
 			"accordion", "command", "contextmenu", "segmentedcontrol", "sidebar", "disclosure", "disclosuregroup", "tabs", "breadcrumbs",
-			"pagination", "toolbar", "menu", "dropdown", "submenu",
+			"pagination", "toolbar", "menu", "dropdown", "submenu", "steps",
 		},
 		"Overlays": {
 			"dialog", "alertdialog", "drawer", "popover",
 			"tooltip", "toast", "previewcard", "sheet",
+			"floatingpanel", "floatingsheet", "imageviewer",
 		},
 		"Dates": {
 			"calendar", "rangecalendar", "datefield", "timefield", "datepicker",

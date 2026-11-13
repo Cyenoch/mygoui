@@ -25,9 +25,29 @@ var cossSources = map[string]string{
 	"toolbar": "toolbar", "tooltip": "tooltip",
 }
 
+const lobeSourceRoot = "https://github.com/lobehub/lobe-mygo/blob/5e5fea5ef9e225f79564770ef18f6d293a2e5d4a/pkg/"
+
+// lobeSources records the Lobe MyGo file an absorbed component takes its
+// capability from. Its appearance is this module's own.
+var lobeSources = map[string]string{
+	"copybutton": "action/copybutton.go", "snippet": "code/snippet.go",
+	"highlighter": "code/highlighter.go", "markdown": "markdown/markdown.go",
+	"qrcode": "code/qrcode.go", "editabletext": "field/editable.go",
+	"hotkeyinput": "field/hotkeyinput.go", "upload": "field/upload.go",
+	"rate": "choice/rate.go", "imageselect": "choice/imageselect.go",
+	"steps": "nav/steps.go", "sortablelist": "layout/sortablelist.go",
+	"floatingpanel": "feedback/floatingpanel.go", "floatingsheet": "feedback/floatingsheet.go",
+	"imageviewer": "display/imageviewer.go", "image": "display/image.go",
+	"result": "feedback/result.go", "guidecard": "layout/guidecard.go",
+	"resizablepanel": "layout/panel.go",
+}
+
 func sourceURL(id string) string {
 	if url := chartSource(id); url != "" {
 		return url
+	}
+	if file := lobeSources[id]; file != "" {
+		return lobeSourceRoot + file
 	}
 	if id == "theming" {
 		return cossSourceRoot + "content/docs/(root)/styling.mdx"
@@ -45,6 +65,9 @@ func sourceURL(id string) string {
 func referenceLabel(id string) string {
 	if chartSource(id) != "" {
 		return "Bklit source"
+	}
+	if lobeSources[id] != "" {
+		return "Lobe source"
 	}
 	return "Coss source"
 }

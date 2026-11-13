@@ -1,6 +1,7 @@
 package chart
 
 import (
+	"cmp"
 	"fmt"
 	"math"
 	"slices"
@@ -155,14 +156,7 @@ func cartesian(c *ui.Context, o CartesianOptions, kind SeriesKind, force bool) (
 	ctx := PlotContext{X: x, Y: y}
 	t := theme.Colors(c)
 	textSize := theme.Scale(c, 12)
-	xs := []float64{}
-	for _, s := range series {
-		for _, pt := range s.Points {
-			xs = append(xs, pt.X)
-		}
-	}
-	slices.Sort(xs)
-	xs = slices.Compact(xs)
+	xs := seriesXs(series)
 	describe := func(i int) string {
 		parts := []string{}
 		for _, s := range series {
@@ -271,9 +265,32 @@ func cartesian(c *ui.Context, o CartesianOptions, kind SeriesKind, force bool) (
 	}), nil
 }
 
+// seriesXs returns the distinct X coordinates of series in increasing order.
+func seriesXs(series []Series) []float64 {
+	total := 0
+	for _, s := range series {
+		total += len(s.Points)
+	}
+	xs := make([]float64, 0, total)
+	for _, s := range series {
+		for _, pt := range s.Points {
+			xs = append(xs, pt.X)
+		}
+	}
+	if len(series) > 1 {
+		// Each series is already increasing.
+		slices.Sort(xs)
+		xs = slices.Compact(xs)
+	}
+	return xs
+}
+
 func prepareSeries(o CartesianOptions, kind SeriesKind, force bool) ([]Series, error) {
-	result := []Series{}
-	ids := map[string]bool{}
+	if o.Brush != nil && (!finite(o.Brush.From) || !finite(o.Brush.To) || o.Brush.To < o.Brush.From) {
+		return nil, fmt.Errorf("chart %q: invalid brush domain", o.Label)
+	}
+	result := make([]Series, 0, len(o.Series))
+	ids := make(map[string]bool, len(o.Series))
 	for si, input := range o.Series {
 		if input.ID == "" || ids[input.ID] {
 			return nil, fmt.Errorf("chart %q: series %d needs a unique nonempty ID", o.Label, si)
@@ -286,54 +303,77 @@ func prepareSeries(o CartesianOptions, kind SeriesKind, force bool) ([]Series, e
 		if s.Kind > ProfitLossSeries || (o.Horizontal && s.Kind != BarSeries) {
 			return nil, fmt.Errorf("chart %q: unsupported series kind/orientation for %q", o.Label, s.ID)
 		}
-		s.Points = []Point{}
+		// The caller's points are read, never copied: a build runs per frame.
 		for i, pt := range input.Points {
 			if !finite(pt.X) || math.IsInf(pt.Y, 0) || (i > 0 && pt.X <= input.Points[i-1].X) {
 				return nil, fmt.Errorf("chart %q: series %q point %d needs finite increasing X and finite or missing Y", o.Label, s.ID, i)
 			}
-			if o.Brush == nil || (pt.X >= o.Brush.From && pt.X <= o.Brush.To) {
-				s.Points = append(s.Points, pt)
+		}
+		if o.Brush != nil {
+			from, _ := slices.BinarySearchFunc(s.Points, o.Brush.From, func(pt Point, x float64) int { return cmp.Compare(pt.X, x) })
+			to, found := slices.BinarySearchFunc(s.Points, o.Brush.To, func(pt Point, x float64) int { return cmp.Compare(pt.X, x) })
+			if found {
+				to++
 			}
+			s.Points = s.Points[from:max(from, to)]
 		}
 		if o.State == nil || !o.State.Hidden[s.ID] {
 			result = append(result, s)
 		}
 	}
-	if o.Brush != nil && (!finite(o.Brush.From) || !finite(o.Brush.To) || o.Brush.To < o.Brush.From) {
-		return nil, fmt.Errorf("chart %q: invalid brush domain", o.Label)
-	}
 	return result, nil
 }
 
-func cartesianScales(o CartesianOptions, series []Series) (native.Linear, native.Linear, [][]native.Segment, error) {
-	xv, yv := []float64{}, []float64{0}
-	values := make([][]float64, len(series))
-	for i, s := range series {
-		values[i] = []float64{}
-		if o.Stacked && i > 0 && len(s.Points) != len(series[0].Points) {
-			return native.Linear{}, native.Linear{}, nil, fmt.Errorf("chart %q: stacked series must have aligned X coordinates", o.Label)
+// extent is the running range of the values added to it, skipping NaN.
+type extent struct{ lo, hi float64 }
+
+func newExtent() extent { return extent{math.Inf(1), math.Inf(-1)} }
+
+func (e *extent) add(values ...float64) {
+	for _, v := range values {
+		if !math.IsNaN(v) {
+			e.lo, e.hi = min(e.lo, v), max(e.hi, v)
 		}
-		for j, pt := range s.Points {
-			if o.Stacked && i > 0 && (len(s.Points) != len(series[0].Points) || pt.X != series[0].Points[j].X) {
+	}
+}
+
+func cartesianScales(o CartesianOptions, series []Series) (native.Linear, native.Linear, [][]native.Segment, error) {
+	xe, ye := newExtent(), newExtent()
+	ye.add(0)
+	var values [][]float64
+	if o.Stacked {
+		values = make([][]float64, len(series))
+	}
+	for i, s := range series {
+		if o.Stacked {
+			if i > 0 && len(s.Points) != len(series[0].Points) {
 				return native.Linear{}, native.Linear{}, nil, fmt.Errorf("chart %q: stacked series must have aligned X coordinates", o.Label)
 			}
-			xv = append(xv, pt.X)
-			yv = append(yv, pt.Y)
-			values[i] = append(values[i], pt.Y)
+			if s.Kind != BarSeries && s.Kind != AreaSeries {
+				return native.Linear{}, native.Linear{}, nil, fmt.Errorf("chart %q: stacking requires bar or area series", o.Label)
+			}
+			values[i] = make([]float64, len(s.Points))
 		}
-		if o.Stacked && s.Kind != BarSeries && s.Kind != AreaSeries {
-			return native.Linear{}, native.Linear{}, nil, fmt.Errorf("chart %q: stacking requires bar or area series", o.Label)
+		for j, pt := range s.Points {
+			if o.Stacked {
+				if i > 0 && pt.X != series[0].Points[j].X {
+					return native.Linear{}, native.Linear{}, nil, fmt.Errorf("chart %q: stacked series must have aligned X coordinates", o.Label)
+				}
+				values[i][j] = pt.Y
+			}
+			xe.add(pt.X)
+			ye.add(pt.Y)
 		}
 	}
 	for _, a := range o.Annotations {
 		if a.Kind == ProjectionLine {
-			xv = append(xv, a.X1, a.X2)
-			yv = append(yv, a.Y1, a.Y2)
+			xe.add(a.X1, a.X2)
+			ye.add(a.Y1, a.Y2)
 		}
 		if a.Kind == Band {
 			for i, pt := range a.Points {
-				xv = append(xv, pt.X)
-				yv = append(yv, pt.Y, a.Upper[i].Y)
+				xe.add(pt.X)
+				ye.add(pt.Y, a.Upper[i].Y)
 			}
 		}
 	}
@@ -345,15 +385,15 @@ func cartesianScales(o CartesianOptions, series []Series) (native.Linear, native
 				if !finite(v.Lo) || !finite(v.Hi) {
 					return native.Linear{}, native.Linear{}, nil, fmt.Errorf("chart %q: stacked values overflow", o.Label)
 				}
-				yv = append(yv, v.Lo, v.Hi)
+				ye.add(v.Lo, v.Hi)
 			}
 		}
 	}
-	x, err := scale(xv, o.XDomain)
+	x, err := scaleExtent(xe, o.XDomain)
 	if err != nil {
 		return x, native.Linear{}, nil, err
 	}
-	if o.XDomain == nil && len(xv) > 1 {
+	if o.XDomain == nil && xe.lo < xe.hi {
 		step := math.Inf(1)
 		for _, s := range series {
 			if s.Kind == BarSeries {
@@ -367,12 +407,21 @@ func cartesianScales(o CartesianOptions, series []Series) (native.Linear, native
 			x.Hi += step / 2
 		}
 	}
-	y, err := scale(yv, o.YDomain)
+	y, err := scaleExtent(ye, o.YDomain)
 	return x, y, stacks, err
 }
 
 func scale(values []float64, domain *Domain) (native.Linear, error) {
-	lo, hi := native.Extent(values...)
+	e := newExtent()
+	e.add(values...)
+	return scaleExtent(e, domain)
+}
+
+func scaleExtent(e extent, domain *Domain) (native.Linear, error) {
+	lo, hi := e.lo, e.hi
+	if lo > hi {
+		lo, hi = 0, 1
+	}
 	if lo == hi {
 		lo, hi = lo-0.5, hi+0.5
 	}
@@ -432,6 +481,11 @@ func drawSeries(p *ui.Painter, r ui.Rect, ctx PlotContext, s Series, index, coun
 	}
 	switch s.Kind {
 	case AreaSeries:
+		if len(stack) == 0 && len(xs) > int(r.W)*4 {
+			// Unstacked areas share one baseline, so the outline can thin.
+			xs, ys = native.MinMax(nil, nil, xs, ys, max(1, int(r.W)))
+			low = low[:len(xs)]
+		}
 		p.FillPath(native.Area(r, xs, low, ys, o.Curve), color.Alpha(0.18))
 		p.StrokePath(native.Line(r, xs, ys, o.Curve), 2, color)
 	case LineSeries:

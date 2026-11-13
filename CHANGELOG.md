@@ -9,6 +9,11 @@ not a claim of pixel-perfect completion. No release is asserted by this log.
 
 ### Changed
 
+- Cartesian charts read the caller's points without copying them, find a
+  brush range by binary search and thin dense unstacked areas as lines
+  already were: three series of 5,000 points build in about half the time
+  with a quarter of the allocations. Heatmap validation no longer builds a
+  map per frame.
 - Motion follows coss more closely: a held switch thumb stretches after
   100 ms, Select and ComboBox show a static up-down chevron,
   preview cards shrink as they fade out, Sidebar collapses over 200 ms, the
@@ -85,6 +90,14 @@ not a claim of pixel-perfect completion. No release is asserted by this log.
 
 ### Added
 
+- Sixteen components modelled on Lobe MyGo's capabilities and rebuilt with
+  coss anatomy and this theme: a new `content` package (`CopyButton`,
+  `Snippet`, `Highlighter`, `Markdown`, `QRCode`), `form.EditableText`,
+  `HotkeyInput`, `Upload` with `PickFiles`, `Rate` and `ImageSelect`,
+  `navigation.Steps`, `list.SortableList`, `overlay.FloatingPanel`,
+  `FloatingSheet` and `ImageViewer`, and root `Image`, `Result`, `GuideCard`
+  and `ResizablePanel`. `content.QRCode` adds the `rsc.io/qr` dependency for
+  importers of `content`.
 - Optional `Flyout` host on Popover, Dropdown, Select, DatePicker,
   DateRangePicker and ColorPicker opens their popup as a fitted native
   flyout that can extend beyond the window; without one, and on the web,

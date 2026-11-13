@@ -21,7 +21,7 @@ import (
 // against real exports so renamed options and unrelated enum types cannot
 // silently turn the gallery into unusable documentation.
 func TestComponentSnippetsTypeCheck(t *testing.T) {
-	packages := []string{"fmt", "time", "github.com/egoist/mygo/ui"}
+	packages := []string{"fmt", "time", "github.com/egoist/mygo", "github.com/egoist/mygo/ui"}
 	for _, path := range qualifierImports {
 		packages = append(packages, path)
 	}
@@ -141,6 +141,34 @@ var open bool`
 		return "var start date.TimeFieldState"
 	case "colorarea", "colorslider", "colorfield", "colorswatch", "colorswatchpicker":
 		return "var state color.ColorState"
+	case "hotkeyinput":
+		return "var shortcut form.Hotkey"
+	case "rate":
+		return "var rating float64"
+	case "imageselect":
+		return "var layout string; var grid, rows ui.ImageSource"
+	case "upload":
+		return `var files []form.UploadFile
+var addFiles func([]string)
+var removeFile func(int)
+var window *mygo.Window
+var pickErr error`
+	case "steps":
+		return "var step int"
+	case "sortablelist":
+		return "var tasks []list.SortableItem"
+	case "resizablepanel":
+		return "var width float32"
+	case "image":
+		return "var photo ui.ImageSource; var openPreview func()"
+	case "guidecard":
+		return "var cover ui.ImageSource"
+	case "floatingpanel":
+		return "var open bool; var position ui.Point"
+	case "floatingsheet":
+		return "var open bool; var height float32"
+	case "imageviewer":
+		return "var open bool; var index int; var photos []overlay.ImageViewerItem"
 	case "table":
 		return `var columns []data.TableColumnOptions
 var pageRows []struct{ID string}
