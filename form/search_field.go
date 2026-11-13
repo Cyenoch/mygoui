@@ -2,6 +2,7 @@ package form
 
 import (
 	"github.com/Cyenoch/mygoicons/lucide"
+	"github.com/Cyenoch/mygoui/internal/busy"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -19,7 +20,9 @@ type SearchFieldOptions struct {
 	ReadOnly, Invalid         bool
 	FullWidth                 bool
 	OnChange, OnSubmit        func()
-	OnClear                   func()
+	// Loading swaps the search icon for a spinner; the field stays editable.
+	Loading bool
+	OnClear func()
 }
 
 // SearchField renders a native search input with the search icon and clear
@@ -38,14 +41,17 @@ func SearchField(c *ui.Context, value *string, o SearchFieldOptions) ui.Element 
 			row.MinWidth(theme.Scale(c, inputDefaultWidth))
 		}
 		row = fieldSurface(row, c, o.Variant, o.Invalid, o.Disabled)
+		shown := busy.Swap(row, o.Loading)
 
 		row.Children(func() {
-			ui.Icon(c, lucide.Search()).Size(theme.Scale(c, theme.IconMD), theme.Scale(c, theme.IconMD)).
-				Shrink(0).MarginStart(theme.Space12).TextColor(t.FieldPlaceholder)
+			swapGlyph(c, theme.IconMD, shown, func() {
+				ui.Icon(c, lucide.Search()).Size(theme.Scale(c, theme.IconMD), theme.Scale(c, theme.IconMD)).
+					TextColor(t.FieldPlaceholder).Opacity(1 - shown)
+			}).MarginStart(theme.Space12)
 
 			editor := ui.TextInputBase(c, value).Grow(1).MinWidth(0).
 				PaddingStart(theme.Space8).PaddingEnd(theme.Space8).PaddingY(theme.Scale(c, 5))
-			editor = fieldText(editor, c)
+			editor = fieldText(editor, c).Busy(o.Loading)
 			if o.Placeholder != "" {
 				editor.Placeholder(o.Placeholder)
 			}

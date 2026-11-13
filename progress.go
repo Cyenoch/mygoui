@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -50,8 +51,8 @@ var indicatorAnimation = ui.Animation{Duration: progressDuration, Ease: ui.EaseO
 // progressFill lays the bar's fill in its track and eases a value change,
 // unless the desktop asks for less motion.
 func progressFill(c *ui.Context, pct, height, radius float32, fill ui.Color) {
-	bar := ui.Box(c).Height(height).WidthPercent(pct * 100).
-		Background(fill).Radius(radius)
+	bar := ui.Box(c).Height(height).WidthPercent(pct * 100).Radius(radius)
+	bar.Background(motion.Color(bar, progressFillKey{}, fill))
 	if theme.ReduceMotion(c) {
 		return
 	}
@@ -191,7 +192,10 @@ func progressMetrics(size ProgressSize) (height, radius float32) {
 	return height, radius
 }
 
-type progressStartKey struct{}
+type (
+	progressStartKey struct{}
+	progressFillKey  struct{}
+)
 
 func progressText(o ProgressOptions) string {
 	if o.OutputText != "" {
@@ -299,7 +303,7 @@ func ProgressCircle(c *ui.Context, o ProgressCircleOptions) ui.Element {
 	// A ring has no box that could carry the value, so the native channel
 	// eases the painted arc instead: frames are asked for only while it moves.
 	progress = e.AnimateTo(progressRingKey{}, progress, indicatorAnimation)
-	fill, track := indicatorFill(c, o.Color), t.Default
+	fill, track := motion.Color(e, progressFillKey{}, indicatorFill(c, o.Color)), t.Default
 	e.Draw(func(p *ui.Painter, r ui.Rect) {
 		drawRing(p, r, progress, fill, track)
 	})

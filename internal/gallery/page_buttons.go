@@ -12,6 +12,8 @@ import (
 type buttonsState struct {
 	Ready bool
 
+	Loading    bool
+	LoadingOn  bool
 	Clicks     int
 	LastAction string
 
@@ -137,11 +139,38 @@ func buttonIconsBody(c *ui.Context, st *buttonsState) {
 
 // buttonLoadingBody renders the pending state: a leading spinner, the full
 // readable face and no activation.
-func buttonLoadingBody(c *ui.Context) {
+func buttonLoadingBody(c *ui.Context, st *buttonsState) {
 	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(theme.Space8).Children(func() {
-		mygoui.Button(c, mygoui.ButtonOptions{Label: "Saving", Loading: true})
 		mygoui.Button(c, mygoui.ButtonOptions{
-			Label: "Publishing", Variant: mygoui.ButtonSecondary, Loading: true,
+			Label: "Save", Loading: st.Loading,
+			OnClick: func() { st.hit("Save") },
+		})
+		mygoui.Button(c, mygoui.ButtonOptions{
+			Label: "Publish", Icon: lucide.Upload(), Variant: mygoui.ButtonSecondary, Loading: st.Loading,
+		})
+		mygoui.Button(c, mygoui.ButtonOptions{
+			Label: st.loadingLabel(), Variant: mygoui.ButtonOutline,
+			OnClick: func() { st.Loading = !st.Loading },
+		})
+	})
+}
+
+func (st *buttonsState) loadingLabel() string {
+	if st.Loading {
+		return "Stop loading"
+	}
+	return "Start loading"
+}
+
+// toggleLoadingBody shows a pending toggle that keeps its state.
+func toggleLoadingBody(c *ui.Context, st *buttonsState) {
+	ui.Row(c).Wrap().AlignItems(ui.Center).Gap(theme.Space8).Children(func() {
+		mygoui.ToggleButton(c, mygoui.ToggleButtonOptions{
+			Label: "Bold", Icon: lucide.Bold(), Selected: &st.LoadingOn, Loading: st.Loading,
+		})
+		mygoui.Button(c, mygoui.ButtonOptions{
+			Label: st.loadingLabel(), Variant: mygoui.ButtonOutline,
+			OnClick: func() { st.Loading = !st.Loading },
 		})
 	})
 }

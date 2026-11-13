@@ -5,6 +5,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/Cyenoch/mygoui/internal/formstyle"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -109,9 +110,13 @@ func InputOTP(c *ui.Context, state *OTPState, o OTPOptions) ui.Element {
 				if o.Variant == ControlPrimary {
 					slot = style.Shadow(slot, c, slotShadows)
 				}
+				// A slot's border fades as the field turns invalid; the active
+				// slot follows the focus at once.
+				rest := idle
+				rest.Border = motion.Color(slot, "border", idle.Border)
 				slot.Draw(func(p *ui.Painter, r ui.Rect) {
 					active := focusedNow && index == activeIndex
-					face := idle
+					face := rest
 					if active {
 						face = focused
 					}

@@ -93,7 +93,7 @@ func Popover(c *ui.Context, anchor ui.Element, open *bool, o PopoverOptions) ui.
 		if o.Arrow {
 			along := arrowAlong(panel, anchor, side)
 			panel.Draw(func(p *ui.Painter, r ui.Rect) {
-				paintArrow(p, r, side, t.Popover, along)
+				paintOutlinedArrow(p, r, side, t.Popover, t.Border, along)
 			})
 		}
 		if label != "" {

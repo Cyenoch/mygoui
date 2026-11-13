@@ -320,28 +320,57 @@ const (
 // square turned 45° with rounded corners, clipped to the arrow's half of it,
 // which leaves the same 12 DIP base and 6 DIP rounded tip.
 func paintArrow(p *ui.Painter, r ui.Rect, side mygoui.Side, fill ui.Color, along float32) {
+	paintArrowShape(p, r, side, fill, along, 0)
+}
+
+// paintOutlinedArrow draws paintArrow's arrow with the panel's hairline
+// around its two sides, and takes the panel's own hairline off its base so
+// the arrow reads as part of the panel. Without the outline an arrow on a
+// light surface has the fill of the page behind it and disappears.
+func paintOutlinedArrow(p *ui.Painter, r ui.Rect, side mygoui.Side, fill, border ui.Color, along float32) {
+	paintArrowShape(p, r, side, border, along, theme.Hairline)
+	paintArrowShape(p, r, side, fill, along, 0)
 	half := float32(arrowWidth) / 2
+	var seam ui.Rect
+	switch side {
+	case mygoui.SideTop:
+		seam = ui.Rect{X: r.X + r.W*along - half, Y: r.Y + r.H - theme.Hairline, W: arrowWidth, H: theme.Hairline}
+	case mygoui.SideLeft:
+		seam = ui.Rect{X: r.X + r.W - theme.Hairline, Y: r.Y + r.H*along - half, W: theme.Hairline, H: arrowWidth}
+	case mygoui.SideRight:
+		seam = ui.Rect{X: r.X, Y: r.Y + r.H*along - half, W: theme.Hairline, H: arrowWidth}
+	default:
+		seam = ui.Rect{X: r.X + r.W*along - half, Y: r.Y, W: arrowWidth, H: theme.Hairline}
+	}
+	p.Fill(seam, fill, 0)
+}
+
+// paintArrowShape fills the arrow, grown outward by grow on its sides and
+// tip.
+func paintArrowShape(p *ui.Painter, r ui.Rect, side mygoui.Side, fill ui.Color, along, grow float32) {
+	half := float32(arrowWidth) / 2
+	height := arrowHeight + grow
 	var band ui.Rect
 	var cx, cy float32
 	switch side {
 	case mygoui.SideTop:
 		cx, cy = r.X+r.W*along, r.Y+r.H
-		band = ui.Rect{X: cx - half, Y: cy, W: arrowWidth, H: arrowHeight}
+		band = ui.Rect{X: cx - half - grow, Y: cy, W: arrowWidth + 2*grow, H: height}
 	case mygoui.SideLeft:
 		cx, cy = r.X+r.W, r.Y+r.H*along
-		band = ui.Rect{X: cx, Y: cy - half, W: arrowHeight, H: arrowWidth}
+		band = ui.Rect{X: cx, Y: cy - half - grow, W: height, H: arrowWidth + 2*grow}
 	case mygoui.SideRight:
 		cx, cy = r.X, r.Y+r.H*along
-		band = ui.Rect{X: cx - arrowHeight, Y: cy - half, W: arrowHeight, H: arrowWidth}
+		band = ui.Rect{X: cx - height, Y: cy - half - grow, W: height, H: arrowWidth + 2*grow}
 	default:
 		cx, cy = r.X+r.W*along, r.Y
-		band = ui.Rect{X: cx - half, Y: cy - arrowHeight, W: arrowWidth, H: arrowHeight}
+		band = ui.Rect{X: cx - half - grow, Y: cy - height, W: arrowWidth + 2*grow, H: height}
 	}
 	// The square's diagonal is the arrow's width, so its apex is the tip.
-	side2 := half * 0.70711
+	side2 := half*0.70711 + grow
 	p.Clip(band, 0, func() {
 		p.Transform(ui.Rotation(45), cx, cy, func() {
-			p.Fill(ui.Rect{X: cx - side2, Y: cy - side2, W: 2 * side2, H: 2 * side2}, fill, 1.6)
+			p.Fill(ui.Rect{X: cx - side2, Y: cy - side2, W: 2 * side2, H: 2 * side2}, fill, 1.6+grow)
 		})
 	})
 }

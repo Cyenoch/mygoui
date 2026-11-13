@@ -3,7 +3,7 @@ package navigation
 import (
 	"strconv"
 
-	"github.com/Cyenoch/mygoicons/lucide"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -99,6 +99,9 @@ func buildStep(c *ui.Context, o StepsOptions, i int, it StepItem, vertical bool)
 	if state == stepCompleted {
 		line = t.Primary
 	}
+	connector := func(e ui.Element) ui.Element {
+		return e.Radius(1).Background(motion.Color(e, "line", line))
+	}
 	gap := scale(c, theme.Space8)
 	side := scale(c, theme.Space24)
 
@@ -149,8 +152,8 @@ func buildStep(c *ui.Context, o StepsOptions, i int, it StepItem, vertical bool)
 				rail.Children(func() {
 					stepIndicator(c, t, i, state, side)
 					if !last {
-						ui.Box(c).Width(2).Grow(1).MinHeight(scale(c, theme.Space16)).
-							Margin(0, 0, scale(c, theme.Space4)-pad, 0).Radius(1).Background(line)
+						connector(ui.Box(c).Width(2).Grow(1).MinHeight(scale(c, theme.Space16)).
+							Margin(0, 0, scale(c, theme.Space4)-pad, 0))
 					}
 				})
 			} else {
@@ -160,8 +163,8 @@ func buildStep(c *ui.Context, o StepsOptions, i int, it StepItem, vertical bool)
 		})
 		if !vertical && !last {
 			// The connector sits on the indicator's center line.
-			ui.Box(c).Height(2).Grow(1).MinWidth(scale(c, theme.Space16)).
-				Margin(pad+side/2-1, 0, 0, 0).Radius(1).Background(line)
+			connector(ui.Box(c).Height(2).Grow(1).MinWidth(scale(c, theme.Space16)).
+				Margin(pad+side/2-1, 0, 0, 0))
 		}
 	})
 }
@@ -174,20 +177,29 @@ func stepIndicator(c *ui.Context, t theme.Palette, i int, state stepState, side 
 	case stepFailed:
 		bg, fg = t.Destructive, ui.RGB(255, 255, 255)
 	}
-	dot := ui.Box(c).Size(side, side).Radius(side / 2).Center().Shrink(0).
-		Background(bg).TextColor(fg)
-	dot.Children(func() {
+	dot := ui.Box(c).Size(side, side).Radius(side / 2).Center().Shrink(0)
+	// The face and the number's ink change with the state; the tick or the
+	// cross draws in as the step completes or fails and fades out as it
+	// stops being so, while the number fades the other way.
+	dot.Background(motion.Color(dot, "face", bg)).TextColor(motion.Color(dot, "ink", fg))
+	tick := motion.Progress(dot, "tick", state == stepCompleted)
+	cross := motion.Progress(dot, "cross", state == stepFailed)
+	if tick > 0 || cross > 0 {
 		glyph := scale(c, theme.IconSM)
-		switch state {
-		case stepCompleted:
-			ui.Icon(c, lucide.Check()).Size(glyph, glyph).Shrink(0)
-		case stepFailed:
-			ui.Icon(c, lucide.X()).Size(glyph, glyph).Shrink(0)
-		default:
+		completed, errored := state == stepCompleted, state == stepFailed
+		path := &ui.Path{}
+		dot.Draw(func(p *ui.Painter, r ui.Rect) {
+			box := ui.Rect{X: r.X + (r.W-glyph)/2, Y: r.Y + (r.H-glyph)/2, W: glyph, H: glyph}
+			drawCheck(p, path, box, tick, completed, 2, t.PrimaryForeground)
+			drawCross(p, path, box, cross, errored, 2, ui.RGB(255, 255, 255))
+		})
+	}
+	if number := 1 - max(tick, cross); number > 0 {
+		dot.Children(func() {
 			style.Text(ui.Text(c, strconv.Itoa(i+1)), c, theme.XS()).
-				FontWeight(theme.WeightMedium).FontFeatures("tnum")
-		}
-	})
+				FontWeight(theme.WeightMedium).FontFeatures("tnum").Opacity(number)
+		})
+	}
 }
 
 func stepText(c *ui.Context, t theme.Palette, it StepItem, state stepState, side float32, spaced bool) {

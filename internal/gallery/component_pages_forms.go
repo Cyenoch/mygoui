@@ -153,6 +153,7 @@ form.Form(c, form.FormOptions{Label: "Profile", Invalid: invalid}, func() {
 			{Title: "Invalid", Description: "The danger border pairs with the error message.", Demo: formsExampleDemo(formsInputExampleInvalid)},
 			{Title: "Password", Description: "The editor masks the typed text.", Demo: formsExampleDemo(formsInputExamplePassword)},
 			{Title: "Disabled", Description: "The surface dims and stops editing.", Demo: formsExampleDemo(formsInputExampleDisabled)},
+			{Title: "Loading", Description: "A spinner replaces the end of the field while results are on their way; the field stays editable.", Demo: inputLoadingDemo},
 		},
 		Code: `form.Input(c, &email, form.InputOptions{
     Label: "Email", Description: "We send account notices here.",
@@ -169,6 +170,7 @@ form.Input(c, &query, form.InputOptions{
 			{"Disabled", "bool", "false", "Stops editing and dims the surface."},
 			{"Invalid", "bool", "false", "Paints the danger border and error."},
 			{"Password", "bool", "false", "Masks the text as a password."},
+			{"Loading", "bool", "false", "Shows a spinner at the end of the field; it stays editable."},
 		},
 		Tokens: []string{"FieldBackground", "FieldBorder", "FieldBorderHover", "FieldPlaceholder", "Danger"},
 	})
@@ -205,6 +207,7 @@ form.Input(c, &query, form.InputOptions{
 			{Title: "Invalid", Description: "The field supplies the danger border and error.", Demo: formsExampleDemo(formsTextFieldExampleInvalid)},
 			{Title: "Password", Description: "The editor masks the value and marks it required.", Demo: formsExampleDemo(formsTextFieldExamplePassword)},
 			{Title: "Disabled", Description: "The caller-owned value cannot change.", Demo: formsExampleDemo(formsTextFieldExampleDisabled)},
+			{Title: "Loading", Description: "A spinner replaces the end of the field while results are on their way; the field stays editable.", Demo: textFieldLoadingDemo},
 		},
 		Code: `form.TextField(c, form.TextFieldOptions{
     Value: &email, Label: "Email", Description: "We only use this for account notices.",
@@ -218,6 +221,7 @@ form.Input(c, &query, form.InputOptions{
 			{"Required", "bool", "false", "Marks the label as required."},
 			{"Invalid", "bool", "false", "Paints the danger border and error."},
 			{"Password", "bool", "false", "Masks the text as a password."},
+			{"Loading", "bool", "false", "Shows a spinner at the end of the field; it stays editable."},
 		},
 		Tokens: []string{"FieldBackground", "FieldBorder", "FieldBorderHover", "FieldPlaceholder", "Danger"},
 	})
@@ -277,6 +281,7 @@ form.Input(c, &query, form.InputOptions{
 			{Title: "Default", Description: "The in-field clear action empties the query.", Demo: formsExampleDemo(formsSearchFieldExampleDefault)},
 			{Title: "Invalid", Description: "The danger border pairs with the error message.", Demo: formsExampleDemo(formsSearchFieldExampleInvalid)},
 			{Title: "Disabled", Description: "Editing stops and the clear action is disabled.", Demo: formsExampleDemo(formsSearchFieldExampleDisabled)},
+			{Title: "Loading", Description: "A spinner replaces the search icon while results are on their way; the field stays editable.", Demo: searchFieldLoadingDemo},
 		},
 		Code: `form.SearchField(c, &query, form.SearchFieldOptions{
     Label: "Search components", Placeholder: "Search by name",
@@ -288,6 +293,7 @@ form.Input(c, &query, form.InputOptions{
 			{"OnSubmit", "func()", "nil", "Runs when Enter is pressed."},
 			{"Invalid", "bool", "false", "Paints the danger border and error."},
 			{"Disabled", "bool", "false", "Stops editing; the clear action is disabled."},
+			{"Loading", "bool", "false", "Swaps the search icon for a spinner; it stays editable."},
 			{"FullWidth", "bool", "false", "Stretches the field across its row."},
 		},
 		Tokens: []string{"FieldBackground", "FieldBorder", "FieldPlaceholder", "DefaultHover", "Danger"},
@@ -422,6 +428,7 @@ form.Input(c, &query, form.InputOptions{
 			{Title: "Sizes", Description: "Small, medium and large tracks.", Demo: formsExampleDemo(formsSwitchExampleSizes)},
 			{Title: "Label before", Description: "The label sits before the track.", Demo: formsExampleDemo(formsSwitchExampleLabelBefore)},
 			{Title: "Invalid", Description: "The row takes the danger mark and error.", Demo: formsExampleDemo(formsSwitchExampleInvalid)},
+			{Title: "Loading", Description: "The thumb shows a spinner and the value holds until it clears.", Demo: formsExampleDemo(formsSwitchExampleLoading)},
 			{Title: "Disabled", Description: "Activation is removed and the row dims.", Demo: formsExampleDemo(formsSwitchExampleDisabled)},
 		},
 		Code: `form.Switch(c, form.SwitchOptions{
@@ -434,6 +441,7 @@ form.Input(c, &query, form.InputOptions{
 			{"LabelPosition", "form.SwitchLabelPosition", "SwitchLabelAfter", "Puts the label before or after the track."},
 			{"Description", "string", "", "Supporting line indented under the label."},
 			{"Invalid", "bool", "false", "Marks the row invalid and shows its error."},
+			{"Loading", "bool", "false", "Spinner on the thumb; the value holds and takes no press."},
 			{"Disabled", "bool", "false", "Removes activation and dims the row."},
 		},
 		Tokens: []string{"Accent", "AccentHover", "AccentForeground", "DefaultHover"},

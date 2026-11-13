@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/Cyenoch/mygoicons/lucide"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -148,8 +149,12 @@ func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 				if active {
 					label = label + ", " + locale.M().Selected
 				}
-				btn := ui.ButtonBase(c).Size(size, size).Center().Shrink(0).Radius(radius).
+				// Keyed by page, so the page that becomes current is the
+				// button that was not: its face fades in as the old one's
+				// fades out.
+				btn := ui.ButtonBase(c.Key(number)).Size(size, size).Center().Shrink(0).Radius(radius).
 					FocusRing(true).Label(label)
+				shown := motion.Progress(btn, "active", active)
 				bg := ui.Transparent
 				hover := t.Accent
 				if active {
@@ -157,12 +162,14 @@ func Pagination(c *ui.Context, o PaginationOptions) ui.Element {
 					if c.Theme().Dark {
 						bg, hover = t.Input.Alpha(0.32), t.Input.Alpha(0.64)
 					}
-					btn.Border(hairline, t.Input)
+				}
+				if shown > 0 {
+					btn.Border(hairline, t.Input.Alpha(shown))
 					if !btn.Pressed() {
-						btn = style.Shadow(btn, c, theme.FieldShadows(c.Theme().Dark))
+						btn = fadeShadows(btn, theme.FieldShadows(c.Theme().Dark), shown)
 					}
 				}
-				btn = style.Background(btn, radius, bg, hover, hover)
+				btn = style.Background(btn, radius, motion.Color(btn, "face", bg), hover, hover)
 				btn.TextColor(t.DefaultForeground)
 				if !active {
 					btn.OnClick(func() {

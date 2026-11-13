@@ -8,6 +8,7 @@ import (
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/formstyle"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -160,9 +161,7 @@ func HotkeyInput(c *ui.Context, value *Hotkey, o HotkeyInputOptions) ui.Element 
 				return
 			}
 			caps := mygoui.KbdGroup(c, mygoui.KbdOptions{Keys: keys}).AlignSelf(ui.Center)
-			if *recording {
-				caps.Opacity(0.5)
-			}
+			caps.Opacity(1 - 0.5*motion.Progress(recorder, "recording", *recording))
 		})
 		if o.Clearable && len(keys) > 0 && !disabled {
 			hotkeyClear(c, func() { set(Hotkey{}) })

@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/Cyenoch/mygoui/internal/formstyle"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -114,30 +115,38 @@ func imageSelectTile(c *ui.Context, tile ui.Element, it ImageSelectItem, on bool
 		})
 		badge := theme.Scale(c, 16)
 		rtl := c.Direction() == ui.RightToLeft
+		// The ring fades and the check draws in as the tile is chosen; both
+		// leave by fading.
+		chosen := motion.Progress(frame, "chosen", on)
 		frame.DrawOver(func(p *ui.Painter, r ui.Rect) {
 			switch {
-			case on:
-				p.Stroke(r, t.Primary, radius, 2)
 			case hovered:
 				p.Stroke(r, t.Ring, radius, theme.Hairline)
 			default:
 				p.Stroke(r, t.Border, radius, theme.Hairline)
 			}
+			if chosen > 0 {
+				p.Stroke(r, t.Primary.Alpha(chosen), radius, 2)
+			}
 			if focused {
 				formstyle.FieldRing(p, r, radius, t.Ring.Alpha(0.24))
 			}
-			if !on {
+			if chosen == 0 {
 				return
 			}
 			dot := ui.Rect{X: r.X + r.W - badge - theme.Space6, Y: r.Y + theme.Space6, W: badge, H: badge}
 			if rtl {
 				dot.X = r.X + theme.Space6
 			}
-			p.Fill(dot, t.Primary, badge/2)
+			drawn := float32(1)
+			if on {
+				drawn = chosen
+			}
+			p.Fill(dot, t.Primary.Alpha(chosen), badge/2)
 			mark := badge * 0.6
 			p.StrokePath(choiceCheckPath(ui.Rect{
 				X: dot.X + (badge-mark)/2, Y: dot.Y + (badge-mark)/2, W: mark, H: mark,
-			}), theme.Scale(c, 1.6), t.PrimaryForeground)
+			}).Trim(0, drawn), theme.Scale(c, 1.6), t.PrimaryForeground.Alpha(chosen))
 		})
 		if it.Label != "" {
 			style.Text(ui.Text(c, it.Label), c, theme.SM()).TextColor(ink).SingleLine()

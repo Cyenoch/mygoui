@@ -338,7 +338,7 @@ mygoui.ScrollFade(c, viewport, &scroll, mygoui.ScrollFadeOptions{
 	})
 
 	RegisterComponent(ComponentPage{
-		ID: "command", Title: "Command", Group: "Navigation", Order: 11,
+		ID: "command", Title: "Command", Group: "Patterns", Order: 11,
 		Description: "Search and execute caller-owned actions with keyboard or pointer.",
 		Examples: []ComponentExample{
 			{Title: "Inline command", Demo: func(c *ui.Context, s *State) {
@@ -347,6 +347,7 @@ mygoui.ScrollFade(c, viewport, &scroll, mygoui.ScrollFadeOptions{
 			{Title: "Custom empty state", Demo: func(c *ui.Context, s *State) {
 				commandSpecimen(c, cossStateOf(s, "command"), 1)
 			}},
+			{Title: "Loading", Description: "Results on their way: the input stays editable.", Demo: commandLoadingDemo},
 		},
 		Code: `navigation.Command(c, navigation.CommandOptions{
     State: &commands, Label: "Search actions", Placeholder: "Type a command",
@@ -361,6 +362,7 @@ mygoui.ScrollFade(c, viewport, &scroll, mygoui.ScrollFadeOptions{
 			{"Items", "[]navigation.CommandItem", "nil", "Key, label, keywords, shortcut and disabled state."},
 			{"Label / Placeholder / Empty", "string", "", "Accessible search name, prompt and empty result."},
 			{"MaxHeight", "float32", "320", "List viewport height."},
+			{"Loading", "bool", "false", "Results on their way: placeholder rows, or dimmed results with a line under the input."},
 			{"OnSelect", "func(string)", "nil", "Receives the activated command key."},
 		},
 		Tokens: []string{"Popover", "PopoverForeground", "Accent", "MutedForeground", "Border"},
@@ -525,7 +527,7 @@ overlay.Sheet(c, &open, overlay.SheetOptions{
 	})
 
 	RegisterComponent(ComponentPage{
-		ID: "composer", Title: "Composer", Group: "Forms", Order: 11,
+		ID: "composer", Title: "Composer", Group: "Patterns", Order: 11,
 		Description: "A growing native draft editor with persistent actions and submission.",
 		Examples: []ComponentExample{
 			{Title: "Message", Demo: func(c *ui.Context, s *State) {
@@ -576,7 +578,7 @@ overlay.Sheet(c, &open, overlay.SheetOptions{
 	})
 
 	RegisterComponent(ComponentPage{
-		ID: "sidebar", Title: "Sidebar", Group: "Navigation", Order: 14,
+		ID: "sidebar", Title: "Sidebar", Group: "Patterns", Order: 14,
 		Description: "Native navigation with grouped actions, collapse state and header/footer slots.",
 		Examples: []ComponentExample{
 			{Title: "Workspace navigation", Demo: func(c *ui.Context, s *State) {

@@ -391,3 +391,50 @@ func TestTableRowActions(t *testing.T) {
 		t.Fatalf("activated %q", activated)
 	}
 }
+
+func TestTableLoadingFirstLoadKeepsHeaderAndBuildsNoCaller(t *testing.T) {
+	built := false
+	o := data.TableOptions{
+		Label: "Files", Loading: true, LoadingRows: 3,
+		Columns: []data.TableColumnOptions{
+			{ID: "name", Header: "Name", Sortable: true},
+			{ID: "size", Header: "Size", Align: ui.End, Width: 90},
+		},
+		Cell:  func(c *ui.Context, cell data.TableCell) ui.Element { built = true; return ui.Text(c, "x") },
+		Empty: func(c *ui.Context) ui.Element { return ui.Text(c, "Nothing here") },
+	}
+	tt := ui.NewTester(tableView(&o), 520, 320)
+	if !tt.HasText("Name") || !tt.HasText("Size") {
+		t.Fatalf("header missing while loading: %v", tt.Texts())
+	}
+	if built || tt.HasText("Nothing here") {
+		t.Fatalf("loading table showed caller content: built=%v texts=%v", built, tt.Texts())
+	}
+	o.Loading, o.Rows = false, 0
+	tt.Frame()
+	if !tt.HasText("Nothing here") {
+		t.Fatalf("empty state missing after loading: %v", tt.Texts())
+	}
+}
+
+func TestTableLoadingRefreshKeepsRowsAndIgnoresInput(t *testing.T) {
+	rows := fileRows()
+	st := &data.TableState{Selection: data.TableSelection{Mode: data.TableSelectionSingle, Row: -1}}
+	o := fileTable(rows, st, nil)
+	o.Loading = true
+	tt := ui.NewTester(tableView(&o), 520, 320)
+	tt.Advance(400 * time.Millisecond)
+	if !tt.HasText("Alpha") {
+		t.Fatalf("rows left while refreshing: %v", tt.Texts())
+	}
+	_ = tt.Click("Alpha")
+	if st.Selection.Row != -1 {
+		t.Fatalf("refreshing table took a click: row %d", st.Selection.Row)
+	}
+	o.Loading = false
+	tt.Frame()
+	tt.Advance(400 * time.Millisecond)
+	if err := tt.Click("Alpha"); err != nil || st.Selection.Row < 0 {
+		t.Fatalf("table stayed inert after loading: %v row %d", err, st.Selection.Row)
+	}
+}

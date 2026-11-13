@@ -49,12 +49,9 @@ func SegmentedControl(c *ui.Context, o SegmentedControlOptions) ui.Element {
 			for i, item := range o.Items {
 				segment := parts.Segment(i).Height(scale(c, 30)).PaddingX(scale(c, 10)).
 					Radius(theme.RadiusScale().MD).FocusRing(true).Label(item.Label)
-				fg := t.MutedForeground.Alpha(0.72)
-				if !item.Disabled && segment.Hovered() {
-					fg = t.MutedForeground
-				}
+				fg := selectionInk(segment, "segment-ink", i == *selected, !item.Disabled && segment.Hovered(),
+					t.MutedForeground.Alpha(0.72), t.Foreground, t.MutedForeground)
 				if i == *selected {
-					fg = t.Foreground
 					if !known {
 						segment.Background(face)
 						segment = style.Shadow(segment, c, shadows)

@@ -1,6 +1,8 @@
 package mygoui
 
 import (
+	"github.com/Cyenoch/mygoui/internal/busy"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -25,9 +27,12 @@ type ToggleButtonOptions struct {
 	IconOnly  bool
 	FullWidth bool
 	Selected  *bool
-	Disabled  bool
-	OnChange  func(bool)
-	Tooltip   string
+	// Loading answers a press in flight: the control keeps its size and
+	// state, shows a spinner and takes no press until it clears.
+	Loading  bool
+	Disabled bool
+	OnChange func(bool)
+	Tooltip  string
 	// Corners overrides the uniform radius. Nil keeps it.
 	Corners *[4]float32
 }
@@ -42,6 +47,8 @@ func ToggleButton(c *ui.Context, o ToggleButtonOptions) ui.Element {
 	return toggleButtonView(c, o, adj)
 }
 
+type toggleSelectedKey struct{}
+
 // toggleButtonView is the builder ToggleButton and ToggleButtonGroup share.
 func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.Element {
 	t := theme.Colors(c)
@@ -52,13 +59,6 @@ func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.E
 	glyph := float32(theme.IconMD)
 	font := theme.SM()
 	font.Weight = theme.WeightMedium
-	normal, hover, fg := ui.Transparent, t.Accent, t.Foreground
-	if o.Variant == ToggleGhost {
-		normal, hover, fg = ui.Transparent, t.Default, t.DefaultForeground
-	}
-	if selected {
-		normal, hover, fg = t.Input.Alpha(0.64), t.Input, t.AccentForeground
-	}
 	if o.Size == theme.ButtonSmall {
 		paddingX = 5
 	}
@@ -70,13 +70,37 @@ func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.E
 	if o.IconOnly {
 		paddingX = 0
 	}
+	// A selection change fades between the two faces; the pointer picks the
+	// face within each at once.
+	faces := func(selected bool) (normal, hover, fg ui.Color) {
+		normal, hover, fg = ui.Transparent, t.Accent, t.Foreground
+		if o.Variant == ToggleGhost {
+			normal, hover, fg = ui.Transparent, t.Default, t.DefaultForeground
+		}
+		if selected {
+			normal, hover, fg = t.Input.Alpha(0.64), t.Input, t.AccentForeground
+		}
+		if o.Variant == ToggleOutline {
+			if !selected {
+				normal = t.Background
+			}
+			if c.Theme().Dark {
+				normal, hover = t.Input.Alpha(0.32), t.Input.Alpha(0.64)
+				if selected {
+					normal, hover = t.Input, t.Input
+				}
+			}
+		}
+		return normal, hover, fg
+	}
 	side := theme.Scale(c, height)
 	iconSize := theme.Scale(c, glyph)
 
 	e := ui.ButtonBase(c).MinHeight(side).Gap(theme.Space8).
 		PaddingX(paddingX).PaddingY(0).Center().Shrink(0).
-		FocusRing(true).Label(o.Label).TextColor(fg).
-		Role(ui.RoleToggleButton).Checked(selected)
+		FocusRing(true).Label(o.Label).
+		Role(ui.RoleToggleButton).Checked(selected).Busy(o.Loading)
+	swap := busy.Swap(e, o.Loading)
 	if adj.hasCorners {
 		e = e.Radius(adj.corners[0], adj.corners[1], adj.corners[2], adj.corners[3])
 	} else {
@@ -89,16 +113,15 @@ func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.E
 			e.Border(theme.Hairline, t.Input)
 		}
 		if !selected {
-			normal = t.Background
 			e = style.Shadow(e, c, theme.FieldShadows(c.Theme().Dark))
 		}
-		if c.Theme().Dark {
-			normal, hover = t.Input.Alpha(0.32), t.Input.Alpha(0.64)
-			if selected {
-				normal, hover = t.Input, t.Input
-			}
-		}
 	}
+	offNormal, offHover, offInk := faces(false)
+	onNormal, onHover, onInk := faces(true)
+	on := motion.Progress(e, toggleSelectedKey{}, selected)
+	normal, hover, fg := mixState(offNormal, onNormal, on), mixState(offHover, onHover, on),
+		mixState(offInk, onInk, on)
+	e.TextColor(fg)
 	// Disable before the faces read their pointer state: a disabled toggle
 	// paints its rest face, matching coss ui's pointer-events:none.
 	e = style.Disabled(e, o.Disabled)
@@ -110,21 +133,43 @@ func toggleButtonView(c *ui.Context, o ToggleButtonOptions, adj joinAdjust) ui.E
 	if o.IconOnly {
 		e.Width(side).MinWidth(side)
 	}
+	if o.Loading {
+		hover = normal
+	}
 	content := func() {
-		if o.Icon != nil {
-			ui.Icon(c, o.Icon).Size(iconSize, iconSize).Shrink(0).Margin(0, -2)
+		row := ui.Row(c).Center().Gap(theme.Space8).MinWidth(0)
+		if swap > 0 {
+			row.Opacity(1 - swap)
 		}
-		if !o.IconOnly {
-			style.Text(ui.Text(c, o.Label), c, font).SingleLine()
+		row.Children(func() {
+			if o.Icon != nil {
+				stateIcon(c, o.Icon).Size(iconSize, iconSize).Shrink(0).Margin(0, -2)
+			}
+			if !o.IconOnly {
+				style.Text(ui.Text(c, o.Label), c, font).SingleLine()
+			}
+		})
+	}
+	var overlay func()
+	if swap > 0 {
+		overlay = func() {
+			ui.Box(c).Absolute().Left(0).Right(0).Top(0).Bottom(0).Center().Opacity(swap).Children(func() {
+				busy.Spinner(c, glyph, fg)
+			})
 		}
 	}
 	if adj.hasCorners {
-		e = style.CornerFill(c, e, theme.Space8, adj.corners, normal, hover, hover, content, nil)
+		e = style.CornerFill(c, e, theme.Space8, adj.corners, normal, hover, hover, content, overlay)
 	} else {
 		e = style.Background(e, radius, normal, hover, hover)
-		e.Children(content)
+		e.Children(func() {
+			content()
+			if overlay != nil {
+				overlay()
+			}
+		})
 	}
-	if !o.Disabled && o.Selected != nil {
+	if !o.Disabled && !o.Loading && o.Selected != nil {
 		e.OnClick(func() {
 			*o.Selected = !*o.Selected
 			if o.OnChange != nil {

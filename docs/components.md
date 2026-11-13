@@ -173,6 +173,71 @@ coss counterpart. State is caller-owned and the library starts no I/O.
 | Guide card | `mygoui.GuideCard` | Card with optional cover, actions and a close control calling `OnDismiss`. |
 | Resizable panel | `mygoui.ResizablePanel` | Edge handle with pointer and keyboard resizing clamped to `Min`/`Max`, optional collapse; splitter semantics. |
 
+## Components absorbed from other libraries
+
+These come from a survey of web libraries (Ant Design, Mantine, Blueprint,
+Semi, Arco, PrimeReact, shadcn extensions) and native toolkits (WinUI,
+AppKit, GTK/libadwaita, Qt). They supply capability and behavior only; their
+anatomy, tokens and options are this library's. State is caller-owned and the
+library starts no I/O.
+
+| Component | API | Scope |
+| --- | --- | --- |
+| Number flip | `mygoui.NumberFlip` | Shows a caller-formatted `Value`; a change rolls the digits that differ over 300 ms, up when the number rose and down when it fell, and crossfades other characters. Reduced motion crossfades only. At rest it is plain text, read once whole. |
+| Descriptions | `mygoui.Descriptions` | Read-only label/value grid in `Columns` (3 by default) that drops a column below `MinColumnWidth` (200 DIPs); `Span` per item, `Content` for built values, `Bordered` ruled table (stacks labels over values under 320 DIPs), `Truncate` to one line with a tooltip, `Title`, empty values show a dash, `Loading` skeleton bars. Builds every item: page long records. |
+| Statistic | `mygoui.Statistic` | Large value (a `NumberFlip`) under a label with `Prefix`, `Suffix`, `Delta` and `Trend`; `DeltaStatus` overrides the trend colour; `Content` builds a sparkline or bar below. The caller formats numbers; an over-wide value is cut and shown whole in a tooltip; `Loading` skeleton; read as a group named by the label. |
+| Timeline | `mygoui.Timeline` | Vertical events with `Time`, status-coloured or icon markers, `Content` under the description and `OnClick` to make the text a button; `Pending` makes the last marker a spinner on a dashed line; `Recent` shows only the newest items behind a control (`Expanded`, `EarlierLabel`). Not virtualized: bound the history. |
+| Status dot | `mygoui.StatusDot` | Coloured dot with optional label; `Pulse` radiates a ring (live), `Breathe` dims and restores the dot (in progress); both still under reduced motion. Without a visible `Label`, name it so status does not rest on colour. |
+| Highlight | `mygoui.Highlight` | Paragraph with every match of `Queries` marked, rune-wise, `IgnoreCase` optional; overlapping matches share one mark. |
+| Spoiler | `mygoui.Spoiler` | Clamps content at `MaxHeight` (96 scaled DIPs by default), fading the last lines, with a show/hide control (`ShowLabel`, `HideLabel`, caller-owned `Expanded`); animates over 200 ms; content that fits shows whole. The control follows a content change one frame later. |
+| Loading overlay | `mygoui.LoadingOverlay` | Scrim and spinner over arbitrary content while `Visible`, with `Label` (printed under the spinner with `ShowLabel`); the content takes no pointer or keyboard and loses focus; busy to assistive technology. |
+| Banner | `mygoui.Banner` | Square edge-to-edge message row ruled at the bottom, with `Status`, optional `Icon` or `ShowIcon` status glyph, `Action` controls that wrap below a long message and a close button calling `OnDismiss`; the caller stops building it and it fades out over 200 ms. Status role. |
+| Settings group | `mygoui.SettingsGroup` | Titled card of rows (icon, title, subtitle, `Trailing` control with `Control` naming it for assistive technology); a row can be a button with a chevron (`OnClick`), an expander over nested `Rows` (`Expanded`), `Destructive` or `Disabled`; `Action` in the header; the trailing control wraps below the text when narrow. `Loading` shows `LoadingRows` skeletons, or dims existing rows as a refresh. |
+| Password field | `form.PasswordField` | Native password editor with a reveal toggle on a caller-owned `Revealed`, concealed again on blur unless `KeepRevealed`; `Strength` rates the value into a segmented bar and hint (the caller sets the policy). Concealed text stays out of the clipboard and input methods. |
+| Tags input | `form.TagsInput` | Free-text tokens over a native editor. Enter, comma or leaving the field commits (`KeepDraftOnBlur` keeps the draft); pasted text splits at commas, tabs and line breaks. A refused tag (empty, duplicate unless `AllowDuplicates`, past `Max`) stays in the editor and marks the field invalid. Backspace or Left from the empty editor enters the tokens, where arrows move and Backspace or Delete remove; each token also has a button. |
+| Range slider | `form.RangeSlider` | Two-thumb slider over caller-owned low and high values; thumbs never cross and keep `MinGap` apart; paints its own track and thumbs and eases to values the application sets. A nil value renders it disabled. |
+| Choice cards | `form.CheckboxCard`, `form.RadioCard` | A native check box or radio drawn as a whole card with title, description, icon and display-only `Content`; `HideIndicator` leaves the border and fill to show the choice. Radio cards belong in a `RadioGroup` over shared state. |
+| Path field | `form.PathField` | Native editor for a path with a trailing browse button that only calls `OnBrowse` (nil disables it); opens no dialog (see `PickFiles`). A dropped file or folder sets the path. Long paths show start and end around an ellipsis, whole in a tooltip, until focused. |
+| Key-value editor | `form.KeyValueEditor` | Rows of key and value editors for headers or environment variables. Pairs are never modified: `OnChange`, `OnAdd` and `OnRemove` report edits (a nil `OnChange` makes it read-only); pasted `KEY=VALUE` lines go to `OnPaste` as rows. Enter moves key to value and adds a row from the last value. Rows are keyed by position and not virtualized; suits tens of rows. `MarkDuplicateKeys` flags repeats; `ShowHeaders` titles columns. |
+| Mask input | `form.MaskInput`, `form.MaskFormat` | Editor fitted to a `Mask` (`9` digit, `A` letter, `*` either, other runes literal; no escape). The value holds only slot characters. Typed or pasted text is fitted to the slots (a long paste keeps its tail); empty slots show as underscores while focused; undo and redo step through raw values. |
+| Tree | `list.Tree` | Expandable hierarchy with none, single or multiple selection (Cmd/Ctrl toggle, Shift range, Cmd/Ctrl+A), optional checks that roll up to branches, `Guides`, and keyboard with 700 ms typeahead; double click toggles a branch. `Lazy` and `Loading` nodes make a branch before its children exist; `OnContextMenu` fills a row menu (selecting the row first). Needs caller-owned `TreeState`; builds only rows in view; `Loading` shows skeleton or dimmed rows. |
+| Menubar | `navigation.Menubar` | Horizontal menu titles, one Tab stop; arrows move among titles and switch menus while one is open, hovering another title switches. Item `Accelerator` chords work in the window whether or not the menu shows. On Windows and Linux F10 or a tap of Alt focuses the bar and Alt+mnemonic opens a menu. Menus type ahead. `Open` is the caller-owned key of the showing menu. |
+| Split button | `navigation.SplitButton` | Action joined to an arrow opening a `Menu`; one joined group with separate focus. `Loading` (menu stays usable), `ActionDisabled`, `Disabled`; caller-owned `Selected` key is marked in the menu and written on choice, for the caller to make the action. |
+| Overflow list | `navigation.OverflowList` | Actions that fit the width, icon items first dropping labels, the rest in a trailing (or, with `OverflowCollapseStart`, leading) more menu; `Pinned` items stay, `Priority` orders the rest, `Checked` makes toggles, `Separator`; `OnSelect` receives the key. Measures from the previous frame, so a resize settles one frame later and clips meanwhile. |
+| Document tabs | `navigation.DocumentTabs` | Closable, reorderable tab strip: `Dirty` marks, `Pinned` icon-only tabs kept first, `Tooltip`, `Sizing` fixed or shrinking. Drag or Alt+Left/Right to move, middle click, Delete or Cmd/Ctrl+W to close, Ctrl+Tab and Ctrl+PageUp/Down to switch (`WindowShortcuts` for the whole window); context menu closes the tab, others or those to the right (`OnCloseMany`). Overflow scrolls with edge fades and an all-tabs menu. Reports `OnSelect`, `OnClose`, `OnMove` and `OnAdd`; the caller applies them. |
+| Navigation stack | `navigation.NavigationStack` | Drill-down container showing the last of caller-owned `Pages` under a title header with `Actions` at its end; deeper pages slide in. Back by button, mouse back button or Alt+Left (Alt+Right in RTL) through `OnPop`; without `OnPop` there is no way back. `KeepMounted` builds covered pages every frame to keep their state. |
+| Carousel, pips | `navigation.Carousel`, `navigation.PipsPager` | Slides with previous/next and pips, `PerView` and `Loop`; builds only slides in view; never advances on its own. Drag or touchpad swipe turns one page and springs back when short, with resistance at the ends; a position counter shows once pages exceed the pips. The pager is one focus stop with `MaxVisible`. |
+| Status bar | `navigation.StatusBar`, `StatusBarItem`, `StatusBarSeparator` | Bottom window strip with a status-region `Message` and permanent items (text, icon, `Progress` track, `Tooltip`), pressable via `OnClick`; `Tone` gives the bar a warning or error face; when narrow the message keeps a minimum width and items leave by `Priority`. The items are one focus stop. |
+| Popconfirm | `overlay.Popconfirm` | Non-modal confirmation bubble at its anchor; Escape or an outside press cancels. `Destructive` adds a warning glyph, a danger confirm and puts the initial focus on Cancel (Confirm otherwise). `Loading` shows confirm pending and holds the bubble. |
+| Teaching tip | `overlay.TeachingTip` | Non-modal note with an arrow at its anchor, or at the bottom centre without one; takes no focus. `Footer` actions, `HideClose`, `OnDismiss`. |
+| Tour | `overlay.Tour` | Modal walk through caller-owned `TourState` (`Open`, `Step`) over `TourStep`s (`Anchor` handle, title, body, `Placement`). A spotlight cut from a dimmed window shows the target; one panel points at it with progress dots, Back and Next (Done on the last step). Spotlight and panel travel together between steps while the content crossfades; a step without a laid-out target centres the panel. Right or Enter goes on, Left back, Escape or close ends it (`OnDismiss`; `OnFinish` after Done); presses outside the panel do nothing. |
+| Shortcuts dialog | `overlay.ShortcutsDialog` | Grouped shortcut sheet, two columns from 800 DIPs, with a search field that matches every word against labels and keys (`ctrl k`, `cmd`) and marks hits in labels. `Shortcut.Hotkey` shows the platform's key caps; `Keys` overrides. Not virtualized. |
+| Action bar | `overlay.ActionBar` | Floating toolbar at the bottom centre of its container while `open`, one Tab stop; build it last in that container. `Count` rolls and is announced; `Actions` (`navigation.OverflowItem`) fold into a menu when narrow while count and close stay; Escape in the bar calls `OnClose`; it rises in and out over 200 ms. `ReturnFocus` receives focus when it closes with focus inside. |
+| About dialog | `overlay.AboutDialog` | Dialog with icon, name, version (with a copy button for `CopyInfo`) and description fixed above scrolling `Links` and `Sections`; `Collapsible` sections fold a long licence into a scrolling monospace body; every part optional. |
+| Diff viewer | `content.DiffViewer` | Read-only diff of `Old` and `New`, unified or side by side, with word marks, `ContextLines` (3 by default) and expandable gaps (`ExpandUnchanged` shows all). `Title` adds a header with added/deleted counts, a layout toggle (`Layout` is the start), previous/next change (also F7, Shift+F7, while `Height` scrolls) and a copy of `New`; `NoLineNumbers`, `Wrap`, `OnError`. Native viewer lays out only lines in view. |
+| JSON viewer | `content.JSONViewer` | Collapsible tree of one JSON document, building only rows in view, with caller-owned `JSONViewerState`. `ExpandDepth` sets the open levels (2 by default); `Toolbar` adds search with match count and stepping (`State.Query`); the header expands, collapses and copies all; a row's menu copies its value or path, Cmd/Ctrl+C copies the chosen value, double click toggles. Invalid source returns the parse error and shows it in place of the tree. |
+| Log viewer | `content.LogViewer` | Monospace lines from `Lines` or `Line` and `Count`, optional levels, numbers, `Follow` (with a jump-to-end button) and `Height`; builds only lines in view. `Toolbar` adds search, level toggles, a match count and a wrap toggle, backed by `LogViewerState` (`Query`, `Levels`, `NoWrap`; raise `Revision` after in-place edits); a line's menu copies it or the whole log. A selection does not span lines. |
+
+## Loading and state motion
+
+Root `DESIGN.md` ("State changes move", "Loading is one state") holds the
+rule; `internal/busy` holds the treatment. A `Loading` flag is caller-owned
+and starts no work. It is taken by Button, ToggleButton,
+navigation.SplitButton, form.Switch, Input, TextField, SearchField, Select,
+ComboBox, Autocomplete, data.Table, list.ListBox, list.Tree,
+navigation.Command, Descriptions, Statistic and SettingsGroup; use
+LoadingOverlay for arbitrary regions.
+
+- **Controls:** a pending control keeps its size and look, swaps its content
+  for a spinner and does not fire.
+- **Fields:** stay editable and show a trailing spinner.
+- **Collections:** with no rows they show skeleton rows (`LoadingRows`); with
+  rows they keep them, fade them, ignore input and show a top progress line
+  after 150 ms.
+
+Hover, focus and popup highlights stay instant. Reduced motion settles
+movement at once while fades still run.
+
 ## Shared limits
 
 - **Toolkit/platform:** OS context-menu chrome, tooltip timing, scrollbars,

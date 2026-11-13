@@ -3,7 +3,6 @@ package mygoui
 import (
 	"strconv"
 	"strings"
-	"time"
 	"unicode"
 	"unicode/utf8"
 
@@ -61,20 +60,14 @@ func Avatar(c *ui.Context, o AvatarOptions) ui.Element {
 		ui.Row(c).Size(size, size).Center().Radius(radius).Clip().Background(bg).
 			Children(func() {
 				if hasImage(o.Image) {
-					image := ui.Image(c, o.Image).Size(size, size).Fit(ui.Cover).Role(ui.RoleNone)
-					if !theme.ReduceMotion(c) {
-						// A newly loaded portrait fades in; an image already
-						// present on the first build shows immediately.
-						image.Transition(ui.ElementTransition{
-							Duration: 250 * time.Millisecond,
-							Ease:     ui.EaseOut,
-							Enter:    &ui.Motion{Opacity: 0},
-						})
-					}
+					// A newly loaded portrait fades in over the initials; an
+					// image already present on the first build shows at once.
+					ui.Image(c.Key(avatarImage{}), o.Image).Size(size, size).Fit(ui.Cover).Role(ui.RoleNone).
+						Transition(fadeTransition)
 					return
 				}
-				fallback := style.Text(ui.Text(c, st.initials), c, ts)
-				fallback.TextColor(ink).SingleLine().Role(ui.RoleNone)
+				fallback := style.Text(ui.Text(c.Key(avatarInitialsKey{}), st.initials), c, ts)
+				fallback.TextColor(ink).SingleLine().Role(ui.RoleNone).Transition(fadeTransition)
 			})
 		if o.Badge != nil {
 			ui.Box(c).Absolute().Right(0).Bottom(0).Children(o.Badge)
@@ -97,7 +90,11 @@ func avatarMetrics(c *ui.Context, size AvatarSize) (float32, float32, theme.Text
 	return actual, actual / 2, theme.TextStyle{Size: dip * 0.375, LineHeight: dip * 0.5, Weight: theme.WeightMedium}
 }
 
-type avatarStateKey struct{}
+type (
+	avatarStateKey    struct{}
+	avatarImage       struct{}
+	avatarInitialsKey struct{}
+)
 
 // avatarState keeps the initials generated for the last name and fallback.
 type avatarState struct {

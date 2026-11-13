@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Cyenoch/mygoui/internal/formstyle"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -167,8 +168,8 @@ func sliderSingle(c *ui.Context, o SliderOptions, state SliderState, min, max, s
 	// leaving element paints in later passes, where el has expired.
 	pressed, focused := el.Pressed(), el.FocusVisible()
 	scale := sliderThumbScale(el, pressed)
+	f := sliderShown(el, "slider-fill", sliderFraction(*state.Value, min, max), pressed)
 	el.Draw(func(p *ui.Painter, r ui.Rect) {
-		f := sliderFraction(*state.Value, min, max)
 		x := r.X + pad + (r.W-2*pad)*f
 		if rtl {
 			x = r.X + r.W - pad - (r.W-2*pad)*f
@@ -200,9 +201,13 @@ func sliderRange(c *ui.Context, o SliderOptions, state SliderState, min, max, st
 		el.OnChange(o.OnChange)
 	}
 	focusWithin := el.FocusWithin()
-	scale := sliderThumbScale(el, el.Pressed())
-	el.DrawOver(func(p *ui.Painter, r ui.Rect) {
-		f0, f1 := sliderFraction(*state.Low, min, max), sliderFraction(*state.High, min, max)
+	pressed := el.Pressed()
+	scale := sliderThumbScale(el, pressed)
+	f0 := sliderShown(el, "slider-low", sliderFraction(*state.Low, min, max), pressed)
+	f1 := sliderShown(el, "slider-high", sliderFraction(*state.High, min, max), pressed)
+	// Draw replaces the native track and knobs; DrawOver would leave them
+	// showing around this face.
+	el.Draw(func(p *ui.Painter, r ui.Rect) {
 		x0 := r.X + pad + (r.W-2*pad)*f0
 		x1 := r.X + pad + (r.W-2*pad)*f1
 		if rtl {
@@ -258,8 +263,8 @@ func sliderVertical(c *ui.Context, o SliderOptions, state SliderState, min, max,
 		}
 		pressed, focused := el.Pressed(), el.FocusVisible()
 		scale := sliderThumbScale(el, pressed)
+		f := sliderShown(el, "slider-fill", sliderFraction(*state.Value, min, max), pressed)
 		el.Draw(func(p *ui.Painter, r ui.Rect) {
-			f := sliderFraction(*state.Value, min, max)
 			x := r.X + r.W/2
 			cy := r.Y + r.H - pad - (r.H-2*pad)*f
 			track := ui.Rect{X: x - theme.Scale(c, 2), Y: r.Y, W: theme.Scale(c, 4), H: r.H}
@@ -306,6 +311,15 @@ func sliderPaintTrack(p *ui.Painter, r ui.Rect, t theme.Palette, x float32, rtl 
 		fill.W = x - track.X
 	}
 	p.Fill(fill, t.Primary, 2)
+}
+
+// sliderShown is the fraction a slider draws: it eases to a value the
+// application set and follows a held pointer at once.
+func sliderShown(el ui.Element, key string, f float32, held bool) float32 {
+	if held {
+		return el.Jump(key, f)
+	}
+	return el.AnimateTo(key, f, ui.Animation{Duration: motion.Reveal, Ease: ui.EaseOut})
 }
 
 func sliderThumbScale(el ui.Element, pressed bool) float32 {

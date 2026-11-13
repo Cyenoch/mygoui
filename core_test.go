@@ -2,6 +2,7 @@ package mygoui_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
@@ -90,6 +91,7 @@ func TestButtonLoadingPreservesNaturalWidthAndSiblingPosition(t *testing.T) {
 			sibling := findRect(t, tt, "After")
 			pending = true
 			tt.Frame()
+			tt.Advance(200 * time.Millisecond)
 			if got := findRect(t, tt, "Export selected records"); got != rest {
 				t.Fatalf("pending geometry = %+v, want %+v", got, rest)
 			}

@@ -51,15 +51,30 @@ jobs. Application startup owns those policies.
 | `mygoui` | Actions, surfaces, text, feedback, Frame, Group, Sidebar, ScrollArea and ScrollFade |
 | `theme` | Semantic colors, radius/spacing/type metrics and process-wide host preferences |
 | `form` | Native fields, choices, editors, search and plain-text Composer |
-| `list` | Virtualized keyed ListBox and selection state |
+| `list` | Virtualized keyed ListBox, Tree and selection state |
 | `navigation` | Accordion/Disclosure, tabs, segments, breadcrumbs, pagination, toolbar, menus and commands |
-| `overlay` | Dialogs, sheets, drawers, popovers, previews, tooltips and toast state |
+| `overlay` | Dialogs, sheets, drawers, popovers, previews, tooltips, tours and toast state |
 | `date` | Gregorian calendars, date/range pickers and time editing |
 | `data` | Native virtualized table and column/selection state |
 | `chart` | Native charts, axes, legends, brush, annotations and caller-owned inspection |
 | `color` | Additional native color editing components |
 | `locale` | Library messages; application language registration remains outside the library |
 | `fonts` | Opt-in embedded Cal Sans and explicit startup registration; no import-side registration |
+
+`internal/busy` holds the loading presentation components share: the
+crossfade to a spinner, the 150 ms wait before a region shows one, the dimmed
+refresh and its top line. `internal/motion` holds the shared state-change
+durations (State 150 ms, Reveal 200 ms, Roll 300 ms) and the colour and
+progress helpers built on them. Components use both instead of choosing their
+own timings; [DESIGN.md](../DESIGN.md) states the rules.
+
+Dependencies run one way: `theme` and `locale` import no family; the root
+imports only them and `internal`; `list` and `content` import the root;
+`form` imports the root and `list`; `navigation` imports the root, `form`
+and `list` (menu accelerators use `form.Hotkey`); `overlay` imports the root,
+`content`, `form` and `navigation` (ActionBar, ShortcutsDialog and
+AboutDialog build on them); `date`, `color` and `chart` import `form`; `data`
+imports the root. No package imports one that imports it.
 
 Public APIs live at the module root or in coherent family packages.
 `internal/gallery` and `examples/` are consumers, not an alternate API layer.

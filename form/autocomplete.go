@@ -5,8 +5,8 @@ import (
 
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/anchored"
+	"github.com/Cyenoch/mygoui/internal/busy"
 	"github.com/Cyenoch/mygoui/internal/formstyle"
-	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/list"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -185,6 +185,7 @@ func Autocomplete(c *ui.Context, o AutocompleteOptions) ui.Element {
 			field.Wrap().Gap(theme.Space4).PaddingY(theme.Space4)
 		}
 		field = fieldSurface(field, c, o.Variant, invalid, o.Disabled)
+		shown := busy.Swap(field, o.Loading)
 		field.OnClick(func() {
 			if o.Disabled {
 				return
@@ -204,7 +205,7 @@ func Autocomplete(c *ui.Context, o AutocompleteOptions) ui.Element {
 			c.Key("autocomplete-input")
 			input = ui.TextInputBase(c, &s.Query).Grow(1).MinWidth(0).Shrink(1).
 				FocusRing(false).Placeholder(placeholder).Label(name).
-				Description(o.Description).Error(errText)
+				Description(o.Description).Error(errText).Busy(o.Loading)
 			if mode == list.SelectionMultiple {
 				input.MinWidth(theme.Scale(c, 48))
 			}
@@ -215,6 +216,9 @@ func Autocomplete(c *ui.Context, o AutocompleteOptions) ui.Element {
 				s.placeCaret = false
 				end := utf8.RuneCountInString(s.Query)
 				input.SetTextSelection(end, end)
+			}
+			if shown > 0 {
+				swapGlyph(c, busySize, shown, func() {})
 			}
 			if o.Clearable {
 				if (s.Query != "" || s.List.SelectionCount(mode) > 0) && !o.Disabled {
@@ -344,33 +348,24 @@ func autoPopup(c *ui.Context, o AutocompleteOptions, s *AutocompleteState, field
 		}
 		panel = anchored.Surface(c, panel.Padding(0).Clip().KeepFocus(), radius)
 		anchored.Apply(panel, anchor, o.Placement, mygoui.SideBottom)
-		ui.Column(c).MinWidth(0).Children(func() {
-			listEmpty := empty
-			if o.Loading {
-				listEmpty = ""
-			}
-			list.ListBox(c, list.ListBoxOptions{
-				Label:             o.Label,
-				Items:             s.filtered.items,
-				Sections:          s.filtered.sections,
-				Selection:         mode,
-				State:             &s.List,
-				Padding:           theme.Space4,
-				MaxHeight:         maxHeight,
-				Empty:             listEmpty,
-				NoFocusOnClick:    true,
-				KeyboardHighlight: s.Trigger.Focused(c),
-				OnAction: func(key string) {
-					previous := s.Query
-					autoFinalize(s, o, key, mode)
-					s.Trigger.Focus(c)
-					autoNotify(o, s, previous)
-				},
-			})
-			if o.Loading {
-				loadingRow(c)
-			}
-		})
+		loadingList(c, list.ListBoxOptions{
+			Label:             o.Label,
+			Items:             s.filtered.items,
+			Sections:          s.filtered.sections,
+			Selection:         mode,
+			State:             &s.List,
+			Padding:           theme.Space4,
+			MaxHeight:         maxHeight,
+			Empty:             empty,
+			NoFocusOnClick:    true,
+			KeyboardHighlight: s.Trigger.Focused(c),
+			OnAction: func(key string) {
+				previous := s.Query
+				autoFinalize(s, o, key, mode)
+				s.Trigger.Focus(c)
+				autoNotify(o, s, previous)
+			},
+		}, o.Loading, len(s.filtered.items)+sectionItemCount(s.filtered.sections))
 	})
 }
 
@@ -430,16 +425,6 @@ func autoTextKey(c *ui.Context, o AutocompleteOptions, s *AutocompleteState, k u
 		}
 	}
 	return false
-}
-
-// loadingRow is the caller-owned async indicator.
-func loadingRow(c *ui.Context) {
-	t := theme.Colors(c)
-	ui.Row(c).Gap(theme.Space8).AlignItems(ui.Center).
-		Padding(theme.Space8, theme.Space12, theme.Space8, theme.Space12).Children(func() {
-		mygoui.Spinner(c, mygoui.SpinnerOptions{Size: mygoui.SpinnerSmall})
-		style.Text(ui.Text(c, locale.M().Loading), c, theme.SM()).TextColor(t.Muted)
-	})
 }
 
 var autoNoIndicator = false

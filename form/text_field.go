@@ -15,7 +15,9 @@ type TextFieldOptions struct {
 	Required, Disabled        bool
 	ReadOnly, Invalid         bool
 	FullWidth, Password       bool
-	OnChange, OnSubmit        func()
+	// Loading shows a spinner at the field's end; the field stays editable.
+	Loading            bool
+	OnChange, OnSubmit func()
 }
 
 // TextField composes a labelled single-line field. Typing writes through to
@@ -34,7 +36,7 @@ func TextField(c *ui.Context, o TextFieldOptions) ui.Element {
 		FullWidth:   o.FullWidth,
 	}
 	return inputField(c, input, true, func() {
-		inputEditor(c, value, inputCoreOptions{
+		loadingInput(c, value, inputCoreOptions{
 			Placeholder: o.Placeholder,
 			Name:        inputAccessibleName(o.Label, o.AriaLabel, o.Placeholder),
 			Variant:     o.Variant,
@@ -45,6 +47,6 @@ func TextField(c *ui.Context, o TextFieldOptions) ui.Element {
 			FullWidth:   o.FullWidth,
 			OnChange:    o.OnChange,
 			OnSubmit:    o.OnSubmit,
-		})
+		}, o.Loading)
 	})
 }

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -79,11 +80,12 @@ func uploadZone(c *ui.Context, o UploadOptions) {
 		BorderStyle(ui.BorderDashed).Role(ui.RoleGroup).Label(o.Title)
 	zone = style.Disabled(zone, o.Disabled)
 	// A disabled zone is no drop target, so MyGo hands it nothing.
+	border, fill := t.Input, t.Accent.Alpha(0)
 	if zone.FileDragOver() {
-		zone.Border(theme.Hairline, t.Ring).Background(t.Accent)
-	} else {
-		zone.Border(theme.Hairline, t.Input)
+		border, fill = t.Ring, t.Accent
 	}
+	zone.Border(theme.Hairline, motion.Color(zone, "border", border)).
+		Background(motion.Color(zone, "fill", fill))
 	if paths := uploadAccepted(zone.DroppedFiles(), o.Accept, o.Multiple); len(paths) > 0 && o.OnFiles != nil {
 		o.OnFiles(paths)
 	}

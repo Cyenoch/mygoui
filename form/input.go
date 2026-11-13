@@ -1,6 +1,8 @@
 package form
 
 import (
+	"github.com/Cyenoch/mygoui/internal/busy"
+	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -16,7 +18,10 @@ type InputOptions struct {
 	Required, Disabled        bool
 	ReadOnly, Invalid         bool
 	FullWidth, Password       bool
-	OnChange, OnSubmit        func()
+	// Loading shows a spinner at the field's end. The field stays editable;
+	// the caller owns the flag and the work behind it.
+	Loading            bool
+	OnChange, OnSubmit func()
 }
 
 // inputCoreOptions is the shared bare-editor configuration used by Input,
@@ -94,6 +99,39 @@ func inputEditor(c *ui.Context, value *string, o inputCoreOptions) ui.Element {
 	return e
 }
 
+// loadingInput is inputEditor with a trailing spinner while loading. The
+// spinner is painted on the editor, which stays the one element callers size
+// and focus; the end padding lasts from the flag to the end of the fade, so
+// typed text never runs under the spinner.
+func loadingInput(c *ui.Context, value *string, o inputCoreOptions, loading bool) ui.Element {
+	editor := inputEditor(c, value, o).Busy(loading)
+	shown := busy.Swap(editor, loading)
+	if !loading && shown == 0 {
+		return editor
+	}
+	size, inset := theme.Scale(c, busySize), theme.Scale(c, theme.Space12)
+	editor.PaddingEnd(inset + size + theme.Scale(c, theme.Space8))
+	ink := theme.Colors(c).MutedForeground.Alpha(shown)
+	still := theme.ReduceMotion(c)
+	rtl := c.Direction() == ui.RightToLeft
+	// DrawOver also carries the focus ring, which this replaces.
+	focused := editor.FocusWithin() && !o.Disabled
+	ring := formstyle.FieldFace(c, focused, o.Invalid).Ring
+	return editor.DrawOver(func(p *ui.Painter, r ui.Rect) {
+		if focused {
+			formstyle.FieldRing(p, r, theme.RadiusScale().Field, ring)
+		}
+		x := r.X + r.W - inset - size/2
+		if rtl {
+			x = r.X + inset + size/2
+		}
+		busy.PaintSpinner(p, x, r.Y+r.H/2, size, ink, still)
+	})
+}
+
+// busySize is the spinner a field shows in place of a 14 DIP affordance.
+const busySize = 14
+
 // inputField composes label, description and error around an input. The
 // description is hidden while invalid.
 func inputField(c *ui.Context, o InputOptions, hideDescriptionOnInvalid bool, body func()) ui.Element {
@@ -124,7 +162,7 @@ func Input(c *ui.Context, value *string, o InputOptions) ui.Element {
 	o.Invalid = o.Invalid || o.Error != ""
 	value = inputTextAnchor(value)
 	build := func() ui.Element {
-		return inputEditor(c, value, inputCoreOptions{
+		return loadingInput(c, value, inputCoreOptions{
 			Placeholder: o.Placeholder,
 			Name:        inputAccessibleName(o.Label, o.AriaLabel, o.Placeholder),
 			Variant:     o.Variant,
@@ -135,7 +173,7 @@ func Input(c *ui.Context, value *string, o InputOptions) ui.Element {
 			FullWidth:   o.FullWidth,
 			OnChange:    o.OnChange,
 			OnSubmit:    o.OnSubmit,
-		})
+		}, o.Loading)
 	}
 	if !inputNeedsField(o) {
 		return build()

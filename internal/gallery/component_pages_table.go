@@ -45,6 +45,8 @@ func init() {
 					st.ensure()
 					tableEmptyExample(c, st)
 				}},
+			{Title: "Loading", Description: "Placeholder rows under the header; with rows, a dimmed refresh.",
+				Demo: tableLoadingDemo},
 			{Title: "Disabled row", Description: "One row cannot be focused or selected.",
 				Demo: func(c *ui.Context, s *State) {
 					st := StateOf[tableState](s, "table")
@@ -65,6 +67,8 @@ func init() {
 }).Grow(1)`,
 		Params: []ComponentParam{
 			{"Label", "string", "required", "Names the table for assistive technology."},
+			{"Loading", "bool", "false", "Placeholder rows without data; a dimmed refresh line with rows."},
+			{"LoadingRows", "int", "5", "Number of placeholder rows."},
 			{"Variant", "data.TableVariant", "TablePrimary", "Framed card or a flush table under a header card."},
 			{"Columns", "[]data.TableColumnOptions", "required", "Columns left to right; sortable and resizable."},
 			{"Rows", "int", "0", "Caller row count; rows build only as they scroll in."},

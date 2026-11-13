@@ -1,6 +1,7 @@
 package mygoui
 
 import (
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -47,6 +48,12 @@ type ChipOptions struct {
 	Icon    *ui.SVG
 }
 
+type (
+	chipFillKey   struct{}
+	chipInkKey    struct{}
+	chipBorderKey struct{}
+)
+
 // Chip renders a compact status label. Its icon follows the label size.
 func Chip(c *ui.Context, o ChipOptions) ui.Element {
 	bg, fg := chipColors(c, o.Color, o.Variant)
@@ -64,7 +71,8 @@ func Chip(c *ui.Context, o ChipOptions) ui.Element {
 	iconSize := theme.Scale(c, ts.Size)
 	e := ui.Row(c).Shrink(0).Center().Gap(theme.Space2).AlignSelf(ui.Start).
 		Padding(paddingY, paddingX, paddingY, paddingX).Radius(theme.RadiusScale().SM).
-		Background(bg).TextColor(fg).Label(o.Label)
+		Label(o.Label)
+	e.Background(motion.Color(e, chipFillKey{}, bg)).TextColor(motion.Color(e, chipInkKey{}, fg))
 	e.Children(func() {
 		if o.Icon != nil {
 			ui.Icon(c, o.Icon).Size(iconSize, iconSize).Shrink(0)
@@ -177,8 +185,9 @@ func Badge(c *ui.Context, o BadgeOptions) ui.Element {
 	}
 	e := ui.Row(c).Shrink(0).Center().AlignSelf(ui.Start).
 		MinHeight(theme.Scale(c, minSize)).MinWidth(theme.Scale(c, minSize)).
-		Radius(radius).Background(bg).TextColor(fg).
-		Border(theme.Hairline, border).Gap(theme.Space4).PaddingX(padding).Label(o.Label)
+		Radius(radius).Gap(theme.Space4).PaddingX(padding).Label(o.Label)
+	e.Background(motion.Color(e, chipFillKey{}, bg)).TextColor(motion.Color(e, chipInkKey{}, fg)).
+		Border(theme.Hairline, motion.Color(e, chipBorderKey{}, border))
 	e.Children(func() {
 		if o.Icon != nil {
 			ui.Icon(c, o.Icon).Size(theme.Scale(c, 12), theme.Scale(c, 12)).

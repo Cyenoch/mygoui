@@ -1,6 +1,8 @@
 package data
 
 import (
+	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/internal/busy"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -243,6 +245,12 @@ type TableOptions struct {
 	// Empty builds the empty state shown when Rows is 0 or every column is
 	// hidden. Without it, the table shows the localized empty message.
 	Empty func(c *ui.Context) ui.Element
+	// Loading marks the rows as on their way. With no rows the table shows
+	// LoadingRows placeholder rows under the real header; with rows it dims
+	// them, ignores input and draws a progress line along the top edge.
+	Loading bool
+	// LoadingRows is the number of placeholder rows; 0 shows 5.
+	LoadingRows int
 	// Footer builds the row under the body with vertical centering. Use it for a result
 	// summary and pagination; FillWidth or Grow its element to span the row.
 	Footer func(c *ui.Context) ui.Element
@@ -284,15 +292,25 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 
 	tl := newTableLayout(c, o, st, t)
 	chrome := tableChrome(o, t, len(tl.columns) > 0 || tl.actions >= 0)
+	if o.Loading && o.Rows <= 0 && len(tl.columns) > 0 {
+		o.Rows, tl.skeleton = loadingRows(o.LoadingRows), true
+		tl.o = o
+	}
+	root.Busy(o.Loading)
 	if o.Rows <= 0 || len(tl.columns) == 0 {
 		root.Children(func() { buildEmpty(c, o, st, tl, chrome) })
 		buildTableFooter(c, o, root)
 		return root
 	}
 
-	st.wire(&o)
+	if tl.skeleton {
+		st.wireSkeleton()
+	} else {
+		st.wire(&o)
+	}
+	shown := busy.Show(root, o.Loading && !tl.skeleton)
 	var table ui.Element
-	root.Children(func() {
+	buildTable := func() {
 		original := c.Theme()
 		cellSelection := st.List.CellSelect && st.Selection.Mode == TableSelectionMultiple
 		if o.Variant == TableSecondary {
@@ -339,15 +357,30 @@ func Table(c *ui.Context, o TableOptions) ui.Element {
 			tl.hovered = table.Hovered()
 			tl.hoverY = table.LayoutBounds().Y + y
 		}
+		if tl.skeleton {
+			table.IgnoreInput(true)
+		} else {
+			busy.Dim(table, o.Loading, shown)
+		}
+	}
+	root.Children(func() {
+		if tl.skeleton {
+			mygoui.SkeletonGroup(c, mygoui.SkeletonGroupOptions{}, buildTable).Grow(1)
+		} else {
+			buildTable()
+		}
+		busy.Line(c, shown, tableCorner(o))
 	})
 
-	changed := st.afterBuild(&o, table.Changed(), sortChanged)
-	if changed && o.OnSelectionChange != nil {
-		o.OnSelectionChange(st.Selection)
-	}
-	if table.Submitted() && o.OnRowActivate != nil {
-		if row, ok := st.activeRow(&o); ok {
-			o.OnRowActivate(row)
+	if !tl.skeleton {
+		changed := st.afterBuild(&o, table.Changed(), sortChanged)
+		if changed && o.OnSelectionChange != nil {
+			o.OnSelectionChange(st.Selection)
+		}
+		if table.Submitted() && o.OnRowActivate != nil {
+			if row, ok := st.activeRow(&o); ok {
+				o.OnRowActivate(row)
+			}
 		}
 	}
 	buildTableFooter(c, o, root)
@@ -401,6 +434,8 @@ type tableLayout struct {
 	colors  theme.Palette
 	columns []columnBuild
 	actions int // visible index of the actions column, -1 for none
+	// skeleton builds placeholder cells in place of caller rows.
+	skeleton bool
 
 	// A row is resolved once for all of its cells in a pass: RowKey and the
 	// selection lookup are per row, not per cell.
@@ -571,6 +606,10 @@ const actionsColumnID = "\x00data.table.actions"
 // buildCell builds body cell (row, col). It runs inside ui.Table's row build,
 // so constructors called by the caller's builder attach to the cell.
 func (tl *tableLayout) buildCell(c *ui.Context, row, col int) {
+	if tl.skeleton {
+		tl.buildSkeletonCell(c, row, col)
+		return
+	}
 	if row < 0 || row >= len(tl.st.order) {
 		return
 	}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/anchored"
+	"github.com/Cyenoch/mygoui/internal/busy"
 	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/list"
@@ -30,13 +31,17 @@ type ComboBoxOptions struct {
 	Invalid     bool
 	FullWidth   bool
 	Clearable   bool
-	Selection   list.SelectionMode
-	Variant     ControlVariant
-	Items       []list.ListBoxItem
-	Sections    []list.ListBoxSection
-	State       *ComboBoxState
-	MaxHeight   float32
-	Placement   mygoui.Placement
+	// Loading crossfades the chevron to a spinner. The popup shows a Loading
+	// row when it has no options and keeps its rows otherwise. The input
+	// stays editable.
+	Loading   bool
+	Selection list.SelectionMode
+	Variant   ControlVariant
+	Items     []list.ListBoxItem
+	Sections  []list.ListBoxSection
+	State     *ComboBoxState
+	MaxHeight float32
+	Placement mygoui.Placement
 
 	// AllowsCustomValue keeps text that matches no option.
 	AllowsCustomValue bool
@@ -294,6 +299,7 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 		}
 		field.Label(name).Description(o.Description).Error(errText)
 		field = fieldSurface(field, c, o.Variant, invalid, o.Disabled)
+		shown := busy.Swap(field, o.Loading)
 
 		field.OnClick(func() {
 			if o.Disabled {
@@ -323,7 +329,7 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 			c.Key("combobox-input")
 			input = ui.TextInputBase(c, &s.Text).Grow(1).MinWidth(0).
 				Shrink(1).FocusRing(false).Placeholder(o.Placeholder).
-				Label(name).Description(o.Description).Error(errText)
+				Label(name).Description(o.Description).Error(errText).Busy(o.Loading)
 			if multiple {
 				input.MinWidth(theme.Scale(c, 48))
 			}
@@ -347,7 +353,7 @@ func ComboBox(c *ui.Context, o ComboBoxOptions) ui.Element {
 					ui.Box(c).Width(theme.Scale(c, 20)).Height(theme.Scale(c, 20)).Shrink(0)
 				}
 			}
-			selectIndicator(c)
+			selectIndicator(c, shown)
 		})
 		if input.Valid() {
 			focused := input.Focused() || s.Input.FocusWithin(c)
@@ -600,7 +606,7 @@ func comboPopup(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, field ui.Ele
 		panel.MinWidth(anchor.Bounds().W)
 		panel = anchored.Surface(c, panel.Padding(0).Clip().KeepFocus(), radius)
 		anchored.Apply(panel, anchor, o.Placement, mygoui.SideBottom)
-		list.ListBox(c, list.ListBoxOptions{
+		loadingList(c, list.ListBoxOptions{
 			Label:             o.Label,
 			Items:             s.filtered.items,
 			Sections:          s.filtered.sections,
@@ -615,6 +621,6 @@ func comboPopup(c *ui.Context, o ComboBoxOptions, s *ComboBoxState, field ui.Ele
 			OnAction: func(key string) {
 				comboCommit(c, o, s, key, mode, true)
 			},
-		})
+		}, o.Loading, len(s.filtered.items)+sectionItemCount(s.filtered.sections))
 	})
 }

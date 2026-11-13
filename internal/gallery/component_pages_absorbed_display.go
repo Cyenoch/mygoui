@@ -91,7 +91,7 @@ func init() {
 	})
 
 	RegisterComponent(ComponentPage{
-		ID: "result", Title: "Result", Group: "Display", Order: 150,
+		ID: "result", Title: "Result", Group: "Patterns", Order: 150,
 		Description: "The outcome of an operation: status icon, text and actions.",
 		Examples: []ComponentExample{
 			{Title: "Success", Demo: absorbedDisplayDemo(resultSuccessBody)},
@@ -118,7 +118,7 @@ func init() {
 	})
 
 	RegisterComponent(ComponentPage{
-		ID: "guidecard", Title: "GuideCard", Group: "Display", Order: 160,
+		ID: "guidecard", Title: "GuideCard", Group: "Patterns", Order: 160,
 		Description: "A dismissible card that introduces a feature.",
 		Examples: []ComponentExample{
 			{Title: "With cover", Demo: absorbedDisplayDemo(guideCardCoverBody)},

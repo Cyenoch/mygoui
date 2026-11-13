@@ -83,12 +83,14 @@ func overviewWidth(c *ui.Context, _ *State) float32 {
 func docsPageColumn(c *ui.Context, s *State) {
 	page, ok := currentPage(s)
 	pad := docsPadding(c)
-	maxWidth, align := float32(docsMaxWidth), ui.Start
+	maxWidth := float32(docsMaxWidth)
 	if ok && page.ID == "overview" {
-		maxWidth, align = landingMaxWidth, ui.Center
+		maxWidth = landingMaxWidth
 	}
+	// The column sits in the middle of the room between the sidebar and
+	// the page index, as the coss docs do, not against the sidebar.
 	ui.Column(c).FillWidth().MinWidth(0).MaxWidth(theme.Scale(c, maxWidth)).
-		AlignSelf(align).Padding(pad, pad, theme.Scale(c, theme.Space64), pad).
+		AlignSelf(ui.Center).Padding(pad, pad, theme.Scale(c, theme.Space64), pad).
 		Gap(theme.Scale(c, theme.Space24)).Children(func() {
 		if !ok {
 			mygoui.EmptyState(c, mygoui.EmptyStateOptions{Title: "No components found"})

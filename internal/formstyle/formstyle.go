@@ -2,6 +2,7 @@
 package formstyle
 
 import (
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -62,15 +63,24 @@ func FieldFace(c *ui.Context, focused, invalid bool) Face {
 	return f
 }
 
+// borderKey names a field shell's animated resting border.
+type borderKey struct{}
+
 // SurfaceFocused styles a compound shell whose editor owns the focus condition.
 func SurfaceFocused(e ui.Element, c *ui.Context, focused, invalid, disabled bool) ui.Element {
 	radius := theme.RadiusScale().Field
 	focused = focused && !disabled
 	face := FieldFace(c, focused, invalid)
+	// A field turning invalid or valid fades its border; the focus border
+	// follows the keyboard and the pointer at once.
+	border := motion.Color(e, borderKey{}, FieldFace(c, false, invalid).Border)
+	if focused {
+		border = face.Border
+	}
 	e = e.Radius(radius).Clip()
 	e.Draw(func(p *ui.Painter, r ui.Rect) {
 		p.Fill(r, face.Fill, radius)
-		p.Stroke(r, face.Border, radius, theme.Hairline)
+		p.Stroke(r, border, radius, theme.Hairline)
 	})
 	if focused {
 		e.DrawOver(func(p *ui.Painter, r ui.Rect) { FieldRing(p, r, radius, face.Ring) })

@@ -15,6 +15,15 @@ const (
 	ImageFailed
 )
 
+// imageFace keys what the box shows, so that one face fades into the next.
+type imageFace uint8
+
+const (
+	imageShown imageFace = iota
+	imageLoading
+	imageFailed
+)
+
 // ImageFit selects how the picture fills its box.
 type ImageFit uint8
 
@@ -75,12 +84,13 @@ func Image(c *ui.Context, o ImageOptions) ui.Element {
 			if o.Fit == ImageContain {
 				fit = ui.Contain
 			}
-			ui.Image(c, o.Source).Fill().Fit(fit).Role(ui.RoleNone)
+			ui.Image(c.Key(imageShown), o.Source).Fill().Fit(fit).Role(ui.RoleNone).
+				Transition(fadeTransition)
 		case o.Status == ImageLoading:
-			Skeleton(c, SkeletonOptions{Radius: radius}).Fill()
+			Skeleton(c.Key(imageLoading), SkeletonOptions{Radius: radius}).Fill().Transition(fadeTransition)
 		default:
-			ui.Column(c).Fill().Center().Gap(theme.Space8).Padding(theme.Space8).
-				Background(t.MutedBackground).TextColor(t.MutedForeground).
+			ui.Column(c.Key(imageFailed)).Fill().Center().Gap(theme.Space8).Padding(theme.Space8).
+				Background(t.MutedBackground).TextColor(t.MutedForeground).Transition(fadeTransition).
 				Children(func() {
 					size := theme.Scale(c, theme.IconLG)
 					ui.Icon(c, lucide.ImageOff()).Size(size, size).Shrink(0)

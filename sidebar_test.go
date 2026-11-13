@@ -30,6 +30,7 @@ func TestSidebarSelectionRemeasuresWeightedText(t *testing.T) {
 			before := findRect(t, tt, "Settings and preferences")
 			selected = "settings"
 			tt.Frame()
+			tt.Advance(300 * time.Millisecond)
 			after := findRect(t, tt, "Settings and preferences")
 			if after != before {
 				t.Fatalf("selection resized the sidebar row: before=%+v after=%+v", before, after)

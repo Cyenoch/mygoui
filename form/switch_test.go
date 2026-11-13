@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -128,5 +129,42 @@ func TestSwitchThumbStretchesWhilePressed(t *testing.T) {
 		if held >= rest {
 			t.Fatalf("reduced=%v: held thumb did not widen: track pixels rest=%d held=%d", reduced, rest, held)
 		}
+	}
+}
+
+// TestSwitchLoadingKeepsValueAndBlocksPress pins the pending contract: the
+// value stays, no change is reported, the row stays focusable and busy.
+func TestSwitchLoadingKeepsValueAndBlocksPress(t *testing.T) {
+	on, loading := true, true
+	var reports int
+	tt := ui.NewTester(func(c *ui.Context) {
+		ui.Column(c).Padding(20).Children(func() {
+			Switch(c, SwitchOptions{
+				On: &on, Label: "Sync", Loading: loading,
+				OnChange: func(bool) { reports++ },
+			})
+		})
+	}, 280, 120)
+	tt.Advance(200 * time.Millisecond)
+	if err := tt.Click("Sync"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(0, ui.KeySpace)
+	if !on || reports != 0 {
+		t.Fatalf("pending switch: on=%v reports=%d", on, reports)
+	}
+	if a, ok := tt.AccessByRole(ui.RoleSwitch, "Sync"); !ok || !a.Busy {
+		t.Fatalf("pending switch busy=%v found=%v", a.Busy, ok)
+	}
+	if _, ok := tt.Find(locale.M().Loading); !ok {
+		t.Fatal("no spinner on the thumb")
+	}
+	loading = false
+	tt.Frame()
+	if err := tt.Click("Sync"); err != nil {
+		t.Fatal(err)
+	}
+	if on || reports != 1 {
+		t.Fatalf("after loading: on=%v reports=%d", on, reports)
 	}
 }

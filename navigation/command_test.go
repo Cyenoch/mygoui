@@ -3,6 +3,7 @@ package navigation
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -293,5 +294,34 @@ func TestCommandDrawsShortcutsOfRowsBuiltDuringLayout(t *testing.T) {
 	tt.Frame()
 	if !tt.HasText("S15") {
 		t.Fatalf("no shortcut in a row the taller list added: %q", tt.Texts())
+	}
+}
+
+func TestCommandLoadingKeepsInputEditableAndResultsInert(t *testing.T) {
+	var state CommandState
+	var selected []string
+	loading := true
+	items := []CommandItem{{Key: "archive", Label: "Archive"}, {Key: "duplicate", Label: "Duplicate"}}
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		Command(c, CommandOptions{State: &state, Label: "Commands", Items: items, Empty: "No matches", Loading: loading,
+			OnSelect: func(key string) { selected = append(selected, key) }})
+	}, 400, 320)
+	tt.Advance(400 * time.Millisecond)
+	if err := tt.Click("Commands"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("arc")
+	if state.Query != "arc" || !tt.HasText("Archive") || tt.HasText("Duplicate") {
+		t.Fatalf("input not editable while loading: query %q texts %v", state.Query, tt.Texts())
+	}
+	_ = tt.Click("Archive")
+	tt.Key(0, ui.KeyEnter)
+	if len(selected) != 0 {
+		t.Fatalf("a stale result ran while loading: %v", selected)
+	}
+	tt.Type("zzz")
+	if tt.HasText("No matches") {
+		t.Fatalf("empty message shown while loading: %v", tt.Texts())
 	}
 }

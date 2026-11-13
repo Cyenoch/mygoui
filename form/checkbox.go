@@ -2,6 +2,7 @@ package form
 
 import (
 	"github.com/Cyenoch/mygoui/internal/formstyle"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -107,21 +108,32 @@ func checkboxControl(c *ui.Context, checked *bool, indeterminate *bool, invalid 
 		border = t.Destructive.Alpha(0.36)
 	}
 	box := ui.Box(c).Size(size, size).Shrink(0).Center()
+	fill, border = motion.Color(box, "fill", fill), motion.Color(box, "border", border)
+	check, dash := motion.Progress(box, "check", selected), motion.Progress(box, "dash", mixed)
 	box.Draw(func(p *ui.Painter, r ui.Rect) {
 		p.Fill(r, fill, radius)
 		p.Stroke(r, border, radius, theme.Hairline)
 		if focused {
 			choiceFocusRing(p, r, radius, invalid, t)
 		}
-		if mixed {
+		if dash > 0 {
+			// The dash grows from its centre in and fades out.
 			w, h := r.W*0.56, theme.Scale(c, 1.5)
-			p.Fill(ui.Rect{X: r.X + (r.W-w)/2, Y: r.Y + (r.H-h)/2, W: w, H: h}, ink, h/2)
-		} else if selected {
-			mark := r.W * 0.65
+			if mixed {
+				w *= dash
+			}
+			p.Fill(ui.Rect{X: r.X + (r.W-w)/2, Y: r.Y + (r.H-h)/2, W: w, H: h}, ink.Alpha(dash), h/2)
+		}
+		if check > 0 {
+			// The check draws in along its path and fades out.
+			mark, drawn := r.W*0.65, float32(1)
+			if selected {
+				drawn = check
+			}
 			p.StrokePath(choiceCheckPath(ui.Rect{
 				X: r.X + (r.W-mark)/2, Y: r.Y + (r.H-mark)/2,
 				W: mark, H: mark,
-			}), theme.Scale(c, 1.8), ink)
+			}).Trim(0, drawn), theme.Scale(c, 1.8), ink.Alpha(check))
 		}
 	})
 	return box

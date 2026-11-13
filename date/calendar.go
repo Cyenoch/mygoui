@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -530,6 +531,10 @@ func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cell
 		cell = cell.Opacity(0.5)
 	}
 
+	// Choosing a day fades its fill and ink in; hover stays at once.
+	ink = motion.Color(cell, "ink", ink)
+	chosen := motion.Progress(cell, "chosen", (isStart || isEnd || isSelected) && !disabled)
+	band := motion.Progress(cell, "band", inRange && !disabled)
 	cell.Children(func() {
 		text := style.Text(ui.Text(c, dayNumbers[day.Day()]), c, theme.SM()).
 			TextColor(ink).SingleLine().FontFeatures("tnum")
@@ -543,22 +548,22 @@ func dayCell(c *ui.Context, spec calendarSpec, view *CalendarViewState, sel cell
 	dot, dotBottom := theme.Scale(c, 3), theme.Scale(c, 4)
 	cell.Draw(func(p *ui.Painter, r ui.Rect) {
 		inner := ui.Rect{X: r.X, Y: r.Y + rowInset, W: r.W, H: cellH}
-		if !disabled {
-			if inRange {
-				if outside {
-					p.Fill(inner, t.Accent, radius)
-				} else {
-					p.FillRadii(inner, [4]float32{tl, tr, br, bl}, t.Accent)
-				}
-			}
+		if band > 0 {
 			switch {
-			case isStart || isEnd:
-				p.FillRadii(inner, [4]float32{tl, tr, br, bl}, t.Primary)
-			case isSelected:
-				p.Fill(inner, t.Primary, radius)
-			case !inRange && cellHovered:
-				p.Fill(inner, t.Accent, radius)
+			case outside || !inRange:
+				p.Fill(inner, t.Accent.Alpha(band), radius)
+			default:
+				p.FillRadii(inner, [4]float32{tl, tr, br, bl}, t.Accent.Alpha(band))
 			}
+		}
+		if chosen > 0 {
+			if isStart || isEnd {
+				p.FillRadii(inner, [4]float32{tl, tr, br, bl}, t.Primary.Alpha(chosen))
+			} else {
+				p.Fill(inner, t.Primary.Alpha(chosen), radius)
+			}
+		} else if !disabled && !inRange && cellHovered {
+			p.Fill(inner, t.Accent, radius)
 		}
 		if isToday {
 			ink := t.Primary

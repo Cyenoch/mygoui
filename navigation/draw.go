@@ -36,8 +36,9 @@ func drawChevronDown(p *ui.Painter, path *ui.Path, r ui.Rect, angle float32, wid
 	p.StrokePath(path, width, color)
 }
 
-// drawCheck paints a checkmark in r up to progress of its length.
-func drawCheck(p *ui.Painter, path *ui.Path, r ui.Rect, progress float32, color ui.Color) {
+// drawCheck paints a checkmark in r. While on it draws in up to progress of
+// its length; while off it fades out with progress, never drawing backwards.
+func drawCheck(p *ui.Painter, path *ui.Path, r ui.Rect, progress float32, on bool, width float32, color ui.Color) {
 	if progress <= 0 {
 		return
 	}
@@ -47,10 +48,44 @@ func drawCheck(p *ui.Painter, path *ui.Path, r ui.Rect, progress float32, color 
 		MoveTo(cx-s*0.30, cy).
 		LineTo(cx-s*0.08, cy+s*0.22).
 		LineTo(cx+s*0.32, cy-s*0.24)
-	if progress < 1 {
+	strokeMark(p, path, progress, on, width, color)
+}
+
+// drawCross paints an X in r with the same rules as drawCheck.
+func drawCross(p *ui.Painter, path *ui.Path, r ui.Rect, progress float32, on bool, width float32, color ui.Color) {
+	if progress <= 0 {
+		return
+	}
+	cx, cy := r.X+r.W/2, r.Y+r.H/2
+	d := min(r.W, r.H) * 0.28
+	path.Reset().
+		MoveTo(cx-d, cy-d).LineTo(cx+d, cy+d).
+		MoveTo(cx+d, cy-d).LineTo(cx-d, cy+d)
+	strokeMark(p, path, progress, on, width, color)
+}
+
+func strokeMark(p *ui.Painter, path *ui.Path, progress float32, on bool, width float32, color ui.Color) {
+	switch {
+	case !on:
+		color = color.Alpha(progress)
+	case progress < 1:
 		path.Trim(0, progress)
 	}
-	p.StrokePath(path, 1.5, color)
+	p.StrokePath(path, width, color)
+}
+
+// fadeShadows applies shadows at progress of their strength, so a surface
+// gains or loses its shadow by fading.
+func fadeShadows(e ui.Element, shadows []theme.Shadow, progress float32) ui.Element {
+	for _, s := range shadows {
+		s.Color = s.Color.Alpha(progress)
+		if s.Inset {
+			e = e.InsetShadow(s.X, s.Y, s.Blur, s.Spread, s.Color)
+		} else {
+			e = e.Shadow(s.X, s.Y, s.Blur, s.Spread, s.Color)
+		}
+	}
+	return e
 }
 
 // sinCos returns the sine and cosine of angle degrees, for the rotated

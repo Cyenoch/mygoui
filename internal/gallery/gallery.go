@@ -197,7 +197,11 @@ func (g pageGroup) has(id string) bool {
 var groupRank = map[string]int{
 	"Overview": 0, "Foundations": 1, "Actions": 2, "Display": 3,
 	"Forms": 4, "Collections": 5, "Navigation": 6, "Overlays": 7,
-	"Dates": 8, "Color": 9, "Data": 10, "Charts": 11, "Chart Utilities": 12,
+	"Dates": 8, "Color": 9, "Data": 10,
+	// Composed components follow the primitives they are built from:
+	// viewers of a document, then ready-made application patterns.
+	"Viewers": 11, "Patterns": 12,
+	"Charts": 13, "Chart Utilities": 14,
 }
 
 // navRankOf returns a group's navigation position; unknown groups sort last.

@@ -44,6 +44,7 @@ type formsState struct {
 	billRadio form.RadioGroupState[string]
 
 	wifi, bluetooth, airplane, locked bool
+	syncPending, syncApplied          bool
 	analytics, sync, syncInvalid      bool
 	controlSwitch, controlCheckbox    bool
 	volume, rangeLow, rangeHigh, zoom float64
@@ -874,6 +875,16 @@ func formsSwitchExampleInvalid(c *ui.Context, st *formsState) {
 		Label:   "Background sync",
 		Invalid: true,
 		Error:   "Background sync requires a network connection.",
+	})
+}
+
+// formsSwitchExampleLoading holds the value while a change is pending.
+func formsSwitchExampleLoading(c *ui.Context, st *formsState) {
+	ui.Column(c).Gap(theme.Space12).Children(func() {
+		form.Switch(c, form.SwitchOptions{
+			On: &st.syncApplied, Label: "Sync across devices", Loading: st.syncPending,
+		})
+		form.Switch(c.Key("loading-driver"), form.SwitchOptions{On: &st.syncPending, Label: "Loading"})
 	})
 }
 

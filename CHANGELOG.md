@@ -1,5 +1,58 @@
 # Changelog
 
+## Unreleased
+
+### Added
+
+- Components absorbed from other libraries, with caller-owned state and no
+  I/O; capabilities are in [docs/components.md](docs/components.md).
+  - `mygoui`: `NumberFlip` (rolls changed digits; `Statistic` uses it),
+    `Statistic`, `Descriptions`, `Timeline`, `StatusDot`, `Highlight`,
+    `Spoiler`, `LoadingOverlay`, `Banner`, `SettingsGroup`.
+  - `form`: `PasswordField`, `TagsInput`, `RangeSlider`, `CheckboxCard`,
+    `RadioCard`, `PathField`, `KeyValueEditor`, `MaskInput`.
+  - `list`: `Tree` with single and multiple selection, checks, type-ahead,
+    lazy and loading nodes, guides and a row context menu.
+  - `navigation`: `Menubar`, `SplitButton`, `OverflowList`, `DocumentTabs`,
+    `NavigationStack`, `Carousel`, `PipsPager`, `StatusBar`.
+  - `overlay`: `Popconfirm`, `TeachingTip`, `Tour`, `ShortcutsDialog`,
+    `ActionBar`, `AboutDialog`.
+  - `content`: `DiffViewer`, `JSONViewer`, `LogViewer`, each with a toolbar
+    for search and copy; the log adds level filter and wrapping, the diff
+    change navigation and a layout toggle.
+- `Loading` on Button, ToggleButton, SplitButton, Switch, Input, TextField,
+  SearchField, Select, ComboBox, Autocomplete, `data.Table`, `list.ListBox`,
+  `list.Tree`, `navigation.Command`, Descriptions, Statistic and
+  SettingsGroup. Controls keep their size and swap to a spinner, fields stay
+  editable, and collections show skeleton rows or dim and show a top line
+  while refreshing.
+- State-change motion in shared durations (150, 200 and 300 ms): checkbox,
+  radio, switch, chip, tag, toggle, sidebar item, calendar day, steps, menu
+  and list checks, rating stars, image select, upload zone, OTP slot and
+  colour swatch fade or draw in instead of switching at once.
+- `navigation.MenuItemOptions.Accelerator`: shown in the platform's glyphs,
+  and registered for the window by a Menubar. Short menus type ahead.
+- Gallery groups "Viewers" and "Patterns".
+- `navigation.MenuItemOptions.Checkable`: a check box row that is off while
+  `Checked` is false. `locale` messages `CloseNamed` and `RemoveNamed`.
+
+### Changed
+
+- A pending Button no longer looks disabled: its content crossfades to a
+  centred spinner, it keeps its face and takes no press.
+- A range Slider paints its own track and thumbs, so the native ones no
+  longer show around them. Slider fills ease to values the application sets
+  and still follow a held pointer.
+- Progress and ProgressCircle fills fade between status colours.
+- Popover arrows carry the panel's hairline, so they stay visible on a light
+  surface.
+- ListBox selection checks scale in over 150 ms (was 200 ms) and still fade
+  under reduced motion.
+- The ImageViewer glides to a zoom chosen by key or button and fades the next
+  image in over the one leaving; an Avatar portrait fades in over its
+  initials.
+- Gallery page column is centred between the sidebar and the page index.
+
 ## 0.1.0 - 2026-11-13
 
 First tagged release. The `coss` reconstruction replaces the previous

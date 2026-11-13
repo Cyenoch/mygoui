@@ -150,6 +150,51 @@ combo boxes open and close at once, as in coss.
 
 Motion follows the existing Go durations/easings and honors
 `theme.ReduceMotion(c)`. `.impeccable/design.json` records motion extensions.
+
+### State changes move
+
+A control that changes state shows the change, wherever a change of state
+is what the user just caused or needs to notice. `internal/motion` holds the
+timing so every control moves alike.
+
+| Change | Motion |
+| --- | --- |
+| A fill, border or ink changing with the state (checked, selected, pressed on, invalid, status) | Colour fade, 150 ms ease-out |
+| A mark appearing (check, radio dot, dash, star fill, step tick) | Draws or scales in over 150 ms; leaves by fading, never by drawing backwards |
+| Content opening or closing (accordion, disclosure, spoiler, expander row) | Height and fade, 200 ms ease-in-out |
+| A tree branch opening | Its rows fade in over 200 ms while the rows below slide down; closing drops them at once and turns the arrow |
+| An indicator moving to another item (tabs, segmented control, pager) | Slide, 200 ms ease-in-out |
+| A quantity changing (progress, meter) | Eases to the new value over 500 ms ease-out, as coss does |
+| A slider fill moving to a value the application set | Eases over 200 ms ease-out; a held pointer is followed at once |
+| A number changing (`NumberFlip`, so Statistic) | Each digit that differs rolls over 300 ms ease-out, up when the value rose and down when it fell; other characters and reduced motion crossfade |
+| An icon standing for the state swapping (copy to check, eye to eye-off) | Crossfade, 150 ms |
+
+Left at once on purpose: hover and focus rings (they track the pointer and
+the keyboard), menu, select and combo box popups and their row highlight
+(coss), text the user is typing, and anything the user drags. A value set
+by the application on the first frame does not animate in. Reduced motion
+keeps the fades and settles sizes and positions at once. Nothing requests
+frames at rest.
+
+A state never changes font weight. Selected, active, hover and current text
+keeps its weight: heavier text is wider and shifts the layout around it. A
+state shows in fill, ink, an indicator or an icon.
+
+### Loading is one state
+
+A component that can wait on the application takes a `Loading` flag the
+caller owns; it starts no work. `internal/busy` holds the treatment.
+
+| Kind | While loading |
+| --- | --- |
+| Action controls (Button, ToggleButton, SplitButton, Switch) | Keeps its size; content crossfades to a centred spinner at once; takes no press but does not look disabled |
+| Fields (Input, SearchField, Select, ComboBox, Autocomplete) | A spinner takes the trailing affordance's box; the field stays editable; an empty popup shows one Loading row |
+| Regions of data, first load (Table, ListBox, Tree, Command, Descriptions, Statistic, SettingsGroup) | Skeletons in the content's shape inside the real chrome, one shimmer per region, no spinner |
+| Regions of data, refresh | Content stays at 55%, takes no input, under a 2 DIP indeterminate line on the top edge; no scrim |
+
+Region indicators wait 150 ms, so a fast load shows nothing, and fade out
+over 150 ms without waiting. The region is busy to assistive technology. `LoadingOverlay` covers
+composed content the same way when a component has no flag of its own.
 Headless rounded clips do not prove arbitrary GPU clipping correctness.
 
 ## Shapes

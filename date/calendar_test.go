@@ -254,7 +254,7 @@ func TestRangeCalendarStartOnlyPaintsNoBand(t *testing.T) {
 	if err := tt.Click("2026-11-09"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Frame()
+	tt.Advance(200 * time.Millisecond)
 	r, g, b := sampleDay(t, tt, "2026-11-09", 0.2, 0.5)
 	assertColor(t, "start 9 fill", r, g, b, pal.Primary)
 	assertNoFill(t, tt, "2026-11-11", pal.Background)
@@ -263,7 +263,7 @@ func TestRangeCalendarStartOnlyPaintsNoBand(t *testing.T) {
 	if err := tt.Click("2026-11-13"); err != nil {
 		t.Fatal(err)
 	}
-	tt.Frame()
+	tt.Advance(200 * time.Millisecond)
 	soft := pal.Accent.Over(pal.Background)
 	r, g, b = sampleDay(t, tt, "2026-11-11", 0.2, 0.5)
 	assertColor(t, "middle 11 fill", r, g, b, soft)

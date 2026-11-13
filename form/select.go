@@ -6,6 +6,7 @@ import (
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/anchored"
+	"github.com/Cyenoch/mygoui/internal/busy"
 	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/list"
@@ -29,14 +30,17 @@ type SelectOptions struct {
 	Invalid     bool
 	FullWidth   bool
 	Clearable   bool
-	Selection   list.SelectionMode
-	Variant     ControlVariant
-	Items       []list.ListBoxItem
-	Sections    []list.ListBoxSection
-	State       *SelectState
-	MaxHeight   float32
-	Placement   mygoui.Placement
-	OnChange    func(keys []string)
+	// Loading crossfades the chevron to a spinner and shows a Loading row
+	// when the popup has no options. The select stays usable.
+	Loading   bool
+	Selection list.SelectionMode
+	Variant   ControlVariant
+	Items     []list.ListBoxItem
+	Sections  []list.ListBoxSection
+	State     *SelectState
+	MaxHeight float32
+	Placement mygoui.Placement
+	OnChange  func(keys []string)
 	// Flyout opens the list as a native flyout of the host's window.
 	Flyout *mygoui.FlyoutHost
 }
@@ -288,7 +292,8 @@ func Select(c *ui.Context, o SelectOptions) ui.Element {
 		if name == "" {
 			name = o.Placeholder
 		}
-		trigger.Label(name).Description(o.Description).Error(errText)
+		trigger.Label(name).Description(o.Description).Error(errText).Busy(o.Loading)
+		shown := busy.Swap(trigger, o.Loading)
 		trigger = triggerSurface(trigger, c, o.Variant, invalid, o.Disabled)
 		trigger.Bind(&s.Trigger)
 
@@ -335,7 +340,7 @@ func Select(c *ui.Context, o SelectOptions) ui.Element {
 					ui.Box(c).Width(theme.Scale(c, 20)).Height(theme.Scale(c, 20)).Shrink(0)
 				}
 			}
-			selectIndicator(c)
+			selectIndicator(c, shown)
 		})
 		selectPopup(c, o, s, trigger, mode)
 		if o.Description != "" && !invalid {
@@ -449,7 +454,7 @@ func selectPopup(c *ui.Context, o SelectOptions, s *SelectState, trigger ui.Elem
 		maxHeight = 320
 	}
 	popupList := func(c *ui.Context, refocus func()) {
-		list.ListBox(c, list.ListBoxOptions{
+		loadingList(c, list.ListBoxOptions{
 			Label:          o.Label,
 			Items:          o.Items,
 			Sections:       o.Sections,
@@ -472,7 +477,7 @@ func selectPopup(c *ui.Context, o SelectOptions, s *SelectState, trigger ui.Elem
 					refocus()
 				}
 			},
-		})
+		}, o.Loading, len(o.Items)+sectionItemCount(o.Sections))
 		if s.focusList {
 			s.focusList = false
 			s.List.Focus(c)
@@ -514,12 +519,50 @@ func selectClearButton(c *ui.Context, clear func()) {
 	})
 }
 
-// selectIndicator is the trigger's static up-down chevron, as in coss.
-func selectIndicator(c *ui.Context) ui.Element {
-	t := theme.Colors(c)
-	return ui.Icon(c, selectChevron).
-		Size(theme.Scale(c, 16), theme.Scale(c, 16)).Shrink(0).
-		TextColor(t.FieldPlaceholder)
+// selectIndicator is the trigger's static up-down chevron, as in coss. While
+// the field loads, the chevron crossfades to a spinner in the same box;
+// shown is busy.Swap of the field.
+func selectIndicator(c *ui.Context, shown float32) ui.Element {
+	return swapGlyph(c, 16, shown, func() {
+		ui.Icon(c, selectChevron).
+			Size(theme.Scale(c, 16), theme.Scale(c, 16)).
+			TextColor(theme.Colors(c).FieldPlaceholder).Opacity(1 - shown)
+	})
+}
+
+// swapGlyph is a size DIP box holding glyph, crossfaded to a spinner by
+// shown. The spinner exists only while shown is above zero.
+func swapGlyph(c *ui.Context, size, shown float32, glyph func()) ui.Element {
+	box := ui.Box(c).Width(theme.Scale(c, size)).Height(theme.Scale(c, size)).Shrink(0)
+	return box.Children(func() {
+		glyph()
+		if shown > 0 {
+			busy.Spinner(c, size, theme.Colors(c).MutedForeground).Absolute().Top(0).Left(0).Opacity(shown)
+		}
+	})
+}
+
+// loadingList builds a popup ListBox. A loading list without rows shows one
+// muted Loading row in place of the empty message; with rows it keeps them.
+func loadingList(c *ui.Context, o list.ListBoxOptions, loading bool, rows int) ui.Element {
+	pending := loading && rows == 0
+	if pending {
+		o.Empty = ""
+	}
+	box := list.ListBox(c, o)
+	if pending {
+		box.Children(func() { loadingRow(c) })
+	}
+	return box
+}
+
+// loadingRow is the popup's muted Loading row.
+func loadingRow(c *ui.Context) {
+	ui.Row(c).Gap(theme.Space8).AlignItems(ui.Center).
+		Padding(theme.Space8, theme.Space8, theme.Space8, theme.Space8).Children(func() {
+		busy.Spinner(c, busySize, theme.Colors(c).MutedForeground)
+		style.Text(ui.Text(c, locale.M().Loading), c, theme.SM()).TextColor(theme.Colors(c).Muted)
+	})
 }
 
 var (

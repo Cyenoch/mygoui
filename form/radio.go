@@ -2,6 +2,7 @@ package form
 
 import (
 	"github.com/Cyenoch/mygoui/internal/formstyle"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -114,11 +115,17 @@ func radioControl(c *ui.Context, selected, invalid bool, variant ControlVariant,
 		border = t.Destructive.Alpha(0.36)
 	}
 	box := ui.Box(c).Size(size, size).Shrink(0).Center()
+	fill, border = motion.Color(box, "fill", fill), motion.Color(box, "border", border)
+	on := motion.Progress(box, "dot", selected)
 	box.Draw(func(p *ui.Painter, r ui.Rect) {
 		p.Fill(r, fill, radius)
 		p.Stroke(r, border, radius, theme.Hairline)
-		if selected {
+		if on > 0 {
+			// The dot scales in and fades out.
 			dot := theme.Scale(c, 6)
+			if selected {
+				dot *= on
+			}
 			p.Fill(ui.Rect{X: r.X + (r.W-dot)/2, Y: r.Y + (r.H-dot)/2, W: dot, H: dot}, t.PrimaryForeground, dot/2)
 		}
 		if focused {

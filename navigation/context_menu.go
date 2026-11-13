@@ -56,8 +56,8 @@ func contextMenuItems(m *ui.Menu, items []MenuItemOptions, sc *menuScope) {
 		if item.Description != "" {
 			entry.Subtitle(item.Description)
 		}
-		if item.Shortcut != "" {
-			entry.Trailing(item.Shortcut)
+		if shortcut := menuItemShortcut(item); shortcut != "" {
+			entry.Trailing(shortcut)
 		}
 		if item.Variant == MenuItemDanger {
 			entry.Danger()

@@ -101,7 +101,7 @@ func init() {
 	})
 
 	RegisterComponent(ComponentPage{
-		ID: "highlighter", Title: "Highlighter", Group: "Display", Order: 190,
+		ID: "highlighter", Title: "Highlighter", Group: "Viewers", Order: 190,
 		Description: "A read-only code block with syntax colors and a copy button.",
 		Examples: []ComponentExample{
 			{Title: "Titled", Description: "A header names the file; long lines scroll.",
@@ -134,7 +134,7 @@ func init() {
 	})
 
 	RegisterComponent(ComponentPage{
-		ID: "markdown", Title: "Markdown", Group: "Display", Order: 200,
+		ID: "markdown", Title: "Markdown", Group: "Viewers", Order: 200,
 		Description: "Native Markdown in the theme's type scale and colors.",
 		Examples: []ComponentExample{
 			{Title: "Document",

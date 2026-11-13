@@ -42,8 +42,52 @@ var lobeSources = map[string]string{
 	"resizablepanel": "layout/panel.go",
 }
 
+// referenceSources records the documentation a component without a coss
+// or Lobe counterpart takes its capability from. Its code and appearance
+// are this module's own.
+var referenceSources = map[string]string{
+	"descriptions":    "https://ant.design/components/descriptions",
+	"statistic":       "https://ant.design/components/statistic",
+	"numberflip":      "https://number-flow.barvian.me/",
+	"timeline":        "https://ant.design/components/timeline",
+	"statusdot":       "https://chakra-ui.com/docs/components/status",
+	"highlight":       "https://mantine.dev/core/highlight",
+	"spoiler":         "https://mantine.dev/core/spoiler",
+	"loadingoverlay":  "https://mantine.dev/core/loading-overlay",
+	"banner":          "https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/infobar",
+	"diffviewer":      "https://mantine.dev/x/code-highlight",
+	"jsonviewer":      "https://mantine.dev/x/code-highlight",
+	"logviewer":       "https://www.naiveui.com/en-US/os-theme/components/log",
+	"settingsgroup":   "https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/boxed-lists.html",
+	"passwordfield":   "https://mantine.dev/core/password-input",
+	"tagsinput":       "https://mantine.dev/core/tags-input",
+	"rangeslider":     "https://mantine.dev/core/range-slider",
+	"checkboxcard":    "https://chakra-ui.com/docs/components/checkbox-card",
+	"radiocard":       "https://chakra-ui.com/docs/components/radio-card",
+	"pathfield":       "https://developer.apple.com/design/human-interface-guidelines/path-controls",
+	"keyvalueeditor":  "https://diceui.com/docs/components/key-value",
+	"maskinput":       "https://primereact.dev/inputmask",
+	"tree":            "https://ant.design/components/tree",
+	"menubar":         "https://base-ui.com/react/components/menubar",
+	"splitbutton":     "https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/buttons#create-a-split-button",
+	"overflowlist":    "https://blueprintjs.com/docs/#core/components/overflow-list",
+	"documenttabs":    "https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/tab-view",
+	"navigationstack": "https://blueprintjs.com/docs/#core/components/panel-stack",
+	"carousel":        "https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/flipview",
+	"statusbar":       "https://doc.qt.io/qt-6/qstatusbar.html",
+	"popconfirm":      "https://ant.design/components/popconfirm",
+	"teachingtip":     "https://learn.microsoft.com/en-us/windows/apps/develop/ui/controls/dialogs-and-flyouts/teaching-tip",
+	"tour":            "https://ant.design/components/tour",
+	"shortcutsdialog": "https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/widget-gallery.html",
+	"actionbar":       "https://chakra-ui.com/docs/components/action-bar",
+	"aboutdialog":     "https://gnome.pages.gitlab.gnome.org/libadwaita/doc/main/widget-gallery.html",
+}
+
 func sourceURL(id string) string {
 	if url := chartSource(id); url != "" {
+		return url
+	}
+	if url := referenceSources[id]; url != "" {
 		return url
 	}
 	if file := lobeSources[id]; file != "" {
@@ -68,6 +112,9 @@ func referenceLabel(id string) string {
 	}
 	if lobeSources[id] != "" {
 		return "Lobe source"
+	}
+	if referenceSources[id] != "" {
+		return "Reference"
 	}
 	return "Coss source"
 }

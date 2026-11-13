@@ -54,7 +54,11 @@ type CommandOptions struct {
 	Groups                    []CommandGroup
 	State                     *CommandState
 	MaxHeight                 float32
-	OnSelect                  func(key string)
+	// Loading marks the results as on their way. The input stays editable;
+	// with no results the list shows placeholder rows, with results it dims
+	// them and draws a progress line under the input.
+	Loading  bool
+	OnSelect func(key string)
 }
 
 // Command filters caller-supplied actions and activates a highlighted action
@@ -66,6 +70,10 @@ func Command(c *ui.Context, o CommandOptions) ui.Element {
 	s := o.State
 	t := theme.Colors(c)
 	activate := func(key string) {
+		// Results being replaced are stale: neither Enter nor a press runs one.
+		if o.Loading {
+			return
+		}
 		run := func(items []CommandItem) bool {
 			for _, item := range items {
 				itemKey := item.Key
@@ -107,7 +115,7 @@ func Command(c *ui.Context, o CommandOptions) ui.Element {
 	}
 	root := ui.Column(c).FillWidth().MinWidth(0).Background(t.Popover).
 		TextColor(t.PopoverForeground).Radius(theme.RadiusScale().LG).
-		Border(theme.Hairline, t.Border).Clip()
+		Border(theme.Hairline, t.Border).Clip().Busy(o.Loading)
 	root.Children(func() {
 		var input ui.Element
 		ui.Row(c).FillWidth().AlignItems(ui.Center).Padding(theme.Space6, theme.Space12).
@@ -146,7 +154,7 @@ func Command(c *ui.Context, o CommandOptions) ui.Element {
 		list.ListBox(c, list.ListBoxOptions{
 			Label: label, Items: r.rows, Sections: r.sections, State: &s.List, Padding: theme.Space8,
 			MaxHeight: height, Empty: empty, NoFocusOnClick: true,
-			KeyboardHighlight: s.Input.Focused(c), OnAction: activate,
+			KeyboardHighlight: s.Input.Focused(c), Loading: o.Loading, OnAction: activate,
 		})
 		if input.Changed() {
 			if s.keyPending && s.keyQuery == s.Query && s.keyHighlight != "" {

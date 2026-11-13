@@ -75,10 +75,11 @@ func luminance(c ui.Color) float64 {
 	return (0.2126*float64(c.R) + 0.7152*float64(c.G) + 0.0722*float64(c.B)) / 255
 }
 
-// paintCheckmark draws the selection tick centered in r. It strokes a
+// paintCheckmark draws the selection tick centered in r, drawn (0 to 1) of
+// the way along its path. It strokes a
 // ui.Path: ui.Painter.Line paints only horizontal and vertical strokes, so
 // the tick's diagonals became a bar.
-func paintCheckmark(p *ui.Painter, r ui.Rect, color ui.Color) {
+func paintCheckmark(p *ui.Painter, r ui.Rect, color ui.Color, drawn float32) {
 	s := min(r.W, r.H) / 3
 	if s < 6 {
 		s = 6
@@ -88,5 +89,5 @@ func paintCheckmark(p *ui.Painter, r ui.Rect, color ui.Color) {
 	path.MoveTo(cx-s*0.5, cy).
 		LineTo(cx-s*0.1, cy+s*0.4).
 		LineTo(cx+s*0.5, cy-s*0.4)
-	p.StrokePath(&path, 2, color)
+	p.StrokePath(path.Trim(0, drawn), 2, color)
 }

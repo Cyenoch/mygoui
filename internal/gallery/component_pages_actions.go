@@ -39,9 +39,9 @@ func init() {
 			},
 			{
 				Title:       "Loading",
-				Description: "A leading spinner keeps the label and blocks activation while pending.",
+				Description: "The label crossfades to a spinner; the size holds and activation is blocked.",
 				Demo: func(c *ui.Context, s *State) {
-					buttonLoadingBody(c)
+					buttonLoadingBody(c, buttonsStateOf(s))
 				},
 			},
 			{
@@ -70,7 +70,7 @@ func save(c *ui.Context) {
 			{"EndIcon", "*ui.SVG", "nil", "Trailing icon."},
 			{"IconOnly", "bool", "false", "A square control named by Label."},
 			{"FullWidth", "bool", "false", "Stretches the button across its row."},
-			{"Loading", "bool", "false", "Leads a spinner and blocks activation."},
+			{"Loading", "bool", "false", "Crossfades the content to a spinner, keeps the size and blocks activation."},
 			{"Disabled", "bool", "false", "Paints at 50% opacity and removes activation."},
 			{"Align", "mygoui.ButtonAlign", "ButtonAlignCenter", "Centers the label or starts it for nav rows."},
 			{"Tooltip", "string", "", "Native hover description; empty uses Label when icon-only."},
@@ -172,6 +172,13 @@ func save(c *ui.Context) {
 				},
 			},
 			{
+				Title:       "Loading",
+				Description: "A pending toggle keeps its state and takes no press.",
+				Demo: func(c *ui.Context, s *State) {
+					toggleLoadingBody(c, buttonsStateOf(s))
+				},
+			},
+			{
 				Title:       "Disabled",
 				Description: "Disabled toggles keep their caller state but cannot flip it.",
 				Demo: func(c *ui.Context, s *State) {
@@ -192,6 +199,7 @@ mygoui.ToggleButton(c, mygoui.ToggleButtonOptions{
 			{"Icon", "*ui.SVG", "nil", "Leading icon."},
 			{"IconOnly", "bool", "false", "A square control named by Label."},
 			{"FullWidth", "bool", "false", "Stretches the toggle across its row."},
+			{"Loading", "bool", "false", "Shows a spinner, keeps the state and blocks the press."},
 			{"Disabled", "bool", "false", "Paints at 50% opacity and keeps the caller state."},
 			{"OnChange", "func(bool)", "nil", "Reports the new pressed state."},
 		},

@@ -189,7 +189,7 @@ func init() {
 	})
 
 	RegisterComponent(ComponentPage{
-		ID: "upload", Title: "Upload", Group: "Forms", Order: 270,
+		ID: "upload", Title: "Upload", Group: "Patterns", Order: 270,
 		Description: "A drop zone over a caller-owned file list.",
 		Examples: []ComponentExample{
 			{Title: "Drop zone", Demo: absorbedFormsDemo(uploadZoneBody)},

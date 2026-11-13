@@ -3,6 +3,7 @@ package form
 import (
 	"time"
 
+	"github.com/Cyenoch/mygoui/internal/busy"
 	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
@@ -38,9 +39,12 @@ type SwitchOptions struct {
 	LabelPosition SwitchLabelPosition
 	Required      bool
 	Invalid       bool
-	Disabled      bool
-	OnChange      func(bool)
-	Handle        *ui.Handle
+	// Loading marks a change in flight: the thumb shows a spinner and the
+	// switch keeps its value and takes no press until it clears.
+	Loading  bool
+	Disabled bool
+	OnChange func(bool)
+	Handle   *ui.Handle
 }
 
 // Switch is a focusable row whose track and thumb follow the
@@ -65,8 +69,14 @@ func Switch(c *ui.Context, o SwitchOptions) ui.Element {
 	}
 	outer := ui.Column(c).MinWidth(0).Gap(theme.Space4)
 	outer.Children(func() {
-		row := ui.SwitchBase(c, on).Gap(theme.Space8).Shrink(0).
-			FocusRing(false).TextColor(t.Foreground).Label(o.Label)
+		// A pending switch flips a scratch copy, so the press changes nothing.
+		state := on
+		if o.Loading {
+			held := *on
+			state = &held
+		}
+		row := ui.SwitchBase(c, state).Gap(theme.Space8).Shrink(0).
+			FocusRing(false).TextColor(t.Foreground).Label(o.Label).Busy(o.Loading)
 		if o.Handle != nil {
 			row.Bind(o.Handle)
 		}
@@ -76,7 +86,7 @@ func Switch(c *ui.Context, o SwitchOptions) ui.Element {
 		if errText != "" {
 			row.Error(errText)
 		}
-		if o.OnChange != nil && o.On != nil && !disabled {
+		if o.OnChange != nil && o.On != nil && !disabled && !o.Loading {
 			row.OnChange(func() { o.OnChange(*on) })
 		}
 
@@ -86,7 +96,7 @@ func Switch(c *ui.Context, o SwitchOptions) ui.Element {
 					Required: o.Required, Invalid: o.Invalid,
 				})
 			}
-			switchIndicator(c, on, o.Size, disabled, row)
+			switchIndicator(c, on, o.Size, disabled, o.Loading, row)
 			if o.LabelPosition == SwitchLabelAfter && o.Label != "" {
 				Label(c, o.Label, LabelOptions{
 					Required: o.Required, Invalid: o.Invalid,
@@ -127,7 +137,7 @@ func switchMetrics(c *ui.Context, size SwitchSize) switchDimensions {
 }
 
 // switchIndicator paints the native switch's Coss track and round thumb.
-func switchIndicator(c *ui.Context, on *bool, size SwitchSize, disabled bool, owner ui.Element) ui.Element {
+func switchIndicator(c *ui.Context, on *bool, size SwitchSize, disabled, loading bool, owner ui.Element) ui.Element {
 	t := theme.Colors(c)
 	m := switchMetrics(c, size)
 	rtl := c.Direction() == ui.RightToLeft
@@ -143,7 +153,7 @@ func switchIndicator(c *ui.Context, on *bool, size SwitchSize, disabled bool, ow
 	}
 	// A held thumb stretches 10% toward the centre after 100 ms, as coss does.
 	var stretch float32
-	if pressed && !disabled {
+	if pressed && !disabled && !loading {
 		stretch = 0.1
 	}
 	if !theme.ReduceMotion(c) {
@@ -172,6 +182,19 @@ func switchIndicator(c *ui.Context, on *bool, size SwitchSize, disabled bool, ow
 			p.FocusRing(r, choiceRadii(m.radius))
 		}
 	})
+	if spin := busy.Swap(track, loading); spin > 0 {
+		// The spinner rides the thumb, in the ink that contrasts with it.
+		size := m.thumbW * 0.625
+		x := m.inset + (m.w-2*m.inset-m.thumbW)*pos + (m.thumbW-size)/2
+		if rtl {
+			x = m.w - x - size
+		}
+		track.Children(func() {
+			ui.Box(c).Absolute().Left(x).Top(m.inset + (m.thumbH-size)/2).Opacity(spin).Children(func() {
+				busy.Spinner(c, size/theme.Scale(c, 1), t.Foreground)
+			})
+		})
+	}
 	return track
 }
 

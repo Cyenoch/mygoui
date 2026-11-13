@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -86,15 +87,21 @@ func ColorSwatch(c *ui.Context, o ColorSwatchOptions) ui.Element {
 	color := o.Color
 	e := ui.Box(c).Size(side, side).Shrink(0).Radius(radius).Clip().
 		Role(ui.RoleImage).Label(label)
+	// The tick draws in as the swatch is marked and fades out when unmarked.
+	tick := motion.Progress(e, "selected", o.Selected)
 	e.Draw(func(p *ui.Painter, r ui.Rect) {
 		paintSwatch(p, r, color, radius)
 		paintSwatchBorder(p, r, radius)
-		if o.Selected {
+		if tick > 0 {
+			drawn := float32(1)
+			if o.Selected {
+				drawn = tick
+			}
 			ink := ui.RGB(255, 255, 255)
 			if luminance(color) > 0.6 {
 				ink = ui.RGB(0, 0, 0)
 			}
-			paintCheckmark(p, r, ink)
+			paintCheckmark(p, r, ink.Alpha(tick), drawn)
 		}
 	})
 	return e
@@ -175,8 +182,9 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 			}
 			item := ui.RadioBase(c.Key(colorItemKey(i)), &selected, i).
 				Size(side, side).Center().Shrink(0).Radius(itemRadius).
-				Border(border, borderColor).FocusRing(true).
+				FocusRing(true).
 				Cursor(cursor).Label(name).Tooltip(name)
+			item.Border(border, motion.Color(item, "border", borderColor))
 			// Snapshot the item's hover in the build: the pose then animates
 			// the swatch in paint-only frames, as the scale transition
 			// does.
@@ -218,7 +226,7 @@ func ColorSwatchPicker(c *ui.Context, o ColorSwatchPickerOptions) ui.Element {
 				check.AnimatePose(ui.Pose{Scale: checkScale, Fade: checkFade},
 					ui.Animation{Duration: 150 * time.Millisecond, Ease: ui.EaseOut})
 				check.Draw(func(p *ui.Painter, r ui.Rect) {
-					paintCheckmark(p, r, ink)
+					paintCheckmark(p, r, ink, 1)
 				})
 			})
 			item.OnChange(func() {

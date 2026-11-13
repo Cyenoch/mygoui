@@ -4,6 +4,7 @@ import (
 	"math"
 	"strconv"
 
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -57,7 +58,7 @@ func Rate(c *ui.Context, value *float64, o RateOptions) ui.Element {
 	}
 	root = style.Disabled(root.Size(width, size).Shrink(0).Role(ui.RoleSlider).Label(o.AriaLabel), disabled)
 
-	shown := *value
+	shown, previewing := *value, false
 	if !o.ReadOnly && !disabled {
 		set := func(v float64) {
 			v = math.Min(math.Max(v, 0), float64(count))
@@ -75,7 +76,7 @@ func Rate(c *ui.Context, value *float64, o RateOptions) ui.Element {
 		}
 		pointed := rateAt(x, size, gap, count, o.AllowHalf)
 		if over {
-			shown = pointed
+			shown, previewing = pointed, true
 		}
 		root.OnClick(func() {
 			switch {
@@ -111,6 +112,16 @@ func Rate(c *ui.Context, value *float64, o RateOptions) ui.Element {
 		Value(strconv.FormatFloat(*value, 'f', -1, 64) + " / " + strconv.Itoa(count))
 
 	focused := root.FocusVisible()
+	// Stars fill as the rating is set; the pointer's preview follows it at once.
+	fills := make([]float32, count)
+	for i := range fills {
+		fill := float32(math.Min(math.Max(shown-float64(i), 0), 1))
+		if previewing {
+			fills[i] = root.Jump(rateStarKey(i), fill)
+		} else {
+			fills[i] = root.AnimateTo(rateStarKey(i), fill, ui.Animation{Duration: motion.State, Ease: ui.EaseOut})
+		}
+	}
 	root.Draw(func(p *ui.Painter, r ui.Rect) {
 		for i := range count {
 			box := ui.Rect{X: r.X + float32(i)*(size+gap), Y: r.Y, W: size, H: size}
@@ -118,7 +129,7 @@ func Rate(c *ui.Context, value *float64, o RateOptions) ui.Element {
 				box.X = r.X + r.W - size - float32(i)*(size+gap)
 			}
 			star := rateStarPath(box)
-			fill := float32(math.Min(math.Max(shown-float64(i), 0), 1))
+			fill := fills[i]
 			if fill < 1 {
 				rateFillStar(p, star, t.Input)
 			}
@@ -137,6 +148,9 @@ func Rate(c *ui.Context, value *float64, o RateOptions) ui.Element {
 	})
 	return root
 }
+
+// rateStarKey names the animated fill of one star.
+type rateStarKey int
 
 // rateAt maps a pointer offset from the first star's leading edge to the
 // rating it points at.

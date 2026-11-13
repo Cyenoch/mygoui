@@ -94,7 +94,7 @@ func TestButtonPressKeepsGeometryAndActivatesOnRelease(t *testing.T) {
 }
 
 // TestButtonPendingKeepsFaceAndBlocksActivation checks the native pending
-// contract: 50% disabled dimming, no pointer face changes or activation.
+// contract: the full face, no pointer face changes or activation.
 func TestButtonPendingKeepsFaceAndBlocksActivation(t *testing.T) {
 	var colors theme.Palette
 	calls := 0
@@ -110,6 +110,7 @@ func TestButtonPendingKeepsFaceAndBlocksActivation(t *testing.T) {
 		})
 	}, 480, 160)
 	tt.Frame()
+	tt.Advance(200 * time.Millisecond)
 	rect, ok := tt.Find("Saving")
 	if !ok {
 		t.Fatal("pending button missing")
@@ -119,11 +120,11 @@ func TestButtonPendingKeepsFaceAndBlocksActivation(t *testing.T) {
 
 	tt.Move(rect.X+rect.W/2, rect.Y+rect.H/2)
 	tt.Frame()
-	wantPixel(t, tt.Image(), left(1), y, colors.Primary.Alpha(0.5).Over(colors.Background), "pending hover face")
+	wantPixel(t, tt.Image(), left(1), y, colors.Primary, "pending hover face")
 	tt.Press(rect.X+rect.W/2, rect.Y+rect.H/2)
 	tt.Advance(300 * time.Millisecond)
-	wantPixel(t, tt.Image(), left(1), y, colors.Primary.Alpha(0.5).Over(colors.Background), "pending pressed face")
-	wantPixel(t, tt.Image(), left(4), y, colors.Primary.Alpha(0.5).Over(colors.Background), "pending edge remains filled")
+	wantPixel(t, tt.Image(), left(1), y, colors.Primary, "pending pressed face")
+	wantPixel(t, tt.Image(), left(4), y, colors.Primary, "pending edge remains filled")
 	tt.Release(rect.X+rect.W/2, rect.Y+rect.H/2)
 	if calls != 0 {
 		t.Fatalf("pending button activated %d times", calls)
@@ -494,5 +495,43 @@ func TestLinkIconFadesOnHover(t *testing.T) {
 	hovered := iconInk(tt.Image(), rect)
 	if hovered >= rest-12 {
 		t.Fatalf("icon did not reach full opacity: rest %d, hovered %d", rest, hovered)
+	}
+}
+
+// TestToggleButtonLoadingKeepsStateAndBlocksPress pins the pending contract:
+// no flip, a busy mark, and the same box so nothing around it moves.
+func TestToggleButtonLoadingKeepsStateAndBlocksPress(t *testing.T) {
+	selected, loading := true, false
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.ApplyMode(c, false)
+		ui.Row(c).Padding(20).Children(func() {
+			mygoui.ToggleButton(c, mygoui.ToggleButtonOptions{
+				Label: "Bold", Selected: &selected, Loading: loading,
+			})
+		})
+	}, 240, 120)
+	rest := findRect(t, tt, "Bold")
+	loading = true
+	tt.Frame()
+	tt.Advance(200 * time.Millisecond)
+	if got := findRect(t, tt, "Bold"); got != rest {
+		t.Fatalf("loading geometry = %+v, want %+v", got, rest)
+	}
+	if err := tt.Click("Bold"); err != nil {
+		t.Fatal(err)
+	}
+	if !selected {
+		t.Fatal("a pending toggle flipped")
+	}
+	if a, _ := tt.AccessByRole(ui.RoleToggleButton, "Bold"); !a.Busy {
+		t.Fatal("a pending toggle is not reported busy")
+	}
+	loading = false
+	tt.Frame()
+	if err := tt.Click("Bold"); err != nil {
+		t.Fatal(err)
+	}
+	if selected {
+		t.Fatal("the toggle stayed blocked after loading cleared")
 	}
 }

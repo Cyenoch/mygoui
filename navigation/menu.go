@@ -1,9 +1,13 @@
 package navigation
 
 import (
+	"strings"
+
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/form"
 	"github.com/Cyenoch/mygoui/internal/anchored"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -29,18 +33,29 @@ const (
 // MenuItemOptions configures one menu row. Key identifies it in a selection;
 // it defaults to Label. Submenu turns the row into a submenu trigger opening
 // the given items to the side. Separator renders a rule and ignores the rest.
+//
+// Accelerator is the item's key chord, shown in the platform's glyphs where
+// Shortcut is empty. A Menubar also registers it for the window, so it
+// activates the item without the menu open; use ui.Cmd for the platform's
+// command key. Elsewhere it only labels the row.
 type MenuItemOptions struct {
 	Key         string
 	Label       string
 	Description string
 	Shortcut    string
+	Accelerator form.Hotkey
 	Icon        *ui.SVG
 	Variant     MenuItemVariant
 	Disabled    bool
 	Separator   bool
 	Checked     bool
-	Submenu     []MenuItemOptions
-	OnSelect    func()
+	// Checkable makes the row a check box that is off while Checked is
+	// false, in a menu without a selection mode.
+	Checkable bool
+	Submenu   []MenuItemOptions
+	OnSelect  func()
+	// inset keeps a plain row's label in line with the check boxes around it.
+	inset bool
 }
 
 // MenuSectionOptions configures a group of menu items with an optional
@@ -74,6 +89,9 @@ type menuScope struct {
 	// the focus it moved draws its own ring, in its submenus too.
 	list  *menuList
 	keyed *bool
+	// ahead is the type-ahead of the menu whose items are being built; nil
+	// for a long menu and for submenus built inside another's scope.
+	ahead *menuAhead
 }
 
 // menuExtra carries wiring that only a root (Dropdown or SubMenu) has.
@@ -100,6 +118,8 @@ func buildMenu(c *ui.Context, o MenuOptions, extra menuExtra, parent *menuScope)
 	if sc.selection != MenuSelectNone && sc.selected == nil {
 		sc.selected = ui.Local(root, "menu-selected", func() []string { return nil })
 	}
+	sc.ahead = ui.Local(root, "menu-ahead", func() menuAhead { return menuAhead{want: -1} })
+	sc.ahead.begin()
 	root.Children(func() {
 		for i := range o.Sections {
 			buildMenuSection(c, o.Sections[i], sc)
@@ -196,14 +216,14 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 		role = ui.RoleMenuItemRadio
 	case inMenu && sc.selection == MenuSelectMultiple:
 		role = ui.RoleMenuItemCheckBox
-	case o.Checked:
+	case o.Checked || o.Checkable:
 		role = ui.RoleMenuItemCheckBox
 	}
 	on := o.Checked
 	if inMenu && sc.selection != MenuSelectNone && sc.selected != nil {
 		on = containsKey(*sc.selected, key)
 	}
-	hasIndicator := (inMenu && sc.selection != MenuSelectNone) || o.Checked
+	hasIndicator := (inMenu && sc.selection != MenuSelectNone) || o.Checked || o.Checkable
 	hasSubmenu := len(o.Submenu) > 0
 	radius := theme.RadiusScale().SM
 	if o.Key != "" {
@@ -217,7 +237,7 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 	el = style.Background(el, radius, ui.Transparent, t.Accent, t.Accent)
 	// Upstream's indicator is absolute: the row pads its start by 28 DIP to
 	// clear it, and both sides where a submenu keeps it at the end.
-	if hasIndicator {
+	if hasIndicator || o.inset {
 		el.PaddingStart(scale(c, 28))
 		if hasSubmenu {
 			el.PaddingStart(scale(c, theme.Space8))
@@ -242,6 +262,9 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 	} else {
 		el.OnClick(func() { activateMenuItem(sc, inMenu, key, o) })
 	}
+	if sc.ahead != nil && !o.Disabled {
+		sc.ahead.item(o.Label, el)
+	}
 	if inMenu && sc.focusFirst != nil && *sc.focusFirst && !o.Disabled {
 		el.Focus()
 		*sc.focusFirst = false
@@ -252,12 +275,9 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 	ring := sc.keyed != nil && keyedRing(el, sc.keyed)
 	// Checkbox and radio menu items share the same Coss check indicator.
 	if hasIndicator || ring {
-		var shown float32
-		if hasIndicator && on {
-			shown = 1
-		}
-		if hasIndicator && !theme.ReduceMotion(c) {
-			shown = el.AnimateTo("menu-indicator", shown, ui.Animation{Duration: menuCheckMotion, Ease: ui.EaseOut})
+		shown := float32(0)
+		if hasIndicator {
+			shown = motion.Progress(el, "menu-indicator", on)
 		}
 		glyph := &ui.Path{}
 		iconSize := scale(c, theme.IconMD)
@@ -278,7 +298,7 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 				x = end
 			}
 			box := ui.Rect{X: x, Y: r.Y + (r.H-iconSize)/2, W: iconSize, H: iconSize}
-			drawCheck(p, glyph, box, shown, indicatorColor)
+			drawCheck(p, glyph, box, shown, on, 1.5, indicatorColor)
 		})
 	}
 	el.Children(func() {
@@ -292,8 +312,8 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 				style.Text(ui.Text(c, o.Description), c, theme.XS()).TextColor(t.Muted).SingleLine()
 			}
 		})
-		if o.Shortcut != "" {
-			style.Text(ui.Text(c, o.Shortcut), c, theme.SM()).TextColor(t.Muted).
+		if shortcut := menuItemShortcut(o); shortcut != "" {
+			style.Text(ui.Text(c, shortcut), c, theme.SM()).TextColor(t.Muted).
 				FontWeight(theme.WeightMedium).Shrink(0)
 		}
 		if hasSubmenu {
@@ -313,6 +333,19 @@ func buildMenuItem(c *ui.Context, o MenuItemOptions, sc *menuScope) ui.Element {
 		SubMenu(c, el, SubMenuOptions{Open: subOpen, Items: o.Submenu, Label: o.Label, parent: sc})
 	}
 	return el
+}
+
+// menuItemShortcut is the text at a row's end: its Shortcut, or the glyphs of
+// its Accelerator.
+func menuItemShortcut(o MenuItemOptions) string {
+	if o.Shortcut != "" {
+		return o.Shortcut
+	}
+	keys := o.Accelerator.Keys()
+	if ui.Cmd == ui.Super {
+		return strings.Join(keys, "")
+	}
+	return strings.Join(keys, "+")
 }
 
 // activateMenuItem applies a menu item's selection, callbacks and close.

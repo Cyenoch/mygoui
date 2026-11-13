@@ -50,11 +50,11 @@ func TestRangeSliderPaintAndDragWithOffset(t *testing.T) {
 					colors.Primary, "selected range")
 				if low > 0 {
 					wantFormHoverPixel(t, img, int(at(float32(low/200))), int(y),
-						colors.Input.Over(colors.Border.Over(colors.Background)), "track before range")
+						colors.Input.Over(colors.Background), "track before range")
 				}
 				if high < 100 {
 					wantFormHoverPixel(t, img, int(at(float32((high+100)/200))), int(y),
-						colors.Input.Over(colors.Border.Over(colors.Background)), "track after range")
+						colors.Input.Over(colors.Background), "track after range")
 				}
 			}
 			checkPaint()

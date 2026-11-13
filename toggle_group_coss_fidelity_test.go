@@ -2,6 +2,7 @@ package mygoui_test
 
 import (
 	"testing"
+	"time"
 
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/theme"
@@ -193,7 +194,7 @@ func TestCOSSToggleGroupHoverFocusAndSelection(t *testing.T) {
 		t.Fatalf("pointer selection: selected=%v changes=%d", last, lastChanges)
 	}
 	tt.Move(firstRect.X+firstRect.W/2, firstRect.Y+firstRect.H/2)
-	tt.Frame()
+	tt.Advance(300 * time.Millisecond)
 	img := tt.Image()
 	got := img.RGBAAt(int(firstRect.X+5), int(firstRect.Y+firstRect.H/2))
 	want := colors.Input.Over(colors.Background)

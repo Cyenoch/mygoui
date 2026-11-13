@@ -3,10 +3,9 @@ package mygoui
 import (
 	"time"
 
+	"github.com/Cyenoch/mygoui/internal/busy"
 	"github.com/Cyenoch/mygoui/internal/style"
-	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
-	"github.com/egoist/mygo/plugins/loading"
 	"github.com/egoist/mygo/ui"
 )
 
@@ -197,7 +196,7 @@ func joinSeam(e ui.Element, vertical, rtl bool, ink ui.Color) ui.Element {
 }
 
 // Button builds a coss action on MyGo's native focusable button base.
-// The pending spinner overlays invisible content, preserving the button width.
+// A pending spinner crossfades over the content, preserving the button size.
 func Button(c *ui.Context, o ButtonOptions) ui.Element {
 	var adj joinAdjust
 	if o.Corners != nil {
@@ -211,7 +210,7 @@ func Button(c *ui.Context, o ButtonOptions) ui.Element {
 func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 	t := theme.Colors(c)
 	pending := o.Loading
-	disabled := o.Disabled || pending
+	disabled := o.Disabled
 	height := theme.ButtonHeight(o.Size)
 	radius := theme.RadiusScale().LG
 	paddingX := float32(11)
@@ -241,7 +240,8 @@ func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 
 	e := ui.ButtonBase(c).MinHeight(side).Gap(theme.Space8).
 		PaddingX(paddingX).PaddingY(0).Center().Shrink(0).
-		FocusRing(true).Label(o.Label)
+		FocusRing(true).Label(o.Label).Busy(pending)
+	swap := busy.Swap(e, pending)
 	if adj.hasCorners {
 		e = e.Radius(adj.corners[0], adj.corners[1], adj.corners[2], adj.corners[3])
 	} else {
@@ -268,8 +268,8 @@ func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 
 	bg, hover, pressed, fg := buttonColors(t, o.Variant, c.Theme().Dark)
 	if pending {
-		// coss ui's pending state removes the pointer faces but keeps the
-		// readable surface.
+		// A pending press keeps the readable surface and takes no pointer
+		// face; it is not dimmed like an unavailable control.
 		hover, pressed = bg, bg
 	}
 	e.TextColor(fg)
@@ -289,7 +289,7 @@ func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 			e = style.Shadow(e, c, theme.FieldShadows(c.Theme().Dark))
 		}
 	}
-	if o.OnClick != nil && !disabled {
+	if o.OnClick != nil && !disabled && !pending {
 		e.OnClick(o.OnClick)
 	}
 	if o.Tooltip != "" {
@@ -300,12 +300,12 @@ func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 
 	content := func() {
 		row := ui.Row(c).Center().Gap(theme.Space8).MinWidth(0)
-		if o.Loading {
-			row.Opacity(0)
+		if swap > 0 {
+			row.Opacity(1 - swap)
 		}
 		row.Children(func() {
 			if o.Icon != nil {
-				ui.Icon(c, o.Icon).Size(iconSize, iconSize).Shrink(0).Margin(0, -2).Opacity(0.8)
+				stateIcon(c, o.Icon).Size(iconSize, iconSize).Shrink(0).Margin(0, -2).Opacity(0.8)
 			}
 			if o.Content != nil {
 				o.Content()
@@ -321,15 +321,14 @@ func buttonView(c *ui.Context, o ButtonOptions, adj joinAdjust) ui.Element {
 		})
 	}
 	var overlay func()
-	if o.Loading {
+	if swap > 0 {
 		spinnerInk := fg
 		if o.Variant == ButtonDestructiveOutline {
 			spinnerInk = t.Foreground
 		}
 		overlay = func() {
-			ui.Box(c).Absolute().Left(0).Right(0).Top(0).Bottom(0).Center().Children(func() {
-				loading.Arc(c, loading.Options{Size: iconSize, Color: spinnerInk, Duration: time.Second}).
-					Label(locale.M().Loading)
+			ui.Box(c).Absolute().Left(0).Right(0).Top(0).Bottom(0).Center().Opacity(swap).Children(func() {
+				busy.Spinner(c, glyph, spinnerInk)
 			})
 		}
 	}

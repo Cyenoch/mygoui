@@ -99,7 +99,7 @@ func init() {
 	})
 
 	RegisterComponent(ComponentPage{
-		ID: "imageviewer", Title: "ImageViewer", Group: "Overlays", Order: 110,
+		ID: "imageviewer", Title: "ImageViewer", Group: "Viewers", Order: 110,
 		Description: "A modal preview that zooms, pans and steps through images.",
 		Examples: []ComponentExample{
 			{Title: "Gallery", Demo: absorbedOverlaysDemo(imageViewerBody)},

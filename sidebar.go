@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -195,8 +196,9 @@ func sidebarItem(
 	if selected {
 		e.Description(locale.M().Selected)
 	}
-	ink := t.SidebarForeground
-	if selected || e.Hovered() || e.Pressed() {
+	// The ink fades with the selection; the pointer changes it at once.
+	ink := motion.Color(e, sidebarItemInkKey{}, selectedInk(t, selected))
+	if e.Hovered() || e.Pressed() {
 		ink = t.SidebarAccentForeground
 	}
 	e.TextColor(ink)
@@ -230,12 +232,26 @@ func sidebarItem(
 	}
 }
 
+type (
+	sidebarItemInkKey  struct{}
+	sidebarItemFillKey struct{}
+)
+
+func selectedInk(t theme.Palette, selected bool) ui.Color {
+	if selected {
+		return t.SidebarAccentForeground
+	}
+	return t.SidebarForeground
+}
+
 func sidebarFace(e ui.Element, t theme.Palette, selected bool) ui.Element {
 	radius := theme.RadiusScale().MD
 	fill := ui.Transparent
 	if selected {
 		fill = t.SidebarAccent
 	}
+	// The fill fades with the selection; the pointer changes it at once.
+	fill = motion.Color(e, sidebarItemFillKey{}, fill)
 	e = style.Background(e, radius, fill, t.SidebarAccent, t.SidebarAccent).FocusRing(false)
 	if e.FocusVisible() {
 		ring := t.SidebarRing

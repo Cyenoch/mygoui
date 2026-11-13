@@ -175,7 +175,7 @@ func accordionItem(c *ui.Context, sc *accordionScope, index, count int, o Accord
 			panel.FillWidth().MinWidth(0).Gap(scale(c, theme.Space8)).
 				Padding(0, 0, scale(c, theme.Space16), 0).
 				TextColor(t.Muted)
-
+			fadePanel(panel, parts.Progress())
 		}
 	})
 	return item

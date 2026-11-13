@@ -30,7 +30,8 @@ func Alert(c *ui.Context, o AlertOptions) ui.Element {
 	e := ui.Row(c).FillWidth().MinWidth(0).AlignItems(ui.Start).Gap(theme.Space8).
 		Padding(theme.Space12, theme.Space14).
 		Radius(theme.RadiusScale().XL).Background(fill).Border(theme.Hairline, border).
-		TextColor(t.SurfaceForeground).Role(ui.RoleStatus).Label(o.Title).Description(o.Description)
+		TextColor(t.SurfaceForeground).Role(ui.RoleStatus).Label(o.Title).Description(o.Description).
+		Transition(appearTransition)
 	e.Children(func() {
 		icon := o.Icon
 		if icon == nil && o.ShowIcon {

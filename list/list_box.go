@@ -8,10 +8,10 @@
 package list
 
 import (
-	"time"
 	"unicode"
 
 	"github.com/Cyenoch/mygoicons/lucide"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -116,6 +116,12 @@ type ListBoxOptions struct {
 	Padding float32
 	// Empty is shown when the list has no rows.
 	Empty string
+	// Loading marks the rows as on their way. With no rows the list shows
+	// LoadingRows placeholder rows; with rows it dims them, ignores input
+	// and draws a progress line along the top edge.
+	Loading bool
+	// LoadingRows is the number of placeholder rows; 0 shows 5.
+	LoadingRows int
 	// NoFocusOnClick leaves the keyboard focus where it is, as a text
 	// input's popup needs.
 	NoFocusOnClick bool
@@ -144,6 +150,7 @@ type ListBoxState struct {
 	Highlight int
 
 	rows       []listBoxRow
+	dim        rowDim
 	pending    string
 	hasPending bool
 	pointerX   float32
@@ -514,6 +521,7 @@ func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
 	t := theme.Colors(c)
 	mode := o.Selection
 	st := rowStyle{
+		dim:     s.dim.value(),
 		palette: t,
 		radius:  theme.RadiusScale().SM,
 		padX:    theme.Scale(c, theme.Space8),
@@ -547,7 +555,15 @@ func ListBox(c *ui.Context, o ListBoxOptions) ui.Element {
 	if o.Disabled {
 		list = style.Disabled(list, true)
 	}
-	if n == 0 && o.Empty != "" {
+	list.Busy(o.Loading)
+	switch {
+	case n == 0 && o.Loading:
+		list.Children(func() {
+			buildSkeletonRows(c, o.LoadingRows, theme.Scale(c, 28), st.padX, func(int) float32 { return 0 })
+		})
+	case n > 0:
+		s.dim.set(c, refreshing(c, list, o.Loading))
+	case o.Empty != "":
 		list.Children(func() {
 			style.Text(ui.Text(c, o.Empty), c, theme.SM()).
 				TextColor(t.Muted).Padding(theme.Scale(c, theme.Space8))
@@ -568,6 +584,8 @@ type rowStyle struct {
 	// blockGap separates a block: an ungrouped row, or a whole section. A
 	// section's own rows sit flush.
 	blockGap float32
+	// dim is the rows' opacity under a refresh.
+	dim float32
 }
 
 func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, st rowStyle, focused bool) {
@@ -577,7 +595,7 @@ func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, st rowSty
 		sec := &o.Sections[r.section]
 		header := ui.Row(c).FillWidth().Shrink(0).
 			Gap(theme.Scale(c, theme.Space8)).AlignItems(ui.Center).
-			Margin(0, 0, gap, 0).
+			Margin(0, 0, gap, 0).Opacity(st.dim).
 			Padding(theme.Scale(c, theme.Space(1.5)), theme.Scale(c, theme.Space8),
 				theme.Scale(c, theme.Space4), theme.Scale(c, theme.Space8))
 		header.Children(func() {
@@ -610,7 +628,7 @@ func buildRow(c *ui.Context, s *ListBoxState, o ListBoxOptions, i int, st rowSty
 	row := ui.Row(c).FillWidth().Shrink(0).Gap(st.gap).AlignItems(ui.Center).
 		Margin(0, 0, gap, 0).Padding(st.padY, st.padX).
 		MinHeight(theme.Scale(c, height)).Radius(st.radius).Clip().
-		Label(it.Label).TextColor(fg)
+		Label(it.Label).TextColor(fg).Opacity(st.dim)
 	if showIndicator {
 		if o.IndicatorStart {
 			row.PaddingStart(st.padX + st.mark + st.gap)
@@ -708,18 +726,18 @@ func indicatorMark(c *ui.Context, st rowStyle, fg ui.Color, selected, start bool
 		mark.End(st.padX)
 	}
 	mark.Children(func() {
-		if theme.ReduceMotion(c) {
-			if selected {
-				ui.Icon(c, checkIcon).Size(st.check, st.check).TextColor(fg)
-			}
-			return
-		}
+		// The check scales in while it fades in and leaves by fading; under
+		// reduced motion only the fade remains. A row built selected shows
+		// it at once, as a pose starts where it is first posed.
 		check := ui.Icon(c, checkIcon).Size(st.check, st.check).TextColor(fg)
-		pose := ui.Pose{Scale: 0.6, Fade: 1}
+		pose := ui.Pose{Fade: 1}
+		if !theme.ReduceMotion(c) {
+			pose.Scale = 0.6
+		}
 		if selected {
 			pose = ui.Pose{}
 		}
-		check.AnimatePose(pose, ui.Animation{Duration: 200 * time.Millisecond, Ease: ui.EaseOut})
+		check.AnimatePose(pose, ui.Animation{Duration: motion.State, Ease: ui.EaseOut, NonMotion: theme.ReduceMotion(c)})
 	})
 }
 

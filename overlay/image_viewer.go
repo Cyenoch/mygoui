@@ -7,6 +7,7 @@ import (
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/anchored"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -45,9 +46,24 @@ type viewerState struct {
 	index, shown int
 	zoom, x, y   float32
 	held, panned bool
+	// smooth has the image glide to a zoom a key or a button chose; the
+	// wheel, a pinch and a drag move it as the hand does.
+	smooth bool
 }
 
 func (v *viewerState) reset() { v.zoom, v.x, v.y = 1, 0, 0 }
+
+// step zooms to a level a key or a button asked for, about the center.
+func (v *viewerState) step(zoom float32) {
+	v.zoomTo(zoom, 0, 0)
+	v.smooth = true
+}
+
+// restore returns to the fitted view as a key or a button asked.
+func (v *viewerState) restore() {
+	v.reset()
+	v.smooth = true
+}
 
 // zoomTo sets the zoom, keeping the image point under (ax, ay), measured
 // from the viewport's center, in place.
@@ -125,15 +141,16 @@ func ImageViewer(c *ui.Context, open *bool, o ImageViewerOptions) ui.Element {
 		case panel.OverlayShortcut(0, ui.KeyRight):
 			step(1)
 		case panel.OverlayShortcut(0, ui.KeyEqual), panel.OverlayShortcut(ui.Shift, ui.KeyEqual):
-			v.zoomTo(v.zoom*viewerZoomStep, 0, 0)
+			v.step(v.zoom * viewerZoomStep)
 		case panel.OverlayShortcut(0, ui.KeyMinus):
-			v.zoomTo(v.zoom/viewerZoomStep, 0, 0)
+			v.step(v.zoom / viewerZoomStep)
 		case panel.OverlayShortcut(0, ui.Key0):
-			v.reset()
+			v.restore()
 		}
 		if v.shown != *index {
 			v.shown = *index
 			v.reset()
+			v.smooth = false
 		}
 		item := o.Images[*index]
 		panel.Label(item.Label)
@@ -144,8 +161,10 @@ func ImageViewer(c *ui.Context, open *bool, o ImageViewerOptions) ui.Element {
 		stage.HandleInput(func(ev ui.InputEvent) bool {
 			switch ev.Kind {
 			case ui.InputScroll:
+				v.smooth = false
 				v.zoomTo(v.zoom*float32(math.Exp(float64(-ev.DY*viewerWheelZoom))), ev.X-w/2, ev.Y-h/2)
 			case ui.InputZoom:
+				v.smooth = false
 				v.zoomTo(v.zoom*ev.Scale, ev.X-w/2, ev.Y-h/2)
 			default:
 				return false
@@ -159,11 +178,21 @@ func ImageViewer(c *ui.Context, open *bool, o ImageViewerOptions) ui.Element {
 		}
 		v.held = held
 		if held && (dx != 0 || dy != 0) {
-			v.x, v.y, v.panned = v.x+dx, v.y+dy, true
+			v.x, v.y, v.panned, v.smooth = v.x+dx, v.y+dy, true, false
 		}
 		v.clamp(fitW, fitH, w, h)
 		imgW, imgH := fitW*v.zoom, fitH*v.zoom
 		left, top := w/2+v.x-imgW/2, h/2+v.y-imgH/2
+		// The image glides to a zoom chosen by key or button, and follows
+		// the hand at once otherwise.
+		glide := func(key string, to float32) float32 {
+			if v.smooth {
+				return stage.AnimateTo(key, to, ui.Animation{Duration: motion.Reveal, Ease: ui.EaseInOut})
+			}
+			return stage.Jump(key, to)
+		}
+		shownLeft, shownTop := glide("left", left), glide("top", top)
+		shownW, shownH := glide("width", imgW), glide("height", imgH)
 		if v.zoom > 1 {
 			stage.Cursor(ui.CursorGrab)
 		}
@@ -174,8 +203,11 @@ func ImageViewer(c *ui.Context, open *bool, o ImageViewerOptions) ui.Element {
 			}
 		}
 		stage.Children(func() {
-			ui.Image(c.Key(*index), item.Source).Absolute().Left(left).Top(top).Size(imgW, imgH).
-				Fit(ui.Contain).Label(item.Label).IgnoreInput(true)
+			// The next image fades in over the one leaving.
+			ui.Image(c.Key(*index), item.Source).Absolute().Left(shownLeft).Top(shownTop).Size(shownW, shownH).
+				Fit(ui.Contain).Label(item.Label).IgnoreInput(true).
+				Transition(ui.ElementTransition{Colors: true, Duration: motion.State, Ease: ui.EaseOut,
+					Enter: &ui.Motion{}, Exit: &ui.Motion{}})
 		})
 
 		viewerControls(c, v, n, *index, step, close)
@@ -224,12 +256,12 @@ func viewerControls(c *ui.Context, v *viewerState, n, index int, step func(int),
 	bar := ui.Row(c).Absolute().Left(0).Right(0).Bottom(edge).Justify(ui.Center).PassThrough()
 	bar.Children(func() {
 		pill().Role(ui.RoleToolbar).Children(func() {
-			button(lucide.ZoomOut(), msg.ZoomOut, false, func() { v.zoomTo(v.zoom/viewerZoomStep, 0, 0) })
+			button(lucide.ZoomOut(), msg.ZoomOut, false, func() { v.step(v.zoom / viewerZoomStep) })
 			percent := strconv.Itoa(int(math.Round(float64(v.zoom)*100))) + "%"
 			style.Text(ui.Text(c, percent), c, theme.XS()).FontFeatures("tnum").TextAlign(ui.Center).
 				Width(theme.Scale(c, theme.Space48)).TextColor(theme.Colors(c).MutedForeground)
-			button(lucide.ZoomIn(), msg.ZoomIn, false, func() { v.zoomTo(v.zoom*viewerZoomStep, 0, 0) })
-			button(lucide.RotateCcw(), msg.ResetZoom, false, v.reset)
+			button(lucide.ZoomIn(), msg.ZoomIn, false, func() { v.step(v.zoom * viewerZoomStep) })
+			button(lucide.RotateCcw(), msg.ResetZoom, false, v.restore)
 		})
 	})
 }

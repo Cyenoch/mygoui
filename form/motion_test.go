@@ -29,7 +29,7 @@ func TestChoiceFacesUsePrimary(t *testing.T) {
 		if err := tt.Click("Accept"); err != nil {
 			t.Fatal(err)
 		}
-		tt.Frame()
+		tt.Advance(200 * time.Millisecond)
 		x, y := int(row.X)+8, int(row.Y+(row.H-16)/2)+13
 		wantFormHoverPixel(t, tt.Image(), x, y, colors.Primary, "checked face")
 	}

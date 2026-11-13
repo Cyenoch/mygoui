@@ -398,16 +398,8 @@ func buildTab(c *ui.Context, tab ui.Element, index int, o TabOptions, chosen *in
 	}
 	// Snapshot hover: transitions can retain paint after the element expires.
 	hovered := el.Hovered() && !o.Disabled
-	fg := t.MutedForeground.Alpha(0.72)
-	switch {
-	case selected && variant == TabsSecondary:
-		fg = t.Foreground
-	case selected:
-		fg = t.Foreground
-	case hovered:
-		fg = t.MutedForeground
-	}
-	el.TextColor(fg)
+	el.TextColor(selectionInk(el, "tab-ink", selected, hovered,
+		t.MutedForeground.Alpha(0.72), t.Foreground, t.MutedForeground))
 	// The pill the selected tab paints until the list knows the tab boxes;
 	// from the second frame the list paints the sliding one. Its shadow
 	// layers are resolved once here, not in the paint callback.

@@ -18,6 +18,7 @@ func init() {
 			{Title: "Multiple", Description: "Several choices show as removable values.", Demo: selectionExampleDemo(selectionSelectExampleMultiple)},
 			{Title: "Clearable", Description: "The clear action empties the trigger.", Demo: selectionExampleDemo(selectionSelectExampleClearable)},
 			{Title: "Sections", Description: "Grouped choices keep their headers in the popup.", Demo: selectionExampleDemo(selectionSelectExampleSections)},
+			{Title: "Loading", Description: "A spinner replaces the chevron while results are on their way; the field stays editable.", Demo: selectLoadingDemo},
 		},
 		Code: `form.Select(c, form.SelectOptions{
     Label: "Fruit", Placeholder: "Choose a fruit",
@@ -31,6 +32,7 @@ func init() {
 			{"Clearable", "bool", "false", "Shows the clear action when something is chosen."},
 			{"MaxHeight", "float32", "0", "Caps the popup list's height."},
 			{"Disabled", "bool", "false", "Stops opening and selecting."},
+			{"Loading", "bool", "false", "Swaps the chevron for a spinner; an empty popup shows a Loading row."},
 			{"Invalid", "bool", "false", "Paints the danger trigger and error."},
 		},
 		Tokens: []string{"FieldBackground", "FieldBorder", "FieldPlaceholder", "AccentSoft", "Danger"},
@@ -44,6 +46,7 @@ func init() {
 			{Title: "Secondary", Description: "The flat secondary field face.", Demo: selectionExampleDemo(selectionComboBoxExampleSecondary)},
 			{Title: "Multiple", Description: "Each choice becomes a removable chip.", Demo: selectionExampleDemo(selectionComboBoxExampleMultiple)},
 			{Title: "Custom value", Description: "Typed text that matches no option survives.", Demo: selectionExampleDemo(selectionComboBoxExampleCustom)},
+			{Title: "Loading", Description: "A spinner replaces the chevron while results are on their way; the field stays editable.", Demo: comboBoxLoadingDemo},
 		},
 		Code: `form.ComboBox(c, form.ComboBoxOptions{
     Label: "Language", Placeholder: "Pick a language",
@@ -54,6 +57,7 @@ func init() {
 			{"Variant", "form.ControlVariant", "ControlPrimary", "Primary field face or the flat secondary face."},
 			{"Selection", "list.SelectionMode", "SelectionSingle", "Single choice or removable multiple chips."},
 			{"AllowsCustomValue", "bool", "false", "Keeps typed text that matches no option."},
+			{"Loading", "bool", "false", "Swaps the chevron for a spinner; an empty popup shows a Loading row."},
 			{"Clearable", "bool", "false", "Shows the clear action."},
 			{"Empty", "string", "localized", "Message when the filter matches nothing."},
 			{"MaxHeight", "float32", "0", "Caps the popup list's height."},
@@ -69,7 +73,7 @@ func init() {
 			{Title: "Filtering", Description: "The popup search narrows the option list.", Demo: selectionExampleDemo(selectionAutocompleteExampleFiltering)},
 			{Title: "Secondary", Description: "The flat secondary trigger face.", Demo: selectionExampleDemo(selectionAutocompleteExampleSecondary)},
 			{Title: "Empty", Description: "The list states why it has no matches.", Demo: selectionExampleDemo(selectionAutocompleteExampleEmpty)},
-			{Title: "Loading", Description: "The caller-owned loading state is shown.", Demo: selectionExampleDemo(selectionAutocompleteExampleLoading)},
+			{Title: "Loading", Description: "A spinner replaces the end of the field while results are on their way; the field stays editable.", Demo: autocompleteLoadingDemo},
 		},
 		Code: `form.Autocomplete(c, form.AutocompleteOptions{
     Label: "Destination", Placeholder: "Choose a city",
@@ -82,7 +86,7 @@ func init() {
 			{"SearchPlaceholder", "string", "", "Hint in the popup's search field."},
 			{"SearchLabel", "string", "", "Accessible name for the popup search."},
 			{"Empty", "string", "localized", "Message when nothing matches."},
-			{"Loading", "bool", "false", "Shows the caller-owned loading state."},
+			{"Loading", "bool", "false", "Shows a spinner in the field; an empty popup shows a Loading row."},
 			{"Clearable", "bool", "false", "Shows the clear action."},
 			{"MaxHeight", "float32", "0", "Caps the popup list's height."},
 		},
@@ -98,6 +102,7 @@ func init() {
 			{Title: "Sections", Description: "Labelled groups appear in order.", Demo: selectionExampleDemo(selectionListBoxExampleSections)},
 			{Title: "Disabled", Description: "The list dims and stops activating rows.", Demo: selectionExampleDemo(selectionListBoxExampleDisabled)},
 			{Title: "Empty", Description: "An empty list states why it has no rows.", Demo: selectionExampleDemo(selectionListBoxExampleEmpty)},
+			{Title: "Loading", Description: "Placeholder rows without data; a dimmed refresh with rows.", Demo: listBoxLoadingDemo},
 		},
 		Code: `list.ListBox(c, list.ListBoxOptions{
     Label: "Fruit", Items: fruits, Selection: list.SelectionSingle,
@@ -111,6 +116,8 @@ func init() {
 			{"Variant", "list.ListBoxVariant", "ListBoxDefault", "Default or danger row color."},
 			{"Disabled", "bool", "false", "Dims the list and stops activation."},
 			{"Empty", "string", "", "Message shown when there are no rows."},
+			{"Loading", "bool", "false", "Placeholder rows without data; a dimmed refresh line with rows."},
+			{"LoadingRows", "int", "5", "Number of placeholder rows."},
 		},
 		Tokens: []string{"Default", "Foreground", "Muted", "Accent", "Danger"},
 	})

@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/Cyenoch/mygoicons/lucide"
+	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
@@ -148,6 +149,8 @@ type tagResolved struct {
 	Variant  TagVariant
 }
 
+type tagInkKey struct{}
+
 // tagMotionDuration is the background-color transition for a tag. It
 // doubles as the fade of a removed tag's exit copy.
 const tagMotionDuration = 100 * time.Millisecond
@@ -197,6 +200,7 @@ func tagView(c *ui.Context, o TagOptions, r tagResolved) ui.Element {
 	// Disable before the face reads the pointer, so a disabled tag never
 	// paints its hover face.
 	e = style.Disabled(e, o.Disabled)
+	fg = motion.Color(e, tagInkKey{}, fg)
 	e.TextColor(fg)
 	if o.OnClick != nil || o.Removable {
 		e.Focusable().FocusRing(true)
@@ -208,10 +212,7 @@ func tagView(c *ui.Context, o TagOptions, r tagResolved) ui.Element {
 	e.Background(fill)
 	// Declare the transition in every build: omitting it reads as the tag
 	// leaving and paints a fading copy over the live tag. Reduced motion
-	// settles the frame instead, so the face and a removal show at once.
-	if theme.ReduceMotion(c) {
-		c.DisableAnimations()
-	}
+	// keeps the fades and drops the scale.
 	e = e.Transition(ui.ElementTransition{
 		Duration: tagMotionDuration, Ease: ui.EaseOut, Colors: true,
 		Exit: &ui.Motion{Opacity: 0, Scale: 0.96},

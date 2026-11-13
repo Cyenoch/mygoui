@@ -85,7 +85,7 @@ func ControlField(c *ui.Context, o ControlFieldOptions) ui.Element {
 			if o.Kind == ControlFieldCheckbox {
 				checkboxControl(c, checked, nil, o.Invalid, ControlPrimary, row)
 			} else {
-				switchIndicator(c, checked, SwitchMedium, disabled, row)
+				switchIndicator(c, checked, SwitchMedium, disabled, false, row)
 			}
 		})
 		if errText != "" {

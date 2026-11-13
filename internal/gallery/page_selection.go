@@ -33,7 +33,6 @@ type selectionState struct {
 
 	auto      form.AutocompleteState
 	autoEmpty form.AutocompleteState
-	autoLoad  form.AutocompleteState
 	autoFlat  form.AutocompleteState
 
 	listNote   string
@@ -355,22 +354,6 @@ func selectionAutocompleteExampleEmpty(c *ui.Context, st *selectionState) {
 		State:       &st.autoEmpty,
 		FullWidth:   true,
 		MaxHeight:   theme.Scale(c, 160),
-	})
-}
-
-// selectionAutocompleteExampleLoading shows the caller-owned loading state.
-func selectionAutocompleteExampleLoading(c *ui.Context, st *selectionState) {
-	form.Autocomplete(c, form.AutocompleteOptions{
-		Label:       "Remote search",
-		Placeholder: "Open to load",
-		Empty:       "No matches",
-		Loading:     true,
-		State:       &st.autoLoad,
-		FullWidth:   true,
-		MaxHeight:   theme.Scale(c, 160),
-		OnQueryChange: func(query string) {
-			st.autoNote = "Query: " + query
-		},
 	})
 }
 

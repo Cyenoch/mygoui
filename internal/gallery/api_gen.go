@@ -411,6 +411,21 @@ var apiTypes = map[string]apiType{
 			{Name: "OnError", Type: "func(error)", Doc: ""},
 		},
 	},
+	"content.DiffViewerOptions": {
+		Doc: "DiffViewerOptions configures a read-only diff of Old against New. Title adds a header naming the file, with the counts of added and deleted lines, a toggle between the two layouts (Layout is where it starts, and follows the option when that changes), a way to step through the changes while Height makes the viewer scroll (also F7 and Shift+F7) and a button copying New. ContextLines is how many unchanged lines stay around each change: 3 when zero, none when negative; the rest collapse into separators the user expands, unless ExpandUnchanged shows them all. Height makes the viewer scroll within that many DIPs; zero makes it as high as its lines. Identical texts show \"No changes\" in place of the lines. OnError receives a clipboard failure of the copy.",
+		Fields: []apiField{
+			{Name: "Old", Type: "string", Doc: ""},
+			{Name: "New", Type: "string", Doc: ""},
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Layout", Type: "content.DiffLayout", Doc: ""},
+			{Name: "ContextLines", Type: "int", Doc: ""},
+			{Name: "ExpandUnchanged", Type: "bool", Doc: ""},
+			{Name: "NoLineNumbers", Type: "bool", Doc: ""},
+			{Name: "Wrap", Type: "bool", Doc: ""},
+			{Name: "Height", Type: "float32", Doc: ""},
+			{Name: "OnError", Type: "func(error)", Doc: ""},
+		},
+	},
 	"content.HighlighterOptions": {
 		Doc: "HighlighterOptions configures a read-only code block. Language is a name or common alias (\"go\", \"ts\", \"sh\"); an unknown or empty one renders the code plain. Title replaces the language name in the header, as a file name. Wrap wraps long lines instead of scrolling them sideways. NoCopy leaves out the copy button.",
 		Fields: []apiField{
@@ -419,6 +434,50 @@ var apiTypes = map[string]apiType{
 			{Name: "Title", Type: "string", Doc: ""},
 			{Name: "Wrap", Type: "bool", Doc: ""},
 			{Name: "NoCopy", Type: "bool", Doc: ""},
+		},
+	},
+	"content.JSONViewerOptions": {
+		Doc: "JSONViewerOptions configures a JSON tree. Source is the document; pass string(data) for bytes, converted where the data changes rather than in every build. Title names the viewer in its header, \"JSON\" when empty. Height is the tree's height in DIPs; zero makes it as high as its rows, up to 320 DIPs. ExpandDepth is how many levels are open when the viewer first shows a document: two when zero, only the root when negative. Toolbar adds a search field above the tree, with the number of matches and a way to step through them. OnError receives a clipboard failure of a copy.",
+		Fields: []apiField{
+			{Name: "Source", Type: "string", Doc: ""},
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Height", Type: "float32", Doc: ""},
+			{Name: "ExpandDepth", Type: "int", Doc: ""},
+			{Name: "Toolbar", Type: "bool", Doc: ""},
+			{Name: "OnError", Type: "func(error)", Doc: ""},
+			{Name: "State", Type: "*content.JSONViewerState", Doc: "State is caller-owned expansion and scroll state; the viewer keeps its own per window when nil."},
+		},
+	},
+	"content.JSONViewerState": {
+		Doc: "JSONViewerState holds which nodes of a document are open, the row chosen and the scroll position. Nodes stay open by their path when Source changes. Query marks the keys and values holding it, whatever their case, and chooses the first of them, opening the objects and arrays above it; the toolbar's field writes it.",
+		Fields: []apiField{
+			{Name: "Query", Type: "string", Doc: ""},
+		},
+	},
+	"content.LogViewerOptions": {
+		Doc: "LogViewerOptions configures a log. Lines is caller-owned; Line and Count supply the lines instead when the log is not held as a slice. Level tints line i. Follow keeps the newest line in view while the user is at the end, and shows a button back to it once they scroll away. Height is the viewer's height in DIPs; zero makes it as high as its lines, up to 320 DIPs. Toolbar adds a search field, the number of lines listed while a filter is on, and a toggle for wrapping lines above the lines, with a toggle per level when Level is set: the levels pressed are the only ones listed, all of them while none is, and a plain line counts as Info. Without a Toolbar the application sets the filter in State. OnError receives a clipboard failure of a copy.",
+		Fields: []apiField{
+			{Name: "Lines", Type: "[]string", Doc: ""},
+			{Name: "Line", Type: "func(i int) string", Doc: ""},
+			{Name: "Count", Type: "int", Doc: ""},
+			{Name: "Level", Type: "func(i int) content.LogLevel", Doc: ""},
+			{Name: "LineNumbers", Type: "bool", Doc: ""},
+			{Name: "Follow", Type: "bool", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Height", Type: "float32", Doc: ""},
+			{Name: "Toolbar", Type: "bool", Doc: ""},
+			{Name: "OnError", Type: "func(error)", Doc: ""},
+			{Name: "State", Type: "*content.LogViewerState", Doc: "State is caller-owned scroll state; the viewer keeps its own per window when nil."},
+		},
+	},
+	"content.LogViewerState": {
+		Doc: "LogViewerState holds a log's scroll position and its filter. List scrolls it from the application: ScrollToEnd, ScrollTo, Visible and AtEnd. Query lists the lines holding it, whatever their case, and marks it in them; Levels lists the lines of its levels, every line while it is the zero set. Line numbers stay those of the log. The listing is kept until the query, the levels or Revision change, or the log shrinks, and a log that grew is scanned from its old end only: raise Revision when lines change in place or the log is replaced by one of the same length. NoWrap shows each line on one row, cut where it ends, rather than wrapped.",
+		Fields: []apiField{
+			{Name: "List", Type: "ui.ListState", Doc: ""},
+			{Name: "Query", Type: "string", Doc: ""},
+			{Name: "Levels", Type: "content.LogLevels", Doc: ""},
+			{Name: "Revision", Type: "int", Doc: ""},
+			{Name: "NoWrap", Type: "bool", Doc: ""},
 		},
 	},
 	"content.MarkdownOptions": {
@@ -510,6 +569,8 @@ var apiTypes = map[string]apiType{
 			{Name: "ActionsHeader", Type: "string", Doc: "ActionsHeader titles the actions column."},
 			{Name: "ActionsWidth", Type: "float32", Doc: "ActionsWidth is the width of the actions column in DIPs; 0 uses 64."},
 			{Name: "Empty", Type: "func(c *ui.Context) ui.Element", Doc: "Empty builds the empty state shown when Rows is 0 or every column is hidden. Without it, the table shows the localized empty message."},
+			{Name: "Loading", Type: "bool", Doc: "Loading marks the rows as on their way. With no rows the table shows LoadingRows placeholder rows under the real header; with rows it dims them, ignores input and draws a progress line along the top edge."},
+			{Name: "LoadingRows", Type: "int", Doc: "LoadingRows is the number of placeholder rows; 0 shows 5."},
 			{Name: "Footer", Type: "func(c *ui.Context) ui.Element", Doc: "Footer builds the row under the body with vertical centering. Use it for a result summary and pagination; FillWidth or Grow its element to span the row."},
 		},
 	},
@@ -778,6 +839,21 @@ var apiTypes = map[string]apiType{
 			{Name: "Revision", Type: "uint64", Doc: "Revision tells the autocomplete that options changed in place. Increment it when an option's key, label or other field, or a Filter result, changes without the slice or its length changing."},
 		},
 	},
+	"form.CheckboxCardOptions": {
+		Doc: "CheckboxCardOptions configures a card that is one check box. Checked is caller-owned; a nil Checked renders the card disabled. Title names the card for assistive technology, which reads Description after it. Content builds more to show under the texts, such as a price or a feature list; it is display only, as the whole card is the control. HideIndicator leaves out the check box, the card's border and fill showing the choice.",
+		Fields: []apiField{
+			{Name: "Checked", Type: "*bool", Doc: ""},
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Description", Type: "string", Doc: ""},
+			{Name: "Icon", Type: "*ui.SVG", Doc: ""},
+			{Name: "Content", Type: "func()", Doc: ""},
+			{Name: "HideIndicator", Type: "bool", Doc: ""},
+			{Name: "Invalid", Type: "bool", Doc: ""},
+			{Name: "Disabled", Type: "bool", Doc: ""},
+			{Name: "FullWidth", Type: "bool", Doc: ""},
+			{Name: "OnChange", Type: "func(bool)", Doc: ""},
+		},
+	},
 	"form.CheckboxGroupOptions": {
 		Doc: "CheckboxGroupOptions configures a group of related check boxes. State and SelectAllLabel together add a mixed-state select-all row; leave either empty for a plain group whose items keep their own state. Disabled disables the whole group, including body-built items, and paints it with the native disabled appearance. Invalid marks the group's error; each item must also be given Invalid for its control outline.",
 		Fields: []apiField{
@@ -827,6 +903,7 @@ var apiTypes = map[string]apiType{
 			{Name: "Invalid", Type: "bool", Doc: ""},
 			{Name: "FullWidth", Type: "bool", Doc: ""},
 			{Name: "Clearable", Type: "bool", Doc: ""},
+			{Name: "Loading", Type: "bool", Doc: "Loading crossfades the chevron to a spinner. The popup shows a Loading row when it has no options and keeps its rows otherwise. The input stays editable."},
 			{Name: "Selection", Type: "list.SelectionMode", Doc: ""},
 			{Name: "Variant", Type: "form.ControlVariant", Doc: ""},
 			{Name: "Items", Type: "[]list.ListBoxItem", Doc: ""},
@@ -1002,8 +1079,35 @@ var apiTypes = map[string]apiType{
 			{Name: "Invalid", Type: "bool", Doc: ""},
 			{Name: "FullWidth", Type: "bool", Doc: ""},
 			{Name: "Password", Type: "bool", Doc: ""},
+			{Name: "Loading", Type: "bool", Doc: "Loading shows a spinner at the field's end. The field stays editable; the caller owns the flag and the work behind it."},
 			{Name: "OnChange", Type: "func()", Doc: ""},
 			{Name: "OnSubmit", Type: "func()", Doc: ""},
+		},
+	},
+	"form.KeyValue": {
+		Doc: "KeyValue is one row of a KeyValueEditor. ID keeps the row's identity, and so its focus, caret and reveal state, when rows before it come and go; rows without an ID are told apart by position. A Secret row shows its value concealed behind a reveal toggle.",
+		Fields: []apiField{
+			{Name: "ID", Type: "string", Doc: ""},
+			{Name: "Key", Type: "string", Doc: ""},
+			{Name: "Value", Type: "string", Doc: ""},
+			{Name: "Secret", Type: "bool", Doc: ""},
+		},
+	},
+	"form.KeyValueEditorOptions": {
+		Doc: "KeyValueEditorOptions configures an editor of key and value rows, such as environment variables or request headers. Pairs are caller-owned and never modified: OnChange reports the row at index as edited, OnAdd asks for a new row at the end and OnRemove for the row at index to go, and the caller applies each. A nil OnChange makes the rows read-only; a nil OnAdd or OnRemove omits that action. Text pasted into an editor as KEY=VALUE lines (a .env file, with comments, blank lines and \"export\" skipped) is reported to OnPaste as the rows it holds instead of being typed in; a single line is taken only in a key editor. Without OnPaste the text is pasted as typed. MarkDuplicateKeys marks every non-empty key that occurs more than once as invalid, with a message. ShowHeaders titles the columns. Enter in a key moves to its value and Enter in the last row's value asks for a new row. The rows are not virtualized: the editor suits tens of rows.",
+		Fields: []apiField{
+			{Name: "Pairs", Type: "[]form.KeyValue", Doc: ""},
+			{Name: "AriaLabel", Type: "string", Doc: ""},
+			{Name: "KeyPlaceholder", Type: "string", Doc: ""},
+			{Name: "ValuePlaceholder", Type: "string", Doc: ""},
+			{Name: "AddLabel", Type: "string", Doc: ""},
+			{Name: "MarkDuplicateKeys", Type: "bool", Doc: ""},
+			{Name: "ShowHeaders", Type: "bool", Doc: ""},
+			{Name: "Disabled", Type: "bool", Doc: ""},
+			{Name: "OnChange", Type: "func(index int, pair form.KeyValue)", Doc: ""},
+			{Name: "OnAdd", Type: "func()", Doc: ""},
+			{Name: "OnRemove", Type: "func(index int)", Doc: ""},
+			{Name: "OnPaste", Type: "func(pairs []form.KeyValue)", Doc: ""},
 		},
 	},
 	"form.LabelOptions": {
@@ -1013,6 +1117,25 @@ var apiTypes = map[string]apiType{
 			{Name: "Invalid", Type: "bool", Doc: ""},
 			{Name: "Disabled", Type: "bool", Doc: ""},
 			{Name: "Target", Type: "*ui.Handle", Doc: ""},
+		},
+	},
+	"form.MaskInputOptions": {
+		Doc: "MaskInputOptions configures a masked input. In Mask, 9 takes a digit, A a letter and * either; every other rune is a literal the input writes itself. The mask has no escape, so 9, A and * cannot be literals.",
+		Fields: []apiField{
+			{Name: "Mask", Type: "string", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Description", Type: "string", Doc: ""},
+			{Name: "Error", Type: "string", Doc: ""},
+			{Name: "Placeholder", Type: "string", Doc: ""},
+			{Name: "AriaLabel", Type: "string", Doc: ""},
+			{Name: "Variant", Type: "form.ControlVariant", Doc: ""},
+			{Name: "Required", Type: "bool", Doc: ""},
+			{Name: "Disabled", Type: "bool", Doc: ""},
+			{Name: "ReadOnly", Type: "bool", Doc: ""},
+			{Name: "Invalid", Type: "bool", Doc: ""},
+			{Name: "FullWidth", Type: "bool", Doc: ""},
+			{Name: "OnChange", Type: "func()", Doc: ""},
+			{Name: "OnSubmit", Type: "func()", Doc: ""},
 		},
 	},
 	"form.NumberFieldOptions": {
@@ -1068,12 +1191,67 @@ var apiTypes = map[string]apiType{
 			{Name: "Complete", Type: "bool", Doc: ""},
 		},
 	},
+	"form.PasswordFieldOptions": {
+		Doc: "PasswordFieldOptions configures a password input with a reveal toggle. Revealed is the caller-owned reveal flag; nil keeps it per window, starting concealed. The characters are concealed again when the focus leaves the field, unless KeepRevealed is set. Strength rates the value as it changes: level 0 to PasswordStrengthLevels fills that many segments of a bar under the field, and hint is the text beside it. The field sets no policy; the caller decides what makes a password strong.",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Description", Type: "string", Doc: ""},
+			{Name: "Error", Type: "string", Doc: ""},
+			{Name: "Placeholder", Type: "string", Doc: ""},
+			{Name: "AriaLabel", Type: "string", Doc: ""},
+			{Name: "Required", Type: "bool", Doc: ""},
+			{Name: "Disabled", Type: "bool", Doc: ""},
+			{Name: "ReadOnly", Type: "bool", Doc: ""},
+			{Name: "Invalid", Type: "bool", Doc: ""},
+			{Name: "FullWidth", Type: "bool", Doc: ""},
+			{Name: "Revealed", Type: "*bool", Doc: ""},
+			{Name: "KeepRevealed", Type: "bool", Doc: ""},
+			{Name: "Strength", Type: "func(value string) (level int, hint string)", Doc: ""},
+			{Name: "OnChange", Type: "func()", Doc: ""},
+			{Name: "OnSubmit", Type: "func()", Doc: ""},
+		},
+	},
+	"form.PathFieldOptions": {
+		Doc: "PathFieldOptions configures a path field. OnBrowse runs when the trailing button is activated; the field opens no dialog itself, so the caller shows one (see PickFiles) and writes the chosen path to the value. A nil OnBrowse disables the button. BrowseLabel replaces the localized \"Browse\".",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Description", Type: "string", Doc: ""},
+			{Name: "Error", Type: "string", Doc: ""},
+			{Name: "Placeholder", Type: "string", Doc: ""},
+			{Name: "AriaLabel", Type: "string", Doc: ""},
+			{Name: "BrowseLabel", Type: "string", Doc: ""},
+			{Name: "Required", Type: "bool", Doc: ""},
+			{Name: "Disabled", Type: "bool", Doc: ""},
+			{Name: "ReadOnly", Type: "bool", Doc: ""},
+			{Name: "Invalid", Type: "bool", Doc: ""},
+			{Name: "FullWidth", Type: "bool", Doc: ""},
+			{Name: "OnBrowse", Type: "func()", Doc: ""},
+			{Name: "OnChange", Type: "func()", Doc: ""},
+			{Name: "OnSubmit", Type: "func()", Doc: ""},
+		},
+	},
 	"form.PickFilesOptions": {
 		Doc: "PickFilesOptions configures PickFiles. Accept and Multiple mean what they do in UploadOptions; Parent attaches the dialog to a window.",
 		Fields: []apiField{
 			{Name: "Parent", Type: "*mygo.Window", Doc: ""},
 			{Name: "Accept", Type: "[]string", Doc: ""},
 			{Name: "Multiple", Type: "bool", Doc: ""},
+		},
+	},
+	"form.RadioCardOptions": {
+		Doc: "RadioCardOptions configures a card that is one radio button. State carries the group's caller-owned selection; a nil State or Selected renders the card disabled. Content and HideIndicator are those of CheckboxCardOptions.",
+		Fields: []apiField{
+			{Name: "State", Type: "*form.RadioGroupState[T]", Doc: ""},
+			{Name: "Value", Type: "form.T", Doc: ""},
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Description", Type: "string", Doc: ""},
+			{Name: "Icon", Type: "*ui.SVG", Doc: ""},
+			{Name: "Content", Type: "func()", Doc: ""},
+			{Name: "HideIndicator", Type: "bool", Doc: ""},
+			{Name: "Invalid", Type: "bool", Doc: ""},
+			{Name: "Disabled", Type: "bool", Doc: ""},
+			{Name: "FullWidth", Type: "bool", Doc: ""},
+			{Name: "OnChange", Type: "func(form.T)", Doc: ""},
 		},
 	},
 	"form.RadioGroupOptions": {
@@ -1111,6 +1289,24 @@ var apiTypes = map[string]apiType{
 			{Name: "OnChange", Type: "func(form.T)", Doc: ""},
 		},
 	},
+	"form.RangeSliderOptions": {
+		Doc: "RangeSliderOptions configures a two-thumb slider. Min, Max, Step, Marks and Format behave as in SliderOptions. MinGap keeps the thumbs at least that far apart; it should be a multiple of Step so a stopped thumb stays on the grid.",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Description", Type: "string", Doc: ""},
+			{Name: "Error", Type: "string", Doc: ""},
+			{Name: "Min", Type: "float64", Doc: ""},
+			{Name: "Max", Type: "float64", Doc: ""},
+			{Name: "Step", Type: "float64", Doc: ""},
+			{Name: "MinGap", Type: "float64", Doc: ""},
+			{Name: "Marks", Type: "[]form.SliderMark", Doc: ""},
+			{Name: "Disabled", Type: "bool", Doc: ""},
+			{Name: "Invalid", Type: "bool", Doc: ""},
+			{Name: "HideOutput", Type: "bool", Doc: ""},
+			{Name: "Format", Type: "func(float64) string", Doc: ""},
+			{Name: "OnChange", Type: "func()", Doc: ""},
+		},
+	},
 	"form.RateOptions": {
 		Doc: "RateOptions configures a star rating. Count defaults to five stars. AllowHalf steps by half a star; AllowClear lets a click on the current rating clear it. ReadOnly shows the rating without taking input.",
 		Fields: []apiField{
@@ -1139,6 +1335,7 @@ var apiTypes = map[string]apiType{
 			{Name: "FullWidth", Type: "bool", Doc: ""},
 			{Name: "OnChange", Type: "func()", Doc: ""},
 			{Name: "OnSubmit", Type: "func()", Doc: ""},
+			{Name: "Loading", Type: "bool", Doc: "Loading swaps the search icon for a spinner; the field stays editable."},
 			{Name: "OnClear", Type: "func()", Doc: ""},
 		},
 	},
@@ -1154,6 +1351,7 @@ var apiTypes = map[string]apiType{
 			{Name: "Invalid", Type: "bool", Doc: ""},
 			{Name: "FullWidth", Type: "bool", Doc: ""},
 			{Name: "Clearable", Type: "bool", Doc: ""},
+			{Name: "Loading", Type: "bool", Doc: "Loading crossfades the chevron to a spinner and shows a Loading row when the popup has no options. The select stays usable."},
 			{Name: "Selection", Type: "list.SelectionMode", Doc: ""},
 			{Name: "Variant", Type: "form.ControlVariant", Doc: ""},
 			{Name: "Items", Type: "[]list.ListBoxItem", Doc: ""},
@@ -1232,9 +1430,28 @@ var apiTypes = map[string]apiType{
 			{Name: "LabelPosition", Type: "form.SwitchLabelPosition", Doc: ""},
 			{Name: "Required", Type: "bool", Doc: ""},
 			{Name: "Invalid", Type: "bool", Doc: ""},
+			{Name: "Loading", Type: "bool", Doc: "Loading marks a change in flight: the thumb shows a spinner and the switch keeps its value and takes no press until it clears."},
 			{Name: "Disabled", Type: "bool", Doc: ""},
 			{Name: "OnChange", Type: "func(bool)", Doc: ""},
 			{Name: "Handle", Type: "*ui.Handle", Doc: ""},
+		},
+	},
+	"form.TagsInputOptions": {
+		Doc: "TagsInputOptions configures a free-text tag field. Max caps the number of tags when positive. A tag already present is rejected unless AllowDuplicates is set; tags compare exactly, after trimming spaces. A draft still in the editor when the focus leaves the field is committed as a tag, unless KeepDraftOnBlur is set.",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Description", Type: "string", Doc: ""},
+			{Name: "Error", Type: "string", Doc: ""},
+			{Name: "Placeholder", Type: "string", Doc: ""},
+			{Name: "AriaLabel", Type: "string", Doc: ""},
+			{Name: "Required", Type: "bool", Doc: ""},
+			{Name: "Disabled", Type: "bool", Doc: ""},
+			{Name: "Invalid", Type: "bool", Doc: ""},
+			{Name: "FullWidth", Type: "bool", Doc: ""},
+			{Name: "Max", Type: "int", Doc: ""},
+			{Name: "AllowDuplicates", Type: "bool", Doc: ""},
+			{Name: "KeepDraftOnBlur", Type: "bool", Doc: ""},
+			{Name: "OnChange", Type: "func()", Doc: ""},
 		},
 	},
 	"form.TextAreaOptions": {
@@ -1272,6 +1489,7 @@ var apiTypes = map[string]apiType{
 			{Name: "Invalid", Type: "bool", Doc: ""},
 			{Name: "FullWidth", Type: "bool", Doc: ""},
 			{Name: "Password", Type: "bool", Doc: ""},
+			{Name: "Loading", Type: "bool", Doc: "Loading shows a spinner at the field's end; the field stays editable."},
 			{Name: "OnChange", Type: "func()", Doc: ""},
 			{Name: "OnSubmit", Type: "func()", Doc: ""},
 		},
@@ -1334,6 +1552,8 @@ var apiTypes = map[string]apiType{
 			{Name: "MaxHeight", Type: "float32", Doc: "MaxHeight caps a content-sized viewport in DIPs."},
 			{Name: "Padding", Type: "float32", Doc: "Padding is the content inset; zero uses the 4 DIP base, scaled with the host's text scale."},
 			{Name: "Empty", Type: "string", Doc: "Empty is shown when the list has no rows."},
+			{Name: "Loading", Type: "bool", Doc: "Loading marks the rows as on their way. With no rows the list shows LoadingRows placeholder rows; with rows it dims them, ignores input and draws a progress line along the top edge."},
+			{Name: "LoadingRows", Type: "int", Doc: "LoadingRows is the number of placeholder rows; 0 shows 5."},
 			{Name: "NoFocusOnClick", Type: "bool", Doc: "NoFocusOnClick leaves the keyboard focus where it is, as a text input's popup needs."},
 			{Name: "KeyboardHighlight", Type: "bool", Doc: "KeyboardHighlight paints the highlighted row while a separate editor drives navigation. Pointer movement updates the same highlight."},
 			{Name: "IndicatorStart", Type: "bool", Doc: "IndicatorStart places selection checks before the label, as in Coss select and combobox menus. The default keeps checks at the end."},
@@ -1381,6 +1601,47 @@ var apiTypes = map[string]apiType{
 			{Name: "Label", Type: "string", Doc: ""},
 			{Name: "Disabled", Type: "bool", Doc: ""},
 			{Name: "OnMove", Type: "func(from, to int)", Doc: ""},
+		},
+	},
+	"list.TreeNode": {
+		Doc: "TreeNode is one item of a Tree. Key is its stable identity in the expansion, the selection and the checks; it falls back to Label and must be unique in the tree. A node with Children is a branch, and so is a Lazy one. Disabled stops a node and everything below it from being chosen, checked or toggled.",
+		Fields: []apiField{
+			{Name: "Key", Type: "string", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Icon", Type: "*ui.SVG", Doc: ""},
+			{Name: "Disabled", Type: "bool", Doc: ""},
+			{Name: "Children", Type: "[]list.TreeNode", Doc: ""},
+			{Name: "Lazy", Type: "bool", Doc: "Lazy makes the node a branch before it has Children: the caller loads them when OnExpandedChange reports it opened. Once loaded, an empty branch shows nothing below it. Bump State.Revision when Children are set in place. While it has no Children it takes a check of its own, so a checked parent counts it; the loaded children do not inherit that check and start unchecked."},
+			{Name: "Loading", Type: "bool", Doc: "Loading shows a spinner in place of the node's arrow while its children are on their way, and makes the node a branch. It needs no Revision bump."},
+		},
+	},
+	"list.TreeOptions": {
+		Doc: "TreeOptions configures a Tree. State is required and caller-owned.",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: "Label names the tree for assistive technology."},
+			{Name: "Nodes", Type: "[]list.TreeNode", Doc: "Nodes are the top-level items. Bump State.Revision after editing them in place."},
+			{Name: "Selection", Type: "list.SelectionMode", Doc: "Selection selects how rows are chosen. The zero value chooses none: a press then checks a Checkable row, or opens and closes a branch."},
+			{Name: "Checkable", Type: "bool", Doc: "Checkable shows a check box on every row. A branch is checked when all leaves below it are, and mixed when some are."},
+			{Name: "Guides", Type: "bool", Doc: "Guides draws a hairline at each ancestor level of a row."},
+			{Name: "State", Type: "*list.TreeState", Doc: "State is required and owned by the caller."},
+			{Name: "Height", Type: "float32", Doc: "Height fixes the viewport in DIPs; without it the tree sizes to its rows, and MaxHeight caps it."},
+			{Name: "MaxHeight", Type: "float32", Doc: ""},
+			{Name: "Loading", Type: "bool", Doc: "Loading marks the nodes as on their way. With no rows the tree shows LoadingRows placeholder rows at a few depths; with rows it dims them, ignores input and draws a progress line along the top edge."},
+			{Name: "LoadingRows", Type: "int", Doc: "LoadingRows is the number of placeholder rows; 0 shows 5."},
+			{Name: "OnAction", Type: "func(key string)", Doc: "OnAction reports a row activated by a click or Enter, not by Space."},
+			{Name: "OnSelectionChange", Type: "func(keys []string)", Doc: "OnSelectionChange reports the chosen keys after a user change."},
+			{Name: "OnCheckedChange", Type: "func(keys []string)", Doc: "OnCheckedChange reports the checked leaf keys after a user change."},
+			{Name: "OnExpandedChange", Type: "func(key string, expanded bool)", Doc: "OnExpandedChange reports a branch the user opened or closed."},
+			{Name: "OnContextMenu", Type: "func(key string, m *ui.Menu)", Doc: "OnContextMenu fills the menu opened on the row of key. A row that is not chosen is chosen first, as Finder does; with Selection none the choice is left alone. Disabled rows open none."},
+		},
+	},
+	"list.TreeState": {
+		Doc: "TreeState is the caller-owned expansion, selection, checks and scroll state of one Tree. Keep one per tree and do not copy it. The tree indexes its nodes once and keeps the rows it shows between frames. A new Nodes slice or length is noticed; Revision must change when a node or its children are edited in place.",
+		Fields: []apiField{
+			{Name: "List", Type: "ui.ListState", Doc: "List keeps the virtual list's place, row heights and focus."},
+			{Name: "SelectedKey", Type: "string", Doc: "SelectedKey is the chosen key in SelectionSingle mode; empty for none."},
+			{Name: "Selected", Type: "ui.Selection[string]", Doc: "Selected holds the chosen keys in SelectionMultiple mode."},
+			{Name: "Revision", Type: "uint64", Doc: "Revision tells the tree that nodes changed in place. Increment it when a key, label, disabled flag or child list changes without the top-level slice or its length changing."},
 		},
 	},
 	"mygoui.AlertOptions": {
@@ -1432,6 +1693,17 @@ var apiTypes = map[string]apiType{
 			{Name: "Variant", Type: "mygoui.BadgeVariant", Doc: ""},
 			{Name: "Size", Type: "mygoui.BadgeSize", Doc: ""},
 			{Name: "Icon", Type: "*ui.SVG", Doc: ""},
+		},
+	},
+	"mygoui.BannerOptions": {
+		Doc: "BannerOptions configures a message bar. Status tints it as an Alert's does. Action builds its controls after the text. OnDismiss adds a close button and is called when it is pressed: the caller stops building the banner.",
+		Fields: []apiField{
+			{Name: "Text", Type: "string", Doc: ""},
+			{Name: "Status", Type: "mygoui.StatusColor", Doc: ""},
+			{Name: "Icon", Type: "*ui.SVG", Doc: ""},
+			{Name: "ShowIcon", Type: "bool", Doc: "ShowIcon uses the status glyph when Icon is nil."},
+			{Name: "Action", Type: "func()", Doc: ""},
+			{Name: "OnDismiss", Type: "func()", Doc: ""},
 		},
 	},
 	"mygoui.ButtonGroupOptions": {
@@ -1495,6 +1767,27 @@ var apiTypes = map[string]apiType{
 			{Name: "OnClick", Type: "func()", Doc: ""},
 		},
 	},
+	"mygoui.DescriptionsItem": {
+		Doc: "DescriptionsItem is one labelled value. Content replaces the Value text with caller-built content, as a badge or a link. Span is the number of columns the item takes; values below one take one.",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Value", Type: "string", Doc: ""},
+			{Name: "Content", Type: "func()", Doc: ""},
+			{Name: "Span", Type: "int", Doc: ""},
+		},
+	},
+	"mygoui.DescriptionsOptions": {
+		Doc: "DescriptionsOptions configures a grid of labelled values. Columns is the number of items in a row, three when zero; the grid drops to fewer when its width leaves a column less than MinColumnWidth, 200 DIPs when zero. Bordered draws the values as a ruled table with the labels in aligned, tinted columns; otherwise each label sits above its value. A value that is empty shows a muted dash. Values wrap; Truncate cuts each at one line and shows the whole in a tooltip. Each item is a group named by its label.",
+		Fields: []apiField{
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Items", Type: "[]mygoui.DescriptionsItem", Doc: ""},
+			{Name: "Columns", Type: "int", Doc: ""},
+			{Name: "MinColumnWidth", Type: "float32", Doc: ""},
+			{Name: "Bordered", Type: "bool", Doc: ""},
+			{Name: "Truncate", Type: "bool", Doc: ""},
+			{Name: "Loading", Type: "bool", Doc: "Loading keeps the labels and shows a skeleton bar in place of each value, for a record whose values have not arrived."},
+		},
+	},
 	"mygoui.EmptyStateOptions": {
 		Doc: "EmptyStateOptions configures a quiet empty result.",
 		Fields: []apiField{
@@ -1548,6 +1841,14 @@ var apiTypes = map[string]apiType{
 		Doc: "HeaderOptions configures a section header.",
 		Fields: []apiField{
 			{Name: "Text", Type: "string", Doc: ""},
+		},
+	},
+	"mygoui.HighlightOptions": {
+		Doc: "HighlightOptions configures marked text. Every occurrence of each query in Text is marked; queries are trimmed and blank ones ignored. IgnoreCase matches letters whatever their case.",
+		Fields: []apiField{
+			{Name: "Text", Type: "string", Doc: ""},
+			{Name: "Queries", Type: "[]string", Doc: ""},
+			{Name: "IgnoreCase", Type: "bool", Doc: ""},
 		},
 	},
 	"mygoui.ImageOptions": {
@@ -1610,6 +1911,14 @@ var apiTypes = map[string]apiType{
 			{Name: "Label", Type: "string", Doc: ""},
 		},
 	},
+	"mygoui.LoadingOverlayOptions": {
+		Doc: "LoadingOverlayOptions configures a loading cover. Visible is the caller's flag. Label names what is loading to assistive technology; the locale's Loading when empty.",
+		Fields: []apiField{
+			{Name: "Visible", Type: "bool", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "ShowLabel", Type: "bool", Doc: "ShowLabel prints Label under the spinner, on a plate that keeps it legible over the content."},
+		},
+	},
 	"mygoui.MeterOptions": {
 		Doc: "MeterOptions configures a quantity within a known range.",
 		Fields: []apiField{
@@ -1621,6 +1930,15 @@ var apiTypes = map[string]apiType{
 			{Name: "Size", Type: "mygoui.ProgressSize", Doc: ""},
 			{Name: "ShowOutput", Type: "bool", Doc: ""},
 			{Name: "OutputText", Type: "string", Doc: ""},
+		},
+	},
+	"mygoui.NumberFlipOptions": {
+		Doc: "NumberFlipOptions configures a value whose digits roll when it changes.",
+		Fields: []apiField{
+			{Name: "Value", Type: "string", Doc: "Value is shown as given: the caller formats separators, signs and units. A change rolls the digits that differ and fades the rest."},
+			{Name: "Style", Type: "theme.TextStyle", Doc: "Style is the text role of the value; the zero value is theme.H2."},
+			{Name: "Color", Type: "ui.Color", Doc: "Color is the ink; the zero value is the foreground."},
+			{Name: "Label", Type: "string", Doc: "Label is the accessible name; Value when empty."},
 		},
 	},
 	"mygoui.Placement": {
@@ -1727,6 +2045,32 @@ var apiTypes = map[string]apiType{
 			{Name: "Color", Type: "mygoui.SeparatorColor", Doc: ""},
 		},
 	},
+	"mygoui.SettingsGroupOptions": {
+		Doc: "SettingsGroupOptions configures a titled group of settings rows. Action builds a control at the end of the header, as a button acting on the whole group.",
+		Fields: []apiField{
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Description", Type: "string", Doc: ""},
+			{Name: "Action", Type: "func()", Doc: ""},
+			{Name: "Rows", Type: "[]mygoui.SettingsRow", Doc: ""},
+			{Name: "Loading", Type: "bool", Doc: "Loading shows LoadingRows skeleton rows while the group has no rows yet. With rows it is a refresh: they dim, ignore input and a line runs along the top of the card."},
+			{Name: "LoadingRows", Type: "int", Doc: ""},
+		},
+	},
+	"mygoui.SettingsRow": {
+		Doc: "SettingsRow is one row of a SettingsGroup: a leading icon, a title over a subtitle, and Trailing, which builds the row's control or value. Control is the handle the caller bound to the control Trailing builds, so that the title names it for assistive technology; on a plain row a click on the title also focuses or toggles it. OnClick makes the whole row a button with a chevron; its Trailing then holds passive content, as the current value. Rows makes the row an expander revealing them, open while *Expanded, which the row keeps per window when nil, under the row's Title, which then must differ among the expanders of a group; an expander's own OnClick is not used. The trailing control sits beside the text and goes below it where they do not fit in one line. Destructive inks the icon and the title with the danger color, for a row that deletes or resets. The rows of an expander start at the edge of its title.",
+		Fields: []apiField{
+			{Name: "Icon", Type: "*ui.SVG", Doc: ""},
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Subtitle", Type: "string", Doc: ""},
+			{Name: "Trailing", Type: "func()", Doc: ""},
+			{Name: "Control", Type: "*ui.Handle", Doc: ""},
+			{Name: "OnClick", Type: "func()", Doc: ""},
+			{Name: "Rows", Type: "[]mygoui.SettingsRow", Doc: ""},
+			{Name: "Expanded", Type: "*bool", Doc: ""},
+			{Name: "Disabled", Type: "bool", Doc: ""},
+			{Name: "Destructive", Type: "bool", Doc: ""},
+		},
+	},
 	"mygoui.SidebarGroupOptions": {
 		Doc: "SidebarGroupOptions groups navigation actions under an optional label. Key preserves the group's identity when groups are reordered and must be unique among groups when set. Without a key, its position is its identity.",
 		Fields: []apiField{
@@ -1785,6 +2129,38 @@ var apiTypes = map[string]apiType{
 			{Name: "Label", Type: "string", Doc: ""},
 		},
 	},
+	"mygoui.SpoilerOptions": {
+		Doc: "SpoilerOptions configures clamped content. Expanded is the caller-owned flag the control toggles; nil keeps the flag with the element. MaxHeight is the height the content is cut at while collapsed, 96 scaled DIPs when zero. ShowLabel and HideLabel replace the locale's control labels.",
+		Fields: []apiField{
+			{Name: "Expanded", Type: "*bool", Doc: ""},
+			{Name: "MaxHeight", Type: "float32", Doc: ""},
+			{Name: "ShowLabel", Type: "string", Doc: ""},
+			{Name: "HideLabel", Type: "string", Doc: ""},
+		},
+	},
+	"mygoui.StatisticOptions": {
+		Doc: "StatisticOptions configures a metric. Value, Prefix, Suffix and Delta are shown as given: the caller formats numbers, units and signs. Delta shows under the value with the icon of Trend; DeltaStatus replaces the color the trend implies (success up, danger down), as for a cost that rose.",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Value", Type: "string", Doc: ""},
+			{Name: "Prefix", Type: "string", Doc: ""},
+			{Name: "Suffix", Type: "string", Doc: ""},
+			{Name: "Delta", Type: "string", Doc: ""},
+			{Name: "Trend", Type: "mygoui.StatisticTrend", Doc: ""},
+			{Name: "DeltaStatus", Type: "mygoui.StatusColor", Doc: ""},
+			{Name: "Content", Type: "func()", Doc: "Content builds caller content under the value and its change, as a sparkline or a progress bar."},
+			{Name: "Loading", Type: "bool", Doc: "Loading keeps the label and shows a skeleton block in the value's place, of the value's height; the delta waits for data."},
+		},
+	},
+	"mygoui.StatusDotOptions": {
+		Doc: "StatusDotOptions configures a status indicator. The default status is a muted dot, as for something offline. Pulse radiates a ring from the dot, for something live; Breathe slowly dims and restores the dot, for something in progress such as connecting. Both are still under reduced motion.",
+		Fields: []apiField{
+			{Name: "Status", Type: "mygoui.StatusColor", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Pulse", Type: "bool", Doc: ""},
+			{Name: "Breathe", Type: "bool", Doc: ""},
+		},
+	},
 	"mygoui.StatusPalette": {
 		Doc: "StatusPalette is the resolved color set for one coss ui status. Components and applications use it to paint custom status surfaces consistently.",
 		Fields: []apiField{
@@ -1838,6 +2214,29 @@ var apiTypes = map[string]apiType{
 			{Name: "OnClick", Type: "func()", Doc: ""},
 		},
 	},
+	"mygoui.TimelineItem": {
+		Doc: "TimelineItem is one event. Status colors its marker; Icon replaces the dot with a glyph on a tinted disc. Time is shown as given, after the title. Content builds caller content under the description, as a diff summary or an attachment. OnClick makes the text a button, as for opening the event's details.",
+		Fields: []apiField{
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Description", Type: "string", Doc: ""},
+			{Name: "Time", Type: "string", Doc: ""},
+			{Name: "Status", Type: "mygoui.StatusColor", Doc: ""},
+			{Name: "Icon", Type: "*ui.SVG", Doc: ""},
+			{Name: "Content", Type: "func()", Doc: ""},
+			{Name: "OnClick", Type: "func()", Doc: ""},
+		},
+	},
+	"mygoui.TimelineOptions": {
+		Doc: "TimelineOptions configures a vertical list of events, in the order given. Pending marks the last item as still in progress: its marker is a spinner and the line leading to it is dashed. Recent, when positive and less than the number of items, shows only that many of the newest behind a control that reveals the earlier ones; Expanded is the caller-owned flag it toggles, kept with the element when nil, and EarlierLabel names the control, the locale's ShowMore when empty (the caller formats a count).",
+		Fields: []apiField{
+			{Name: "Items", Type: "[]mygoui.TimelineItem", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Pending", Type: "bool", Doc: ""},
+			{Name: "Recent", Type: "int", Doc: ""},
+			{Name: "Expanded", Type: "*bool", Doc: ""},
+			{Name: "EarlierLabel", Type: "string", Doc: ""},
+		},
+	},
 	"mygoui.ToggleButtonGroupOptions": {
 		Doc: "ToggleButtonGroupOptions controls a joined or detached toggle set.",
 		Fields: []apiField{
@@ -1857,6 +2256,7 @@ var apiTypes = map[string]apiType{
 			{Name: "IconOnly", Type: "bool", Doc: ""},
 			{Name: "FullWidth", Type: "bool", Doc: ""},
 			{Name: "Selected", Type: "*bool", Doc: ""},
+			{Name: "Loading", Type: "bool", Doc: "Loading answers a press in flight: the control keeps its size and state, shows a spinner and takes no press until it clears."},
 			{Name: "Disabled", Type: "bool", Doc: ""},
 			{Name: "OnChange", Type: "func(bool)", Doc: ""},
 			{Name: "Tooltip", Type: "string", Doc: ""},
@@ -1917,6 +2317,18 @@ var apiTypes = map[string]apiType{
 			{Name: "OnSelect", Type: "func(index int)", Doc: ""},
 		},
 	},
+	"navigation.CarouselOptions": {
+		Doc: "CarouselOptions configures a carousel. Index is the caller-owned 0-based first slide in view; nil keeps it internally. Slide builds slide index, and only the slides in view are built. PerView shows several slides side by side (default 1). Loop continues from the last slide to the first.",
+		Fields: []apiField{
+			{Name: "Index", Type: "*int", Doc: ""},
+			{Name: "Count", Type: "int", Doc: ""},
+			{Name: "Slide", Type: "func(index int)", Doc: ""},
+			{Name: "PerView", Type: "int", Doc: ""},
+			{Name: "Loop", Type: "bool", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "OnChange", Type: "func(index int)", Doc: ""},
+		},
+	},
 	"navigation.CommandGroup": {
 		Doc: "CommandGroup is a named group of actions in a command list.",
 		Fields: []apiField{
@@ -1946,6 +2358,7 @@ var apiTypes = map[string]apiType{
 			{Name: "Groups", Type: "[]navigation.CommandGroup", Doc: ""},
 			{Name: "State", Type: "*navigation.CommandState", Doc: ""},
 			{Name: "MaxHeight", Type: "float32", Doc: ""},
+			{Name: "Loading", Type: "bool", Doc: "Loading marks the results as on their way. The input stays editable; with no results the list shows placeholder rows, with results it dims them and draws a progress line under the input."},
 			{Name: "OnSelect", Type: "func(key string)", Doc: ""},
 		},
 	},
@@ -1977,6 +2390,32 @@ var apiTypes = map[string]apiType{
 			{Name: "Body", Type: "func()", Doc: ""},
 		},
 	},
+	"navigation.DocumentTab": {
+		Doc: "DocumentTab is one open document. Key is its stable identity, unique in the strip: the tab keeps its focus as the order changes. Dirty marks unsaved changes. Tooltip is shown on pointer rest, as the document's full path. Pinned shows the tab as its icon alone, with no close button; the caller keeps pinned tabs first, and dragging never takes a tab across the boundary.",
+		Fields: []apiField{
+			{Name: "Key", Type: "string", Doc: ""},
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Icon", Type: "*ui.SVG", Doc: ""},
+			{Name: "Dirty", Type: "bool", Doc: ""},
+			{Name: "Pinned", Type: "bool", Doc: ""},
+			{Name: "Tooltip", Type: "string", Doc: ""},
+		},
+	},
+	"navigation.DocumentTabsOptions": {
+		Doc: "DocumentTabsOptions configures a document tab strip. Tabs and Active are caller-owned and never modified: the strip reports what the user asked for and the caller applies it. OnMove reports that the tab at from goes to index to, counted after its removal. A nil OnClose, OnMove or OnAdd leaves that ability out. OnCloseMany receives the keys of the tabs the context menu's Close others and Close to the right ask for, which never include a pinned tab, in one call; without it each key goes to OnClose. Ctrl+Tab, Ctrl+Shift+Tab, Ctrl+PageDown and Ctrl+PageUp choose the next and previous tab and Cmd/Ctrl+W closes the active one while the focus is in the strip; WindowShortcuts has them work wherever the focus is in the window, for a window with one strip.",
+		Fields: []apiField{
+			{Name: "Tabs", Type: "[]navigation.DocumentTab", Doc: ""},
+			{Name: "Active", Type: "string", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Sizing", Type: "navigation.DocumentTabSizing", Doc: ""},
+			{Name: "WindowShortcuts", Type: "bool", Doc: ""},
+			{Name: "OnSelect", Type: "func(key string)", Doc: ""},
+			{Name: "OnClose", Type: "func(key string)", Doc: ""},
+			{Name: "OnCloseMany", Type: "func(keys []string)", Doc: ""},
+			{Name: "OnMove", Type: "func(from, to int)", Doc: ""},
+			{Name: "OnAdd", Type: "func()", Doc: ""},
+		},
+	},
 	"navigation.DropdownOptions": {
 		Doc: "DropdownOptions configures a drop-down menu. Open is caller-owned; nil keeps it internally. Label is both the trigger text and its accessible name.",
 		Fields: []apiField{
@@ -1990,17 +2429,19 @@ var apiTypes = map[string]apiType{
 		},
 	},
 	"navigation.MenuItemOptions": {
-		Doc: "MenuItemOptions configures one menu row. Key identifies it in a selection; it defaults to Label. Submenu turns the row into a submenu trigger opening the given items to the side. Separator renders a rule and ignores the rest.",
+		Doc: "MenuItemOptions configures one menu row. Key identifies it in a selection; it defaults to Label. Submenu turns the row into a submenu trigger opening the given items to the side. Separator renders a rule and ignores the rest. Accelerator is the item's key chord, shown in the platform's glyphs where Shortcut is empty. A Menubar also registers it for the window, so it activates the item without the menu open; use ui.Cmd for the platform's command key. Elsewhere it only labels the row.",
 		Fields: []apiField{
 			{Name: "Key", Type: "string", Doc: ""},
 			{Name: "Label", Type: "string", Doc: ""},
 			{Name: "Description", Type: "string", Doc: ""},
 			{Name: "Shortcut", Type: "string", Doc: ""},
+			{Name: "Accelerator", Type: "form.Hotkey", Doc: ""},
 			{Name: "Icon", Type: "*ui.SVG", Doc: ""},
 			{Name: "Variant", Type: "navigation.MenuItemVariant", Doc: ""},
 			{Name: "Disabled", Type: "bool", Doc: ""},
 			{Name: "Separator", Type: "bool", Doc: ""},
 			{Name: "Checked", Type: "bool", Doc: ""},
+			{Name: "Checkable", Type: "bool", Doc: "Checkable makes the row a check box that is off while Checked is false, in a menu without a selection mode."},
 			{Name: "Submenu", Type: "[]navigation.MenuItemOptions", Doc: ""},
 			{Name: "OnSelect", Type: "func()", Doc: ""},
 		},
@@ -2023,6 +2464,65 @@ var apiTypes = map[string]apiType{
 			{Name: "Items", Type: "[]navigation.MenuItemOptions", Doc: ""},
 		},
 	},
+	"navigation.MenubarMenuOptions": {
+		Doc: "MenubarMenuOptions is one top-level menu of a Menubar. Key identifies it in MenubarOptions.Open; it defaults to Label. Mnemonic is the letter of Alt+letter: it defaults to the first letter of Label that no menu before uses, and is underlined while Alt is held.",
+		Fields: []apiField{
+			{Name: "Key", Type: "string", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Mnemonic", Type: "rune", Doc: ""},
+			{Name: "Disabled", Type: "bool", Doc: ""},
+			{Name: "Menu", Type: "navigation.MenuOptions", Doc: ""},
+		},
+	},
+	"navigation.MenubarOptions": {
+		Doc: "MenubarOptions configures a menu bar. Open is caller-owned and holds the key of the menu showing, empty for none; nil keeps it internally.",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Open", Type: "*string", Doc: ""},
+			{Name: "Menus", Type: "[]navigation.MenubarMenuOptions", Doc: ""},
+		},
+	},
+	"navigation.NavigationPage": {
+		Doc: "NavigationPage is one level of a NavigationStack. Key is its stable identity, Title names it in the header and Build builds its content.",
+		Fields: []apiField{
+			{Name: "Key", Type: "string", Doc: ""},
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Build", Type: "func()", Doc: ""},
+		},
+	},
+	"navigation.NavigationStackOptions": {
+		Doc: "NavigationStackOptions configures a drill-down container. Pages is the caller-owned stack and is never modified: its last page is the one shown, the caller appends to go deeper and OnPop asks it to drop the last page. Without OnPop the stack offers no way back. Actions builds controls at the trailing end of the header, beside the page's title; it runs every build. KeepMounted keeps building the covered pages hidden, preserving their native scroll and editing state at the cost of building them every frame.",
+		Fields: []apiField{
+			{Name: "Pages", Type: "[]navigation.NavigationPage", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "KeepMounted", Type: "bool", Doc: ""},
+			{Name: "OnPop", Type: "func()", Doc: ""},
+			{Name: "Actions", Type: "func()", Doc: ""},
+		},
+	},
+	"navigation.OverflowItem": {
+		Doc: "OverflowItem is one action of an OverflowList. Key identifies it in OnSelect and in the tree; it defaults to Label and must be unique. Checked makes the item a toggle: the pressed button of the row, a check in the overflow menu. It is caller-owned and an activation flips it before OnSelect runs; nil is a plain action. Pinned items never move into the menu. Priority orders the items that do: the lowest goes first, and among equal ones the end the list collapses from. Separator draws a rule between groups, in the row and in the menu, and ignores the rest.",
+		Fields: []apiField{
+			{Name: "Key", Type: "string", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Icon", Type: "*ui.SVG", Doc: ""},
+			{Name: "Disabled", Type: "bool", Doc: ""},
+			{Name: "Checked", Type: "*bool", Doc: ""},
+			{Name: "Pinned", Type: "bool", Doc: ""},
+			{Name: "Priority", Type: "int", Doc: ""},
+			{Name: "Separator", Type: "bool", Doc: ""},
+			{Name: "OnSelect", Type: "func()", Doc: ""},
+		},
+	},
+	"navigation.OverflowListOptions": {
+		Doc: "OverflowListOptions configures an OverflowList. OnSelect receives the key of an activated item, in the row or in the menu, after its own callback.",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Items", Type: "[]navigation.OverflowItem", Doc: ""},
+			{Name: "Collapse", Type: "navigation.OverflowCollapse", Doc: ""},
+			{Name: "OnSelect", Type: "func(key string)", Doc: ""},
+		},
+	},
 	"navigation.PaginationOptions": {
 		Doc: "PaginationOptions configures page navigation. Page is 1-based and caller-owned; nil keeps it internally. Siblings sets the pages shown around the current one (default 0) and Boundaries the pages at each end (default 1). PreviousLabel and NextLabel override the locale's names. Summary builds the line beside the controls, as \"1-10 of 120 results\".",
 		Fields: []apiField{
@@ -2038,6 +2538,16 @@ var apiTypes = map[string]apiType{
 			{Name: "OnChange", Type: "func(page int)", Doc: ""},
 		},
 	},
+	"navigation.PipsPagerOptions": {
+		Doc: "PipsPagerOptions configures a row of pips, one per page. Index is 0-based and caller-owned; nil keeps it internally. MaxVisible bounds the pips built around the current one (default 7), however many pages there are.",
+		Fields: []apiField{
+			{Name: "Index", Type: "*int", Doc: ""},
+			{Name: "Count", Type: "int", Doc: ""},
+			{Name: "MaxVisible", Type: "int", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "OnChange", Type: "func(index int)", Doc: ""},
+		},
+	},
 	"navigation.SegmentedControlOptions": {
 		Doc: "SegmentedControlOptions configures a single-choice segmented control. Content on an item is ignored; it is intended for Tabs instead.",
 		Fields: []apiField{
@@ -2045,6 +2555,53 @@ var apiTypes = map[string]apiType{
 			{Name: "Items", Type: "[]navigation.TabOptions", Doc: ""},
 			{Name: "Label", Type: "string", Doc: ""},
 			{Name: "OnChange", Type: "func(index int)", Doc: ""},
+		},
+	},
+	"navigation.SplitButtonOptions": {
+		Doc: "SplitButtonOptions configures a split button. Label names the action segment; MenuLabel names the arrow segment and defaults to the library's \"More\". Open is caller-owned; nil keeps it internally. Disabled stops the whole control, ActionDisabled the action alone, leaving the menu.",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Icon", Type: "*ui.SVG", Doc: ""},
+			{Name: "Variant", Type: "mygoui.ButtonVariant", Doc: ""},
+			{Name: "Size", Type: "theme.ButtonSize", Doc: ""},
+			{Name: "Disabled", Type: "bool", Doc: ""},
+			{Name: "ActionDisabled", Type: "bool", Doc: ""},
+			{Name: "Loading", Type: "bool", Doc: "Loading marks the action in flight: it shows a spinner and takes no press, while the menu stays usable."},
+			{Name: "OnClick", Type: "func()", Doc: ""},
+			{Name: "MenuLabel", Type: "string", Doc: ""},
+			{Name: "Open", Type: "*bool", Doc: ""},
+			{Name: "Menu", Type: "navigation.MenuOptions", Doc: ""},
+			{Name: "Selected", Type: "*string", Doc: "Selected is caller-owned: the key of the alternative chosen last. The menu marks it, and choosing an item writes its key; the caller makes that alternative the action. It replaces Menu's own selection."},
+			{Name: "Placement", Type: "mygoui.Placement", Doc: ""},
+		},
+	},
+	"navigation.StatusBarItemOptions": {
+		Doc: "StatusBarItemOptions configures one trailing item: text, an icon, a progress track, or any of them. OnClick makes it a button, whose Label or Text names it for assistive technology and whose tooltip is Tooltip, or Label. Label also names an icon standing alone, before the text when there is one. Separator draws a short rule between groups and ignores the rest. When the bar is too narrow, the message keeps a minimum width and items leave in order of Priority, the lowest first and the later of equal ones before the earlier; a rule stays only between items that remain.",
+		Fields: []apiField{
+			{Name: "Text", Type: "string", Doc: ""},
+			{Name: "Icon", Type: "*ui.SVG", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Tooltip", Type: "string", Doc: ""},
+			{Name: "Progress", Type: "*navigation.StatusBarProgress", Doc: ""},
+			{Name: "Priority", Type: "int", Doc: ""},
+			{Name: "Separator", Type: "bool", Doc: ""},
+			{Name: "OnClick", Type: "func()", Doc: ""},
+		},
+	},
+	"navigation.StatusBarOptions": {
+		Doc: "StatusBarOptions configures a window's status strip. Message is the transient text at the leading edge: the caller sets it, and clears it when it no longer applies. Items are the permanent trailing items.",
+		Fields: []apiField{
+			{Name: "Message", Type: "string", Doc: ""},
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Tone", Type: "navigation.StatusBarTone", Doc: ""},
+			{Name: "Items", Type: "[]navigation.StatusBarItemOptions", Doc: ""},
+		},
+	},
+	"navigation.StatusBarProgress": {
+		Doc: "StatusBarProgress is a small progress track in an item: Value runs from 0 to 1.",
+		Fields: []apiField{
+			{Name: "Value", Type: "float64", Doc: ""},
+			{Name: "Indeterminate", Type: "bool", Doc: ""},
 		},
 	},
 	"navigation.StepItem": {
@@ -2103,6 +2660,44 @@ var apiTypes = map[string]apiType{
 			{Name: "Attached", Type: "bool", Doc: ""},
 			{Name: "Label", Type: "string", Doc: ""},
 			{Name: "Items", Type: "func()", Doc: ""},
+		},
+	},
+	"overlay.AboutDialogOptions": {
+		Doc: "AboutDialogOptions describes an application. Every part is optional and supplied by the caller; the library reads no build or module metadata.",
+		Fields: []apiField{
+			{Name: "Icon", Type: "func()", Doc: "Icon builds the application's icon or image above its name."},
+			{Name: "Name", Type: "string", Doc: ""},
+			{Name: "Version", Type: "string", Doc: ""},
+			{Name: "Description", Type: "string", Doc: ""},
+			{Name: "CopyInfo", Type: "string", Doc: "CopyInfo is the text of the copy button beside the version, such as the version, build and platform a bug report asks for; there is no button without it."},
+			{Name: "Links", Type: "[]overlay.AboutLink", Doc: ""},
+			{Name: "Sections", Type: "[]overlay.AboutSection", Doc: ""},
+			{Name: "OnDismiss", Type: "func()", Doc: ""},
+		},
+	},
+	"overlay.AboutLink": {
+		Doc: "AboutLink is an action under the application's description, such as its website or issue tracker. Opening a URL is the caller's work.",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "OnClick", Type: "func()", Doc: ""},
+		},
+	},
+	"overlay.AboutSection": {
+		Doc: "AboutSection is a titled block of text, such as credits or a licence.",
+		Fields: []apiField{
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Body", Type: "string", Doc: ""},
+			{Name: "Collapsible", Type: "bool", Doc: "Collapsible shows only the title, a disclosure closed until opened, over a monospace body that scrolls when it is long: for a licence."},
+		},
+	},
+	"overlay.ActionBarOptions": {
+		Doc: "ActionBarOptions configures a floating action bar.",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: "Label is the bar's text, as \"selected\" after a Count, and its accessible name."},
+			{Name: "Count", Type: "int", Doc: "Count, when positive, rolls in front of Label as the selection grows or shrinks, and a change is announced."},
+			{Name: "Actions", Type: "[]navigation.OverflowItem", Doc: "Actions are the bar's controls. Those that do not fit the width of the container collapse from the end into a \"more\" menu; the count and the close button never give way."},
+			{Name: "OnClose", Type: "func()", Doc: "OnClose adds a close button that calls it, as does Escape while the focus is in the bar; the caller clears what keeps the bar open."},
+			{Name: "ReturnFocus", Type: "*ui.Handle", Doc: "ReturnFocus takes the focus when the bar closes with the focus inside it, as after an action run from the keyboard; the bar is part of its container, so nothing else gives that focus back."},
 		},
 	},
 	"overlay.AlertDialogOptions": {
@@ -2267,6 +2862,21 @@ var apiTypes = map[string]apiType{
 			{Name: "OnDismiss", Type: "func()", Doc: "OnDismiss runs when the backdrop, Escape or the close button closed the modal, after Open is set false."},
 		},
 	},
+	"overlay.PopconfirmOptions": {
+		Doc: "PopconfirmOptions configures an anchored confirmation bubble.",
+		Fields: []apiField{
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Description", Type: "string", Doc: ""},
+			{Name: "ConfirmLabel", Type: "string", Doc: "ConfirmLabel and CancelLabel default to the library's Confirm and Cancel messages."},
+			{Name: "CancelLabel", Type: "string", Doc: "ConfirmLabel and CancelLabel default to the library's Confirm and Cancel messages."},
+			{Name: "Destructive", Type: "bool", Doc: "Destructive marks the bubble with a warning glyph, gives the confirm button the danger face and puts the initial focus on Cancel, so Enter does not confirm by accident; otherwise Confirm has it."},
+			{Name: "Loading", Type: "bool", Doc: "Loading shows the confirm button pending while the confirmed work runs, and holds the bubble: Cancel is off, and Escape and an outside press do not close it."},
+			{Name: "OnConfirm", Type: "func()", Doc: "OnConfirm runs after the confirm button closed the bubble, which it may keep open by setting *open back to true and Loading. OnCancel runs after the cancel button, Escape or an outside press closed it."},
+			{Name: "OnCancel", Type: "func()", Doc: "OnConfirm runs after the confirm button closed the bubble, which it may keep open by setting *open back to true and Loading. OnCancel runs after the cancel button, Escape or an outside press closed it."},
+			{Name: "Placement", Type: "mygoui.Placement", Doc: "Placement anchors the bubble; SideAuto places it below the anchor."},
+			{Name: "Width", Type: "float32", Doc: "Width defaults to 280 DIPs."},
+		},
+	},
 	"overlay.PopoverOptions": {
 		Doc: "PopoverOptions configures an anchored popover.",
 		Fields: []apiField{
@@ -2316,6 +2926,48 @@ var apiTypes = map[string]apiType{
 			{Name: "OnDismiss", Type: "func()", Doc: ""},
 		},
 	},
+	"overlay.Shortcut": {
+		Doc: "Shortcut is one row of a shortcut sheet: what the keys do and the chord.",
+		Fields: []apiField{
+			{Name: "Label", Type: "string", Doc: ""},
+			{Name: "Hotkey", Type: "form.Hotkey", Doc: "Hotkey is the chord as the platform names it: glyphs on macOS, words elsewhere, so a sheet built from the keys the application binds cannot drift from them."},
+			{Name: "Keys", Type: "[]string", Doc: "Keys, when set, replaces Hotkey with explicit key caps in order, for a chord that is not a single key press, such as \"G then I\"."},
+		},
+	},
+	"overlay.ShortcutGroup": {
+		Doc: "ShortcutGroup is a titled section of shortcuts.",
+		Fields: []apiField{
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Items", Type: "[]overlay.Shortcut", Doc: ""},
+		},
+	},
+	"overlay.ShortcutsDialogOptions": {
+		Doc: "ShortcutsDialogOptions configures a shortcut sheet.",
+		Fields: []apiField{
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Groups", Type: "[]overlay.ShortcutGroup", Doc: ""},
+			{Name: "OnDismiss", Type: "func()", Doc: ""},
+		},
+	},
+	"overlay.ShortcutsDialogState": {
+		Doc: "ShortcutsDialogState is the caller-owned state of a shortcut sheet: whether it shows and the search text, which each opening clears. Keep one per window.",
+		Fields: []apiField{
+			{Name: "Open", Type: "bool", Doc: ""},
+			{Name: "Query", Type: "string", Doc: ""},
+		},
+	},
+	"overlay.TeachingTipOptions": {
+		Doc: "TeachingTipOptions configures an anchored coach mark.",
+		Fields: []apiField{
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Body", Type: "string", Doc: ""},
+			{Name: "Footer", Type: "func()", Doc: "Footer builds the action row under the body."},
+			{Name: "Placement", Type: "mygoui.Placement", Doc: "Placement anchors the tip; SideAuto places it below the anchor."},
+			{Name: "Width", Type: "float32", Doc: "Width defaults to 320 DIPs."},
+			{Name: "HideClose", Type: "bool", Doc: "HideClose removes the close button, leaving dismissal to Escape and the footer's controls."},
+			{Name: "OnDismiss", Type: "func()", Doc: "OnDismiss runs after the close button or Escape closed the tip."},
+		},
+	},
 	"overlay.ToastItem": {
 		Doc: "ToastItem is the caller-visible state of one retained toast.",
 		Fields: []apiField{
@@ -2351,6 +3003,30 @@ var apiTypes = map[string]apiType{
 			{Name: "Content", Type: "func()", Doc: ""},
 			{Name: "Placement", Type: "mygoui.Placement", Doc: "Placement anchors the tip; SideAuto falls back above the anchor."},
 			{Name: "Arrow", Type: "bool", Doc: "Arrow draws a 12 DIP overlay arrow."},
+		},
+	},
+	"overlay.TourOptions": {
+		Doc: "TourOptions configures a tour.",
+		Fields: []apiField{
+			{Name: "Width", Type: "float32", Doc: "Width is the panel's width; it defaults to 320 DIPs. The panel keeps it from step to step, so only its height follows the content."},
+			{Name: "OnFinish", Type: "func()", Doc: "OnFinish runs after Done on the last step closed the tour; OnDismiss after the close button or Escape did."},
+			{Name: "OnDismiss", Type: "func()", Doc: "OnFinish runs after Done on the last step closed the tour; OnDismiss after the close button or Escape did."},
+		},
+	},
+	"overlay.TourState": {
+		Doc: "TourState is the caller-owned progress of a tour: whether it shows and the index of its current step. Keep one per tour and window.",
+		Fields: []apiField{
+			{Name: "Open", Type: "bool", Doc: ""},
+			{Name: "Step", Type: "int", Doc: ""},
+		},
+	},
+	"overlay.TourStep": {
+		Doc: "TourStep is one stop of a tour. Anchor is the handle of the step's target, bound with Element.Bind. A step without a handle, or whose target is not laid out, shows its panel in the middle of the window without a spotlight, so the tour still goes on.",
+		Fields: []apiField{
+			{Name: "Anchor", Type: "*ui.Handle", Doc: ""},
+			{Name: "Title", Type: "string", Doc: ""},
+			{Name: "Body", Type: "string", Doc: ""},
+			{Name: "Placement", Type: "mygoui.Placement", Doc: "Placement is the side of the target the panel prefers, its alignment along it and its gap; SideAuto prefers below. The panel takes another side where it does not fit, and stays inside the window."},
 		},
 	},
 	"theme.Palette": {
