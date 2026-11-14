@@ -9,8 +9,7 @@
   mouse press, so nothing scrolled on a phone. A drag stays with the control
   the finger pressed when that control follows the pointer (sliders,
   carousel, document tabs, map, image viewer, dividers, grips), and with any
-  control when
-  it begins after holding still.
+  control when it begins after holding still.
 - Gallery: opening the navigation in a narrow window focuses the current
   page's row; the search field no longer takes focus, so a phone's keyboard
   stays down.
