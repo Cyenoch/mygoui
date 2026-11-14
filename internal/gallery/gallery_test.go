@@ -667,3 +667,32 @@ func TestSidebarKeepsFocusedRowScrolledOutOfView(t *testing.T) {
 		t.Fatalf("%q lost the focus when it scrolled out of view", title)
 	}
 }
+
+func TestCompactNavigationOpensOnTheCurrentPage(t *testing.T) {
+	state := New()
+	state.Selected = "typography"
+	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 390, 844)
+	tt.SetPreferences(ui.Preferences{TextScale: 1, ReduceMotion: true})
+	tt.Frame()
+	if err := tt.Click("Toggle navigation"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if tt.Focused("Search components") {
+		t.Fatal("opening the navigation focused the search field, which raises a phone's keyboard")
+	}
+	if !tt.Focused("Typography") {
+		t.Fatal("the navigation did not open on the current page's row")
+	}
+	// Filtering the current page out and back must not move focus.
+	if err := tt.Click("Search components"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Type("zzz")
+	state.Search = ""
+	tt.Frame()
+	tt.Frame()
+	if !tt.Focused("Search components") {
+		t.Fatal("the current page's row took focus from the search field")
+	}
+}

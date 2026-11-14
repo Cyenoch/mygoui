@@ -6,6 +6,7 @@ import (
 
 	"github.com/Cyenoch/mygoui/internal/formstyle"
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/internal/touchhint"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -322,6 +323,7 @@ func sliderShown(el ui.Element, key string, f float32, held bool) float32 {
 }
 
 func sliderThumbScale(el ui.Element, pressed bool) float32 {
+	touchhint.Held(pressed)
 	scale := float32(1)
 	if pressed {
 		scale = theme.Effects().ThumbPressScale

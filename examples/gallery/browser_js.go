@@ -29,40 +29,50 @@ func keepBrowserShortcuts() {
 	}), true)
 }
 
-// touchScroll turns a finger's vertical drag on the canvas into wheel
-// events. MyGo's surface reads a touch as a mouse press and sets
+// touchScroll turns a finger's drag on the canvas into wheel events along
+// the drag's axis. MyGo's surface reads a touch as a mouse press and sets
 // touch-action: none, so without it nothing scrolls on a phone. The press
 // the drag began is canceled; the scroll keeps the place the finger went
 // down, so one container scrolls throughout, and glides on after a flick.
-// A sideways drag, or one begun after holding still, stays MyGo's: sliders,
-// dividers and reordering keep working.
+//
+// A drag stays MyGo's when the finger pressed a control that follows it:
+// one under a drag cursor (a divider, a grip, a colour slider), one that
+// says so through window.mygouiDragHeld (internal/touchhint: a slider, a
+// carousel), or any drag begun after holding still.
 const touchScroll = `(() => {
   const slop = 8, hold = 300, settle = 325;
-  let id = null, target, sx, sy, ly, t0, lt, vy = 0, pan = false, own = false, raf = 0;
-  const wheel = dy => target.dispatchEvent(new WheelEvent('wheel',
-    {clientX: sx, clientY: sy, deltaY: dy, bubbles: true, cancelable: true}));
+  const drags = /grab|move|resize|crosshair/;
+  let id = null, target, sx, sy, lx, ly, t0, lt, vx = 0, vy = 0, frames = 0;
+  let pan = false, wide = false, own = false, raf = 0;
+  const wheel = (dx, dy) => target.dispatchEvent(new WheelEvent('wheel',
+    {clientX: sx, clientY: sy, deltaX: dx, deltaY: dy, bubbles: true, cancelable: true}));
+  const count = () => { frames++; if (id !== null && !pan) requestAnimationFrame(count); };
   addEventListener('pointerdown', e => {
     if (e.pointerType !== 'touch' || !e.isPrimary || e.target.tagName !== 'CANVAS') return;
     cancelAnimationFrame(raf);
-    id = e.pointerId; target = e.target; pan = false;
-    sx = e.clientX; sy = ly = e.clientY; t0 = e.timeStamp;
+    id = e.pointerId; target = e.target; pan = false; frames = 0;
+    sx = lx = e.clientX; sy = ly = e.clientY; t0 = e.timeStamp;
+    window.mygouiDragHeld = false;
+    requestAnimationFrame(count);
   }, true);
   addEventListener('pointermove', e => {
     if (e.pointerId !== id) return;
     if (!pan) {
       const dx = e.clientX - sx, dy = e.clientY - sy;
-      if (Math.hypot(dx, dy) < slop) return;
-      if (e.timeStamp - t0 > hold || Math.abs(dx) > Math.abs(dy)) { id = null; return; }
-      pan = true; lt = e.timeStamp;
+      // Two frames let the content say what the finger pressed.
+      if (Math.hypot(dx, dy) < slop || frames < 2) return;
+      if (e.timeStamp - t0 > hold || window.mygouiDragHeld || drags.test(target.style.cursor)) { id = null; return; }
+      pan = true; wide = Math.abs(dx) > Math.abs(dy); lt = e.timeStamp;
       own = true;
       target.dispatchEvent(new PointerEvent('pointercancel', {pointerId: id, pointerType: 'touch',
         isPrimary: true, clientX: e.clientX, clientY: e.clientY, bubbles: true}));
       own = false;
     }
     e.stopImmediatePropagation();
-    const dy = ly - e.clientY, dt = Math.max(1, e.timeStamp - lt);
-    vy = dy / dt; lt = e.timeStamp; ly = e.clientY;
-    wheel(dy);
+    const dx = wide ? lx - e.clientX : 0, dy = wide ? 0 : ly - e.clientY;
+    const dt = Math.max(1, e.timeStamp - lt);
+    vx = dx / dt; vy = dy / dt; lt = e.timeStamp; lx = e.clientX; ly = e.clientY;
+    wheel(dx, dy);
   }, true);
   const end = e => {
     if (own || e.pointerId !== id) return;
@@ -72,10 +82,10 @@ const touchScroll = `(() => {
     if (e.type !== 'pointerup' || e.timeStamp - lt > 80) return;
     let last = performance.now();
     const glide = now => {
-      const dt = now - last; last = now;
-      vy *= Math.exp(-dt / settle);
-      if (Math.abs(vy) < 0.02) return;
-      wheel(vy * dt);
+      const dt = now - last, k = Math.exp(-dt / settle); last = now;
+      vx *= k; vy *= k;
+      if (Math.hypot(vx, vy) < 0.02) return;
+      wheel(vx * dt, vy * dt);
       raf = requestAnimationFrame(glide);
     };
     raf = requestAnimationFrame(glide);

@@ -11,6 +11,7 @@ import (
 	"github.com/Cyenoch/mygoui/form"
 	"github.com/Cyenoch/mygoui/internal/motion"
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/internal/touchhint"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -653,6 +654,7 @@ func docTab(c *ui.Context, tab *DocumentTab, v docTabView, o DocumentTabsOptions
 	in.selected = !v.active && !in.closed && el.Clicked()
 	if o.OnMove != nil {
 		in.dx, _, in.held = el.Dragged()
+		touchhint.Held(in.held)
 		switch {
 		case el.Shortcut(ui.Alt, ui.KeyLeft):
 			in.step = -v.forward

@@ -32,9 +32,12 @@ func View(c *ui.Context, s *State) {
 	overlaysStateOf(s).toasts.View(c)
 	mode := shellMode(s)
 	sheet := layout.Compact(c, mode)
+	if !s.NavOpen {
+		s.navFocusSet = false
+	}
 	c.OnShortcut(ui.Cmd, ui.KeyK, func() {
 		if sheet {
-			s.NavOpen = true
+			s.NavOpen, s.navFocusSet = true, true
 		} else {
 			s.SidebarClosed = false
 		}
@@ -191,6 +194,10 @@ func pageList(c *ui.Context, s *State, view *ui.ScrollState, choose func(Page)) 
 	// it would drop the focus.
 	focused := s.nav.focused
 	s.nav.focused = ""
+	// A sheet opens on the current page's row, not on the search field: on
+	// a phone that would raise the keyboard. Focus is placed once per opening.
+	landing := docsCompact(c) && !s.navFocusSet
+	s.navFocusSet = true
 	ui.Column(c).FillWidth().Gap(theme.Space16).Children(func() {
 		if len(groups) == 0 {
 			ui.Row(c).Padding(theme.Space8).Children(func() {
@@ -231,9 +238,14 @@ func pageList(c *ui.Context, s *State, view *ui.ScrollState, choose func(Page)) 
 					})
 				}
 				for _, page := range group.pages {
-					item(s.nav.row, page.ID == focused, func() {
-						if navRow(c.Key(page.ID), page.Title, page.ID == s.Selected,
-							measureOnce(&rowMeasured, &s.nav.row), func() { choose(page) }) {
+					current := landing && page.ID == s.Selected
+					item(s.nav.row, page.ID == focused || current, func() {
+						row, held := navRow(c.Key(page.ID), page.Title, page.ID == s.Selected,
+							measureOnce(&rowMeasured, &s.nav.row), func() { choose(page) })
+						if current {
+							row.AutoFocus()
+						}
+						if held {
 							s.nav.focused = page.ID
 						}
 					})
@@ -315,8 +327,8 @@ func groupHeading(c *ui.Context, text string, measure *float32) {
 
 // navRow is one nav link: a 32 DIP rounded row that fills with the sidebar
 // accent while its page is the selected one.
-// navRow reports whether it holds the focus.
-func navRow(c *ui.Context, title string, selected bool, measure *float32, onClick func()) bool {
+// navRow returns the row and whether it holds the focus.
+func navRow(c *ui.Context, title string, selected bool, measure *float32, onClick func()) (ui.Element, bool) {
 	t := theme.Colors(c)
 	fill, hover, ink := ui.Transparent, t.SidebarAccent, t.SidebarForeground
 	if selected {
@@ -349,7 +361,7 @@ func navRow(c *ui.Context, title string, selected bool, measure *float32, onClic
 		style.Text(ui.Text(c, title), c, ts).SingleLine()
 	})
 	e.OnClick(onClick)
-	return e.Focused()
+	return e, e.Focused()
 }
 
 // search filters the navigation. Its shortcut hint gives way to typing, so
@@ -470,7 +482,7 @@ func pageHeader(c *ui.Context, s *State, mode layout.CompactMode) layout.TitleBa
 					Label: "Search components", Icon: lucide.Search(), IconOnly: true,
 					Variant: mygoui.ButtonGhost, Size: theme.ButtonSmall,
 					OnClick: func() {
-						s.NavOpen = true
+						s.NavOpen, s.navFocusSet = true, true
 						s.SearchFocus.Focus(c)
 					},
 				})

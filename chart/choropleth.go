@@ -5,6 +5,7 @@ import (
 	"math"
 
 	"github.com/Cyenoch/mygoui"
+	"github.com/Cyenoch/mygoui/internal/touchhint"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -245,6 +246,7 @@ func mapGesture(v *MapState, ev ui.InputEvent, g *plotGesture) bool {
 			return false
 		}
 		g.last, g.dragging, g.dragged = ui.Point{X: ev.X, Y: ev.Y}, true, false
+		touchhint.Held(true)
 		return true
 	case ui.InputPointerUp:
 		g.dragging = false

@@ -8,6 +8,7 @@ import (
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/anchored"
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/internal/touchhint"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -176,6 +177,7 @@ func ImageViewer(c *ui.Context, open *bool, o ImageViewerOptions) ui.Element {
 			return true
 		})
 		dx, dy, held := stage.Dragged()
+		touchhint.Held(held)
 		if held && !v.held {
 			v.panned = false
 		}

@@ -98,6 +98,8 @@ type State struct {
 	pages          map[string]any
 	sidebarGroups  groupCache
 	nav            navMetrics
+	// navFocusSet is set once an open navigation sheet has placed focus.
+	navFocusSet    bool
 	overviewGroups groupCache
 }
 

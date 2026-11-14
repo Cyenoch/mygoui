@@ -8,6 +8,7 @@ import (
 	"github.com/Cyenoch/mygoicons/lucide"
 	"github.com/Cyenoch/mygoui"
 	"github.com/Cyenoch/mygoui/internal/style"
+	"github.com/Cyenoch/mygoui/internal/touchhint"
 	"github.com/Cyenoch/mygoui/locale"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
@@ -356,6 +357,7 @@ func carouselSlides(c *ui.Context, o CarouselOptions, st *carouselState, index, 
 // or flung fast enough, and not a vertical drag.
 func carouselDrag(viewport ui.Element, st *carouselState, forward int, target func(by int) (int, bool)) int {
 	dx, dy, held := viewport.Dragged()
+	touchhint.Held(held)
 	vx, _, ended := viewport.DragEnded()
 	if held {
 		st.dragging = true
