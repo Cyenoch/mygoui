@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Fixed
+
+- Browser gallery: a finger's vertical drag scrolls on a touchscreen. MyGo's
+  web surface reads a touch as a mouse press, so nothing scrolled on a
+  phone. Sideways drags and drags begun after holding still stay with the
+  controls; horizontal scrolling by touch is not covered.
+
 ## 0.3.0 - 2026-11-14
 
 ### Added

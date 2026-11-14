@@ -19,6 +19,7 @@ func main() {
 		log.Fatal(fontErr)
 	}
 	keepBrowserShortcuts()
+	scrollWithTouch()
 	mygo.App.SetName("MyGo UI Gallery")
 	mygo.App.OnWindowAllClosed(func() { mygo.App.Quit() })
 	mygo.App.WhenReady(func() {
