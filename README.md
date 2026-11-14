@@ -1,57 +1,66 @@
 # MyGo UI
 
+[![CI](https://github.com/Cyenoch/mygoui/actions/workflows/ci.yml/badge.svg)](https://github.com/Cyenoch/mygoui/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/Cyenoch/mygoui)](https://github.com/Cyenoch/mygoui/releases/latest)
+[![Go Reference](https://pkg.go.dev/badge/github.com/Cyenoch/mygoui.svg)](https://pkg.go.dev/github.com/Cyenoch/mygoui)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 A complete native UI solution for [MyGo](https://github.com/egoist/mygo)
-applications: theme tokens, a component library, a design and behavior
-reference, and agent skills. Its current visual language reconstructs
-[coss ui](https://coss.com/ui/docs); [PRODUCT.md](PRODUCT.md) records what
-is delivered and what is planned.
+applications, written in Go: theme tokens, a component library, a design and
+behavior reference, and agent skills. No WebView and no JavaScript runtime.
 
-Typed options, explicit application state, semantic light/dark colors, and
-native editing, selection, focus and scrolling. Components compose through Go
-callbacks and typed collections. Applications run without a JavaScript runtime
-or WebView.
+[![The MyGo UI gallery](docs/images/gallery.webp)](https://cyenoch.github.io/mygoui/)
 
-The native [`chart` family](docs/charts.md) adds the 19 Bklit chart subjects and
-composable axes, legends, brush and annotations, using the same semantic theme.
-Its capability matrix records native subsets rather than full React parity.
+**[Live gallery](https://cyenoch.github.io/mygoui/)** ·
+[Components](docs/components.md) ·
+[Theme](docs/theme.md) ·
+[Behavior](docs/behavior/README.md) ·
+[Charts](docs/charts.md) ·
+[Changelog](CHANGELOG.md)
 
-The [capability matrix](docs/components.md) maps every component found across the
-pinned coss catalogs, where the components originated, plus their two documented hooks. A mapping records the
-native implementation and its limits; it does not certify visual or behavioral
-parity. Current verification belongs in [VALIDATION.md](VALIDATION.md).
+## What you get
 
-The module targets **Go 1.27.3** and pins **MyGo v0.9.0** and
-**mygoicons v0.2.1**.
+- **Components.** Forms, navigation, overlays, lists, tables, dates, color,
+  content and 19 native chart subjects, with typed options and state your
+  application owns. Editing, selection, focus, scrolling and accessibility
+  are the platform's own.
+- **Theme tokens.** Semantic light and dark colors, radius, type roles,
+  spacing, elevation, motion and effects. Override one color or replace the
+  whole look as a single `theme.Theme` value.
+- **Window layouts.** `layout.Scaffold`, `TitleBar`, `SplitView` and
+  `PaneToggle` build a shell with its own title bar, sidebar and inspector
+  around the real window controls.
+- **Shader effects.** `effect.Mask`, `Shimmer` and `Reveal`, plus scroll edge
+  fades, each with a fallback where no GPU runs it.
+- **A written reference.** [DESIGN.md](DESIGN.md) records the look; the
+  [behavior reference](docs/behavior/README.md) records how every component
+  answers keys, focus, dismissal and assistive technology.
+- **Agent skills.** Five skills teach a coding agent to build with all of
+  the above.
 
-Development uses [OpenSpec and Impeccable](docs/agent-workflow.md) for
-requirements, scoped changes and native design review in Claude Code and
-Codex, sharing `.agents/skills` through `.claude/skills`. Start with
-`make agents`; these tools are optional development dependencies.
+| Package | Contents |
+| --- | --- |
+| `mygoui` | Buttons, cards, alerts, badges, typography, scroll areas, resizable panels and other display parts |
+| `form` | Inputs, selects, combo boxes, sliders, switches, number, OTP, upload and other fields |
+| `navigation` | Tabs, menus, menubar, command palette, breadcrumbs, accordion, carousel, pagination |
+| `overlay` | Dialogs, sheets, drawers, popovers, tooltips, toasts, tours, floating panels, image viewer |
+| `list`, `data` | List boxes, trees, sortable lists, tables |
+| `date`, `color` | Calendars, date and time fields, color pickers |
+| `content` | Markdown, code highlighting, JSON, log and diff viewers, QR codes |
+| `chart` | Charts with composable axes, legends, brush and annotations |
+| `layout`, `effect` | Window shells and shader effects |
+| `theme`, `fonts`, `locale` | Tokens, optional embedded fonts, component strings |
 
-## Try it
+## Install
 
 ```sh
-go run ./examples/basic
-go run ./examples/gallery
-go run ./examples/shell
-
-make dev
-make app
+go get github.com/Cyenoch/mygoui
 ```
 
-The gallery is a native component workbench with a custom title bar, grouped
-sidebar, Cmd/Ctrl+K search, an appearance popover, and Preview / Code / API /
-Tokens views. It reserves the platform's actual window-control insets rather
-than drawing replacement window buttons. Try it in the
-[browser](https://cyenoch.github.io/mygoui/) or download it for macOS, Windows
-or Linux from the [latest release](https://github.com/Cyenoch/mygoui/releases/latest). Examples and snippets are consumers of the
-public API; the capability matrix records native adaptations and limits.
+Requires **Go 1.27.3** and **MyGo v0.9.0**. Icons come from
+[mygoicons](https://github.com/Cyenoch/mygoicons) v0.2.1.
 
-For external native-app tests, build the Gallery with `-tags e2e` and set
-`MYGO_AUTOMATION` to a socket path in a private directory. Normal builds do not
-import the automation plugin. See [MyGo integration](docs/mygo-0.9.md).
-
-## Use
+## Quick start
 
 Apply the theme at the start of each view build. Keep values and widget state
 with the window's model:
@@ -99,7 +108,7 @@ Retain model values, component state and `ui.Handle` instead. Use native
 services for clipboard and URL actions; publish worker results through
 `Window.Update`. See [ownership rules](docs/design.md).
 
-## Customize
+## Theme
 
 The canonical colors are coss roles such as `Primary`, `Secondary`,
 `MutedBackground`, `MutedForeground`, `Accent`, `Card`, `Popover`,
@@ -144,7 +153,7 @@ the host independently registers another face. See
 [font sources, registration and limits](docs/fonts.md). Configuring a family
 name alone does not load that font.
 
-## Scrolling
+## Scrolling and effects
 
 `ScrollArea` supports `ScrollVertical`, `ScrollHorizontal` and `ScrollBoth`.
 `ScrollFade` can also decorate an existing viewport and its `ui.ScrollState`.
@@ -171,7 +180,38 @@ npx skills add Cyenoch/mygoui --skill mygoui-components
 They live in [`skills/`](skills) and defer to the records shipped with the
 module version your application uses.
 
-## References and license
+## Examples
+
+```sh
+go run ./examples/basic     # one window, a few components
+go run ./examples/shell     # title bar, sidebar and inspector
+go run ./examples/gallery   # every component, with source and API
+```
+
+The gallery is a native workbench with search (Cmd/Ctrl+K), live previews,
+Go source, API tables and theme controls. Open it in the
+[browser](https://cyenoch.github.io/mygoui/) or download it for macOS,
+Windows or Linux from the
+[latest release](https://github.com/Cyenoch/mygoui/releases/latest).
+
+## Scope and evidence
+
+The [capability matrix](docs/components.md) maps each component to its Go API
+and states its limits; the [chart matrix](docs/charts.md) does the same for
+charts. A mapping records what is implemented, not visual or behavioral
+parity with any web library. What has been checked, on which platform, is in
+[VALIDATION.md](VALIDATION.md); [PRODUCT.md](PRODUCT.md) records what is
+delivered and what is planned.
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md). `make check` runs the headless
+suite, build, vet and formatting. Requirements and changes are tracked with
+[OpenSpec and Impeccable](docs/agent-workflow.md); `make agents` sets up the
+optional agent tooling. For external native-app tests, see
+[MyGo integration](docs/mygo-0.9.md).
+
+## Provenance and license
 
 [DESIGN.md](DESIGN.md) is the visual authority. The design language
 originated in coss ui commit
