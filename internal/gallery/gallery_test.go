@@ -30,7 +30,7 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 	want := map[string][]string{
 		"Overview": {"overview"},
 		"Foundations": {
-			"theming", "typography", "surface", "separator", "kbd", "card", "frame", "link",
+			"theming", "typography", "icons", "surface", "separator", "kbd", "card", "frame", "link",
 			"linkbutton", "listgroup", "emptystate", "scrollshadow", "scrollarea", "scrollfade", "mask", "shimmer", "reveal", "header",
 			"resizablepanel",
 		},
@@ -350,8 +350,8 @@ func TestSidebarRowGeometryAndSelectedPaint(t *testing.T) {
 		t.Fatalf("first row height = %v, want ~28", first.H)
 	}
 	typography := sidebarRect(t, tt, "Typography")
-	surface := sidebarRect(t, tt, "Surface")
-	if gap := surface.Y - (typography.Y + typography.H); gap < 0 || gap > 4 {
+	next := sidebarRect(t, tt, "Icons")
+	if gap := next.Y - (typography.Y + typography.H); gap < 0 || gap > 4 {
 		t.Fatalf("row gap = %v, want <= 4", gap)
 	}
 	if heading := sidebarRect(t, tt, "Actions"); heading.H < 20 || heading.H > 28 {

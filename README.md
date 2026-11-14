@@ -58,7 +58,7 @@ go get github.com/Cyenoch/mygoui
 ```
 
 Requires **Go 1.27.3** and **MyGo v0.9.0**. Icons come from
-[mygoicons](https://github.com/Cyenoch/mygoicons) v0.2.1.
+[mygoicons](https://github.com/Cyenoch/mygoicons) v0.3.0.
 
 ## Quick start
 

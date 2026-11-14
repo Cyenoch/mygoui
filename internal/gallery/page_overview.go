@@ -412,6 +412,12 @@ func overviewGroupGrid(c *ui.Context, s *State, groups []pageGroup, width float3
 			}
 			actionCard(c.Key(group.name), "Browse "+group.name, cardWidth, func() { selectPage(s, group.pages[0]) }, func() {
 				ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(theme.Space12).Children(func() {
+					if glyph := groupIcons[group.name]; glyph != nil {
+						tile, size := theme.Scale(c, 36), theme.Scale(c, theme.IconMD)
+						ui.Row(c).Size(tile, tile).Shrink(0).Justify(ui.Center).AlignItems(ui.Center).
+							Radius(theme.RadiusScale().LG).Background(theme.Colors(c).MutedBackground).
+							Children(func() { ui.Icon(c, glyph()).Size(size, size) })
+					}
 					ui.Column(c).Grow(1).Basis(0).MinWidth(0).Gap(theme.Space4).Children(func() {
 						mygoui.Typography(c, group.name, mygoui.TypographyOptions{Type: theme.TypeH6, Truncate: true})
 						mygoui.Typography(c, count, mygoui.TypographyOptions{Type: theme.TypeBodyXS, Muted: true})

@@ -79,9 +79,9 @@ include applicable notices.
 
 ## mygoicons and Lucide
 
-`github.com/Cyenoch/mygoicons v0.2.1` supplies typed Lucide icons. Its project
+`github.com/Cyenoch/mygoicons v0.3.0` supplies typed Lucide icons. Its project
 code is MIT; the complete [code license](licenses/mygoicons-LICENSE) is
-retained. The imported `lucide` package contains `@iconify-json/lucide 1.2.147`
+retained. The imported `lucide` package contains `@iconify-json/lucide 1.2.154`
 artwork. The complete [Lucide notice](licenses/Lucide-LICENSE) includes ISC,
 Feather MIT and the applicable Feather-derived icon list. Retain it when
 distributing icons or applications containing them.

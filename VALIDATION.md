@@ -1,5 +1,27 @@
 # Validation
 
+## Gallery icon browser and touch scrolling
+
+2026-11-14, macOS arm64, Go 1.27.3, MyGo 0.9.0, mygoicons 0.3.0. Change:
+`gallery-icon-browser`.
+
+- `make check`, `golangci-lint run ./...` (zero issues), `make wasm` and
+  `make spec-check` pass.
+- Headless (`ui.NewTester`): the Icons page builds at most 12 rows for 2,131
+  drawings, narrows by Iconify ID, copies `lucide.ArrowRight()` on
+  activation and reports it, shows an empty state, and lists an alias as the
+  drawing it repeats.
+- Browser build in headless Chrome, 1280 x 800 and an emulated 390 x 844
+  phone with touch input: the Icons page and the overview were captured and
+  inspected; a finger scrolls the icon list. Touch scrolling of the page,
+  a code block and a nested scroller, a slider drag and a carousel swipe
+  were exercised the same way.
+- Size: the browser gallery is 30.3 MB with the Lucide catalog (27.7 MB
+  before) and 43.7 MB with Twemoji as well, so the page lists Lucide only.
+
+Not verified: real phones (iOS Safari, Android Chrome), the native gallery
+window on any platform, and screen-reader output for the Icons page.
+
 ## Complete native UI solution: tokens, layout, effects, behavior reference
 
 2026-11-14, release 0.3.0 prepared on 85a177c, macOS arm64, Go 1.27.3,

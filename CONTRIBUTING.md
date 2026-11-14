@@ -30,7 +30,7 @@ detector do not cover Go controls. `make design-artifacts` renders the
 existing compact/wide, light/dark gallery specimens for inspection;
 `make design-doctor` reports context drift, not visual correctness.
 
-Use the module's Go 1.27.3 target and pinned MyGo v0.9.0/mygoicons v0.2.1.
+Use the module's Go 1.27.3 target and pinned MyGo v0.9.0/mygoicons v0.3.0.
 Published module metadata must have no local replacements. Use a private
 development workspace when testing local dependencies.
 

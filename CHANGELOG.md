@@ -2,6 +2,20 @@
 
 ## Unreleased
 
+### Added
+
+- Gallery: an Icons page. Search the Lucide collection by Go name or
+  Iconify ID and activate an icon to copy its expression, such as
+  `lucide.ArrowRight()`. Each drawing is listed once; an alias is found by
+  its name and shown as the drawing it repeats.
+- Gallery: every navigation group has an icon, in the sidebar and on the
+  overview.
+
+### Changed
+
+- mygoicons v0.3.0: Lucide 1.2.154 (179 more icons) and the `catalog`
+  package the Icons page reads.
+
 ### Fixed
 
 - Browser gallery: a finger's drag scrolls on a touchscreen, along its

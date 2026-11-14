@@ -313,13 +313,33 @@ func filterPagesInOrder(list []Page) []Page {
 	return list
 }
 
-// groupHeading is the small muted section label above a nav group.
+// groupIcons names each navigation group's subject. A group without an
+// entry shows no icon.
+var groupIcons = map[string]func() *ui.SVG{
+	"Foundations": lucide.Shapes, "Actions": lucide.MousePointerClick,
+	"Display": lucide.Image, "Forms": lucide.TextCursorInput,
+	"Collections": lucide.ListTree, "Navigation": lucide.Compass,
+	"Overlays": lucide.Layers, "Dates": lucide.Calendar,
+	"Color": lucide.Palette, "Data": lucide.Table,
+	"Viewers": lucide.FileText, "Patterns": lucide.LayoutTemplate,
+	"Charts": lucide.ChartLine, "Chart Utilities": lucide.Ruler,
+}
+
+// groupHeading is the small muted section label above a nav group, led by
+// the group's icon.
 func groupHeading(c *ui.Context, text string, measure *float32) {
 	ts := theme.XS()
 	ts.Weight = theme.WeightMedium
-	e := style.Text(ui.Text(c, text), c, ts).TextColor(theme.Colors(c).Muted).
-		Padding(theme.Space4, theme.Space8, theme.Space4, theme.Space8).FillWidth().SingleLine().
-		Role(ui.RoleHeading)
+	e := ui.Row(c).FillWidth().AlignItems(ui.Center).Gap(theme.Scale(c, theme.Space6)).
+		Padding(theme.Space4, theme.Space8, theme.Space4, theme.Space8).
+		TextColor(theme.Colors(c).Muted).Role(ui.RoleHeading).Label(text)
+	e.Children(func() {
+		if icon := groupIcons[text]; icon != nil {
+			size := theme.Scale(c, theme.IconXS)
+			ui.Icon(c, icon()).Size(size, size).Shrink(0)
+		}
+		style.Text(ui.Text(c, text), c, ts).Grow(1).MinWidth(0).SingleLine()
+	})
 	if measure != nil {
 		e.DrawOver(func(_ *ui.Painter, r ui.Rect) { *measure = r.H })
 	}
