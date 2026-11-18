@@ -3,7 +3,7 @@ module github.com/Cyenoch/mygoui
 go 1.27.3
 
 require (
-	github.com/Cyenoch/mygoicons v0.3.0
+	github.com/Cyenoch/mygoicons v0.4.0
 	github.com/egoist/mygo v0.10.0
 	rsc.io/qr v0.2.0
 )
@@ -18,7 +18,7 @@ require (
 	go.digitalxero.dev/rpm v0.3.4 // indirect
 	golang.org/x/crypto v0.59.0 // indirect
 	golang.org/x/image v0.48.0 // indirect
-	golang.org/x/net v0.62.0 // indirect
+	golang.org/x/net v0.63.0 // indirect
 	golang.org/x/sys v0.50.0 // indirect
 	golang.org/x/text v0.44.0 // indirect
 )

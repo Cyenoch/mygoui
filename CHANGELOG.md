@@ -5,6 +5,7 @@
 ### Changed
 
 - MyGo v0.10.0 (`docs/mygo-0.10.md`).
+- mygoicons v0.4.0: Lucide 1.2.156 (45 more icons), shown on the gallery's Icons page.
 
 ## 0.3.1 - 2026-11-14
 
