@@ -163,13 +163,17 @@ func TestDefaultSegmentedControlIsIndependent(t *testing.T) {
 func TestEveryPageRoutesThroughNativeNavigation(t *testing.T) {
 	skipInShort(t)
 	for _, width := range []int{640, 1180} {
+		// One window per width: each Tester keeps a text system of its own
+		// (MyGo 0.9.1), which on Linux holds tens of megabytes.
+		s := New()
+		tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, width, 900)
 		for _, page := range Pages() {
 			t.Run(fmt.Sprintf("%d/%s", width, page.ID), func(t *testing.T) {
-				s := New()
 				// The sidebar belongs to component pages; the landing page has none.
 				s.Selected = "theming"
 				s.Search = page.Title
-				tt := ui.NewTester(func(c *ui.Context) { View(c, s) }, width, 900)
+				s.NavOpen = false
+				tt.Frame()
 				if width < docsCompactBelow {
 					if err := tt.Click("Toggle navigation"); err != nil {
 						t.Fatal(err)
