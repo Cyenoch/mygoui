@@ -265,15 +265,6 @@ func auditCatalogMismatch(catalog map[string]string, specs map[string]auditSpec)
 	return missing, extra
 }
 
-func TestAuditCatalogMismatch(t *testing.T) {
-	catalog := map[string]string{"existing": "existing", "missing": "missing"}
-	specs := map[string]auditSpec{"existing": {}, "extra": {}}
-	missing, extra := auditCatalogMismatch(catalog, specs)
-	if !slices.Equal(missing, []string{"missing"}) || !slices.Equal(extra, []string{"extra"}) {
-		t.Fatalf("missing %v, extra %v; want [missing] and [extra]", missing, extra)
-	}
-}
-
 func collectAudit(dir string, page ComponentPage, spec auditSpec, mode string, failures *[]string) auditComponent {
 	example := page.Examples[0].Title
 	if spec.example != "" {

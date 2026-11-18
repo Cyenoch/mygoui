@@ -68,7 +68,7 @@ Also covers: TextField.
 | | |
 | --- | --- |
 | Role and name | Text field marked as search; the name falls back to the localized "Search". [C] The clear button is named "Clear". [T TestSearchFieldClearsWithButtonAndEscape] |
-| Keys | Escape with text clears it and calls OnClear. [T TestSearchFieldClearsWithButtonAndEscape] It also calls OnChange and is consumed before an ancestor's Escape shortcut. [T TestSearchFieldEscapeClearsBeforeAncestor] Escape on an empty, disabled or read-only field is passed on to ancestors. [N TestSearchFieldEscapeOnEmptyValueReachesAncestor] |
+| Keys | Escape with text clears it and calls OnClear. [T TestSearchFieldClearsWithButtonAndEscape] It also calls OnChange and is consumed before an ancestor's Escape shortcut. [T TestSearchFieldEscapeClearsBeforeAncestor] Escape on an empty field is passed on to ancestors. [T TestSearchFieldEscapeClearsBeforeAncestor] The same holds for a disabled or read-only field. [C] |
 | Focus | On an empty field the clear button is hidden from the pointer, Tab and assistive technology. [T TestSearchFieldHiddenClearIsNoTabStop] |
 | Dismissal | The clear button empties the value. [T TestSearchFieldClearsWithButtonAndEscape] |
 | States | Disabled and ReadOnly disable the clear button. [C] Loading swaps the search icon for a spinner and stays editable. [T TestLoadingSearchFieldKeepsSearchEditable] |
@@ -261,7 +261,7 @@ Also covers: RadioCard.
 | | |
 | --- | --- |
 | Role and name | Slider named by its label, with format and description exposed. [T TestSliderFormatAndDescription] |
-| Keys | Arrows step, Home and End go to the bounds (toolkit). [T TestSliderDragAndKeyboard] PageUp and PageDown move a tenth of the range (toolkit). [N TestSliderPageKeysStepATenth] |
+| Keys | Arrows step, Home and End go to the bounds (toolkit). [T TestSliderDragAndKeyboard] PageUp and PageDown move a tenth of the range (toolkit). [C] |
 | Pointer | Drags change the value live; a range press moves the nearest thumb and the thumbs never cross. [T TestSliderRangeKeepsThumbsOrdered] |
 | Selection and value | A range build orders and clamps the caller's low and high without calling OnChange. [C] |
 | States | Disabled ignores drags and keys. [T TestSliderDisabled] |

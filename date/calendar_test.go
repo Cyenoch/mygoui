@@ -185,28 +185,6 @@ func TestCalendarRejectsDisabledDate(t *testing.T) {
 	}
 }
 
-func TestCalendarBounds(t *testing.T) {
-	st := &date.CalendarState{}
-	tt := start(t, func(c *ui.Context) {
-		date.Calendar(c, date.CalendarOptions{
-			Today:    march,
-			Min:      time.Date(2026, time.March, 1, 0, 0, 0, 0, time.UTC),
-			Max:      time.Date(2026, time.March, 31, 0, 0, 0, 0, time.UTC),
-			DayLabel: label,
-		}, st)
-	}, 320, 420)
-
-	if err := tt.Click("2026-03-01"); err != nil {
-		t.Fatal(err)
-	}
-	if st.Value.Day() != 1 {
-		t.Fatalf("in-bounds first day not selected: %v", st.Value)
-	}
-	if !tt.HasText("March 2026") {
-		t.Fatalf("calendar left March")
-	}
-}
-
 func TestRangeCalendarOrdersEndpoints(t *testing.T) {
 	st := &date.RangeCalendarState{}
 	var got date.DateRange

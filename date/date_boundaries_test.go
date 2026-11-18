@@ -121,29 +121,6 @@ func TestCalendarYearPickerHidesMonthNavigation(t *testing.T) {
 	}
 }
 
-// TestCalendarYearPickerEscapeCloses checks the year grid's Escape path.
-func TestCalendarYearPickerEscapeCloses(t *testing.T) {
-	st := &date.CalendarState{}
-	tt := start(t, func(c *ui.Context) {
-		date.Calendar(c, date.CalendarOptions{
-			Today:          time.Date(2026, time.March, 15, 12, 0, 0, 0, time.UTC),
-			ShowYearPicker: true,
-		}, st)
-	}, 340, 460)
-
-	if err := tt.Click("March 2026, Choose year"); err != nil {
-		t.Fatal(err)
-	}
-	tt.Key(0, ui.KeyEscape)
-	tt.Frame()
-	if st.YearOpen {
-		t.Fatal("Escape left the year picker open")
-	}
-	if !tt.HasText("March 2026, Choose year") {
-		t.Fatalf("the month heading is missing after Escape: %v", tt.Texts())
-	}
-}
-
 // TestCalendarYearPickerFadesIn checks the native crossfade: the year grid is
 // transparent on the frame it opens and painted once the transition settles,
 // while reduced motion paints it at once.

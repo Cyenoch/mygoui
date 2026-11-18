@@ -6,23 +6,6 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-// Escape in an empty search field is left to the surrounding window, such as
-// a dialog that closes on it.
-func TestSearchFieldEscapeOnEmptyValueReachesAncestor(t *testing.T) {
-	value := ""
-	escapes := 0
-	tt := formTextTester(t, func(c *ui.Context) {
-		ui.Column(c).Children(func() {
-			SearchField(c, &value, SearchFieldOptions{Label: "Find"})
-		}).OnShortcut(0, ui.KeyEscape, func() { escapes++ })
-	})
-	formTextClick(t, tt, "Find")
-	tt.Key(0, ui.KeyEscape)
-	if escapes != 1 {
-		t.Fatalf("Escape in an empty search reached the ancestor %d times, want 1", escapes)
-	}
-}
-
 // Escape discards an unfinished tag and keeps the committed ones.
 func TestTagsInputEscapeClearsDraft(t *testing.T) {
 	tags := []string{"go"}

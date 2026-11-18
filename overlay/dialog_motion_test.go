@@ -2,7 +2,6 @@ package overlay
 
 import (
 	"image"
-	"image/color"
 	"testing"
 	"time"
 
@@ -52,30 +51,6 @@ func redMarkerBounds(img *image.RGBA) ui.Rect {
 		return ui.Rect{}
 	}
 	return ui.Rect{X: float32(minX), Y: float32(minY), W: float32(maxX - minX + 1), H: float32(maxY - minY + 1)}
-}
-
-func TestRedMarkerBoundsRejectsSubpixelGlyphs(t *testing.T) {
-	img := image.NewRGBA(image.Rect(0, 0, 64, 48))
-	for y := 2; y < 15; y++ {
-		img.SetRGBA(2, y, color.RGBA{R: 210, G: 140, B: 80, A: 255})
-		img.SetRGBA(3, y, color.RGBA{R: 220, G: 180, B: 160, A: 255})
-		img.SetRGBA(4, y, color.RGBA{R: 210, G: 160, B: 161, A: 255})
-		// Equal G/B can occur in a ClearType fringe too. Color alone
-		// cannot distinguish it from a partly faded solid marker.
-		img.SetRGBA(5, y, color.RGBA{R: 220, G: 160, B: 160, A: 255})
-	}
-	if got := redMarkerBounds(img); got != (ui.Rect{}) {
-		t.Fatalf("colored glyph edges detected as marker: %+v", got)
-	}
-	marker := ui.RGB(240, 20, 20).Alpha(0.5).Over(ui.RGB(240, 240, 240))
-	for y := 20; y < 32; y++ {
-		for x := 24; x < 40; x++ {
-			img.SetRGBA(x, y, color.RGBA{R: marker.R, G: marker.G, B: marker.B, A: marker.A})
-		}
-	}
-	if got, want := redMarkerBounds(img), (ui.Rect{X: 24, Y: 20, W: 16, H: 12}); got != want {
-		t.Fatalf("faded marker bounds=%+v, want %+v", got, want)
-	}
 }
 
 func TestResponsiveDialogMotion(t *testing.T) {

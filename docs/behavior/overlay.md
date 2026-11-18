@@ -44,10 +44,10 @@ fades are skipped too. [C]
 
 | | |
 | --- | --- |
-| Role and name | A dialog named by `Title`; the close button shows by default. [T TestDialogAndSheetShowCloseByDefault] |
+| Role and name | A dialog named by `Title`; the close button shows by default. [T TestDialogShowsCloseByDefault] |
 | Keys | Escape closes and runs `OnDismiss`. [T TestResponsiveDialogMotion] |
 | Pointer | A backdrop press closes and does not reach the control beneath. [T TestResponsiveDialogBackdropDuringEntry] |
-| Focus | Taken into the panel and returned to the opener on close. [T TestDialogAndSheetShowCloseByDefault] |
+| Focus | Taken into the panel and returned to the opener on close. [T TestDialogShowsCloseByDefault] |
 | Dismissal | `PreventDismiss` as above. [N TestPreventDismissHoldsTheSurfaceAndItsFocus] |
 | Motion | Centred on a window of at least 640 DIPs, scaling up; below that it sits at the bottom and rises; the exit copy takes no action. [T TestResponsiveDialogMotion] `Placement.Side` slides it from an edge. [T TestSurfacesPaintArrivalAndDeparture] |
 
@@ -55,9 +55,9 @@ fades are skipped too. [C]
 
 | | |
 | --- | --- |
-| Role and name | A dialog named by `Title`, on the end side by default; the close button shows by default. [T TestDialogAndSheetShowCloseByDefault] `Flush` gives the panel to `Body` with no header or close button; `Title` still names it. [T TestFlushSheetHandsThePanelToItsBody] It suits a left or right sheet without `Inset`. [C] |
+| Role and name | A dialog named by `Title`, on the end side by default; the close button shows by default. [T TestSheetAndDrawerReducedMotionAndDismissal] `Flush` gives the panel to `Body` with no header or close button; `Title` still names it. [T TestFlushSheetHandsThePanelToItsBody] It suits a left or right sheet without `Inset`. [C] |
 | Keys | Escape closes. [T TestSheetAndDrawerReducedMotionAndDismissal] |
-| Focus | As Dialog. [T TestDialogAndSheetShowCloseByDefault] |
+| Focus | As Dialog. [T TestSheetAndDrawerReducedMotionAndDismissal] |
 | Dismissal | `PreventDismiss` blocks Escape and the backdrop; the close button still closes. [T TestSheetAndDrawerReducedMotionAndDismissal] |
 | Motion | Slides from its edge, the one its side names in the layout direction [T TestSideSheetSlidesFromItsEdgeInRightToLeft]; the exit copy is inert; a dismissal during entry leaves no scrim behind. [T TestEdgeSurfacesSlideAndRetainInertExits] [T TestSheetDoesNotStrandScrimWhenDismissedDuringEntry] |
 

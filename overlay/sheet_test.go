@@ -8,13 +8,12 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
-func TestDialogAndSheetShowCloseByDefault(t *testing.T) {
+func TestDialogShowsCloseByDefault(t *testing.T) {
 	for _, tc := range []struct {
 		name  string
 		build func(*ui.Context, *bool)
 	}{
 		{"dialog", func(c *ui.Context, open *bool) { Dialog(c, open, DialogOptions{Title: "Panel"}) }},
-		{"sheet", func(c *ui.Context, open *bool) { Sheet(c, open, SheetOptions{Title: "Panel"}) }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var open bool

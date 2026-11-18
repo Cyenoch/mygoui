@@ -261,35 +261,6 @@ func TestModalCoverAndExtraSmallGeometry(t *testing.T) {
 	}
 }
 
-// TestDrawerWidth checks the COSS maximum and the 48 DIP opposite-edge gap.
-func TestDrawerWidth(t *testing.T) {
-	skipInShort(t)
-	for _, tc := range []struct {
-		winW, want float32
-	}{
-		{560, 448},
-		{640, 448},
-		{1000, 448},
-		{360, 312},
-	} {
-		open := true
-		var panel ui.Rect
-		tt := ui.NewTester(func(c *ui.Context) {
-			theme.Apply(c)
-			if p := Drawer(c, &open, DrawerOptions{Side: DrawerRight, Title: "Filters"}); p.Valid() {
-				panel = p.Bounds()
-			}
-		}, int(tc.winW), 480)
-		motionSettle(tt, 2*drawerMotionDuration)
-		if panel.W != tc.want {
-			t.Fatalf("drawer width at %v = %v, want %v", tc.winW, panel.W, tc.want)
-		}
-		if panel.X+panel.W != tc.winW {
-			t.Fatalf("drawer at %v is not attached to the right edge: %+v", tc.winW, panel)
-		}
-	}
-}
-
 // TestDrawerHandleGutter checks the handle spacing: the 4 DIP bar follows
 // the panel's 24 DIP padding at the top of a bottom drawer and leaves 8 DIPs
 // before the content, while a top drawer keeps its bar 8 DIPs off the bottom

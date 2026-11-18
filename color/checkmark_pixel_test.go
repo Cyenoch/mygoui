@@ -42,8 +42,7 @@ func swatchCheckInk(img *image.RGBA, scan ui.Rect) (ui.Rect, [][2]int, bool) {
 
 // assertSwatchCheck checks the selected swatch's tick: two diagonal strokes,
 // wider than tall, with its valley left of center and its long arm right of
-// it, centered in swatch. It used to be two Painter.Line calls, which paint
-// only horizontal and vertical strokes: a short bar and an upright one.
+// it, centered in swatch.
 func assertSwatchCheck(t *testing.T, img *image.RGBA, swatch ui.Rect, where string) {
 	t.Helper()
 	scan := ui.Rect{

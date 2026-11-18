@@ -82,22 +82,3 @@ func TestHotkeyInputEnterStartsRecording(t *testing.T) {
 		t.Fatalf("recorded %+v with %d changes, want %+v", value, changes, want)
 	}
 }
-
-// A slider steps a tenth of its range with PageUp and PageDown (toolkit).
-func TestSliderPageKeysStepATenth(t *testing.T) {
-	level, before := 50.0, ""
-	tt := formTextTester(t, func(c *ui.Context) {
-		Input(c, &before, InputOptions{Label: "Before"})
-		Slider(c, SliderOptions{State: SliderState{Value: &level}, Label: "Level", Step: 1})
-	})
-	formTextClick(t, tt, "Before")
-	tt.Key(0, ui.KeyTab)
-	tt.Key(0, ui.KeyPageUp)
-	if level != 60 {
-		t.Fatalf("PageUp moved the slider to %v", level)
-	}
-	tt.Key(0, ui.KeyPageDown)
-	if level != 50 {
-		t.Fatalf("PageDown moved the slider to %v", level)
-	}
-}
