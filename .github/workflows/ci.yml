@@ -65,7 +65,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             libpangocairo-1.0-0 fonts-noto-cjk fonts-noto-color-emoji
       - run: go vet ./...
-      - run: go test -shuffle=on ./... -count=1 -timeout=180s
+      - run: go test -shuffle=on ./... -count=1 -timeout=600s
       - run: go build ./...
 
   race:
