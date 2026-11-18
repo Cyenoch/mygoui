@@ -11,7 +11,7 @@
   },
   "devDependencies": {
     "@fission-ai/openspec": "2.0.0",
-    "impeccable": "4.8.2"
+    "impeccable": "4.9.1"
   },
   "engines": {
     "node": ">=20.19.0"
