@@ -10,6 +10,13 @@ import (
 	"github.com/egoist/mygo/ui"
 )
 
+// sameWithinPixel allows the one-pixel edge shift of a scaled marker that
+// anti-aliasing leaves between two frames of the same animation state.
+func sameWithinPixel(a, b ui.Rect) bool {
+	near := func(x, y int) bool { return x-y <= 1 && y-x <= 1 }
+	return near(int(a.X), int(b.X)) && near(int(a.Y), int(b.Y)) && near(int(a.W), int(b.W)) && near(int(a.H), int(b.H))
+}
+
 func dialogMotionMarker(tt *ui.Tester) ui.Rect {
 	return redMarkerBounds(tt.Image())
 }
@@ -215,7 +222,7 @@ func TestResponsiveDialogDismissDuringEntry(t *testing.T) {
 				entering := dialogMotionMarker(tt)
 				dismiss()
 				atClose := dialogMotionMarker(tt)
-				if entering != atClose {
+				if !sameWithinPixel(entering, atClose) {
 					t.Fatalf("dismissal jumped from the entry frame: entry=%+v close=%+v", entering, atClose)
 				}
 				tt.Advance(dialogMotionDuration / 2)

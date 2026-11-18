@@ -26,7 +26,7 @@ JavaScript runtime. It has four pillars, each with one owning record:
 
 ## Users And Stack
 
-Go application authors using MyGo v0.9.0. Caller-owned state, typed options and
+Go application authors using MyGo v0.10.0. Caller-owned state, typed options and
 native focus, editing, selection and accessibility are binding constraints.
 
 ## Visual Authority

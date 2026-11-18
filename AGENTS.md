@@ -1,6 +1,6 @@
 # mygoui
 
-A complete native UI solution for MyGo applications: theme tokens, a component library, a design and behavior reference, and agent skills. Read `docs/design.md` for ownership, `docs/components.md` for capabilities and `docs/mygo-0.9.md` before dependency work. Public APIs live at the module root and in coherent family packages. `internal/gallery` and `examples/` are consumers.
+A complete native UI solution for MyGo applications: theme tokens, a component library, a design and behavior reference, and agent skills. Read `docs/design.md` for ownership, `docs/components.md` for capabilities and `docs/mygo-0.10.md` before dependency work. Public APIs live at the module root and in coherent family packages. `internal/gallery` and `examples/` are consumers.
 
 ## Working Agreement
 

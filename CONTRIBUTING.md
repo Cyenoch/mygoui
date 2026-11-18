@@ -3,7 +3,7 @@
 mygoui is a native Go/MyGo component library whose design language is
 recorded in [DESIGN.md](DESIGN.md); it originated in coss ui. Read
 [design](docs/design.md), the [component matrix](docs/components.md),
-[references](docs/references.md) and [MyGo 0.9 guidance](docs/mygo-0.9.md)
+[references](docs/references.md) and [MyGo 0.10 guidance](docs/mygo-0.10.md)
 before changing public behavior. `DESIGN.md` supersedes the older
 visual-reference wording in the MyGo migration notes.
 
@@ -30,7 +30,7 @@ detector do not cover Go controls. `make design-artifacts` renders the
 existing compact/wide, light/dark gallery specimens for inspection;
 `make design-doctor` reports context drift, not visual correctness.
 
-Use the module's Go 1.27.3 target and pinned MyGo v0.9.0/mygoicons v0.3.0.
+Use the module's Go 1.27.3 target and pinned MyGo v0.10.0/mygoicons v0.3.0.
 Published module metadata must have no local replacements. Use a private
 development workspace when testing local dependencies.
 

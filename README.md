@@ -57,7 +57,7 @@ behavior reference, and agent skills. No WebView and no JavaScript runtime.
 go get github.com/Cyenoch/mygoui
 ```
 
-Requires **Go 1.27.3** and **MyGo v0.9.0**. Icons come from
+Requires **Go 1.27.3** and **MyGo v0.10.0**. Icons come from
 [mygoicons](https://github.com/Cyenoch/mygoicons) v0.3.0.
 
 ## Quick start
@@ -209,7 +209,7 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md). `make check` runs the headless
 suite, build, vet and formatting. Requirements and changes are tracked with
 [OpenSpec and Impeccable](docs/agent-workflow.md); `make agents` sets up the
 optional agent tooling. For external native-app tests, see
-[MyGo integration](docs/mygo-0.9.md).
+[MyGo integration](docs/mygo-0.10.md).
 
 ## Provenance and license
 

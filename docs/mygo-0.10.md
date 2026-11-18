@@ -1,6 +1,6 @@
-# MyGo 0.9.0 integration
+# MyGo 0.10.0 integration
 
-The library and `go tool mygo` both resolve `github.com/egoist/mygo v0.9.0`.
+The library and `go tool mygo` both resolve `github.com/egoist/mygo v0.10.0`.
 The minimum Go version stays 1.27.3. The [0.7 integration record](mygo-0.7.md)
 is historical; its ownership, flyout and automation guidance still applies
 unless this page says otherwise.
@@ -10,12 +10,15 @@ Upstream release notes: [0.7.3](https://github.com/egoist/mygo/releases/tag/v0.7
 [0.8.0](https://github.com/egoist/mygo/releases/tag/v0.8.0),
 [0.8.1](https://github.com/egoist/mygo/releases/tag/v0.8.1),
 [0.8.3](https://github.com/egoist/mygo/releases/tag/v0.8.3),
-[0.9.0](https://github.com/egoist/mygo/releases/tag/v0.9.0).
+[0.9.0](https://github.com/egoist/mygo/releases/tag/v0.9.0),
+[0.10.0](https://github.com/egoist/mygo/releases/tag/v0.10.0).
 
 ## Toolkit behavior changes handled
 
 | Toolkit change | Native integration |
 | --- | --- |
+| Attached popups fit in the window; a menu's submenu stays open on a diagonal approach (0.10.0) | Select, combobox and popover panels inherit both; no component change. |
+| A dialog's scaled entry frame can differ by one pixel from the frame a dismissal starts on (0.10.0) | The interrupted-entry motion test compares the marker within one pixel. |
 | Focus scrolls the element into view (0.9.0) | The year picker focuses its grid with `FocusOptions.PreventScroll` on first build, so opening it keeps the selected year's row instead of jumping to the top. |
 | An element's last `Transition` in a frame governs its return from an exit copy (0.9.0) | A responsive dialog reopened during its exit uses one short transition on the reopen frame. The returning backdrop carries the exit motion's share of the offset; the new panel adds only the offset it had when it closed. |
 | `Tester.Click` checks the real input target (0.8.x) | Tests click the control that receives the press (a day cell, a button outside an open popup) instead of a container center. |

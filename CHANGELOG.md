@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- MyGo v0.10.0 (`docs/mygo-0.10.md`).
+
 ## 0.3.1 - 2026-11-14
 
 ### Added

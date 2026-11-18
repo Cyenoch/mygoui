@@ -131,5 +131,5 @@ not register it or establish browser-equivalent shaping.
 4. Update capability/design/customization docs and the unreleased changelog.
    Record actual verification evidence in `VALIDATION.md`.
 
-`docs/mygo-0.9.md` records the current toolkit integration. The older
+`docs/mygo-0.10.md` records the current toolkit integration. The older
 `docs/mygo-0.6.md` preserves history, not current validation.

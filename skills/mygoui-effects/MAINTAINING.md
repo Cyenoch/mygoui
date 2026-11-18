@@ -14,7 +14,7 @@ For work inside the mygoui repository. Paths are relative to its root.
 ## Records
 
 - `docs/effects.md` owns the family's API and limits; `DESIGN.md` ("Effects") when each effect is appropriate and what was rejected; `docs/behavior/effect.md` the behavior contract; `docs/scrollfade.md` the fade modes; `docs/mygo-vs-css.md` the paint, clip and effect model; `docs/theme.md` the tokens.
-- The MyGo source at the pinned version (`go list -m -f '{{.Dir}}' github.com/egoist/mygo`) defines the layer limit (`ui/effect.go`, `maxEffectLayer`) and the shader entry points (`ui/shader/shader.go`). Check them again on every MyGo upgrade (`docs/mygo-0.9.md`), and `fx.Fits` with them.
+- The MyGo source at the pinned version (`go list -m -f '{{.Dir}}' github.com/egoist/mygo`) defines the layer limit (`ui/effect.go`, `maxEffectLayer`) and the shader entry points (`ui/shader/shader.go`). Check them again on every MyGo upgrade (`docs/mygo-0.10.md`), and `fx.Fits` with them.
 - Tests: `effect/effect_test.go` covers the fallbacks through the public calls; `effect/shader_test.go` the shader path with `forced`; `scroll_fade_mask_test.go`, `scroll_fade_shader_test.go` and `scroll_fade_limit_test.go` the scroll mask. `MYGOUI_EFFECT_SPECIMEN_DIR=<dir> go test ./effect -run TestEffectSpecimens` writes a PNG of every effect, state and fallback in both appearances; look at them after changing a shader or a fallback.
 - None of these tests shows GPU presentation. GPU and platform observations go in `VALIDATION.md`, separate from headless results.
 
