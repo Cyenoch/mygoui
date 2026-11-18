@@ -18,7 +18,7 @@ vet:
 	CGO_ENABLED=0 $(MYGO) vet .
 
 test:
-	CGO_ENABLED=0 go test ./... -count=1 -timeout=600s
+	CGO_ENABLED=0 go test ./... -count=1 -timeout=180s
 
 race:
 	CGO_ENABLED=1 go test -race -short ./... -count=1 -timeout=300s
