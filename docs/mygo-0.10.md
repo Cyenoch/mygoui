@@ -18,6 +18,7 @@ Upstream release notes: [0.7.3](https://github.com/egoist/mygo/releases/tag/v0.7
 | Toolkit change | Native integration |
 | --- | --- |
 | Attached popups fit in the window; a menu's submenu stays open on a diagonal approach (0.10.0) | Select, combobox and popover panels inherit both; no component change. |
+| Each `Tester` shapes text in a system of its own (0.9.1, #1722) | Starting one costs about 170 ms and, on Linux, tens of megabytes that are not returned. Tests that visit many pages navigate one Tester per mode instead of starting one per page. Testers are not run in parallel: on macOS the run delegates for inline objects and the frame-statistics setting are still process-wide. |
 | A dialog's scaled entry frame can differ by one pixel from the frame a dismissal starts on (0.10.0) | The interrupted-entry motion test compares the marker within one pixel. |
 | Focus scrolls the element into view (0.9.0) | The year picker focuses its grid with `FocusOptions.PreventScroll` on first build, so opening it keeps the selected year's row instead of jumping to the top. |
 | An element's last `Transition` in a frame governs its return from an exit copy (0.9.0) | A responsive dialog reopened during its exit uses one short transition on the reopen frame. The returning backdrop carries the exit motion's share of the offset; the new panel adds only the offset it had when it closed. |
