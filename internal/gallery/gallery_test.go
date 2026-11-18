@@ -133,22 +133,25 @@ func TestCatalogIsUniqueAndComplete(t *testing.T) {
 
 func TestEveryPageRendersAtDesktopAndCompactWidths(t *testing.T) {
 	skipInShort(t)
-	for _, page := range Pages() {
-		for _, mode := range []struct {
-			name   string
-			width  int
-			height int
-			dark   bool
-		}{
-			{"compact-light", 640, 900, false},
-			{"compact-dark", 640, 900, true},
-			{"wide-light", 1100, 900, false},
-			{"wide-dark", 1100, 900, true},
-		} {
-			state := New()
+	for _, mode := range []struct {
+		name   string
+		width  int
+		height int
+		dark   bool
+	}{
+		{"compact-light", 640, 900, false},
+		{"compact-dark", 640, 900, true},
+		{"wide-light", 1100, 900, false},
+		{"wide-dark", 1100, 900, true},
+	} {
+		// One window visits every page, as a reader does: since MyGo 0.9.1
+		// each Tester starts its own text system, too slow to start per page.
+		state := New()
+		state.Dark = mode.dark
+		tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, mode.width, mode.height)
+		for _, page := range Pages() {
 			state.Selected = page.ID
-			state.Dark = mode.dark
-			tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, mode.width, mode.height)
+			tt.Frame()
 			if !tt.HasText(pageHeading(page)) {
 				t.Fatalf("%s/%s: page title missing", mode.name, page.ID)
 			}
@@ -193,11 +196,12 @@ func TestComponentPageAnatomy(t *testing.T) {
 
 func TestPagesRenderWithEnlargedText(t *testing.T) {
 	skipInShort(t)
+	state := New()
+	tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1000, 900)
+	tt.SetPreferences(ui.Preferences{TextScale: 1.75})
 	for _, page := range Pages() {
-		state := New()
 		state.Selected = page.ID
-		tt := ui.NewTester(func(c *ui.Context) { View(c, state) }, 1000, 900)
-		tt.SetPreferences(ui.Preferences{TextScale: 1.75})
+		tt.Frame()
 		if !tt.HasText(pageHeading(page)) {
 			t.Fatalf("%s: title missing at enlarged text", page.ID)
 		}
