@@ -95,6 +95,7 @@ func DiffViewer(c *ui.Context, o DiffViewerOptions) ui.Element {
 	d.Indicators = editor.DiffClassic
 	d.ContextLines, d.ExpandUnchanged = o.ContextLines, o.ExpandUnchanged
 	d.NoLineNumbers, d.Wrap, d.FitContent = o.NoLineNumbers, o.Wrap, o.Height <= 0
+	d.ScrollPastEnd = o.Height > 0
 	d.Font = ui.Font{Family: theme.MonoFontFamily(), Size: theme.Scale(c, codeFontSize)}
 	d.LineHeight = float32(codeLineHeight) / codeFontSize
 	d.TabSize = 4
@@ -123,7 +124,7 @@ func DiffViewer(c *ui.Context, o DiffViewerOptions) ui.Element {
 }
 
 // step scrolls to the change d places after the one last shown, wrapping
-// around.
+// around, and hands keyboard focus to the active diff editor.
 func (s *diffViewerState) step(d int) {
 	next := s.hunk + d
 	switch {
@@ -134,6 +135,7 @@ func (s *diffViewerState) step(d int) {
 	}
 	s.hunk = (next + s.hunks) % s.hunks
 	s.view.GoToHunk(s.hunk)
+	s.view.Focus()
 }
 
 func diffViewerHeader(c *ui.Context, t theme.Palette, st *diffViewerState, o *DiffViewerOptions, steps bool) {

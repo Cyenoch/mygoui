@@ -4,7 +4,7 @@
 
 ### Changed
 
-- MyGo v0.10.0 (`docs/mygo-0.10.md`).
+- MyGo v0.10.0 (`docs/mygo-0.10.md`): `content.DiffViewer` enables `ScrollPastEnd` when scrolling and focuses the active diff editor after stepping to a change; `navigation.PopoverMenu` aligns its panel and item radii with `PopoverMenuOptions`, and `ContextMenu`/`PopoverMenu` forward item keys, typed `Accelerator`s and `Checkable` state natively.
 - mygoicons v0.4.0: Lucide 1.2.156 (45 more icons), shown on the gallery's Icons page.
 
 ## 0.3.1 - 2026-11-14

@@ -813,3 +813,37 @@ func TestLogViewerSearchShortcutWorksWithoutResults(t *testing.T) {
 		t.Fatalf("Cmd+F did not focus the search field: %q", st.Query)
 	}
 }
+
+// Stepping to a change from Previous/Next focuses the active diff editor so
+// arrow keys work without an extra click, and ScrollPastEnd lets a change at
+// the end of the file scroll past the bottom edge.
+func TestDiffViewerStepFocusesActiveEditorAndScrollsPastEnd(t *testing.T) {
+	var old, next strings.Builder
+	for i := range 60 {
+		fmt.Fprintf(&old, "line %d\n", i)
+		if i == 58 {
+			fmt.Fprintf(&next, "tail change %d\n", i)
+			continue
+		}
+		fmt.Fprintf(&next, "line %d\n", i)
+	}
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		ui.Column(c).Fill().Padding(16).Children(func() {
+			DiffViewer(c, DiffViewerOptions{
+				Old: old.String(), New: next.String(), Title: "tail.txt",
+				Height: 200, ExpandUnchanged: true,
+			})
+		})
+	}, 640, 360)
+	if err := tt.Click("Next"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Frame()
+	if !tt.Focused("New text") {
+		t.Fatal("stepping to a change did not focus the active diff editor")
+	}
+	if !tt.HasText("1 / 1") {
+		t.Fatalf("position after Next = %q", tt.Texts())
+	}
+}

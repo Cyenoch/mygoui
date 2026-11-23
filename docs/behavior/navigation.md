@@ -181,7 +181,7 @@ Also covers: SubMenu.
 
 | | |
 | --- | --- |
-| Role and name | A drawn in-window menu with descriptions and shortcuts. [T TestPopoverMenuShowsDescriptionAndShortcut] |
+| Role and name | A drawn in-window menu with descriptions, typed accelerators, custom shortcuts and checkable items. [T TestPopoverMenuShowsDescriptionAndShortcut] [T TestPopoverMenuAcceleratorAndCheckable] |
 | Keys | Shift+F10 and the menu key open it; Down skips disabled items; Enter chooses. [T TestPopoverMenuKeyboardSelectionAndFocus] |
 | Pointer | A secondary click opens it; disabled items ignore clicks; submenus open on click. [T TestPopoverMenuPointerSubmenuAndDismissal] |
 | Dismissal | Escape dismisses. [T TestPopoverMenuPointerSubmenuAndDismissal] Choosing closes and returns focus to the anchor. [T TestPopoverMenuKeyboardSelectionAndFocus] |

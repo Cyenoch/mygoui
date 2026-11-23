@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/Cyenoch/mygoui/form"
 	"github.com/Cyenoch/mygoui/theme"
 	"github.com/egoist/mygo/ui"
 )
@@ -299,5 +300,38 @@ func TestPopoverMenuShowsDescriptionAndShortcut(t *testing.T) {
 	tt.Key(ui.Shift, ui.KeyF10)
 	if !tt.HasText("Removes the file") || !tt.HasText("⌘⌫") {
 		t.Fatalf("menu texts = %q, want the description and shortcut", tt.Texts())
+	}
+}
+
+func TestPopoverMenuAcceleratorAndCheckable(t *testing.T) {
+	var chosen string
+	tt := ui.NewTester(func(c *ui.Context) {
+		theme.Apply(c)
+		anchor := ui.ButtonBase(c).Label("Document").Size(140, 40)
+		PopoverMenu(anchor, MenuOptions{
+			Sections: []MenuSectionOptions{{Items: []MenuItemOptions{
+				{Key: "dup", Label: "Duplicate", Accelerator: form.Hotkey{Mods: ui.Cmd, Key: ui.KeyD}},
+				{Key: "wrap", Label: "Wrap lines", Checkable: true},
+			}}},
+			OnSelect: func(key string) { chosen = key },
+		})
+	}, 400, 260)
+	if err := tt.Click("Document"); err != nil {
+		t.Fatal(err)
+	}
+	tt.Key(ui.Shift, ui.KeyF10)
+	dup, ok := tt.AccessByRole(ui.RoleMenuItem, "Duplicate")
+	if !ok || dup.KeyShortcuts == "" {
+		t.Fatalf("Duplicate item = %+v (ok=%v), want KeyShortcuts from Accelerator", dup, ok)
+	}
+	wrap, ok := tt.AccessByRole(ui.RoleMenuItemCheckBox, "Wrap lines")
+	if !ok || wrap.Checked {
+		t.Fatalf("Wrap lines item = %+v (ok=%v), want unchecked menuitemcheckbox", wrap, ok)
+	}
+	if err := tt.Click("Duplicate"); err != nil {
+		t.Fatal(err)
+	}
+	if chosen != "dup" {
+		t.Fatalf("chosen = %q, want dup", chosen)
 	}
 }

@@ -1,5 +1,27 @@
 # Validation
 
+## MyGo 0.10.0 feature adoption and doc alignment
+
+2026-11-23, uncommitted work on `26b42fb`, macOS arm64, Go 1.27.3, MyGo 0.10.0,
+mygoicons 0.4.0.
+
+- `make check`, `make race`, `golangci-lint run ./...` (zero issues),
+  `make wasm` and `make spec-check` pass.
+- Headless (`ui.NewTester`):
+  - `content.DiffViewer`: `TestDiffViewerStepFocusesActiveEditorAndScrollsPastEnd`
+    verifies `ScrollPastEnd` on scrolling diffs and that stepping via Previous/Next
+    focuses the active diff editor (`DiffState.Focus()`).
+  - `navigation.PopoverMenu` / `ContextMenu`: `TestPopoverMenuAcceleratorAndCheckable`
+    verifies `PopoverMenuOptions` panel/item radii, stable item `ID`, typed
+    `Accelerator` forwarding to `MenuItem.Shortcut` (including accessible
+    `KeyShortcuts`), and `Checkable` checkbox items.
+- Gallery overview hero pill, `THIRD_PARTY_NOTICES.md` and MyGo 0.10 reference
+  docs updated from stale 0.9 strings; `TestGalleryAPITableIsCurrent` passes.
+
+Not verified: real native windows on macOS, Windows and Linux, OS-rendered
+context-menu accelerator presentation, GPU rendering, and actual screen-reader
+output.
+
 ## Gallery icon browser and touch scrolling
 
 2026-11-14, macOS arm64, Go 1.27.3, MyGo 0.9.0, mygoicons 0.3.0. Change:

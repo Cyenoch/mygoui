@@ -138,7 +138,7 @@ func overviewHero(c *ui.Context, s *State, st *overviewState, groups []pageGroup
 			BorderWidth(theme.Hairline).BorderColor(t.Border).Children(func() {
 			dot := theme.Scale(c, 6)
 			ui.Box(c).Size(dot, dot).Radius(dot).Background(t.Success)
-			style.Text(ui.Text(c, fmt.Sprintf("MyGo 0.9 · %d components", componentCount(groups))), c, pill).
+			style.Text(ui.Text(c, fmt.Sprintf("MyGo 0.10 · %d components", componentCount(groups))), c, pill).
 				TextColor(t.MutedForeground).SingleLine()
 		})
 		style.Text(ui.Text(c, "MyGo UI, native in Go"), c, display).

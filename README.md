@@ -3,6 +3,7 @@
 [![CI](https://github.com/Cyenoch/mygoui/actions/workflows/ci.yml/badge.svg)](https://github.com/Cyenoch/mygoui/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/Cyenoch/mygoui)](https://github.com/Cyenoch/mygoui/releases/latest)
 [![Go Reference](https://pkg.go.dev/badge/github.com/Cyenoch/mygoui.svg)](https://pkg.go.dev/github.com/Cyenoch/mygoui)
+[![Listed on Awesome MyGo](https://awesomemygo.dev/badge.svg)](https://awesomemygo.dev/ui)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 A complete native UI solution for [MyGo](https://github.com/egoist/mygo)

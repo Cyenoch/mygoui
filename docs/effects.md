@@ -40,7 +40,7 @@ func masked(c *ui.Context) {
 }
 ```
 
-Limits every effect shares, read from MyGo v0.9.0 `ui/effect.go`:
+Limits every effect shares, read from MyGo v0.10.0 `ui/effect.go`:
 
 - **One effect per element.** Applying an effect replaces the one the
   element had, including the one a mask `ScrollFade` or a `SkeletonGroup`

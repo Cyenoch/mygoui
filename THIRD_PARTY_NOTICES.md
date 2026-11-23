@@ -66,7 +66,7 @@ not download, install or register the corresponding fonts.
 
 ## MyGo
 
-`github.com/egoist/mygo v0.9.0` is a module dependency under MIT, copyright
+`github.com/egoist/mygo v0.10.0` is a module dependency under MIT, copyright
 2026 MyGo contributors. Its full [license](licenses/MyGo-LICENSE) is retained.
 
 Spinner uses MyGo's `plugins/loading`, whose shapes and motion follow Jakub

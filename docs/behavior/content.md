@@ -60,8 +60,8 @@ The match, filter and change counts are statuses, read out as they change. [T Te
 | --- | --- |
 | Role and name | A group named by Title; without it, no group, but the same header. [T TestDiffViewerWithoutTitleKeepsItsControls] The header shows the added and deleted counts. [T TestDiffViewerCountsFollowTheTexts] A unified diff exposes the new text only; a split diff exposes "Old text" and "New text" (toolkit). [T TestDiffViewerCountsFollowTheTexts] The layout toggle is a toggle button named "Side by side", pressed while split. [C] |
 | Keys | With Height, F7 steps to the next change [N TestDiffViewerF7StepsForward] and Shift+F7 to the previous, wrapping. [T TestDiffViewerStepsThroughChanges] Both answer only while the focus is inside the viewer. [C] |
-| Pointer | Previous and Next step through the changes and show "n / total". [T TestDiffViewerStepsThroughChanges] The layout toggle switches unified and split; Copy copies New. [C] Collapsed unchanged lines expand from their separators (toolkit). [C] |
-| Focus | The header buttons are Tab stops before the text. [C] |
+| Pointer | Previous and Next step through the changes, show "n / total" and focus the active diff editor. [T TestDiffViewerStepsThroughChanges] [T TestDiffViewerStepFocusesActiveEditorAndScrollsPastEnd] The layout toggle switches unified and split; Copy copies New. [C] Collapsed unchanged lines expand from their separators (toolkit). [C] |
+| Focus | The header buttons are Tab stops before the text; stepping to a change moves focus to the active side so arrow keys work without a click. [T TestDiffViewerStepFocusesActiveEditorAndScrollsPastEnd] |
 | Selection and value | Identical texts show "No changes" in place of the lines. [T TestDiffViewerCountsFollowTheTexts] The layout toggle is kept per viewer and resets when the Layout option changes. [C] |
 
 ### JSONViewer
